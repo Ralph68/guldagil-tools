@@ -5,7 +5,7 @@ const depInput = document.getElementById('departement');
 const adrInput = document.getElementById('adr');
 const rdvInput = document.getElementById('rdv');
 const premiumInput = document.getElementById('premium');
-const dateInput = document.getElementById('date');
+const dateFixeInput = document.getElementById('date-fixe');
 const resetBtn = document.getElementById('reset-btn');
 const bestChoiceDiv = document.getElementById('best-choice');
 const alternativesDiv = document.getElementById('alternatives');
@@ -21,7 +21,7 @@ fetch('./data/tarifs.json')
   });
 
 function addListeners() {
-  [poidsInput, depInput, adrInput, rdvInput, premiumInput, dateInput].forEach(el => {
+  [poidsInput, depInput, adrInput, rdvInput, premiumInput, dateFixeInput].forEach(el => {
     el.addEventListener('input', updateResult);
     el.addEventListener('change', updateResult);
     el.addEventListener('focus', () => el.value = '');
@@ -47,6 +47,7 @@ function updateResult() {
   const adr = adrInput.checked;
   const rdv = rdvInput.checked;
   const premium = premiumInput.checked;
+  const dateFixe = dateFixeInput.checked;
 
   const candidates = tarifs
     .filter(t => t.departement === dep && poids <= t.poids_max)
@@ -65,7 +66,22 @@ function updateResult() {
         total += t.options.premium;
         details.push(`+${t.options.premium}€ Premium`);
       }
-      return { ...t, total, details };
+      if (dateFixe && t.options.date_fixe) {
+        total += t.options.date_fixe;
+        details.push(`+${t.options.date_fixe}€ Date Fixe`);
+      }
+
+      // Démo : frais de représentation et de garde
+      const representation = 15.0;
+      const garde = 12.5;
+
+      return {
+        ...t,
+        total,
+        details,
+        representation,
+        garde
+      };
     })
     .sort((a, b) => a.total - b.total);
 
@@ -99,7 +115,8 @@ function createCard(data, diff = null) {
   div.appendChild(h3);
 
   const prix = document.createElement('p');
-  prix.textContent = `Prix estimé : ${data.total.toFixed(2)} €`;
+  prix.className = 'main-price';
+  prix.textContent = `${data.total.toFixed(2)} €`;
   div.appendChild(prix);
 
   const delai = document.createElement('p');
@@ -107,17 +124,23 @@ function createCard(data, diff = null) {
   div.appendChild(delai);
 
   if (diff !== null) {
-    const ecart = document.createElement('p');
-    ecart.textContent = `+ ${diff} € par rapport au meilleur choix`;
+    const ecart = document.createElement('div');
+    ecart.className = 'price-diff';
+    ecart.textContent = `Écart : +${diff} € par rapport au meilleur choix`;
     div.appendChild(ecart);
   }
 
   if (data.details && data.details.length) {
     const bubble = document.createElement('div');
     bubble.className = 'bubble-details';
-    bubble.textContent = `Détail : ${data.details.join(', ')}`;
+    bubble.textContent = `Détails : ${data.details.join(', ')}`;
     div.appendChild(bubble);
   }
+
+  const extras = document.createElement('div');
+  extras.className = 'extra-costs';
+  extras.innerHTML = `Frais de représentation : ${data.representation.toFixed(2)} €<br>Frais de garde (démo) : ${data.garde.toFixed(2)} €`;
+  div.appendChild(extras);
 
   return div;
 }
