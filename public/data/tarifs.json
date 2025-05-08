@@ -1,1 +1,38 @@
-
+[
+  {
+    "departement": "68",
+    "poids_max": 100,
+    "transporteur": "XPO",
+    "prix": 42.5,
+    "delai": "2 jours ouvrés",
+    "options": {
+      "adr": 5.0,
+      "rdv": 7.0,
+      "premium": 10.0
+    }
+  },
+  {
+    "departement": "68",
+    "poids_max": 100,
+    "transporteur": "Heppner",
+    "prix": 44.8,
+    "delai": "J+3",
+    "options": {
+      "adr": 6.0,
+      "rdv": 5.0,
+      "premium": 8.0
+    }
+  },
+  {
+    "departement": "68",
+    "poids_max": 100,
+    "transporteur": "Kuehne+Nagel",
+    "prix": 46.0,
+    "delai": "2 jours",
+    "options": {
+      "adr": 4.5,
+      "rdv": 6.0,
+      "premium": 9.0
+    }
+  }
+]
