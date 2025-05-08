@@ -30,3 +30,32 @@ jobs:
           username: ${{ secrets.FTP_USERNAME_PROD }}
           password: ${{ secrets.FTP_PASSWORD_PROD }}
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
+      - name: Envoi d’un email (succès)
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_HOST }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: ✅ Déploiement réussi sur ${{ github.ref }}
+          body: |
+            Le déploiement de ${{ github.repository }} sur la branche ${{ github.ref }} a réussi.
+            Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
+
+      - name: Envoi d’un email (échec)
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_HOST }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: ❌ Échec du déploiement sur ${{ github.ref }}
+          body: |
+            Le déploiement de ${{ github.repository }} a échoué sur la branche ${{ github.ref }}.
+            Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
