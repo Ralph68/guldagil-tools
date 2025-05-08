@@ -5,6 +5,8 @@ const depInput = document.getElementById('departement');
 const adrInput = document.getElementById('adr');
 const rdvInput = document.getElementById('rdv');
 const premiumInput = document.getElementById('premium');
+const dateInput = document.getElementById('date');
+const resetBtn = document.getElementById('reset-btn');
 const bestChoiceDiv = document.getElementById('best-choice');
 const alternativesDiv = document.getElementById('alternatives');
 const toggleBtn = document.getElementById('toggle-alternatives');
@@ -19,13 +21,21 @@ fetch('./data/tarifs.json')
   });
 
 function addListeners() {
-  [poidsInput, depInput, adrInput, rdvInput, premiumInput].forEach(el => {
+  [poidsInput, depInput, adrInput, rdvInput, premiumInput, dateInput].forEach(el => {
     el.addEventListener('input', updateResult);
     el.addEventListener('change', updateResult);
+    el.addEventListener('focus', () => el.value = '');
   });
 
   toggleBtn.addEventListener('click', () => {
     alternativesDiv.classList.toggle('hidden');
+  });
+
+  resetBtn.addEventListener('click', () => {
+    document.getElementById('calc-form').reset();
+    bestChoiceDiv.innerHTML = '';
+    alternativesDiv.innerHTML = '';
+    alternativesDiv.classList.add('hidden');
   });
 }
 
@@ -42,10 +52,20 @@ function updateResult() {
     .filter(t => t.departement === dep && poids <= t.poids_max)
     .map(t => {
       let total = t.prix;
-      if (adr) total += t.options.adr || 0;
-      if (rdv) total += t.options.rdv || 0;
-      if (premium) total += t.options.premium || 0;
-      return { ...t, total };
+      let details = [];
+      if (adr && t.options.adr) {
+        total += t.options.adr;
+        details.push(`+${t.options.adr}€ ADR`);
+      }
+      if (rdv && t.options.rdv) {
+        total += t.options.rdv;
+        details.push(`+${t.options.rdv}€ RDV`);
+      }
+      if (premium && t.options.premium) {
+        total += t.options.premium;
+        details.push(`+${t.options.premium}€ Premium`);
+      }
+      return { ...t, total, details };
     })
     .sort((a, b) => a.total - b.total);
 
@@ -90,6 +110,13 @@ function createCard(data, diff = null) {
     const ecart = document.createElement('p');
     ecart.textContent = `+ ${diff} € par rapport au meilleur choix`;
     div.appendChild(ecart);
+  }
+
+  if (data.details && data.details.length) {
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble-details';
+    bubble.textContent = `Détail : ${data.details.join(', ')}`;
+    div.appendChild(bubble);
   }
 
   return div;
