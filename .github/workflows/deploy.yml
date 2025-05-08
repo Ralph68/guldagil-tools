@@ -1,10 +1,9 @@
-name: Déploiement FTP vers o2switch (dev & prod)
+name: Déploiement FTP vers port.gul.runser.ovh
 
 on:
   push:
     branches:
       - main
-      - develop
 
 jobs:
   deploy:
@@ -18,19 +17,7 @@ jobs:
         run: |
           echo "🔁 Déploiement sur ${{ github.ref }} à $(date -u +'%Y-%m-%d %H:%M:%S UTC') par ${{ github.actor }} (commit: ${{ github.sha }})" > deploy-log.txt
 
-      - name: Déploiement vers DEV
-        if: github.ref == 'refs/heads/develop'
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-        with:
-          server: ${{ secrets.FTP_SERVER_DEV }}
-          username: ${{ secrets.FTP_USERNAME_DEV }}
-          password: ${{ secrets.FTP_PASSWORD_DEV }}
-          server-dir: ${{ secrets.SERVER_DIR_DEV }}
-          exclude: |
-            deploy-log.txt
-
-      - name: Déploiement vers PROD
-        if: github.ref == 'refs/heads/main'
+      - name: Déploiement vers PROD (port.gul.runser.ovh)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER_PROD }}
@@ -48,7 +35,7 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: ✅ Déploiement réussi sur ${{ github.ref }}
+          subject: ✅ Déploiement réussi vers port.gul.runser.ovh
           body: |
             Le déploiement de ${{ github.repository }} sur la branche ${{ github.ref }} a réussi.
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -63,7 +50,7 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: ❌ Échec du déploiement sur ${{ github.ref }}
+          subject: ❌ Échec du déploiement vers port.gul.runser.ovh
           body: |
             Le déploiement de ${{ github.repository }} a échoué sur la branche ${{ github.ref }}.
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
