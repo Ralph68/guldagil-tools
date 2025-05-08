@@ -1,21 +1,32 @@
-name: Déploiement FTP vers o2switch
+name: Déploiement FTP vers o2switch (dev & prod)
 
 on:
   push:
     branches:
       - main
+      - develop
 
 jobs:
-  ftp-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v3
 
-      - name: Déploiement FTP
+      - name: Déploiement vers DEV
+        if: github.ref == 'refs/heads/develop'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: "/www/mon-sous-dossier-ou-racine/"
+          server: ${{ secrets.FTP_SERVER_DEV }}
+          username: ${{ secrets.FTP_USERNAME_DEV }}
+          password: ${{ secrets.FTP_PASSWORD_DEV }}
+          server-dir: ${{ secrets.SERVER_DIR_DEV }}
+
+      - name: Déploiement vers PROD
+        if: github.ref == 'refs/heads/main'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER_PROD }}
+          username: ${{ secrets.FTP_USERNAME_PROD }}
+          password: ${{ secrets.FTP_PASSWORD_PROD }}
+          server-dir: ${{ secrets.SERVER_DIR_PROD }}
