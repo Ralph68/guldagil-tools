@@ -24,7 +24,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME_PROD }}
           password: ${{ secrets.FTP_PASSWORD_PROD }}
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
-          local-dir: ./public
+          local-dir: ./public/
           exclude: |
             deploy-log.txt
 
