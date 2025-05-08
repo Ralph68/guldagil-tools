@@ -1,1 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculateur de transporteurs</title>
+  <link rel="stylesheet" href="./assets/css/style.css">
+</head>
+<body>
+  <main>
+    <section id="resultat" class="result-container">
+      <h2>Meilleur transporteur</h2>
+      <div id="best-choice"></div>
+      <button id="toggle-alternatives">+ Autres transporteurs</button>
+      <div id="alternatives" class="hidden"></div>
+    </section>
 
+    <section id="formulaire" class="form-container">
+      <form id="calc-form">
+        <label for="poids">Poids (kg)</label>
+        <input type="number" id="poids" name="poids" required>
+
+        <label for="departement">Département</label>
+        <input type="text" id="departement" name="departement" required maxlength="5">
+
+        <label><input type="checkbox" id="adr"> Produit ADR</label>
+        <label><input type="checkbox" id="rdv"> Livraison avec RDV</label>
+        <label><input type="checkbox" id="premium"> Option Premium</label>
+
+        <label for="date">Date d'enlèvement</label>
+        <input type="date" id="date" name="date">
+      </form>
+    </section>
+  </main>
+
+  <script src="./assets/js/calculator.js"></script>
+</body>
+</html>
