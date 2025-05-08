@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calculateur de transporteurs - Guldagil</title>
+  <title>Frais de port - Guldagil</title>
   <link rel="stylesheet" href="./assets/css/style.css">
 </head>
 <body>
   <header class="header">
     <img src="./assets/img/logo-guldagil.png" alt="Guldagil" class="logo">
-    <h1>Calculateur de transporteurs</h1>
+    <h1>Frais de port</h1>
   </header>
 
   <main>
@@ -25,15 +25,13 @@
         <label for="poids">Poids (kg)</label>
         <input type="number" id="poids" name="poids" required>
 
-        <label for="departement">Département</label>
-        <input type="text" id="departement" name="departement" required maxlength="5">
+        <label for="departement">Département <span style="font-weight: normal; font-size: 0.9rem;">(2 chiffres ex. : 68)</span></label>
+        <input type="text" id="departement" name="departement" required maxlength="2" placeholder="Ex: 68">
 
         <label><input type="checkbox" id="adr"> Produit ADR</label>
         <label><input type="checkbox" id="rdv"> Livraison avec RDV</label>
         <label><input type="checkbox" id="premium"> Option Premium</label>
-
-        <label for="date">Date d'enlèvement</label>
-        <input type="date" id="date" name="date">
+        <label><input type="checkbox" id="date-fixe"> Date Fixe</label>
 
         <button type="button" id="reset-btn">🔄 Réinitialiser</button>
       </form>
