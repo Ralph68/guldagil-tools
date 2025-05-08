@@ -59,3 +59,12 @@ jobs:
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
+      - name: Ajouter une entrée dans le journal de déploiement
+        if: always()
+        run: |
+          echo "🔁 Déploiement sur ${{ github.ref }} à $(date -u +'%Y-%m-%d %H:%M:%S UTC') par ${{ github.actor }} (commit: ${{ github.sha }})" >> deploy-log.txt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add deploy-log.txt
+          git commit -m "📝 Log de déploiement automatique"
+          git push
