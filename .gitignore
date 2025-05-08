@@ -1,0 +1,14 @@
+# Fichiers temporaires / systèmes
+.DS_Store
+Thumbs.db
+
+# Fichiers personnels
+*.log
+.env
+ftp-config.json
+
+# Dossiers locaux non déployables
+node_modules/
+.vscode/
+.gitignore
+.github/
