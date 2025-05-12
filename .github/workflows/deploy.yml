@@ -19,15 +19,15 @@ jobs:
         run: |
           echo "🔁 Déploiement sur ${{ github.ref }} à $(date -u +'%Y-%m-%d %H:%M:%S UTC') par ${{ github.actor }} (commit: ${{ github.sha }})" > deploy-log.txt
 
-      # 3) Générer .env pour la BDD
+      # 3) Générer .env pour la BDD (avec guillemets autour des valeurs)
       - name: Générer .env pour la BDD
         run: |
           mkdir -p public/db
           cat <<EOF > public/db/.env
-          DB_HOST=${{ secrets.DB_HOST }}
-          DB_NAME=${{ secrets.DB_NAME }}
-          DB_USER=${{ secrets.DB_USER }}
-          DB_PASS=${{ secrets.DB_PASS }}
+          DB_HOST="${{ secrets.DB_HOST }}"
+          DB_NAME="${{ secrets.DB_NAME }}"
+          DB_USER="${{ secrets.DB_USER }}"
+          DB_PASS="${{ secrets.DB_PASS }}"
           EOF
 
       # 4) Déploiement FTP
