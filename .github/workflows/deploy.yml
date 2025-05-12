@@ -9,51 +9,67 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Récupérer le code
+      # 1) Récupérer le code
+      - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2) Journal local
       - name: Générer un journal de déploiement local (non transféré)
         if: always()
         run: |
           echo "🔁 Déploiement sur ${{ github.ref }} à $(date -u +'%Y-%m-%d %H:%M:%S UTC') par ${{ github.actor }} (commit: ${{ github.sha }})" > deploy-log.txt
 
+      # 3) Générer .env pour la BDD
+      - name: Générer .env pour la BDD
+        run: |
+          mkdir -p public/db
+          cat <<EOF > public/db/.env
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASS=${{ secrets.DB_PASS }}
+          EOF
+
+      # 4) Déploiement FTP
       - name: Déploiement vers PROD (port.gul.runser.ovh)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ secrets.FTP_SERVER_PROD }}
-          username: ${{ secrets.FTP_USERNAME_PROD }}
-          password: ${{ secrets.FTP_PASSWORD_PROD }}
+          server:     ${{ secrets.FTP_SERVER_PROD }}
+          username:   ${{ secrets.FTP_USERNAME_PROD }}
+          password:   ${{ secrets.FTP_PASSWORD_PROD }}
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
-          local-dir: ./public/
+          local-dir:  ./public/
           exclude: |
             deploy-log.txt
 
+      # 5) Notification email (succès)
       - name: Envoi d’un email (succès)
         if: success()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.MAIL_HOST }}
-          server_port: ${{ secrets.MAIL_PORT }}
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: ✅ Déploiement réussi vers port.gul.runser.ovh
+          server_port:    ${{ secrets.MAIL_PORT }}
+          username:       ${{ secrets.MAIL_USERNAME }}
+          password:       ${{ secrets.MAIL_PASSWORD }}
+          subject:        "✅ Déploiement réussi vers port.gul.runser.ovh"
           body: |
             Le déploiement de ${{ github.repository }} sur la branche ${{ github.ref }} a réussi.
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          to: ${{ secrets.MAIL_TO }}
+          to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
 
+      # 6) Notification email (échec)
       - name: Envoi d’un email (échec)
         if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.MAIL_HOST }}
-          server_port: ${{ secrets.MAIL_PORT }}
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: ❌ Échec du déploiement vers port.gul.runser.ovh
+          server_port:    ${{ secrets.MAIL_PORT }}
+          username:       ${{ secrets.MAIL_USERNAME }}
+          password:       ${{ secrets.MAIL_PASSWORD }}
+          subject:        "❌ Échec du déploiement vers port.gul.runser.ovh"
           body: |
             Le déploiement de ${{ github.repository }} a échoué sur la branche ${{ github.ref }}.
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          to: ${{ secrets.MAIL_TO }}
+          to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
