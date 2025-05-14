@@ -12,24 +12,31 @@ $poids = isset($_POST['poids']) ? (float)$_POST['poids'] : null;
 $opt = $_POST['option'] ?? '';
 $dep = $_POST['departement'] ?? '';
 
-// Fausse valeur pour valider l'enchaînement visuel
+// Fausse valeur pour maquette
 $results = [
   'xpo' => 18.50,
   'heppner' => 21.90,
   'kn' => 17.30
 ];
 $best = min($results);
+$bestCarrier = array_search($best, $results);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Calculateur de frais de port</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <style>
     body { font-family: sans-serif; margin: 0; padding: 1rem; background: #f4f4f4; }
-    form { max-width: 600px; margin: auto; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+    header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    header img { height: 48px; }
+    form, .recap, .main-result, .more-results, .details {
+      max-width: 600px; margin: auto; background: white;
+      padding: 1rem; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1rem;
+    }
     .form-group { margin-bottom: 1rem; display: none; opacity: 0; transition: all 0.5s ease; }
     .form-group.active { display: block; opacity: 1; }
     label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
@@ -46,13 +53,29 @@ $best = min($results);
     .btn-group input[type="radio"]:checked + label {
       background: #007acc; color: white; border-color: #007acc;
     }
-    .recap { max-width: 600px; margin: 1rem auto; padding: 1rem; background: #fff3cd; border-left: 5px solid #ffeeba; border-radius: 5px; font-size: 0.95rem; }
-    table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
-    th, td { padding: 0.75rem; border: 1px solid #ccc; text-align: left; }
-    .best { background-color: #d3fcd3; }
+    .main-result { background: #e7f9e7; text-align: center; font-size: 1.2rem; }
+    .main-result strong { font-size: 1.6rem; display: block; margin: 0.5rem 0; }
+    .toggle-btn { text-align: center; margin: 1rem 0; }
+    .toggle-btn button {
+      background: none; border: none; color: #007acc;
+      text-decoration: underline; cursor: pointer; font-size: 1rem;
+    }
+    .more-results table { width: 100%; border-collapse: collapse; }
+    .more-results th, .more-results td {
+      padding: 0.5rem; border: 1px solid #ccc; text-align: left;
+    }
+    .details pre {
+      background: #f0f0f0; padding: 1rem; font-size: 0.85rem; border-radius: 4px;
+      overflow-x: auto;
+    }
   </style>
 </head>
 <body>
+  <header>
+    <img src="assets/img/logo_guldagil.png" alt="Logo Guldagil">
+    <h1>Calculateur de frais de port</h1>
+  </header>
+
   <form method="post" id="tarif-form">
     <div class="form-group active" id="step1">
       <label for="departement">Code département (2 chiffres)</label>
@@ -91,22 +114,47 @@ $best = min($results);
     </div>
   </form>
 
-  <div class="recap">
-    <strong>Résumé :</strong>
-    Dépt <?= htmlspecialchars($dep) ?>, <?= $poids ?> kg, <?= $type ?>, ADR <?= $adr ?>, Option <?= ucfirst(str_replace('_',' ',$opt)) ?>
-  </div>
+  <?php if ($dep || $poids || $type || $adr || $opt): ?>
+    <div class="recap">
+      <strong>Résumé :</strong><br>
+      Dépt <?= htmlspecialchars($dep) ?>, <?= $poids ?> kg, <?= $type ?>, ADR <?= $adr ?>, Option <?= ucfirst(str_replace('_',' ',$opt)) ?>
+    </div>
+  <?php endif; ?>
 
-  <table>
-    <thead><tr><th>Transporteur</th><th>Prix estimé</th></tr></thead>
-    <tbody>
-      <?php foreach ($results as $code => $price): ?>
-        <tr class="<?= ($price !== null && $price === $best) ? 'best' : '' ?>">
-          <td><?= htmlspecialchars($carriers[$code]) ?></td>
-          <td><?= $price !== null ? number_format($price, 2, ',', ' ') . ' €' : '<em>N/A</em>' ?></td>
-        </tr>
-      <?php endforeach; ?>
-    </tbody>
-  </table>
+  <?php if ($results): ?>
+    <div class="main-result">
+      <p>Transporteur le moins cher :</p>
+      <strong><?= $carriers[$bestCarrier] ?> — <?= number_format($best, 2, ',', ' ') ?> €</strong>
+    </div>
+
+    <div class="toggle-btn">
+      <button type="button" onclick="document.getElementById('more-results').classList.toggle('hidden')">
+        Voir les autres transporteurs
+      </button>
+    </div>
+
+    <div id="more-results" class="more-results hidden">
+      <table>
+        <thead><tr><th>Transporteur</th><th>Prix</th><th>Écart</th></tr></thead>
+        <tbody>
+          <?php foreach ($results as $code => $price): ?>
+            <?php if ($code !== $bestCarrier): ?>
+              <tr>
+                <td><?= $carriers[$code] ?></td>
+                <td><?= number_format($price, 2, ',', ' ') ?> €</td>
+                <td>+<?= number_format($price - $best, 2, ',', ' ') ?> €</td>
+              </tr>
+            <?php endif; ?>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="details">
+      <h3>Détails de calcul (debug)</h3>
+      <pre><?= var_export($results, true) ?></pre>
+    </div>
+  <?php endif; ?>
 
   <script>
     const dep = document.getElementById('departement');
@@ -127,6 +175,18 @@ $best = min($results);
     poids.addEventListener('input', () => {
       if (poids.value && parseFloat(poids.value) > 0) {
         showStep('step3');
+      }
+    });
+
+    form.addEventListener('change', () => {
+      if (
+        dep.value.length === 2 &&
+        poids.value && parseFloat(poids.value) > 0 &&
+        form.type.value &&
+        form.adr.value &&
+        form.option.value
+      ) {
+        form.submit();
       }
     });
   </script>
