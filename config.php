@@ -1,30 +1,37 @@
 <?php
-// public/db/connect.php
-// Connexion à la base de données via fichier .env généré au déploiement
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// config.php — connexion PDO centralisée
 
+// Affichage des erreurs en dev
+if (getenv('APP_ENV') !== 'production') {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+}
+
+// Chargement du .env
 $envPath = __DIR__ . '/.env';
-if (!file_exists($envPath)) {
+if (! file_exists($envPath)) {
     http_response_code(500);
-    echo "Erreur : fichier .env introuvable (" . htmlspecialchars($envPath) . ")";
+    echo 'Erreur : .env introuvable (' . htmlspecialchars($envPath) . ')';
     exit;
 }
 
-$env = parse_ini_file($envPath);
+// Parse du .env
+$env = parse_ini_file($envPath, false, INI_SCANNER_TYPED);
 if ($env === false) {
     http_response_code(500);
-    echo "Erreur : impossible de lire le fichier .env";
+    echo 'Erreur : impossible de lire le .env';
     exit;
 }
 
-$host    = $env['DB_HOST']  ?? 'localhost';
-$dbName  = $env['DB_NAME']  ?? '';
-$user    = $env['DB_USER']  ?? '';
-$pass    = $env['DB_PASS']  ?? '';
-$charset = 'utf8mb4';
+// Paramètres BDD
+$host    = $env['DB_HOST']    ?? 'localhost';
+$dbName  = $env['DB_NAME']    ?? '';
+$user    = $env['DB_USER']    ?? '';
+$pass    = $env['DB_PASS']    ?? '';
+$charset = $env['DB_CHARSET'] ?? 'utf8mb4';
 
+// DSN et options PDO
 $dsn = "mysql:host={$host};dbname={$dbName};charset={$charset}";
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -33,9 +40,10 @@ $options = [
 ];
 
 try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
+    // On exporte $db pour le reste de l’application
+    $db = new PDO($dsn, $user, $pass, $options);
 } catch (PDOException $e) {
     http_response_code(500);
-    echo "Erreur de connexion à la BDD : " . htmlspecialchars($e->getMessage());
+    echo 'Erreur de connexion BDD : ' . htmlspecialchars($e->getMessage());
     exit;
 }
