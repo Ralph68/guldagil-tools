@@ -1,4 +1,11 @@
 <?php
+declare(strict_types=1);
+
+// Afficher toutes les erreurs
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 // -----------------------------------------------------------------------------
 // admin/index.php
 // Point d'entrée unique et router du back-office
