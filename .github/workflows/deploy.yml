@@ -1,3 +1,4 @@
+# .github/workflows/deploy.yml
 name: Déploiement FTP vers port.gul.runser.ovh
 
 on:
@@ -17,7 +18,7 @@ jobs:
       - name: Générer un journal de déploiement local (non transféré)
         if: always()
         run: |
-          echo "🔁 Déploiement sur ${{ github.ref }} à $(date -u +'%Y-%m-%d %H:%M:%S UTC') par ${{ github.actor }} (commit: ${{ github.sha }})" > deploy-log.txt
+          echo "🔁 Déploiement sur ${{ github.ref }} à $(date) par ${{ github.actor }} (commit: ${{ github.sha }})" > deploy-log.txt
 
       # 3) Générer .env pour la BDD à la racine
       - name: Générer .env pour la BDD
@@ -31,22 +32,20 @@ jobs:
           APP_ENV="production"
           EOF
 
-      # 4) Déploiement FTP incrémental (fichiers modifiés uniquement)
-      - name: Déploiement vers PROD (incrémental)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      # 4) Déploiement restreint (rsync via SSH)
+      - name: Configurer l’agent SSH
+        uses: webfactory/ssh-agent@v0.10.3
         with:
-          server:       ${{ secrets.FTP_SERVER_PROD }}
-          username:     ${{ secrets.FTP_USERNAME_PROD }}
-          password:     ${{ secrets.FTP_PASSWORD_PROD }}
-          server-dir:   ${{ secrets.SERVER_DIR_PROD }}
-          local-dir:    ./
-          exclude: |
-            .git*
-            .github*
-            .gitignore
-            .gitattributes
-            README.md
-            deploy-log.txt
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Synchroniser lib/, public/ et config.php
+        run: |
+          rsync -avz --delete \
+            --include 'lib/***' \
+            --include 'public/***' \
+            --include 'config.php' \
+            --exclude '*' \
+            ./ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:${{ secrets.REMOTE_PATH }}
 
       # 5) Notification email (succès)
       - name: Envoi d’un email (succès)
