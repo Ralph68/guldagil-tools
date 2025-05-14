@@ -10,17 +10,14 @@ $type = $_POST['type'] ?? '';
 $adr = $_POST['adr'] ?? '';
 $poids = isset($_POST['poids']) ? (float)$_POST['poids'] : null;
 $opt = $_POST['option'] ?? '';
-$step = 1;
+$dep = $_POST['departement'] ?? '';
 $results = [];
 $best = null;
 
-if (!empty($_POST['departement'])) $step = 2;
-if ($poids && $poids > 0) $step = 3;
-if (!empty($type) && !empty($adr) && !empty($opt)) {
+if ($dep && $poids && $type && $adr && $opt) {
     $results = $transport->calculateAll($type, $adr, $poids, $opt);
     $valid = array_filter($results, fn($p) => $p !== null);
     if ($valid) $best = min($valid);
-    $step = 4;
 }
 ?>
 <!DOCTYPE html>
@@ -31,61 +28,69 @@ if (!empty($type) && !empty($adr) && !empty($opt)) {
   <title>Calculateur de frais de port</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <style>
-    body { font-family: sans-serif; padding: 1rem; margin: 0; }
-    .step { display: none; margin-bottom: 1rem; }
-    .step.active { display: block; }
-    button[type="submit"] { padding: 0.75rem 1.5rem; font-size: 1.1rem; margin-top: 1rem; }
-    .option-btns button { margin-right: 0.5rem; margin-top: 0.5rem; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-    .best { background: #d3fcd3; }
+    body { font-family: sans-serif; margin: 0; padding: 1rem; background: #f4f4f4; }
+    form { max-width: 600px; margin: auto; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .form-group { margin-bottom: 1rem; display: none; }
+    .form-group.active { display: block; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+    input[type="text"], input[type="number"] {
+      width: 100%; padding: 0.6rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px;
+    }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .btn-group label {
+      flex: 1 0 45%;
+      padding: 0.6rem; background: #eee; text-align: center;
+      border: 1px solid #ccc; border-radius: 4px; cursor: pointer;
+    }
+    .btn-group input[type="radio"] { display: none; }
+    .btn-group input[type="radio"]:checked + label {
+      background: #007acc; color: white; border-color: #007acc;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+    th, td { padding: 0.75rem; border: 1px solid #ccc; text-align: left; }
+    .best { background-color: #d3fcd3; }
   </style>
 </head>
 <body>
-  <h1>Calculateur de frais de port</h1>
-  <form method="post">
-    <div class="step <?= $step >= 1 ? 'active' : '' ?>">
-      <label>Code département (2 chiffres)
-        <input type="text" name="departement" maxlength="2" pattern="\d{2}" required value="<?= htmlspecialchars($_POST['departement'] ?? '') ?>">
-      </label>
+  <form method="post" id="tarif-form">
+    <div class="form-group active" id="step1">
+      <label for="departement">Code département (2 chiffres)</label>
+      <input type="text" name="departement" id="departement" maxlength="2" pattern="\d{2}" required value="<?= htmlspecialchars($dep) ?>">
     </div>
 
-    <?php if ($step >= 2): ?>
-    <div class="step <?= $step >= 2 ? 'active' : '' ?>">
-      <label>Poids (kg)
-        <input type="number" name="poids" step="0.1" min="0.1" required value="<?= htmlspecialchars($poids ?? '') ?>">
-      </label>
+    <div class="form-group" id="step2">
+      <label for="poids">Poids (kg)</label>
+      <input type="number" name="poids" id="poids" step="0.1" min="0.1" value="<?= htmlspecialchars($poids ?? '') ?>">
     </div>
-    <?php endif; ?>
 
-    <?php if ($step >= 3): ?>
-    <div class="step <?= $step >= 3 ? 'active' : '' ?>">
+    <div class="form-group" id="step3">
       <label>Type d'envoi</label>
-      <div class="option-btns">
-        <button type="submit" name="type" value="colis" class="<?= $type === 'colis' ? 'selected' : '' ?>">Colis</button>
-        <button type="submit" name="type" value="palette" class="<?= $type === 'palette' ? 'selected' : '' ?>">Palette</button>
+      <div class="btn-group">
+        <input type="radio" name="type" value="colis" id="type-colis" <?= $type === 'colis' ? 'checked' : '' ?>>
+        <label for="type-colis">Colis</label>
+        <input type="radio" name="type" value="palette" id="type-palette" <?= $type === 'palette' ? 'checked' : '' ?>>
+        <label for="type-palette">Palette</label>
       </div>
 
       <label>ADR</label>
-      <div class="option-btns">
-        <button type="submit" name="adr" value="oui" class="<?= $adr === 'oui' ? 'selected' : '' ?>">Oui</button>
-        <button type="submit" name="adr" value="non" class="<?= $adr === 'non' ? 'selected' : '' ?>">Non</button>
+      <div class="btn-group">
+        <input type="radio" name="adr" value="oui" id="adr-oui" <?= $adr === 'oui' ? 'checked' : '' ?>>
+        <label for="adr-oui">Oui</label>
+        <input type="radio" name="adr" value="non" id="adr-non" <?= $adr === 'non' ? 'checked' : '' ?>>
+        <label for="adr-non">Non</label>
       </div>
 
       <label>Option</label>
-      <div class="option-btns">
+      <div class="btn-group">
         <?php foreach ($options as $o): ?>
-          <button type="submit" name="option" value="<?= $o ?>" class="<?= $opt === $o ? 'selected' : '' ?>">
-            <?= ucfirst(str_replace('_', ' ', $o)) ?>
-          </button>
+          <input type="radio" name="option" value="<?= $o ?>" id="opt-<?= $o ?>" <?= $opt === $o ? 'checked' : '' ?>>
+          <label for="opt-<?= $o ?>"><?= ucfirst(str_replace('_', ' ', $o)) ?></label>
         <?php endforeach; ?>
       </div>
     </div>
-    <?php endif; ?>
   </form>
 
-  <?php if ($step >= 4 && $results): ?>
-    <h2>Résultats</h2>
+  <?php if ($results): ?>
     <table>
       <thead><tr><th>Transporteur</th><th>Prix estimé</th></tr></thead>
       <tbody>
@@ -98,5 +103,25 @@ if (!empty($type) && !empty($adr) && !empty($opt)) {
       </tbody>
     </table>
   <?php endif; ?>
+
+  <script>
+    const dep = document.getElementById('departement');
+    const poids = document.getElementById('poids');
+    const form = document.getElementById('tarif-form');
+
+    dep.addEventListener('input', () => {
+      if (dep.value.length === 2) {
+        document.getElementById('step2').classList.add('active');
+        poids.focus();
+      }
+    });
+
+    poids.addEventListener('input', () => {
+      if (poids.value && parseFloat(poids.value) > 0) {
+        document.getElementById('step3').classList.add('active');
+        form.submit();
+      }
+    });
+  </script>
 </body>
 </html>
