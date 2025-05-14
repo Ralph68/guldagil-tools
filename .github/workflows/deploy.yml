@@ -44,7 +44,7 @@ jobs:
           echo "🔁 Déploiement sur ${GITHUB_REF#refs/heads/} à $(date) par ${{ github.actor }} (commit: ${{ github.sha }})" \
             > deploy-log.txt
 
-      # 3) Générer .env pour la BDD à la racine
+      # 3) Générer .env pour la BDD
       - name: Générer .env pour la BDD
         run: |
           cat <<EOF > .env
@@ -60,9 +60,7 @@ jobs:
       - name: Installer lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      # 5) Déployer lib/, public/ et config.php via FTP
-      #    — n’inclut QUE ces chemins
-      #    — exclut public/assets/img/, .git/ et .github/
+      # 5) Déployer uniquement les fichiers modifiés
       - name: Déployer (FTP)
         run: |
           BRANCH=${GITHUB_REF#refs/heads/}
@@ -80,8 +78,9 @@ jobs:
 
           lftp -u "$USER","$PASS" "$HOST" <<EOF
             set ftp:ssl-allow no
-            mirror -R --verbose --delete \
-              --exclude-glob '*' \
+            mirror -R \
+              --verbose \
+              --only-newer \
               --include-glob 'lib/***' \
               --include-glob 'public/***' \
               --include-glob 'config.php' \
