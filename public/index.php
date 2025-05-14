@@ -7,11 +7,11 @@ $errors    = [];
 $results   = [];
 $best      = null;
 
-// Définitions pour l’affichage
+// Cartographie pour l'affichage
 $carriers = ['xpo' => 'XPO', 'heppner' => 'Heppner', 'kn' => 'Kuehne+Nagel'];
 $options  = $transport->getOptionsList();
 
-// Récupération des valeurs postées
+// Valeurs postées (ou valeurs par défaut)
 $type   = $_POST['type']    ?? '';
 $adr    = $_POST['adr']     ?? '';
 $weight = isset($_POST['poids']) ? (float)$_POST['poids'] : null;
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array($adr, ['oui', 'non'], true)) {
         $errors[] = 'Valeur ADR invalide.';
     }
-    if ($weight <= 0) {
+    if ($weight === null || $weight <= 0) {
         $errors[] = 'Le poids doit être supérieur à 0.';
     }
     if (!isset($options[$opt])) {
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         // Calcul pour chaque transporteur
         $results = $transport->calculateAll($type, $adr, $weight, $opt);
-        // On garde les tarifs disponibles
+        // Filtre les tarifs valides
         $validPrices = array_filter($results, fn($v) => $v !== null);
         if (!empty($validPrices)) {
             $best = min($validPrices);
@@ -48,72 +48,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comparateur de frais de port</title>
     <link rel="stylesheet" href="assets/css/style.css">
-    <style>
-        .best { background-color: #c8e6c9; }
-        table { border-collapse: collapse; width: 100%; margin-top: 1em; }
-        th, td { border: 1px solid #ccc; padding: 0.5em; text-align: left; }
-    </style>
 </head>
 <body>
-    <h1>Comparateur de frais de port</h1>
+    <header class="header">
+        <h1>Comparateur de frais de port</h1>
+    </header>
+    <main>
+        <div class="form-container">
+            <form id="calc-form" method="post">
+                <label for="type">Type d’envoi</label>
+                <select id="type" name="type" required>
+                    <option value="">-- Sélectionnez --</option>
+                    <option value="colis"   <?= \$type === 'colis'   ? 'selected' : '' ?>>Colis</option>
+                    <option value="palette" <?= \$type === 'palette' ? 'selected' : '' ?>>Palette</option>
+                </select>
 
-    <?php if (!empty($errors)): ?>
-        <ul style="color: red;">
-            <?php foreach ($errors as $error): ?>
-                <li><?= htmlspecialchars($error) ?></li>
-            <?php endforeach; ?>
-        </ul>
-    <?php endif; ?>
+                <label for="adr">ADR</label>
+                <select id="adr" name="adr" required>
+                    <option value="">-- Sélectionnez --</option>
+                    <option value="non" <?= \$adr === 'non' ? 'selected' : '' ?>>Non</option>
+                    <option value="oui" <?= \$adr === 'oui' ? 'selected' : '' ?>>Oui</option>
+                </select>
 
-    <form method="post">
-        <label for="type">Type d’envoi</label>
-        <select id="type" name="type" required>
-            <option value="">-- Sélectionnez --</option>
-            <option value="colis" <?= $type === 'colis' ? 'selected' : '' ?>>Colis</option>
-            <option value="palette" <?= $type === 'palette' ? 'selected' : '' ?>>Palette</option>
-        </select>
+                <label for="poids">Poids (kg)</label>
+                <input type="number" id="poids" name="poids" step="0.1" min="0.1" required value="<?= htmlspecialchars(\$weight) ?>">
 
-        <label for="adr">ADR</label>
-        <select id="adr" name="adr" required>
-            <option value="">-- Sélectionnez --</option>
-            <option value="non" <?= $adr === 'non' ? 'selected' : '' ?>>Non</option>
-            <option value="oui" <?= $adr === 'oui' ? 'selected' : '' ?>>Oui</option>
-        </select>
+                <label for="option">Option</label>
+                <select id="option" name="option" required>
+                    <option value="">-- Sélectionnez --</option>
+                    <?php foreach (\$options as \$code => \$coef): ?>
+                        <option value="<?= htmlspecialchars(\$code) ?>" <?= \$opt === \$code ? 'selected' : '' ?>>
+                            <?= htmlspecialchars(ucfirst(str_replace('_', ' ', \$code))) ?> (×<?= \$coef ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
 
-        <label for="poids">Poids (kg)</label>
-        <input type="number" id="poids" name="poids" step="0.1" min="0.1" required value="<?= htmlspecialchars($weight) ?>">
+                <button type="submit">Comparer</button>
+            </form>
 
-        <label for="option">Option</label>
-        <select id="option" name="option" required>
-            <option value="">-- Sélectionnez --</option>
-            <?php foreach ($options as $code => $coef): ?>
-                <option value="<?= htmlspecialchars($code) ?>" <?= $opt === $code ? 'selected' : '' ?>>
-                    <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $code))) ?> (×<?= $coef ?>)
-                </option>
-            <?php endforeach; ?>
-        </select>
+            <button type="button" id="reset-btn">Réinitialiser</button>
+            <button type="button" id="toggle-alternatives">Voir/masquer les alternatives</button>
+        </div>
 
-        <button type="submit">Comparer</button>
-    </form>
-
-    <?php if (!empty($results)): ?>
-        <table>
-            <thead>
-                <tr><th>Transporteur</th><th>Prix (€)</th></tr>
-            </thead>
-            <tbody>
-                <?php foreach ($results as $code => $price): ?>
-                    <tr class="<?= ($price !== null && $price === $best) ? 'best' : '' ?>">
-                        <td><?= htmlspecialchars($carriers[$code] ?? $code) ?></td>
-                        <td>
-                            <?= $price !== null ? number_format($price, 2, ',', ' ') : '<em>N/A</em>' ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php endif; ?>
+        <div class="result-container">
+            <?php if (!empty(\$results)): ?>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr><th>Transporteur</th><th>Prix (€)</th></tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach (\$results as \$code => \$price): ?>
+                                <tr class="<?= (\$price !== null && \$price === \$best) ? 'best' : '' ?>">
+                                    <td><?= htmlspecialchars(\$carriers[\$code] ?? \$code) ?></td>
+                                    <td><?= \$price !== null ? number_format(\$price, 2, ',', ' ') : '<em>N/A</em>' ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </main>
+    <script src="assets/js/calculator.js"></script>
 </body>
 </html>
