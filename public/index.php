@@ -136,7 +136,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         </div>
 
-        <!-- Options supplémentaires à venir ici -->
+        <div class="form-step">
+          <label>Options supplémentaires</label>
+          <div class="radio-group">
+            <input type="radio" name="option_sup" value="standard" id="opt-standard" <?= $option_sup==='standard'?'checked':'' ?>> <label for="opt-standard">Standard</label>
+            <input type="radio" name="option_sup" value="rdv" id="opt-rdv" <?= $option_sup==='rdv'?'checked':'' ?>> <label for="opt-rdv">Prise de RDV</label>
+            <input type="radio" name="option_sup" value="premium13" id="opt-premium13" <?= $option_sup==='premium13'?'checked':'' ?>> <label for="opt-premium13">Premium avant 13h</label>
+            <input type="radio" name="option_sup" value="premium18" id="opt-premium18" <?= $option_sup==='premium18'?'checked':'' ?>> <label for="opt-premium18">Premium avant 18h</label>
+            <input type="radio" name="option_sup" value="datefixe" id="opt-datefixe" <?= $option_sup==='datefixe'?'checked':'' ?>> <label for="opt-datefixe">Date fixe</label>
+          </div>
+        </div>
+
+        <div class="form-step">
+          <label for="enlevement">Enlèvement</label>
+          <input type="checkbox" name="enlevement" id="enlevement" value="1" <?= $enlevement ? 'checked' : '' ?>>
+        </div>
+
+        <div class="form-step">
+          <label for="palettes">Nombre de palettes EUR</label>
+          <input type="number" name="palettes" id="palettes" min="0" step="1" value="<?= $palettes ?>">
+        </div>
 
         <div class="form-step" style="text-align:center; margin-top:1rem;">
           <button type="submit">Calculer</button>
