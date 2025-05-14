@@ -27,11 +27,11 @@ jobs:
           DB_NAME="${{ secrets.DB_NAME }}"
           DB_USER="${{ secrets.DB_USER }}"
           DB_PASS="${{ secrets.DB_PASS }}"
-          DB_CHARSET="${{ secrets.DB_CHARSET }}"
+          DB_CHARSET="utf8mb4"
           APP_ENV="production"
           EOF
 
-      # 4) Déploiement FTP
+      # 4) Déploiement FTP complet
       - name: Déploiement vers PROD (port.gul.runser.ovh)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -44,8 +44,8 @@ jobs:
           exclude: |
             .git*
             .github*
-            .github
             .gitignore
+            .gitattributes
             README.md
             deploy-log.txt
 
@@ -80,3 +80,4 @@ jobs:
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
+
