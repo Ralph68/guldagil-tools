@@ -75,6 +75,10 @@
 .error li {
   margin-bottom: 0.25rem;
 }
+.disabled-option {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* Aide utilisateur */
 .aide {
