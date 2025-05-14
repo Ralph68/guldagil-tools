@@ -1,32 +1,38 @@
-// script.js — logique dynamique du formulaire principal
-
 document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('tarif-form');
-  const dep = document.getElementById('departement');
+  const departement = document.getElementById('departement');
   const poids = document.getElementById('poids');
+  const enlevement = document.getElementById('enlevement');
+  const options = document.querySelectorAll('input[name="option_sup"]');
 
-  // Focus automatique sur poids après 2 chiffres de département
-  dep.addEventListener('input', () => {
-    if (dep.value.length === 2) {
-      poids.focus();
+  // Auto-focus poids après 2 chiffres
+  departement.addEventListener('input', () => {
+    if (departement.value.length === 2) poids.focus();
+  });
+
+  // Réinitialiser département au focus
+  departement.addEventListener('focus', () => {
+    departement.select();
+  });
+
+  // Gestion des options si enlèvement est coché
+  enlevement.addEventListener('change', () => {
+    if (enlevement.checked) {
+      options.forEach(opt => {
+        opt.disabled = true;
+        if (opt.value === 'standard') opt.checked = true;
+      });
+    } else {
+      options.forEach(opt => {
+        opt.disabled = false;
+      });
     }
   });
 
-  // Réinitialisation du champ département au clic
-  dep.addEventListener('focus', () => {
-    dep.value = '';
-  });
-
-  // Déclenche la soumission si tout est rempli
-  form.addEventListener('change', () => {
-    const ready = (
-      dep.value.length === 2 &&
-      poids.value && parseFloat(poids.value) > 0 &&
-      form.type?.value &&
-      form.adr?.value &&
-      form.option?.value
-    );
-
-    if (ready) form.submit();
-  });
+  // Initialiser au chargement
+  if (enlevement.checked) {
+    options.forEach(opt => {
+      opt.disabled = true;
+      if (opt.value === 'standard') opt.checked = true;
+    });
+  }
 });
