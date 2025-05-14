@@ -31,7 +31,7 @@ jobs:
       SERVER_DIR_PROD:   ${{ secrets.SERVER_DIR_PROD }}
 
     steps:
-      # 1) Récupérer le code
+      # 1) Checkout du code
       - name: Checkout code
         uses: actions/checkout@v3
         with:
@@ -60,19 +60,26 @@ jobs:
       - name: Installer git-ftp
         run: sudo apt-get update && sudo apt-get install -y git-ftp
 
-      # 5) Préparer .git-ftp-ignore pour ne transférer que lib/, public/, config.php
+      # 5) Générer .git-ftp-ignore pour ne transférer que lib/, public/, config.php
       - name: Générer .git-ftp-ignore
         run: |
           cat <<EOF > .git-ftp-ignore
           *
-          !.git-ftp-ignore
           !lib/**
           !public/**
           !config.php
           public/assets/img/**
           EOF
 
-      # 6) Déployer via git-ftp
+      # 6) Committer .git-ftp-ignore pour avoir un repo clean
+      - name: Committer .git-ftp-ignore en workspace
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name  "GitHub Actions"
+          git add .git-ftp-ignore
+          git commit -m "ci: add git-ftp ignore patterns" --no-verify
+
+      # 7) Déployer via git-ftp
       - name: Déployer via git-ftp
         run: |
           BRANCH=${GITHUB_REF#refs/heads/}
@@ -94,7 +101,7 @@ jobs:
 
           git ftp push --auto-init --verbose
 
-      # 7) Notification email (succès)
+      # 8) Notification email (succès)
       - name: Envoi d’un email (succès)
         if: success()
         uses: dawidd6/action-send-mail@v3
@@ -110,7 +117,7 @@ jobs:
           to:   ${{ env.MAIL_TO }}
           from: GitHub Deploy Bot <${{ env.MAIL_USERNAME }}>
 
-      # 8) Notification email (échec)
+      # 9) Notification email (échec)
       - name: Envoi d’un email (échec)
         if: failure()
         uses: dawidd6/action-send-mail@v3
