@@ -9,30 +9,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (departement.value.length === 2) poids.focus();
   });
 
-  // Réinitialiser département au focus
   departement.addEventListener('focus', () => {
     departement.select();
   });
 
-  // Gestion des options si enlèvement est coché
+  function toggleOptions(disable) {
+    options.forEach(opt => {
+      const label = document.querySelector(`label[for="${opt.id}"]`);
+      opt.disabled = disable;
+      if (disable) {
+        opt.checked = (opt.value === 'standard');
+        label.classList.add('disabled-option');
+      } else {
+        label.classList.remove('disabled-option');
+      }
+    });
+  }
+
   enlevement.addEventListener('change', () => {
-    if (enlevement.checked) {
-      options.forEach(opt => {
-        opt.disabled = true;
-        if (opt.value === 'standard') opt.checked = true;
-      });
-    } else {
-      options.forEach(opt => {
-        opt.disabled = false;
-      });
-    }
+    toggleOptions(enlevement.checked);
   });
 
   // Initialiser au chargement
   if (enlevement.checked) {
-    options.forEach(opt => {
-      opt.disabled = true;
-      if (opt.value === 'standard') opt.checked = true;
-    });
+    toggleOptions(true);
   }
 });
