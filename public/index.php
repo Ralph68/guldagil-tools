@@ -11,14 +11,14 @@ $adr = $_POST['adr'] ?? '';
 $poids = isset($_POST['poids']) ? (float)$_POST['poids'] : null;
 $opt = $_POST['option'] ?? '';
 $dep = $_POST['departement'] ?? '';
-$results = [];
-$best = null;
 
-if ($dep && $poids && $type && $adr && $opt) {
-    $results = $transport->calculateAll($type, $adr, $poids, $opt);
-    $valid = array_filter($results, fn($p) => $p !== null);
-    if ($valid) $best = min($valid);
-}
+// Fausse valeur pour valider l'enchaînement visuel
+$results = [
+  'xpo' => 18.50,
+  'heppner' => 21.90,
+  'kn' => 17.30
+];
+$best = min($results);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -91,26 +91,22 @@ if ($dep && $poids && $type && $adr && $opt) {
     </div>
   </form>
 
-  <?php if ($dep || $poids || $type || $adr || $opt): ?>
   <div class="recap">
     <strong>Résumé :</strong>
     Dépt <?= htmlspecialchars($dep) ?>, <?= $poids ?> kg, <?= $type ?>, ADR <?= $adr ?>, Option <?= ucfirst(str_replace('_',' ',$opt)) ?>
   </div>
-  <?php endif; ?>
 
-  <?php if ($results): ?>
-    <table>
-      <thead><tr><th>Transporteur</th><th>Prix estimé</th></tr></thead>
-      <tbody>
-        <?php foreach ($results as $code => $price): ?>
-          <tr class="<?= ($price !== null && $price === $best) ? 'best' : '' ?>">
-            <td><?= htmlspecialchars($carriers[$code]) ?></td>
-            <td><?= $price !== null ? number_format($price, 2, ',', ' ') . ' €' : '<em>N/A</em>' ?></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-  <?php endif; ?>
+  <table>
+    <thead><tr><th>Transporteur</th><th>Prix estimé</th></tr></thead>
+    <tbody>
+      <?php foreach ($results as $code => $price): ?>
+        <tr class="<?= ($price !== null && $price === $best) ? 'best' : '' ?>">
+          <td><?= htmlspecialchars($carriers[$code]) ?></td>
+          <td><?= $price !== null ? number_format($price, 2, ',', ' ') . ' €' : '<em>N/A</em>' ?></td>
+        </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
 
   <script>
     const dep = document.getElementById('departement');
@@ -131,18 +127,6 @@ if ($dep && $poids && $type && $adr && $opt) {
     poids.addEventListener('input', () => {
       if (poids.value && parseFloat(poids.value) > 0) {
         showStep('step3');
-      }
-    });
-
-    form.addEventListener('change', () => {
-      if (
-        dep.value.length === 2 &&
-        poids.value && parseFloat(poids.value) > 0 &&
-        form.type.value &&
-        form.adr.value &&
-        form.option.value
-      ) {
-        form.submit();
       }
     });
   </script>
