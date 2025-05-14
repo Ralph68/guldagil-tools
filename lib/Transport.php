@@ -5,6 +5,7 @@ class Transport
 {
     private PDO $db;
     private array $carriers = ['xpo', 'heppner', 'kn'];
+    public array $debug = [];
 
     public function __construct(PDO $db)
     {
@@ -36,17 +37,34 @@ class Transport
      */
     public function calculate(string $carrier, string $type, string $adr, float $weight, string $option): ?float
     {
+        $this->debug[$carrier] = [
+            'params' => compact('type', 'adr', 'weight', 'option'),
+            'matched' => null,
+            'result' => null,
+            'note' => ''
+        ];
+
         $rates = $this->fetchRatesForCarrier($carrier);
-        if (!isset($rates[$type][$adr])) return null;
+        if (!isset($rates[$type][$adr])) {
+            $this->debug[$carrier]['note'] = 'aucune tranche correspondante';
+            return null;
+        }
 
         foreach ($rates[$type][$adr] as $row) {
             if ($weight <= $row['poids_max']) {
                 $col = 'coefficient_' . $option;
-                if (!isset($row[$col])) return null;
-                return round((float)$row['prix'] * (float)$row[$col], 2);
+                if (!isset($row[$col])) {
+                    $this->debug[$carrier]['note'] = "coefficient '$col' manquant";
+                    return null;
+                }
+                $price = round((float)$row['prix'] * (float)$row[$col], 2);
+                $this->debug[$carrier]['matched'] = $row;
+                $this->debug[$carrier]['result'] = $price;
+                return $price;
             }
         }
 
+        $this->debug[$carrier]['note'] = 'poids hors plage';
         return null;
     }
 
@@ -61,6 +79,7 @@ class Transport
                 $results[$carrier] = $this->calculate($carrier, $type, $adr, $weight, $option);
             } catch (\Throwable $e) {
                 $results[$carrier] = null;
+                $this->debug[$carrier]['error'] = $e->getMessage();
             }
         }
         return $results;
