@@ -1,4 +1,4 @@
-/* style-updated.css */
+/* style-updated.css avec gestion des champs invalides */
 
 /* Container */
 .container {
@@ -54,6 +54,35 @@
   box-sizing: border-box;
 }
 
+/* Champs invalides */
+.is-invalid {
+  border-color: #ff4d4d !important;
+  background-color: #fff1f1;
+}
+
+.error {
+  background-color: #ffe6e6;
+  border: 1px solid #ff4d4d;
+  color: #a70000;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+.error ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+.error li {
+  margin-bottom: 0.25rem;
+}
+
+/* Aide utilisateur */
+.aide {
+  color: #777;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
 .radio-group {
   display: flex;
   flex-wrap: wrap;
@@ -77,6 +106,10 @@
   color: white;
   border-color: #007acc;
 }
+.radio-group input[type="radio"].is-invalid + label,
+.radio-group input[type="checkbox"].is-invalid + label {
+  border-color: #ff4d4d;
+}
 
 /* Buttons */
 button[type="reset"] {
@@ -89,6 +122,19 @@ button[type="reset"] {
 }
 button[type="reset"]:hover {
   background: #ddd;
+}
+button[type="submit"] {
+  background-color: #007acc;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+button[type="submit"]:hover {
+  background-color: #005f99;
 }
 
 /* Result Highlight */
@@ -139,5 +185,8 @@ button[type="reset"]:hover {
   .site-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .form-step input.is-invalid {
+    width: 100%;
   }
 }
