@@ -38,7 +38,15 @@ if ($dep && $poids && $type && $adr && $opt) {
     <header class="site-header">
       <img src="assets/img/logo_guldagil.png" alt="Logo Guldagil" class="logo" />
       <h1>Comparateur de frais de port</h1>
+      <nav><a href="admin/rates.php">Administration</a></nav>
     </header>
+
+    <?php if ($results && $bestCarrier): ?>
+    <section class="result-highlight">
+      <h2>Transporteur le moins cher</h2>
+      <p><strong><?= $carriers[$bestCarrier] ?> — <?= number_format($best, 2, ',', ' ') ?> €</strong></p>
+    </section>
+    <?php endif; ?>
 
     <main class="main-content">
       <section class="form-section">
@@ -82,26 +90,25 @@ if ($dep && $poids && $type && $adr && $opt) {
               <?php endforeach; ?>
             </div>
           </div>
+
+          <div style="margin-top: 1rem; text-align: center">
+            <button type="reset" onclick="window.location='index.php'">Réinitialiser</button>
+          </div>
         </form>
       </section>
 
-      <?php if ($results): ?>
-        <section class="result-highlight">
-          <h2>Meilleur choix</h2>
-          <p><strong><?= $carriers[$bestCarrier] ?></strong> — <?= number_format($best, 2, ',', ' ') ?> €</p>
-        </section>
-
+      <?php if ($results && $bestCarrier): ?>
         <section class="result-details">
-          <h3>Comparaison</h3>
+          <h3>Comparaison complète</h3>
           <table>
             <thead><tr><th>Transporteur</th><th>Tarif</th><th>Écart</th></tr></thead>
             <tbody>
               <?php foreach ($results as $code => $price): ?>
-                <?php if ($code !== $bestCarrier): ?>
+                <?php if ($price !== null): ?>
                   <tr>
                     <td><?= $carriers[$code] ?></td>
                     <td><?= number_format($price, 2, ',', ' ') ?> €</td>
-                    <td>+<?= number_format($price - $best, 2, ',', ' ') ?> €</td>
+                    <td><?= ($code !== $bestCarrier) ? '+' . number_format($price - $best, 2, ',', ' ') . ' €' : '-' ?></td>
                   </tr>
                 <?php endif; ?>
               <?php endforeach; ?>
@@ -111,10 +118,25 @@ if ($dep && $poids && $type && $adr && $opt) {
 
         <section class="debug-output">
           <h4>Détails techniques</h4>
-          <pre><?= var_export($results, true) ?></pre>
+          <pre><?= var_export($transport->debug, true) ?></pre>
         </section>
       <?php endif; ?>
     </main>
   </div>
+
+  <script>
+    const dep = document.getElementById('departement');
+    const poids = document.getElementById('poids');
+
+    dep.addEventListener('input', () => {
+      if (dep.value.length === 2) {
+        poids.focus();
+      }
+    });
+
+    dep.addEventListener('focus', () => {
+      dep.value = '';
+    });
+  </script>
 </body>
 </html>
