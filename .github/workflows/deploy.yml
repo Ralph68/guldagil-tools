@@ -34,7 +34,7 @@ jobs:
 
       # 4) Déploiement restreint (rsync via SSH)
       - name: Configurer l’agent SSH
-        uses: webfactory/ssh-agent@v0.10.3
+        uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
