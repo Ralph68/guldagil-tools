@@ -31,15 +31,16 @@ jobs:
           APP_ENV="production"
           EOF
 
-      # 4) Déploiement FTP (tous les dossiers racine)
+      # 4) Déploiement FTP
       - name: Déploiement vers PROD (port.gul.runser.ovh)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server:     ${{ secrets.FTP_SERVER_PROD }}
-          username:   ${{ secrets.FTP_USERNAME_PROD }}
-          password:   ${{ secrets.FTP_PASSWORD_PROD }}
-          server-dir: ${{ secrets.SERVER_DIR_PROD }}
-          local-dir:  ./
+          server:                 ${{ secrets.FTP_SERVER_PROD }}
+          username:               ${{ secrets.FTP_USERNAME_PROD }}
+          password:               ${{ secrets.FTP_PASSWORD_PROD }}
+          server-dir:             ${{ secrets.SERVER_DIR_PROD }}
+          local-dir:              ./
+          dangerous-clean-slate:  true
           exclude: |
             .github
             .gitignore
