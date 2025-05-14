@@ -11,15 +11,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Récupérer le code
+      # 1) Checkout du code
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
 
       # 2) Journal local
       - name: Générer un journal de déploiement local
         if: always()
         run: |
-          echo "🔁 Déploiement sur ${{ github.ref }} à $(date) par ${{ github.actor }} (commit: ${{ github.sha }})" \
+          echo "🔁 Déploiement sur ${{ github.ref#refs/heads/ }} à $(date) par ${{ github.actor }} (commit: ${{ github.sha }})" \
             > deploy-log.txt
 
       # 3) Générer .env pour la BDD
@@ -34,23 +36,23 @@ jobs:
           APP_ENV="production"
           EOF
 
-      # 4) Déploiement FTP incrémental (fichiers modifiés uniquement)
-      - name: Déploiement vers PROD (incrémental)
+      # 4) Déploiement incrémental via SamKirkland/FTP-Deploy-Action
+      - name: Déployer vers PROD
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server:       ${{ secrets.FTP_SERVER_PROD }}
-          username:     ${{ secrets.FTP_USERNAME_PROD }}
-          password:     ${{ secrets.FTP_PASSWORD_PROD }}
-          server-dir:   ${{ secrets.SERVER_DIR_PROD }}
-          local-dir:    ./
+          server:     ${{ secrets.FTP_SERVER_PROD }}
+          username:   ${{ secrets.FTP_USERNAME_PROD }}
+          password:   ${{ secrets.FTP_PASSWORD_PROD }}
+          server-dir: ${{ secrets.SERVER_DIR_PROD }}
+          local-dir:  ./
           include: |
             lib/**
             public/**
             config.php
           exclude: |
+            .git/**
+            .github/**
             public/assets/img/**
-            .git*
-            .github*
             .gitignore
             .gitattributes
             README.md
@@ -67,7 +69,7 @@ jobs:
           password:       ${{ secrets.MAIL_PASSWORD }}
           subject:        "✅ Déploiement réussi vers port.gul.runser.ovh"
           body: |
-            Le déploiement de ${{ github.repository }} sur la branche ${{ github.ref }} a réussi.
+            Le déploiement de ${{ github.repository }} sur la branche ${{ github.ref#refs/heads/ }} a réussi.
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
@@ -83,7 +85,7 @@ jobs:
           password:       ${{ secrets.MAIL_PASSWORD }}
           subject:        "❌ Échec du déploiement vers port.gul.runser.ovh"
           body: |
-            Le déploiement de ${{ github.repository }} a échoué sur la branche ${{ github.ref }}.
+            Le déploiement de ${{ github.repository }} a échoué sur la branche ${{ github.ref#refs/heads/ }}.
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
