@@ -19,18 +19,19 @@ jobs:
         run: |
           echo "🔁 Déploiement sur ${{ github.ref }} à $(date -u +'%Y-%m-%d %H:%M:%S UTC') par ${{ github.actor }} (commit: ${{ github.sha }})" > deploy-log.txt
 
-      # 3) Générer .env pour la BDD (avec guillemets autour des valeurs)
+      # 3) Générer .env pour la BDD à la racine
       - name: Générer .env pour la BDD
         run: |
-          mkdir -p public/db
-          cat <<EOF > public/db/.env
+          cat <<EOF > .env
           DB_HOST="${{ secrets.DB_HOST }}"
           DB_NAME="${{ secrets.DB_NAME }}"
           DB_USER="${{ secrets.DB_USER }}"
           DB_PASS="${{ secrets.DB_PASS }}"
+          DB_CHARSET="${{ secrets.DB_CHARSET }}"
+          APP_ENV="production"
           EOF
 
-      # 4) Déploiement FTP
+      # 4) Déploiement FTP (tous les dossiers racine)
       - name: Déploiement vers PROD (port.gul.runser.ovh)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -38,8 +39,11 @@ jobs:
           username:   ${{ secrets.FTP_USERNAME_PROD }}
           password:   ${{ secrets.FTP_PASSWORD_PROD }}
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
-          local-dir:  ./public/
+          local-dir:  ./
           exclude: |
+            .github
+            .gitignore
+            README.md
             deploy-log.txt
 
       # 5) Notification email (succès)
