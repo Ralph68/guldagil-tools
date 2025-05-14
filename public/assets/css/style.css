@@ -11,6 +11,7 @@
 .site-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
   margin-bottom: 2rem;
 }
@@ -20,6 +21,12 @@
 .site-header h1 {
   font-size: 1.8rem;
   margin: 0;
+  flex: 1;
+}
+.site-header nav a {
+  font-size: 0.95rem;
+  text-decoration: none;
+  color: #007acc;
 }
 
 /* Form Section */
@@ -27,6 +34,10 @@
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 .form-step label {
   font-weight: 600;
@@ -67,6 +78,19 @@
   border-color: #007acc;
 }
 
+/* Buttons */
+button[type="reset"] {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  background: #eee;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: 0.2s;
+}
+button[type="reset"]:hover {
+  background: #ddd;
+}
+
 /* Result Highlight */
 .result-highlight {
   background-color: #e7f9e7;
@@ -86,6 +110,9 @@
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
+  background: #fff;
+  border-radius: 4px;
+  overflow: hidden;
 }
 .result-details th,
 .result-details td {
@@ -101,11 +128,16 @@
   overflow-x: auto;
   font-size: 0.9rem;
   border-left: 4px solid #ccc;
+  border-radius: 4px;
 }
 
 /* Responsive */
 @media (max-width: 640px) {
   .radio-group label {
     flex: 1 0 100%;
+  }
+  .site-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
