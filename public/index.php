@@ -29,9 +29,9 @@ if ($dep && $poids && $type && $adr && $opt) {
   <link rel="stylesheet" href="assets/css/style.css">
   <style>
     body { font-family: sans-serif; margin: 0; padding: 1rem; background: #f4f4f4; }
-    form { max-width: 600px; margin: auto; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .form-group { margin-bottom: 1rem; display: none; }
-    .form-group.active { display: block; }
+    form { max-width: 600px; margin: auto; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+    .form-group { margin-bottom: 1rem; display: none; opacity: 0; transition: all 0.5s ease; }
+    .form-group.active { display: block; opacity: 1; }
     label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
     input[type="text"], input[type="number"] {
       width: 100%; padding: 0.6rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px;
@@ -46,6 +46,7 @@ if ($dep && $poids && $type && $adr && $opt) {
     .btn-group input[type="radio"]:checked + label {
       background: #007acc; color: white; border-color: #007acc;
     }
+    .recap { max-width: 600px; margin: 1rem auto; padding: 1rem; background: #fff3cd; border-left: 5px solid #ffeeba; border-radius: 5px; font-size: 0.95rem; }
     table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
     th, td { padding: 0.75rem; border: 1px solid #ccc; text-align: left; }
     .best { background-color: #d3fcd3; }
@@ -90,6 +91,13 @@ if ($dep && $poids && $type && $adr && $opt) {
     </div>
   </form>
 
+  <?php if ($dep || $poids || $type || $adr || $opt): ?>
+  <div class="recap">
+    <strong>Résumé :</strong>
+    Dépt <?= htmlspecialchars($dep) ?>, <?= $poids ?> kg, <?= $type ?>, ADR <?= $adr ?>, Option <?= ucfirst(str_replace('_',' ',$opt)) ?>
+  </div>
+  <?php endif; ?>
+
   <?php if ($results): ?>
     <table>
       <thead><tr><th>Transporteur</th><th>Prix estimé</th></tr></thead>
@@ -109,16 +117,31 @@ if ($dep && $poids && $type && $adr && $opt) {
     const poids = document.getElementById('poids');
     const form = document.getElementById('tarif-form');
 
+    function showStep(id) {
+      document.getElementById(id).classList.add('active');
+    }
+
     dep.addEventListener('input', () => {
       if (dep.value.length === 2) {
-        document.getElementById('step2').classList.add('active');
+        showStep('step2');
         poids.focus();
       }
     });
 
     poids.addEventListener('input', () => {
       if (poids.value && parseFloat(poids.value) > 0) {
-        document.getElementById('step3').classList.add('active');
+        showStep('step3');
+      }
+    });
+
+    form.addEventListener('change', () => {
+      if (
+        dep.value.length === 2 &&
+        poids.value && parseFloat(poids.value) > 0 &&
+        form.type.value &&
+        form.adr.value &&
+        form.option.value
+      ) {
         form.submit();
       }
     });
