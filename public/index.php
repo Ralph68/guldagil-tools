@@ -138,5 +138,6 @@ if ($dep && $poids && $type && $adr && $opt) {
       dep.value = '';
     });
   </script>
+<script src="assets/js/script.js"></script>
 </body>
 </html>
