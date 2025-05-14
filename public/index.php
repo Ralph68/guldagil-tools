@@ -39,7 +39,8 @@ if ($dep && $poids && $type && $adr && $opt) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Comparateur de frais de port</title>
   <link rel="stylesheet" href="assets/css/style.css">
-  <script src="assets/js/script.js" defer></script>
+  <!-- <script src="assets/js/script.js" defer></script> -->
+<!-- Script désactivé temporairement pour debug -->
 </head>
 <body>
   <div class="container">
@@ -63,6 +64,10 @@ if ($dep && $poids && $type && $adr && $opt) {
     <main class="main-content">
       <section class="form-section">
         <form method="post" id="tarif-form">
+          <!-- Bouton de soumission manuel pour debug -->
+          <div class="form-step" style="text-align:center; margin-top:1rem;">
+            <button type="submit">Calculer</button>
+          </div>
           <div class="form-step">
             <label for="departement">Département</label>
             <input type="text" name="departement" id="departement" maxlength="2" pattern="\d{2}" required value="<?= htmlspecialchars($dep) ?>">
