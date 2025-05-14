@@ -31,16 +31,15 @@ jobs:
           APP_ENV="production"
           EOF
 
-      # 4) Déploiement FTP complet
-      - name: Déploiement vers PROD (port.gul.runser.ovh)
+      # 4) Déploiement FTP incrémental (fichiers modifiés uniquement)
+      - name: Déploiement vers PROD (incrémental)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server:                 ${{ secrets.FTP_SERVER_PROD }}
-          username:               ${{ secrets.FTP_USERNAME_PROD }}
-          password:               ${{ secrets.FTP_PASSWORD_PROD }}
-          server-dir:             ${{ secrets.SERVER_DIR_PROD }}
-          local-dir:              ./
-          dangerous-clean-slate:  true
+          server:       ${{ secrets.FTP_SERVER_PROD }}
+          username:     ${{ secrets.FTP_USERNAME_PROD }}
+          password:     ${{ secrets.FTP_PASSWORD_PROD }}
+          server-dir:   ${{ secrets.SERVER_DIR_PROD }}
+          local-dir:    ./
           exclude: |
             .git*
             .github*
@@ -80,4 +79,3 @@ jobs:
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
-
