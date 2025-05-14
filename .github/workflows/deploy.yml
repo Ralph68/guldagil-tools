@@ -12,15 +12,15 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DB_HOST:         ${{ secrets.DB_HOST }}
-      DB_NAME:         ${{ secrets.DB_NAME }}
-      DB_USER:         ${{ secrets.DB_USER }}
-      DB_PASS:         ${{ secrets.DB_PASS }}
-      MAIL_HOST:       ${{ secrets.MAIL_HOST }}
-      MAIL_PORT:       ${{ secrets.MAIL_PORT }}
-      MAIL_USERNAME:   ${{ secrets.MAIL_USERNAME }}
-      MAIL_PASSWORD:   ${{ secrets.MAIL_PASSWORD }}
-      MAIL_TO:         ${{ secrets.MAIL_TO }}
+      DB_HOST:           ${{ secrets.DB_HOST }}
+      DB_NAME:           ${{ secrets.DB_NAME }}
+      DB_USER:           ${{ secrets.DB_USER }}
+      DB_PASS:           ${{ secrets.DB_PASS }}
+      MAIL_HOST:         ${{ secrets.MAIL_HOST }}
+      MAIL_PORT:         ${{ secrets.MAIL_PORT }}
+      MAIL_USERNAME:     ${{ secrets.MAIL_USERNAME }}
+      MAIL_PASSWORD:     ${{ secrets.MAIL_PASSWORD }}
+      MAIL_TO:           ${{ secrets.MAIL_TO }}
       FTP_SERVER_DEV:    ${{ secrets.FTP_SERVER_DEV }}
       FTP_USERNAME_DEV:  ${{ secrets.FTP_USERNAME_DEV }}
       FTP_PASSWORD_DEV:  ${{ secrets.FTP_PASSWORD_DEV }}
@@ -60,7 +60,9 @@ jobs:
       - name: Installer lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      # 5) Déployer lib/, public/ et config.php via FTP (sans toucher public/assets/img)
+      # 5) Déployer lib/, public/ et config.php via FTP
+      #    — n’inclut QUE ces chemins
+      #    — exclut public/assets/img/, .git/ et .github/
       - name: Déployer (FTP)
         run: |
           BRANCH=${GITHUB_REF#refs/heads/}
@@ -78,11 +80,14 @@ jobs:
 
           lftp -u "$USER","$PASS" "$HOST" <<EOF
             set ftp:ssl-allow no
-            mirror -R --delete --verbose \
-              --include-glob lib/*** \
-              --include-glob public/*** \
-              --include-glob config.php \
-              --exclude-glob public/assets/img/*** \
+            mirror -R --verbose --delete \
+              --exclude-glob '*' \
+              --include-glob 'lib/***' \
+              --include-glob 'public/***' \
+              --include-glob 'config.php' \
+              --exclude-glob 'public/assets/img/***' \
+              --exclude-glob '.git/***' \
+              --exclude-glob '.github/***' \
               ./ "$TARGET"
             bye
           EOF
