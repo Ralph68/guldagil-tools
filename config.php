@@ -1,7 +1,7 @@
 <?php
-// config.php — connexion PDO centralisée
+// config.php — connexion centralisée à la base de données
 
-// Affichage des erreurs en dev
+// Active l'affichage des erreurs sauf si APP_ENV=production
 if (getenv('APP_ENV') !== 'production') {
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
@@ -10,29 +10,30 @@ if (getenv('APP_ENV') !== 'production') {
 
 // Chargement du .env
 $envPath = __DIR__ . '/.env';
-if (! file_exists($envPath)) {
+if (!file_exists($envPath)) {
     http_response_code(500);
-    echo 'Erreur : .env introuvable (' . htmlspecialchars($envPath) . ')';
+    echo 'Erreur : fichier .env introuvable.';
     exit;
 }
 
-// Parse du .env
 $env = parse_ini_file($envPath, false, INI_SCANNER_TYPED);
 if ($env === false) {
     http_response_code(500);
-    echo 'Erreur : impossible de lire le .env';
+    echo 'Erreur : lecture du fichier .env impossible.';
     exit;
 }
 
-// Paramètres BDD
+// Extraction des paramètres
 $host    = $env['DB_HOST']    ?? 'localhost';
 $dbName  = $env['DB_NAME']    ?? '';
 $user    = $env['DB_USER']    ?? '';
 $pass    = $env['DB_PASS']    ?? '';
-$charset = $env['DB_CHARSET'] ?? 'utf8mb4';
+$charset = !empty($env['DB_CHARSET']) ? $env['DB_CHARSET'] : 'utf8mb4';
 
-// DSN et options PDO
+// Construction du DSN PDO
 $dsn = "mysql:host={$host};dbname={$dbName};charset={$charset}";
+
+// Options PDO recommandées
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -40,10 +41,9 @@ $options = [
 ];
 
 try {
-    // On exporte $db pour le reste de l’application
     $db = new PDO($dsn, $user, $pass, $options);
 } catch (PDOException $e) {
     http_response_code(500);
-    echo 'Erreur de connexion BDD : ' . htmlspecialchars($e->getMessage());
+    echo 'Erreur de connexion à la base de données : ' . htmlspecialchars($e->getMessage());
     exit;
 }
