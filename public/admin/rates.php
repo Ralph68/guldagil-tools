@@ -1,18 +1,21 @@
 <?php
 require __DIR__ . '/../config.php';
 
-// Suppression d'une tranche si demandé
+// Suppression d'une tranche si demandée
 if (isset($_GET['delete'])) {
-    $id = (int)\$_GET['delete'];
-    \$stmt = \$db->prepare("DELETE FROM gul_taxes_transporteurs WHERE id = ?");
-    \$stmt->execute([\$id]);
+    $id = (int)$_GET['delete'];
+    $stmt = $db->prepare("DELETE FROM gul_taxes_transporteurs WHERE id = ?");
+    $stmt->execute([$id]);
     header('Location: rates.php');
     exit;
 }
 
 // Récupération de tous les barèmes
-\$stmt = \$db->query("SELECT * FROM gul_taxes_transporteurs ORDER BY transporteur, type, adr, poids_max");
-\$rates = \$stmt->fetchAll();
+$stmt = $db->query("SELECT * FROM gul_taxes_transporteurs ORDER BY transporteur, type, adr, poids_max");
+$rates = $stmt->fetchAll();
+
+// Extraire dynamiquement les colonnes de coefficient
+$coefficientCols = array_filter(array_keys($rates[0] ?? []), fn($key) => str_starts_with($key, 'coefficient_'));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -22,11 +25,11 @@ if (isset($_GET['delete'])) {
     <title>Administration des barèmes</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
-      table { width:100%; border-collapse: collapse; margin-top:1rem; }
-      th, td { border:1px solid #ccc; padding:0.5rem; text-align:left; }
-      th { background:#f0f0f0; }
-      .btn { display:inline-block; margin-bottom:1rem; padding:0.5rem 1rem; background:#007acc; color:#fff; text-decoration:none; border-radius:4px; }
-      .btn:hover { background:#005f99; }
+        table { width:100%; border-collapse: collapse; margin-top:1rem; }
+        th, td { border:1px solid #ccc; padding:0.5rem; text-align:left; }
+        th { background:#f0f0f0; }
+        .btn { display:inline-block; margin-bottom:1rem; padding:0.5rem 1rem; background:#007acc; color:#fff; text-decoration:none; border-radius:4px; }
+        .btn:hover { background:#005f99; }
     </style>
 </head>
 <body>
@@ -44,22 +47,28 @@ if (isset($_GET['delete'])) {
                         <th>Type</th>
                         <th>ADR</th>
                         <th>Poids max (kg)</th>
-                        <th>Prix (€)</th>
+                        <th>Prix €</th>
+                        <?php foreach ($coefficientCols as $col): ?>
+                            <th><?= htmlspecialchars(str_replace('coefficient_', '', $col)) ?> (%)</th>
+                        <?php endforeach; ?>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                <?php foreach (\$rates as \$r): ?>
+                <?php foreach ($rates as $r): ?>
                     <tr>
-                        <td><?= htmlspecialchars(\$r['id']) ?></td>
-                        <td><?= htmlspecialchars(strtoupper(\$r['transporteur'])) ?></td>
-                        <td><?= htmlspecialchars(ucfirst(\$r['type'])) ?></td>
-                        <td><?= htmlspecialchars(strtoupper(\$r['adr'])) ?></td>
-                        <td><?= htmlspecialchars(\$r['poids_max']) ?></td>
-                        <td><?= htmlspecialchars(\$r['prix']) ?></td>
+                        <td><?= htmlspecialchars($r['id']) ?></td>
+                        <td><?= htmlspecialchars(strtoupper($r['transporteur'])) ?></td>
+                        <td><?= htmlspecialchars(ucfirst($r['type'])) ?></td>
+                        <td><?= htmlspecialchars(strtoupper($r['adr'])) ?></td>
+                        <td><?= htmlspecialchars($r['poids_max']) ?></td>
+                        <td><?= htmlspecialchars($r['prix']) ?></td>
+                        <?php foreach ($coefficientCols as $col): ?>
+                            <td><?= isset($r[$col]) ? htmlspecialchars($r[$col]) : '' ?></td>
+                        <?php endforeach; ?>
                         <td>
-                            <a href="rate-edit.php?id=<?= \$r['id'] ?>">Éditer</a> |
-                            <a href="rates.php?delete=<?= \$r['id'] ?>" onclick="return confirm('Supprimer cette tranche ?')">Supprimer</a>
+                            <a href="rate-edit.php?id=<?= $r['id'] ?>">Éditer</a> |
+                            <a href="rates.php?delete=<?= $r['id'] ?>" onclick="return confirm('Supprimer cette tranche ?')">Supprimer</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
