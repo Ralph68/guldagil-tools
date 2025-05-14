@@ -12,26 +12,29 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DB_HOST:         ${{ secrets.DB_HOST }}
-      DB_NAME:         ${{ secrets.DB_NAME }}
-      DB_USER:         ${{ secrets.DB_USER }}
-      DB_PASS:         ${{ secrets.DB_PASS }}
-      MAIL_HOST:       ${{ secrets.MAIL_HOST }}
-      MAIL_PORT:       ${{ secrets.MAIL_PORT }}
-      MAIL_USERNAME:   ${{ secrets.MAIL_USERNAME }}
-      MAIL_PASSWORD:   ${{ secrets.MAIL_PASSWORD }}
-      MAIL_TO:         ${{ secrets.MAIL_TO }}
+      # Variables communes
+      DB_HOST:           ${{ secrets.DB_HOST }}
+      DB_NAME:           ${{ secrets.DB_NAME }}
+      DB_USER:           ${{ secrets.DB_USER }}
+      DB_PASS:           ${{ secrets.DB_PASS }}
+      MAIL_HOST:         ${{ secrets.MAIL_HOST }}
+      MAIL_PORT:         ${{ secrets.MAIL_PORT }}
+      MAIL_USERNAME:     ${{ secrets.MAIL_USERNAME }}
+      MAIL_PASSWORD:     ${{ secrets.MAIL_PASSWORD }}
+      MAIL_TO:           ${{ secrets.MAIL_TO }}
+      # Staging
       FTP_SERVER_DEV:    ${{ secrets.FTP_SERVER_DEV }}
       FTP_USERNAME_DEV:  ${{ secrets.FTP_USERNAME_DEV }}
       FTP_PASSWORD_DEV:  ${{ secrets.FTP_PASSWORD_DEV }}
       SERVER_DIR_DEV:    ${{ secrets.SERVER_DIR_DEV }}
+      # Production
       FTP_SERVER_PROD:   ${{ secrets.FTP_SERVER_PROD }}
       FTP_USERNAME_PROD: ${{ secrets.FTP_USERNAME_PROD }}
       FTP_PASSWORD_PROD: ${{ secrets.FTP_PASSWORD_PROD }}
       SERVER_DIR_PROD:   ${{ secrets.SERVER_DIR_PROD }}
 
     steps:
-      # 1) Récupérer le code
+      # 1) Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
         with:
@@ -60,7 +63,7 @@ jobs:
       - name: Installer git-ftp
         run: sudo apt-get update && sudo apt-get install -y git-ftp
 
-      # 5) Préparer .git-ftp-ignore (ne transférer que lib/, public/, config.php)
+      # 5) Préparer .git-ftp-ignore
       - name: Générer .git-ftp-ignore
         run: |
           cat <<EOF > .git-ftp-ignore
@@ -72,33 +75,38 @@ jobs:
           public/assets/img/**
           EOF
 
-      # 6) Committer l’ignore pour que le repo soit clean
-      - name: Committer .git-ftp-ignore en workspace
+      # 6) Committer .git-ftp-ignore (évite le « dirty repo »)
+      - name: Committer .git-ftp-ignore
         run: |
           git config user.email "actions@github.com"
           git config user.name  "GitHub Actions"
           git add .git-ftp-ignore
-          git commit -m "ci: add git-ftp ignore patterns" --no-verify || echo "Rien à committer"
+          git commit -m "ci: ajout patterns git-ftp ignore" --no-verify || echo "Rien à committer"
 
-      # 7) Déployer en staging (branche dev)
-      - name: Déployer staging via git-ftp
-        if: github.ref == 'refs/heads/dev'
-        env:
-          GIT_FTP_URL:      ftp://${{ secrets.FTP_SERVER_DEV }}/${{ secrets.SERVER_DIR_DEV }}
-          GIT_FTP_USER:     ${{ secrets.FTP_USERNAME_DEV }}
-          GIT_FTP_PASSWORD: ${{ secrets.FTP_PASSWORD_DEV }}
-        run: git ftp push --auto-init --verbose
+      # 7) Déployer via git-ftp (staging ou prod selon la branche)
+      - name: Déployer via git-ftp
+        run: |
+          BRANCH=${GITHUB_REF#refs/heads/}
 
-      # 8) Déployer en prod (branche main)
-      - name: Déployer production via git-ftp
-        if: github.ref == 'refs/heads/main'
-        env:
-          GIT_FTP_URL:      ftp://${{ secrets.FTP_SERVER_PROD }}/${{ secrets.SERVER_DIR_PROD }}
-          GIT_FTP_USER:     ${{ secrets.FTP_USERNAME_PROD }}
-          GIT_FTP_PASSWORD: ${{ secrets.FTP_PASSWORD_PROD }}
-        run: git ftp push --auto-init --verbose
+          if [ "$BRANCH" = "main" ]; then
+            URL="ftp://${FTP_SERVER_PROD}/${SERVER_DIR_PROD}"
+            USER="${FTP_USERNAME_PROD}"
+            PASS="${FTP_PASSWORD_PROD}"
+          else
+            URL="ftp://${FTP_SERVER_DEV}/${SERVER_DIR_DEV}"
+            USER="${FTP_USERNAME_DEV}"
+            PASS="${FTP_PASSWORD_DEV}"
+          fi
 
-      # 9) Notification email (succès)
+          echo "→ Déploiement sur $BRANCH : $URL"
+
+          export GIT_FTP_URL="$URL"
+          export GIT_FTP_USER="$USER"
+          export GIT_FTP_PASSWORD="$PASS"
+
+          git ftp push --auto-init --verbose
+
+      # 8) Notification email (succès)
       - name: Envoi d’un email (succès)
         if: success()
         uses: dawidd6/action-send-mail@v3
@@ -114,7 +122,7 @@ jobs:
           to:   ${{ env.MAIL_TO }}
           from: GitHub Deploy Bot <${{ env.MAIL_USERNAME }}>
 
-      # 10) Notification email (échec)
+      # 9) Notification email (échec)
       - name: Envoi d’un email (échec)
         if: failure()
         uses: dawidd6/action-send-mail@v3
@@ -129,3 +137,4 @@ jobs:
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to:   ${{ env.MAIL_TO }}
           from: GitHub Deploy Bot <${{ env.MAIL_USERNAME }}>
+
