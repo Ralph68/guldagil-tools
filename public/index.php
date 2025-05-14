@@ -54,6 +54,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Comparateur de frais de port</title>
   <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .zone-resultat {
+      background-color: #eef6ff;
+      border-left: 5px solid #007acc;
+      padding: 1.2rem;
+      border-radius: 6px;
+      margin-bottom: 2rem;
+    }
+    .toggle-details { cursor: pointer; color: #007acc; text-decoration: underline; }
+    .details-content { display: none; margin-top: 0.5rem; font-size: 0.9rem; background: #f9f9f9; padding: 1rem; border-left: 3px solid #ccc; }
+  </style>
+  <script>
+    function toggleDetails(id) {
+      var el = document.getElementById(id);
+      el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+  </script>
 </head>
 <body>
 <div class="container">
@@ -65,9 +82,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </header>
 
   <section class="zone-resultat">
-    <h2>Résultat</h2>
+    <h2>Choix recommandé</h2>
     <?php if ($bestCarrier !== null): ?>
       <p><strong><?= $carriers[$bestCarrier] ?></strong> : <?= number_format($best, 2, ',', ' ') ?> €</p>
+      <p><span class="toggle-details" onclick="toggleDetails('calc')">Détails du calcul</span></p>
+      <div class="details-content" id="calc">
+        <pre><?= var_export($transport->debug[$bestCarrier] ?? [], true) ?></pre>
+      </div>
+      <p><span class="toggle-details" onclick="toggleDetails('frais')">Frais supplémentaires (représentation / gardiennage)</span></p>
+      <div class="details-content" id="frais">
+        <ul>
+          <li>Représentation : selon CGV (ex. 15,00 €)</li>
+          <li>Gardiennage : si livraison impossible, 25,00 €/jour</li>
+        </ul>
+      </div>
     <?php else: ?>
       <p><em>Aucun tarif sélectionné pour l’instant.</em></p>
     <?php endif; ?>
@@ -108,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         </div>
 
-        <!-- Options supplémentaires et autres champs à suivre ici -->
+        <!-- Options supplémentaires à venir ici -->
 
         <div class="form-step" style="text-align:center; margin-top:1rem;">
           <button type="submit">Calculer</button>
