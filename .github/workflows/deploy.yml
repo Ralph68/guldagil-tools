@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      # 2) Journal local
+      # 2) Générer un journal de déploiement local
       - name: Générer un journal de déploiement local
         if: always()
         run: |
@@ -45,14 +45,14 @@ jobs:
           password:   ${{ secrets.FTP_PASSWORD_PROD }}
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
           local-dir:  ./
-          include: |
-            lib/**
-            public/**
-            config.php
           exclude: |
-            .git/**
-            .github/**
-            public/assets/img/**
+            **                # d’abord exclure tout
+            !lib/**           # ré-inclure lib/
+            !public/**        # ré-inclure public/
+            !config.php       # ré-inclure config.php
+            public/assets/img/**  # puis exclure les logos
+            .git/**           # exclure .git
+            .github/**        # exclure .github
             .gitignore
             .gitattributes
             README.md
@@ -67,7 +67,7 @@ jobs:
           server_port:    ${{ secrets.MAIL_PORT }}
           username:       ${{ secrets.MAIL_USERNAME }}
           password:       ${{ secrets.MAIL_PASSWORD }}
-          subject:        "✅ Déploiement ${{ github.ref_name }} réussi"
+          subject:        "✅ Déploiement réussi vers port.gul.runser.ovh"
           body: |
             Le déploiement de ${{ github.repository }} sur la branche ${{ github.ref_name }} a réussi.
             Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
