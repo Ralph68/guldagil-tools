@@ -7,84 +7,73 @@ class Transport
 {
     private PDO $db;
 
-    /**
-     * Constructeur : on injecte la connexion PDO depuis config.php
-     */
+    /** Mapping transporteur → table des tarifs */
+    private array $tables = [
+        'xpo'      => 'gul_xpo_rates',
+        'heppner'  => 'gul_heppner_rates',
+        'kn'       => 'gul_kn_rates',
+    ];
+
     public function __construct(PDO $db)
     {
         $this->db = $db;
     }
 
-    /**
-     * Récupère tous les transporteurs depuis la base.
-     * @return array<array{id:int, code:string, name:string, zone:string}>
-     */
-    public function getAll(): array
+    /** Retourne la liste des codes de transporteurs */
+    public function getCarriers(): array
     {
-        $stmt = $this->db->query('SELECT id, code, name, zone FROM transporteurs ORDER BY id');
+        return array_keys($this->tables);
+    }
+
+    /**
+     * Récupère tous les tarifs pour un transporteur donné
+     * @param string $carrier  ex. 'xpo'
+     * @return array<mixed>
+     */
+    public function getRates(string $carrier): array
+    {
+        if (! isset($this->tables[$carrier])) {
+            throw new InvalidArgumentException("Transporteur inconnu : $carrier");
+        }
+        $table = $this->tables[$carrier];
+        $stmt = $this->db->query("SELECT * FROM `$table` ORDER BY id");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
-     * Récupère un transporteur par son ID.
-     * @param  int $id
-     * @return array{id:int, code:string, name:string, zone:string}|null
+     * Crée ou met à jour un tarif selon l'existence de l'ID.
+     * On suppose que toutes les tables ont au moins : id, zone, cost
      */
-    public function getById(int $id): ?array
+    public function saveRate(string $carrier, array $data): void
     {
-        $stmt = $this->db->prepare('SELECT id, code, name, zone FROM transporteurs WHERE id = ?');
-        $stmt->execute([$id]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row !== false ? $row : null;
+        $table = $this->tables[$carrier];
+        if (! empty($data['id'])) {
+            // UPDATE
+            $stmt = $this->db->prepare(
+                "UPDATE `$table` SET zone = :zone, cost = :cost WHERE id = :id"
+            );
+            $stmt->execute([
+                ':zone' => $data['zone'], 
+                ':cost' => $data['cost'], 
+                ':id'   => $data['id']
+            ]);
+        } else {
+            // INSERT
+            $stmt = $this->db->prepare(
+                "INSERT INTO `$table` (zone, cost) VALUES (:zone, :cost)"
+            );
+            $stmt->execute([
+                ':zone' => $data['zone'],
+                ':cost' => $data['cost'],
+            ]);
+        }
     }
 
-    /**
-     * Crée un nouveau transporteur.
-     * @param array{code:string,name:string,zone:string} $data
-     * @return int ID inséré
-     */
-    public function create(array $data): int
+    /** Supprime un tarif */
+    public function deleteRate(string $carrier, int $id): void
     {
-        $stmt = $this->db->prepare(
-            'INSERT INTO transporteurs (code, name, zone) VALUES (:code, :name, :zone)'
-        );
-        $stmt->execute([
-            ':code' => $data['code'],
-            ':name' => $data['name'],
-            ':zone' => $data['zone'],
-        ]);
-        return (int)$this->db->lastInsertId();
-    }
-
-    /**
-     * Met à jour un transporteur existant.
-     * @param  int $id
-     * @param  array{code:string,name:string,zone:string} $data
-     * @return void
-     */
-    public function update(int $id, array $data): void
-    {
-        $stmt = $this->db->prepare(
-            'UPDATE transporteurs 
-             SET code = :code, name = :name, zone = :zone
-             WHERE id = :id'
-        );
-        $stmt->execute([
-            ':code' => $data['code'],
-            ':name' => $data['name'],
-            ':zone' => $data['zone'],
-            ':id'   => $id,
-        ]);
-    }
-
-    /**
-     * Supprime un transporteur.
-     * @param  int $id
-     * @return void
-     */
-    public function delete(int $id): void
-    {
-        $stmt = $this->db->prepare('DELETE FROM transporteurs WHERE id = ?');
+        $table = $this->tables[$carrier];
+        $stmt = $this->db->prepare("DELETE FROM `$table` WHERE id = ?");
         $stmt->execute([$id]);
     }
 }
