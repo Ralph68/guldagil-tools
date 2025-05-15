@@ -1,55 +1,52 @@
 <?php
 // public/admin/pages/carriers.php
-// Liste des transporteurs (fragment injecté par admin/index.php)
-
 declare(strict_types=1);
 
-// Charger la classe Transport depuis lib (remonte trois niveaux)
+// Charger le modèle
 require_once dirname(__DIR__, 3) . '/lib/Transport.php';
-
-// Instancier le modèle en lui passant la connexion PDO ($db vient de config.php)
 $model = new Transport($db);
 
 // Suppression si demandé
 if (isset($_GET['delete'])) {
-    $id = (int) $_GET['delete'];
-    // Si vous avez implementé une méthode delete en base, sinon ajustez
-    // $model->deleteCarrier($id);
+    $model->delete((int)$_GET['delete']);
     header('Location: index.php?page=carriers');
     exit;
 }
 
-// Récupérer la liste des codes de transporteurs
-$codes = $model->getCarriers();
-
-// Si vous préférez récupérer depuis la base, utilisez :
-// $transporteurs = $model->fetchAllFromDatabase();
+// Lecture de tous les transporteurs
+$transporteurs = $model->getAll();
 ?>
 
 <h1>Transporteurs</h1>
-<p>
-  <a href="index.php?page=carrier-edit" class="button">Ajouter un transporteur</a>
-</p>
+<p><a href="index.php?page=carrier-edit" class="button">Ajouter un transporteur</a></p>
 
 <table>
   <thead>
     <tr>
+      <th>ID</th>
       <th>Code</th>
+      <th>Nom</th>
+      <th>Zone</th>
       <th>Actions</th>
     </tr>
   </thead>
   <tbody>
-    <?php foreach ($codes as $code): ?>
-      <tr>
-        <td><?= htmlspecialchars($code, ENT_QUOTES) ?></td>
-        <td>
-          <a href="index.php?page=carrier-edit&code=<?= urlencode($code) ?>">Modifier</a>
-          <!--
-            Si vous avez une méthode deleteCarrier :
-            <a href="index.php?page=carriers&delete=<?= $code ?>" onclick="return confirm('Supprimer ?')">Supprimer</a>
-          -->
-        </td>
-      </tr>
-    <?php endforeach; ?>
+    <?php if (empty($transporteurs)): ?>
+      <tr><td colspan="5">Aucun transporteur.</td></tr>
+    <?php else: ?>
+      <?php foreach ($transporteurs as $t): ?>
+        <tr>
+          <td><?= htmlspecialchars($t['id'],   ENT_QUOTES) ?></td>
+          <td><?= htmlspecialchars($t['code'], ENT_QUOTES) ?></td>
+          <td><?= htmlspecialchars($t['name'], ENT_QUOTES) ?></td>
+          <td><?= htmlspecialchars($t['zone'], ENT_QUOTES) ?></td>
+          <td>
+            <a href="index.php?page=carrier-edit&id=<?= $t['id'] ?>">Modifier</a>
+            <a href="index.php?page=carriers&delete=<?= $t['id'] ?>"
+               onclick="return confirm('Supprimer ce transporteur ?')">Supprimer</a>
+          </td>
+        </tr>
+      <?php endforeach; ?>
+    <?php endif; ?>
   </tbody>
 </table>
