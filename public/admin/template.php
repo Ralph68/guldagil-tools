@@ -23,11 +23,11 @@
     <aside class="admin-sidebar">
       <nav>
         <ul>
-          <li><a href="index.php?page=carriers"     class="<?= \$pageKey==='carriers'     ? 'active' : '' ?>">Transporteurs</a></li>
-          <li><a href="index.php?page=rates"        class="<?= \$pageKey==='rates'        ? 'active' : '' ?>">Tarifs</a></li>
-          <li><a href="index.php?page=taxes"        class="<?= \$pageKey==='taxes'        ? 'active' : '' ?>">Taxes</a></li>
+          <li><a href="index.php?page=carriers" class="<?= \$pageKey==='carriers' ? 'active' : '' ?>">Transporteurs</a></li>
+          <li><a href="index.php?page=rates" class="<?= \$pageKey==='rates' ? 'active' : '' ?>">Tarifs</a></li>
+          <li><a href="index.php?page=taxes" class="<?= \$pageKey==='taxes' ? 'active' : '' ?>">Taxes</a></li>
           <li><a href="index.php?page=fuel-indices" class="<?= \$pageKey==='fuel-indices' ? 'active' : '' ?>">Indices Gasoil</a></li>
-          <li><a href="index.php?page=options"      class="<?= \$pageKey==='options'      ? 'active' : '' ?>">Paramètres généraux</a></li>
+          <li><a href="index.php?page=options" class="<?= \$pageKey==='options' ? 'active' : '' ?>">Paramètres généraux</a></li>
         </ul>
       </nav>
     </aside>
@@ -36,6 +36,7 @@
       <?= \$content ?>
     </main>
   </div>
+
   <footer class="admin-footer">
     <p>&copy; <?= date('Y') ?> Guldagil</p>
   </footer>
