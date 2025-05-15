@@ -1,42 +1,50 @@
 <?php
 // -----------------------------------------------------------------------------
-// admin/pages/carriers.php
-// Liste des transporteurs (Carriers) - fragment
+// public/admin/index.php
+// Point d'entrée unique et routeur du back-office (mise à jour)
 // -----------------------------------------------------------------------------
-// Ce fragment est inclus par public/admin/index.php (qui a déjà chargé config.php).
 
-// Charger la classe Transporteur depuis lib
-require_once __DIR__ . '/../../lib/Transport.php';
+declare(strict_types=1);
 
-// Suppression si demandé
-if (isset($_GET['delete'])) {
-    $idToDelete = (int) $_GET['delete'];
-    Transporteur::delete($idToDelete);
-    header('Location: index.php?page=carriers');
+// Afficher toutes les erreurs pour debug
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
+// Charger config + autoload/DB (situé à la racine du projet)
+require_once __DIR__ . '/../../config.php';
+
+// Démarrer la session
+session_start();
+
+// Liste blanche des routes et leurs fragments
+$allowed = [
+    'carriers'        => 'pages/carriers.php',
+    'carrier-edit'    => 'pages/carrier-edit.php',
+    'rates'           => 'pages/rates.php',
+    'rate-edit'       => 'pages/rate-edit.php',
+    'taxes'           => 'pages/taxes.php',
+    'tax-edit'        => 'pages/tax-edit.php',
+    'fuel-indices'    => 'pages/fuel-indices.php',
+    'fuel-index-edit' => 'pages/fuel-index-edit.php',
+    'options'         => 'pages/options.php',
+    'options-edit'    => 'pages/options-edit.php',
+];
+
+// Déterminer la page demandée via ?page=
+$pageKey = $_GET['page'] ?? 'carriers';
+
+// Vérifier la clé
+if (!isset($allowed[$pageKey])) {
+    http_response_code(404);
+    echo '<h1>404 - Page introuvable</h1>';
     exit;
 }
 
-// Récupération des transporteurs
-$transporteurs = Transporteur::getAll();
-?>
-<!-- Contenu de la page -->
-<h1>Transporteurs</h1>
-<p><a href="index.php?page=carrier-edit" class="button">Ajouter un transporteur</a></p>
-<table>
-  <thead>
-    <tr><th>ID</th><th>Nom</th><th>Zone</th><th>Actions</th></tr>
-  </thead>
-  <tbody>
-    <?php foreach ($transporteurs as $t): ?>
-      <tr>
-        <td><?= htmlspecialchars($t['id'], ENT_QUOTES) ?></td>
-        <td><?= htmlspecialchars($t['name'], ENT_QUOTES) ?></td>
-        <td><?= htmlspecialchars($t['zone'], ENT_QUOTES) ?></td>
-        <td>
-          <a href="index.php?page=carrier-edit&id=<?= $t['id'] ?>">Modifier</a>
-          <a href="index.php?page=carriers&delete=<?= $t['id'] ?>" onclick="return confirm('Supprimer ce transporteur ?')">Supprimer</a>
-        </td>
-      </tr>
-    <?php endforeach; ?>
-  </tbody>
-</table>
+// Inclusion du fragment dans le buffer
+ob_start();
+include __DIR__ . '/' . $allowed[$pageKey];
+$content = ob_get_clean();
+
+// Affichage via le template
+include __DIR__ . '/template.php';
