@@ -1,20 +1,23 @@
 <?php
-// -----------------------------------------------------------------------------
 // public/admin/index.php
 // Point d'entrée unique et routeur du back-office
-// -----------------------------------------------------------------------------
 
 declare(strict_types=1);
 
-// Afficher toutes les erreurs pour debug
+// Afficher toutes les erreurs pour faciliter le debug
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
-// Charger config + autoload/DB (situé à la racine du projet)
+// Charger la configuration (qui doit créer $db : instance de PDO)
 require_once dirname(__DIR__, 2) . '/config.php';
 
-// Démarrer la session
+// Vérifier que $db est bien défini
+if (! isset($db) || ! $db instanceof PDO) {
+    die('Erreur : la connexion PDO ($db) n’est pas disponible.');
+}
+
+// Démarrer la session si besoin
 session_start();
 
 // Liste blanche des routes et leurs fragments
@@ -31,20 +34,20 @@ $allowed = [
     'options-edit'    => 'pages/options-edit.php',
 ];
 
-// Déterminer la page demandée via ?page=
+// Page demandée (défaut « carriers »)
 $pageKey = $_GET['page'] ?? 'carriers';
 
-// Vérifier que la page figure dans la liste blanche
-if (!isset($allowed[$pageKey])) {
+// Si la page n’est pas dans la whitelist, 404
+if (! isset($allowed[$pageKey])) {
     http_response_code(404);
     echo '<h1>404 - Page introuvable</h1>';
     exit;
 }
 
-// Inclusion du fragment dans le buffer
+// Bufferiser et inclure le fragment correspondant
 ob_start();
 include __DIR__ . '/' . $allowed[$pageKey];
 $content = ob_get_clean();
 
-// Afficher la page via le template
+// Afficher via le template commun
 include __DIR__ . '/template.php';
