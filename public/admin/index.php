@@ -12,8 +12,8 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 // Charger la configuration et l'accès aux modèles / base de données
-// Config.php doit définir l'autoload ou la connexion DB
-require_once __DIR__ . '/../config.php';
+// config.php est à la racine du projet, deux niveaux au-dessus
+require_once __DIR__ . '/../../config.php';
 
 // Démarrer la session si nécessaire
 session_start();
@@ -46,11 +46,11 @@ if (! array_key_exists($pageKey, $allowed)) {
     exit;
 }
 
-// Bufferer la sortie du fragment
+// Bufferiser la sortie du fragment
 ob_start();
 // Inclure le fragment correspondant
 require __DIR__ . '/' . $allowed[$pageKey];
 $content = ob_get_clean();
 
-// Afficher via le template commun
+// Affichage via le template commun
 require __DIR__ . '/template.php';
