@@ -1,66 +1,80 @@
-
 <?php
-// -----------------------------------------------------------------------------
-// admin/pages/carrier-edit.php
-// Formulaire d'ajout / modification d'un transporteur
-// -----------------------------------------------------------------------------
+// public/admin/pages/carrier-edit.php
+declare(strict_types=1);
 
-require_once __DIR__ . '/../models/Transporteur.php';
+// Charger le modèle
+require_once dirname(__DIR__, 3) . '/lib/Transport.php';
+$model = new Transport($db);
 
-// Récupération de l'ID si en modification
-$id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $errors = [];
+$id     = isset($_GET['id']) ? (int)$_GET['id'] : null;
+$data   = ['code'=>'', 'name'=>'', 'zone'=>''];
 
-// Traitement du formulaire
+// Si soumission du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = [
+        'code' => trim($_POST['code']),
         'name' => trim($_POST['name']),
         'zone' => trim($_POST['zone']),
     ];
 
     // Validation
-    if ($data['name'] === '') {
-        $errors[] = 'Le nom est requis.';
-    }
+    if ($data['code'] === '') $errors[] = 'Le code est requis.';
+    if ($data['name'] === '') $errors[] = 'Le nom est requis.';
+    if ($data['zone'] === '') $errors[] = 'La zone est requise.';
 
-    // Si pas d'erreurs, création ou mise à jour
     if (empty($errors)) {
         if ($id) {
-            Transporteur::update($id, $data);
+            $model->update($id, $data);
         } else {
-            Transporteur::create($data);
+            $model->create($data);
         }
         header('Location: index.php?page=carriers');
         exit;
     }
 }
 
-// Préremplissage des valeurs en cas de modification
-$carrier = ['name' => '', 'zone' => ''];
+// Si modification, préremplir
 if ($id) {
-    $carrier = Transporteur::getById($id);
+    $row = $model->getById($id);
+    if ($row) {
+        $data = [
+            'code' => $row['code'],
+            'name' => $row['name'],
+            'zone' => $row['zone'],
+        ];
+    } else {
+        echo '<p class="error">Transporteur introuvable.</p>';
+    }
 }
 ?>
 
 <h1><?= $id ? 'Modifier' : 'Ajouter' ?> un transporteur</h1>
 
-<?php if (!empty($errors)): ?>
-    <ul class="errors">
-        <?php foreach ($errors as $error): ?>
-            <li><?= htmlspecialchars($error) ?></li>
-        <?php endforeach; ?>
-    </ul>
+<?php if ($errors): ?>
+  <ul class="errors">
+    <?php foreach ($errors as $e): ?>
+      <li><?= htmlspecialchars($e, ENT_QUOTES) ?></li>
+    <?php endforeach; ?>
+  </ul>
 <?php endif; ?>
 
 <form method="post">
-    <label>Nom<br>
-        <input type="text" name="name" value="<?= htmlspecialchars($carrier['name']) ?>" required>
-    </label><br>
+  <label>
+    Code<br>
+    <input type="text" name="code" value="<?= htmlspecialchars($data['code'], ENT_QUOTES) ?>" required>
+  </label><br>
 
-    <label>Zone<br>
-        <input type="text" name="zone" value="<?= htmlspecialchars($carrier['zone']) ?>" required>
-    </label><br>
+  <label>
+    Nom<br>
+    <input type="text" name="name" value="<?= htmlspecialchars($data['name'], ENT_QUOTES) ?>" required>
+  </label><br>
 
-    <button type="submit">Enregistrer</button>
-    <a href="index.php?page=carriers" class="button">Annuler</a>
+  <label>
+    Zone<br>
+    <input type="text" name="zone" value="<?= htmlspecialchars($data['zone'], ENT_QUOTES) ?>" required>
+  </label><br>
+
+  <button type="submit">Enregistrer</button>
+  <a href="index.php?page=carriers" class="button">Annuler</a>
 </form>
