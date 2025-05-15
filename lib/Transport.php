@@ -8,19 +8,6 @@ class Transport
     private PDO $db;
 
     /**
-     * Liste des codes de transporteurs disponibles.
-     * Vous pouvez ajuster ce tableau selon vos besoins.
-     * Ex. ['xpo', 'heppner', 'kn']
-     *
-     * @var string[]
-     */
-    private array $carriers = [
-        'xpo',
-        'heppner',
-        'kn',
-    ];
-
-    /**
      * Constructeur : on injecte la connexion PDO depuis config.php
      */
     public function __construct(PDO $db)
@@ -29,26 +16,75 @@ class Transport
     }
 
     /**
-     * Retourne le tableau des codes de transporteurs.
-     *
-     * @return string[]
+     * Récupère tous les transporteurs depuis la base.
+     * @return array<array{id:int, code:string, name:string, zone:string}>
      */
-    public function getCarriers(): array
+    public function getAll(): array
     {
-        return $this->carriers;
-    }
-
-    /**
-     * Exemple de méthode pour récupérer en base les transporteurs
-     * (si vous avez une table dédiée).
-     * 
-     * @return array<mixed>
-     */
-    public function fetchAllFromDatabase(): array
-    {
-        $stmt = $this->db->query('SELECT id, code, name, zone FROM transporteurs');
+        $stmt = $this->db->query('SELECT id, code, name, zone FROM transporteurs ORDER BY id');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Vous pouvez ajouter ici vos méthodes create, update, delete, etc.
+    /**
+     * Récupère un transporteur par son ID.
+     * @param  int $id
+     * @return array{id:int, code:string, name:string, zone:string}|null
+     */
+    public function getById(int $id): ?array
+    {
+        $stmt = $this->db->prepare('SELECT id, code, name, zone FROM transporteurs WHERE id = ?');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row !== false ? $row : null;
+    }
+
+    /**
+     * Crée un nouveau transporteur.
+     * @param array{code:string,name:string,zone:string} $data
+     * @return int ID inséré
+     */
+    public function create(array $data): int
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO transporteurs (code, name, zone) VALUES (:code, :name, :zone)'
+        );
+        $stmt->execute([
+            ':code' => $data['code'],
+            ':name' => $data['name'],
+            ':zone' => $data['zone'],
+        ]);
+        return (int)$this->db->lastInsertId();
+    }
+
+    /**
+     * Met à jour un transporteur existant.
+     * @param  int $id
+     * @param  array{code:string,name:string,zone:string} $data
+     * @return void
+     */
+    public function update(int $id, array $data): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE transporteurs 
+             SET code = :code, name = :name, zone = :zone
+             WHERE id = :id'
+        );
+        $stmt->execute([
+            ':code' => $data['code'],
+            ':name' => $data['name'],
+            ':zone' => $data['zone'],
+            ':id'   => $id,
+        ]);
+    }
+
+    /**
+     * Supprime un transporteur.
+     * @param  int $id
+     * @return void
+     */
+    public function delete(int $id): void
+    {
+        $stmt = $this->db->prepare('DELETE FROM transporteurs WHERE id = ?');
+        $stmt->execute([$id]);
+    }
 }
