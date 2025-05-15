@@ -11,8 +11,8 @@ ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
-// Charger config + autoload/DB (situé dans public/config.php)
-require_once __DIR__ . '/../config.php';
+// Charger config + autoload/DB (situé à la racine du projet)
+require_once dirname(__DIR__, 2) . '/config.php';
 
 // Démarrer la session
 session_start();
@@ -41,7 +41,7 @@ if (!isset($allowed[$pageKey])) {
     exit;
 }
 
-// Bufferiser l'inclusion du fragment
+// Inclusion du fragment dans le buffer
 ob_start();
 include __DIR__ . '/' . $allowed[$pageKey];
 $content = ob_get_clean();
