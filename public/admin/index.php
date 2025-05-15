@@ -1,7 +1,7 @@
 <?php
 // -----------------------------------------------------------------------------
 // public/admin/index.php
-// Point d'entrée unique et routeur du back-office (mise à jour)
+// Point d'entrée unique et routeur du back-office
 // -----------------------------------------------------------------------------
 
 declare(strict_types=1);
@@ -11,8 +11,8 @@ ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
-// Charger config + autoload/DB (situé à la racine du projet)
-require_once __DIR__ . '/../../config.php';
+// Charger config + autoload/DB (situé dans public/config.php)
+require_once __DIR__ . '/../config.php';
 
 // Démarrer la session
 session_start();
@@ -34,17 +34,17 @@ $allowed = [
 // Déterminer la page demandée via ?page=
 $pageKey = $_GET['page'] ?? 'carriers';
 
-// Vérifier la clé
+// Vérifier que la page figure dans la liste blanche
 if (!isset($allowed[$pageKey])) {
     http_response_code(404);
     echo '<h1>404 - Page introuvable</h1>';
     exit;
 }
 
-// Inclusion du fragment dans le buffer
+// Bufferiser l'inclusion du fragment
 ob_start();
 include __DIR__ . '/' . $allowed[$pageKey];
 $content = ob_get_clean();
 
-// Affichage via le template
+// Afficher la page via le template
 include __DIR__ . '/template.php';
