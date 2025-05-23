@@ -1,6 +1,6 @@
 <?php
 // ajax-calculate.php
-// Version corrigée pour validation renforcée et clés JSON ASCII
+// Version intégrant majorations, taxes, surcharges et transmission des seuils pour alertes côté client
 
 require __DIR__ . '/../config.php';
 require __DIR__ . '/../lib/Transport.php';
@@ -16,14 +16,7 @@ if (!isset($_SESSION['historique'])) {
 $transport = new Transport($db);
 $carriers = ['xpo' => 'XPO', 'heppner' => 'Heppner', 'kn' => 'Kuehne+Nagel'];
 
-// Récupération des paramètres
-$dep = $_POST['departement'] ?? '';
-$poids = isset($_POST['poids']) ? (float)$_POST['poids'] : null;
-$type = $_POST['type'] ?? '';
-$adr = $_POST['adr'] ?? '';
-$option_sup = $_POST['option_sup'] ?? 'standard';
-$palettes = (isset($_POST['palettes']) && $_POST['palettes'] !== '') ? (int)$_POST['palettes'] : 0;
-
+// Seuils pour les alertes côté client
 $response = [
     'success'      => false,
     'results'      => [],
@@ -32,8 +25,17 @@ $response = [
     'errors'       => [],
     'debug'        => [],
     'affretement'  => false,
-    'message'      => ''
+    'message'      => '',
+    'thresholds'   => [100, 1000, 2000, 3000],
 ];
+
+// Récupération des paramètres
+$dep = $_POST['departement'] ?? '';
+$poids = isset($_POST['poids']) ? (float)$_POST['poids'] : null;
+$type = $_POST['type'] ?? '';
+$adr  = $_POST['adr'] ?? '';
+$option_sup = $_POST['option_sup'] ?? 'standard';
+$palettes   = (isset($_POST['palettes']) && $_POST['palettes'] !== '') ? (int)$_POST['palettes'] : 0;
 
 // Validation renforcée
 if (!preg_match('/^[0-9]{2}$/', $dep)) {
@@ -61,20 +63,26 @@ if (!empty($response['errors'])) {
 // Gestion de l'affrètement si trop lourd
 if ($poids > 3000) {
     $response['affretement'] = true;
-    $response['message']     = "Pour un poids supérieur à 3000 kg, veuillez contacter le service achat au 03 89 63 42 42 pour un affrètement.";
+    $response['message']     = "Pour un poids supérieur à 3000 kg, veuillez contacter le service achat au 03 89 63 42 42 pour un affrètement.";
     echo json_encode($response, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 try {
-    // Calcul des tarifs
+    // Calcul des tarifs bruts (sans alertes)
+    // calculateAll doit désormais récupérer majoration_adr_taux et appliquer :
+    // - majoration IDF
+    // - majoration saisonnière
+    // - majoration ADR via taux numérique
+    // - ajout des taxes et surcharge gazoil
+    // - frais palettes fixes
     $results = $transport->calculateAll($type, $adr, $poids, $option_sup, $dep);
     $response['results'] = $results;
     $response['debug']   = $transport->debug;
 
     // Sélection du meilleur tarif
-    $valid = array_filter($results, fn($p) => $p !== null);
-    if ($valid) {
+    $valid = array_filter($results, fn($price) => $price !== null);
+    if (!empty($valid)) {
         $response['best']        = min($valid);
         $response['bestCarrier'] = array_search($response['best'], $results);
 
@@ -95,21 +103,23 @@ try {
         $response['success'] = true;
     }
 } catch (Exception $e) {
-    $response['errors'][] = "Erreur lors du calcul : " . $e->getMessage();
+    $response['errors'][] = "Erreur lors du calcul : " . $e->getMessage();
 }
 
-// Préparation du format pour la réponse JSON
+// Formattage des résultats si succès
 if ($response['success']) {
     $formatted = [];
     foreach ($response['results'] as $carrier => $price) {
         $formatted[$carrier] = [
             'name'      => $carriers[$carrier] ?? $carrier,
             'price'     => $price,
-            'formatted' => $price !== null ? number_format($price, 2, ',', ' ') . ' €' : 'Non disponible',
+            'formatted' => $price !== null ? number_format($price, 2, ',', ' ') . ' €' : 'Non disponible',
             'debug'     => $response['debug'][$carrier] ?? null,
         ];
     }
     $response['formatted'] = $formatted;
+    // transmettre aussi le poids pour le JS
+    $response['poids'] = $poids;
 }
 
 // Envoi de la réponse JSON avec accents préservés
