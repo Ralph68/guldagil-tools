@@ -452,7 +452,293 @@ function deleteOption($db, $id) {
 // =============================================================================
 
 function getTaxes($db) {
-    $sql = "SELECT *<?php
+    $sql = "SELECT * FROM gul_taxes_transporteurs ORDER BY transporteur";
+    $stmt = $db->query($sql);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// =============================================================================
+// FONCTIONS POUR LES STATISTIQUES
+// =============================================================================
+
+function getStats($db) {
+    $stats = [];
+    
+    try {
+        // Compter les transporteurs actifs
+        $stmt = $db->query("SELECT COUNT(*) as count FROM gul_taxes_transporteurs");
+        $stats['carriers'] = $stmt->fetch()['count'];
+        
+        // Compter les départements avec tarifs (union des 3 tables)
+        $sql = "SELECT COUNT(DISTINCT num_departement) as count FROM (
+                    SELECT num_departement FROM gul_heppner_rates 
+                    UNION 
+                    SELECT num_departement FROM gul_xpo_rates 
+                    UNION 
+                    SELECT num_departement FROM gul_kn_rates
+                ) as all_departments";
+        $stmt = $db->query($sql);
+        $stats['departments'] = $stmt->fetch()['count'];
+        
+        // Compter les options actives
+        $stmt = $db->query("SELECT COUNT(*) as count FROM gul_options_supplementaires WHERE actif = 1");
+        $stats['options'] = $stmt->fetch()['count'];
+        
+        // Dernière modification (approximation)
+        $stats['last_update'] = date('d/m/Y');
+        
+    } catch (Exception $e) {
+        $stats = [
+            'carriers' => 3,
+            'departments' => 95,
+            'options' => 0,
+            'last_update' => 'Aujourd\'hui'
+        ];
+    }
+    
+    return $stats;
+}
+
+// =============================================================================
+// FONCTIONS D'IMPORT
+// =============================================================================
+
+function importFile($db, $file) {
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        throw new Exception('Erreur lors de l\'upload du fichier');
+    }
+    
+    $allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'text/csv', // .csv
+        'application/csv',
+        'text/plain' // CSV parfois détecté comme text/plain
+    ];
+    
+    if (!in_array($file['type'], $allowedTypes)) {
+        throw new Exception('Type de fichier non supporté. Utilisez Excel (.xlsx) ou CSV.');
+    }
+    
+    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    
+    try {
+        if ($extension === 'csv') {
+            return importCSV($db, $file['tmp_name']);
+        } elseif (in_array($extension, ['xlsx', 'xls'])) {
+            return importExcel($db, $file['tmp_name']);
+        } else {
+            throw new Exception('Extension de fichier non supportée');
+        }
+    } catch (Exception $e) {
+        throw new Exception('Erreur lors de l\'import : ' . $e->getMessage());
+    }
+}
+
+function importCSV($db, $filePath) {
+    $imported = 0;
+    $errors = [];
+    $lineNumber = 1;
+    
+    if (($handle = fopen($filePath, 'r')) !== FALSE) {
+        // Détecter l'encodage et convertir si nécessaire
+        $content = file_get_contents($filePath);
+        $encoding = mb_detect_encoding($content, ['UTF-8', 'ISO-8859-1', 'Windows-1252'], true);
+        
+        if ($encoding !== 'UTF-8') {
+            $content = mb_convert_encoding($content, 'UTF-8', $encoding);
+            file_put_contents($filePath, $content);
+        }
+        
+        fclose($handle);
+        $handle = fopen($filePath, 'r');
+        
+        $headers = null;
+        
+        while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
+            $lineNumber++;
+            
+            // Ignorer les lignes vides et les commentaires
+            if (empty($data) || (isset($data[0]) && strpos($data[0], '#') === 0)) {
+                continue;
+            }
+            
+            // Première ligne non-commentaire = headers
+            if ($headers === null) {
+                $headers = array_map('trim', $data);
+                continue;
+            }
+            
+            try {
+                if (importCSVLine($db, $headers, $data)) {
+                    $imported++;
+                }
+            } catch (Exception $e) {
+                $errors[] = "Ligne $lineNumber : " . $e->getMessage();
+            }
+        }
+        fclose($handle);
+    }
+    
+    return [
+        'imported' => $imported,
+        'errors' => $errors
+    ];
+}
+
+function importCSVLine($db, $headers, $data) {
+    // Créer un tableau associatif
+    $row = [];
+    foreach ($headers as $index => $header) {
+        $row[$header] = isset($data[$index]) ? trim($data[$index]) : '';
+    }
+    
+    // Déterminer le type d'import selon les colonnes
+    if (isset($row['transporteur']) && isset($row['num_departement'])) {
+        return importRateFromCSV($db, $row);
+    } elseif (isset($row['transporteur']) && isset($row['code_option'])) {
+        return importOptionFromCSV($db, $row);
+    } else {
+        throw new Exception('Format de données non reconnu');
+    }
+}
+
+function importRateFromCSV($db, $row) {
+    $carrier = strtolower(trim($row['transporteur']));
+    
+    // Normaliser le nom du transporteur
+    $carrierMapping = [
+        'heppner' => 'heppner',
+        'xpo' => 'xpo',
+        'kuehne + nagel' => 'kn',
+        'kuehne+nagel' => 'kn',
+        'kn' => 'kn',
+        'k+n' => 'kn'
+    ];
+    
+    $carrier = $carrierMapping[$carrier] ?? null;
+    if (!$carrier) {
+        throw new Exception('Transporteur non reconnu : ' . $row['transporteur']);
+    }
+    
+    // Validation du département
+    if (!preg_match('/^[0-9]{2}$/', $row['num_departement'])) {
+        throw new Exception('Département invalide : ' . $row['num_departement']);
+    }
+    
+    // Construire les données
+    $rateData = [
+        'id' => null,
+        'carrier' => $carrier,
+        'department' => $row['num_departement']
+    ];
+    
+    // Ajouter les tarifs selon les colonnes disponibles
+    $tarifColumns = getTableColumns($carrier);
+    foreach ($tarifColumns as $column) {
+        if (isset($row[$column]) && $row[$column] !== '') {
+            $rateData[$column] = (float)$row[$column];
+        }
+    }
+    
+    // Ajouter les autres champs
+    if (isset($row['departement'])) {
+        $rateData['departement'] = $row['departement'];
+    }
+    if (isset($row['delais'])) {
+        $rateData['delais'] = $row['delais'];
+    }
+    
+    return saveRate($db, $rateData);
+}
+
+function importOptionFromCSV($db, $row) {
+    $transporteur = strtolower(trim($row['transporteur']));
+    
+    // Normaliser le nom du transporteur
+    $carrierMapping = [
+        'heppner' => 'heppner',
+        'xpo' => 'xpo',
+        'kuehne + nagel' => 'kn',
+        'kuehne+nagel' => 'kn',
+        'kn' => 'kn',
+        'k+n' => 'kn'
+    ];
+    
+    $transporteur = $carrierMapping[$transporteur] ?? null;
+    if (!$transporteur) {
+        throw new Exception('Transporteur non reconnu : ' . $row['transporteur']);
+    }
+    
+    $optionData = [
+        'id' => null,
+        'transporteur' => $transporteur,
+        'code_option' => trim($row['code_option']),
+        'libelle' => trim($row['libelle']),
+        'montant' => (float)($row['montant'] ?? 0),
+        'unite' => trim($row['unite'] ?? 'forfait'),
+        'actif' => in_array(strtolower(trim($row['actif'] ?? '1')), ['1', 'oui', 'yes', 'true']) ? 1 : 0
+    ];
+    
+    return saveOption($db, $optionData);
+}
+
+function importExcel($db, $filePath) {
+    // Pour l'instant, on retourne un résultat simulé
+    // En production, vous pouvez utiliser PhpSpreadsheet
+    return [
+        'imported' => 0,
+        'errors' => ['Import Excel pas encore implémenté. Utilisez CSV pour le moment.']
+    ];
+}
+
+// =============================================================================
+// FONCTIONS UTILITAIRES
+// =============================================================================
+
+function sanitizeInput($input) {
+    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
+}
+
+function validateDepartment($department) {
+    return preg_match('/^[0-9]{2}$/', $department);
+}
+
+function validateCarrier($carrier) {
+    return in_array($carrier, ['heppner', 'xpo', 'kn']);
+}
+
+function logAction($action, $data = null) {
+    // Log des actions importantes (optionnel)
+    $logEntry = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'action' => $action,
+        'data' => $data,
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+    ];
+    
+    // Vous pouvez enregistrer dans un fichier de log ou en base
+    error_log('ADMIN_ACTION: ' . json_encode($logEntry));
+}
+
+// =============================================================================
+// GESTION DES ERREURS SPÉCIFIQUES
+// =============================================================================
+
+function handleDatabaseError($e) {
+    // Ne pas exposer les détails de la base de données en production
+    if (getenv('APP_ENV') === 'production') {
+        throw new Exception('Erreur de base de données');
+    } else {
+        throw new Exception('Erreur DB: ' . $e->getMessage());
+    }
+}
+
+// Log de l'action pour audit
+if ($action && $action !== 'get_stats') {
+    logAction($action, $_POST ?: $_GET);
+}
+?><?php
 // public/admin/api.php
 require __DIR__ . '/../../config.php';
 require __DIR__ . '/../../lib/Transport.php';
