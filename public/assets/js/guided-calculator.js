@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="carrier-price">${bestCarrier.formatted}</div>
                 </div>
                 <div class="result-actions">
-                    <button type="button" class="btn-details" onclick="showComparison()">
+                    <button type="button" class="btn-details" onclick="window.showComparison()">
                         📊 Comparer
                     </button>
                 </div>
@@ -369,6 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Sauvegarder les données pour comparaison
         window.lastCalculationData = data;
+        
+        console.log('Données sauvegardées pour comparaison:', data);
     }
     
     function displayAffretement(message) {
@@ -428,6 +430,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     poids.addEventListener('input', () => {
+        // Forcer palette si > 60kg
+        const poidsValue = parseFloat(poids.value);
+        if (poidsValue > 60) {
+            const paletteRadio = document.getElementById('type-palette');
+            if (paletteRadio) {
+                paletteRadio.checked = true;
+                // Masquer l'option colis
+                const colisOption = document.querySelector('.radio-option:has(#type-colis)');
+                if (colisOption) {
+                    colisOption.style.display = 'none';
+                }
+                togglePaletteSection();
+            }
+        } else {
+            // Réafficher l'option colis si <= 60kg
+            const colisOption = document.querySelector('.radio-option:has(#type-colis)');
+            if (colisOption) {
+                colisOption.style.display = 'block';
+            }
+        }
+        
         if (validatePoids() && canProceedToStep(3)) {
             showStep(3);
         }
@@ -642,6 +665,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         departement.focus();
     }, 500);
+    
+    // Vérifier que les modals existent
+    console.log('Vérification des modals:');
+    console.log('comparison-modal:', document.getElementById('comparison-modal'));
+    console.log('comparison-body:', document.getElementById('comparison-body'));
+    console.log('historique-modal:', document.getElementById('historique-modal'));
     
     // Gérer l'auto-complétion du navigateur
     setTimeout(() => {
