@@ -37,10 +37,126 @@ document.addEventListener('DOMContentLoaded', () => {
     let hasFirstCalculation = false;
     
     // =============================================================================
+    // MODAL DE COMPARAISON - Définies en premier
+    // =============================================================================
+    
+    function showComparison() {
+        console.log('showComparison appelée');
+        
+        if (!window.lastCalculationData) {
+            console.error('Aucune donnée de calcul disponible');
+            alert('Aucune donnée de calcul disponible');
+            return;
+        }
+        
+        const data = window.lastCalculationData;
+        console.log('Données disponibles:', data);
+        
+        const modal = document.getElementById('comparison-modal');
+        const body = document.getElementById('comparison-body');
+        
+        if (!modal) {
+            console.error('Modal comparison-modal non trouvée');
+            alert('Erreur: Modal non trouvée');
+            return;
+        }
+        
+        if (!body) {
+            console.error('Element comparison-body non trouvé');
+            alert('Erreur: Body modal non trouvé');
+            return;
+        }
+        
+        let html = '<div class="comparison-grid">';
+        
+        Object.keys(data.formatted).forEach(key => {
+            const carrier = data.formatted[key];
+            const isBest = key === data.bestCarrier;
+            const isAvailable = carrier.price !== null;
+            
+            html += `
+                <div class="comparison-card ${isBest ? 'best' : ''} ${!isAvailable ? 'unavailable' : ''}" data-carrier="${key}">
+                    <h4>${carrier.name}</h4>
+                    <div class="comparison-price">${carrier.formatted}</div>
+                    ${carrier.debug && isAvailable ? 
+                        `<button class="btn-details" data-carrier="${key}">📋 Détails</button>` 
+                        : ''}
+                    <div class="carrier-details" id="details-${key}" style="display: none;"></div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        body.innerHTML = html;
+        
+        // Ajouter les event listeners pour les boutons détails
+        const detailButtons = body.querySelectorAll('.btn-details');
+        detailButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const carrierId = e.target.getAttribute('data-carrier');
+                toggleCarrierDetails(carrierId);
+            });
+        });
+        
+        modal.classList.add('active');
+        
+        console.log('Modal de comparaison affichée avec succès');
+    }
+    
+    function closeComparison() {
+        const modal = document.getElementById('comparison-modal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+    
+    function toggleCarrierDetails(carrierId) {
+        if (!window.lastCalculationData) return;
+        
+        const carrier = window.lastCalculationData.formatted[carrierId];
+        const debug = carrier.debug;
+        const detailsDiv = document.getElementById(`details-${carrierId}`);
+        
+        if (!debug || !detailsDiv) return;
+        
+        if (detailsDiv.style.display === 'none') {
+            // Afficher les détails
+            let detailsHtml = `
+                <div style="margin-top: 1rem; padding: 1rem; background: #f9f9f9; border-radius: 6px; text-align: left;">
+                    <h6 style="margin: 0 0 0.5rem 0; color: #333;">Détail du calcul</h6>
+                    <table style="width: 100%; font-size: 0.8rem;">
+            `;
+            
+            Object.keys(debug).forEach(key => {
+                if (key === 'carrier' || key === 'error') return;
+                
+                let label = key.replace(/_/g, ' ');
+                label = label.charAt(0).toUpperCase() + label.slice(1);
+                const value = debug[key];
+                
+                if (typeof value === 'number') {
+                    detailsHtml += `<tr><td style="padding: 0.2rem 0;">${label}:</td><td style="text-align: right;">${value.toFixed(2)} €</td></tr>`;
+                } else if (typeof value === 'boolean') {
+                    detailsHtml += `<tr><td style="padding: 0.2rem 0;">${label}:</td><td style="text-align: right;">${value ? 'Oui' : 'Non'}</td></tr>`;
+                } else {
+                    detailsHtml += `<tr><td style="padding: 0.2rem 0;">${label}:</td><td style="text-align: right;">${value}</td></tr>`;
+                }
+            });
+            
+            detailsHtml += '</table></div>';
+            detailsDiv.innerHTML = detailsHtml;
+            detailsDiv.style.display = 'block';
+        } else {
+            // Masquer les détails
+            detailsDiv.style.display = 'none';
+        }
+    }
+    
+    // =============================================================================
     // GESTION DES ÉTAPES
     // =============================================================================
     
-    function showStep(stepNumber) {
+    function showStep(stepNumber, autoScroll = true) {
         steps.forEach(step => {
             const stepNum = parseInt(step.dataset.step);
             
@@ -55,13 +171,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 step.classList.add('active', 'reveal');
                 step.classList.remove('completed');
                 
-                // Scroll vers l'étape si nécessaire
-                setTimeout(() => {
-                    step.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
-                    });
-                }, 100);
+                // Scroll vers l'étape seulement si demandé
+                if (autoScroll) {
+                    setTimeout(() => {
+                        step.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+                    }, 100);
+                }
             } else {
                 // Étapes futures : masquées
                 step.style.display = 'none';
@@ -356,7 +474,30 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayBestResult(data) {
         const bestCarrier = data.formatted[data.bestCarrier];
         
+        // Récupérer les données saisies pour le récapitulatif
+        const selectedType = document.querySelector('input[name="type"]:checked');
+        const selectedAdr = document.querySelector('input[name="adr"]:checked');
+        const selectedOption = document.querySelector('input[name="option_sup"]:checked');
+        
         let html = `
+            <!-- Récapitulatif de la saisie -->
+            <div class="recap-saisie">
+                <h3>📋 Récapitulatif</h3>
+                <div class="recap-grid">
+                    <span><strong>Département:</strong> ${departement.value}</span>
+                    <span><strong>Poids:</strong> ${poids.value} kg</span>
+                    <span><strong>Type:</strong> ${selectedType ? selectedType.value : 'Non défini'}</span>
+                    <span><strong>ADR:</strong> ${selectedAdr ? (selectedAdr.value === 'oui' ? 'Oui' : 'Non') : 'Non défini'}</span>
+                    ${selectedOption && selectedOption.value !== 'standard' ? 
+                        `<span><strong>Option:</strong> ${getOptionLabel(selectedOption.value)}</span>` : ''}
+                    ${enlevement.checked ? '<span><strong>Enlèvement:</strong> Oui</span>' : ''}
+                    ${palettes.value && palettes.value !== '0' ? 
+                        `<span><strong>Palettes:</strong> ${palettes.value}</span>` : ''}
+                </div>
+                <button type="button" class="btn-modify" onclick="scrollToFirstStep()">✏️ Modifier</button>
+            </div>
+            
+            <!-- Meilleur résultat -->
             <div class="best-result">
                 <div class="carrier-info">
                     <div class="carrier-name">${bestCarrier.name}</div>
@@ -408,6 +549,23 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Données sauvegardées pour comparaison:', data);
     }
     
+    // Fonction pour obtenir le libellé des options
+    function getOptionLabel(optionValue) {
+        const labels = {
+            'rdv': 'Prise de RDV',
+            'premium13': 'Premium avant 13h',
+            'premium18': 'Premium avant 18h',
+            'datefixe': 'Date fixe'
+        };
+        return labels[optionValue] || optionValue;
+    }
+    
+    // Fonction pour revenir à la première étape
+    window.scrollToFirstStep = function() {
+        showStep(1, true); // avec scroll
+        setTimeout(() => departement.focus(), 300);
+    };
+    
     function displayAffretement(message) {
         bestResult.innerHTML = `
             <div class="affretement-message">
@@ -450,6 +608,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // =============================================================================
     
     // Auto-focus et progression des étapes
+    let poidsTimeout = null;
+    
     departement.addEventListener('input', () => {
         if (departement.value.length === 2 && validateDepartement()) {
             if (canProceedToStep(2)) {
@@ -465,36 +625,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     poids.addEventListener('input', () => {
-        // Forcer palette si > 60kg
-        const poidsValue = parseFloat(poids.value);
-        if (poidsValue > 60) {
-            const paletteRadio = document.getElementById('type-palette');
-            if (paletteRadio) {
-                paletteRadio.checked = true;
-                // Masquer l'option colis
+        // Annuler le timeout précédent
+        if (poidsTimeout) {
+            clearTimeout(poidsTimeout);
+        }
+        
+        // Délai de 1.5 seconde avant de passer à l'étape suivante
+        poidsTimeout = setTimeout(() => {
+            // Forcer palette si > 60kg
+            const poidsValue = parseFloat(poids.value);
+            if (poidsValue > 60) {
+                const paletteRadio = document.getElementById('type-palette');
+                if (paletteRadio) {
+                    paletteRadio.checked = true;
+                    // Masquer l'option colis
+                    const colisOption = document.querySelector('.radio-option:has(#type-colis)');
+                    if (colisOption) {
+                        colisOption.style.display = 'none';
+                    }
+                    togglePaletteSection();
+                    
+                    // Passer automatiquement à l'étape ADR si poids validé (SANS scroll)
+                    if (validatePoids() && canProceedToStep(4)) {
+                        showStep(4, false); // false = pas de scroll
+                    }
+                }
+            } else {
+                // Réafficher l'option colis si <= 60kg
                 const colisOption = document.querySelector('.radio-option:has(#type-colis)');
                 if (colisOption) {
-                    colisOption.style.display = 'none';
+                    colisOption.style.display = 'block';
                 }
-                togglePaletteSection();
                 
-                // Passer automatiquement à l'étape ADR si poids validé
-                if (validatePoids() && canProceedToStep(4)) {
-                    showStep(4);
+                // Passer à l'étape type si poids validé (SANS scroll)
+                if (validatePoids() && canProceedToStep(3)) {
+                    showStep(3, false); // false = pas de scroll
                 }
             }
-        } else {
-            // Réafficher l'option colis si <= 60kg
-            const colisOption = document.querySelector('.radio-option:has(#type-colis)');
-            if (colisOption) {
-                colisOption.style.display = 'block';
-            }
-            
-            // Passer à l'étape type si poids validé
-            if (validatePoids() && canProceedToStep(3)) {
-                showStep(3);
-            }
-        }
+        }, 1500); // Délai de 1,5 seconde
         
         calculatePrices();
     });
