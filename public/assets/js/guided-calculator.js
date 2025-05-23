@@ -89,7 +89,12 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (stepNumber) {
             case 2: // Poids
                 return validateDepartement();
-            case 3: // Type
+            case 3: // Type (sauf si > 60kg)
+                const poidsValue = parseFloat(poids.value);
+                if (poidsValue > 60) {
+                    // Si > 60kg, on peut passer directement à l'étape 4 (ADR)
+                    return validateDepartement() && validatePoids();
+                }
                 return validateDepartement() && validatePoids();
             case 4: // ADR
                 return validateDepartement() && validatePoids() && validateType();
@@ -144,6 +149,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function validateType() {
         const selectedType = document.querySelector('input[name="type"]:checked');
+        
+        // Si > 60kg, forcer automatiquement palette (pas d'erreur)
+        const poidsValue = parseFloat(poids.value);
+        if (poidsValue > 60) {
+            const paletteRadio = document.getElementById('type-palette');
+            if (!selectedType && paletteRadio) {
+                paletteRadio.checked = true;
+            }
+            hideFieldError('type');
+            return true;
+        }
+        
+        // Sinon validation normale
         if (!selectedType) {
             showFieldError('type', 'Veuillez sélectionner un type d\'envoi');
             return false;
@@ -233,6 +251,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // =============================================================================
     
     function shouldCalculate() {
+        const poidsValue = parseFloat(poids.value);
+        
+        // Si > 60kg, palette est automatiquement sélectionnée
+        if (poidsValue > 60) {
+            return validateDepartement() && 
+                   validatePoids() && 
+                   validateADR();
+        }
+        
+        // Sinon validation normale
         return validateDepartement() && 
                validatePoids() && 
                validateType() && 
@@ -335,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="carrier-price">${bestCarrier.formatted}</div>
                 </div>
                 <div class="result-actions">
-                    <button type="button" class="btn-details" onclick="window.showComparison()">
+                    <button type="button" class="btn-details" id="btn-compare">
                         📊 Comparer
                     </button>
                 </div>
@@ -366,6 +394,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         bestResult.innerHTML = html;
+        
+        // Ajouter l'event listener après avoir créé le bouton
+        const compareBtn = document.getElementById('btn-compare');
+        if (compareBtn) {
+            compareBtn.addEventListener('click', showComparison);
+            console.log('Event listener ajouté au bouton Comparer');
+        }
         
         // Sauvegarder les données pour comparaison
         window.lastCalculationData = data;
@@ -442,6 +477,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     colisOption.style.display = 'none';
                 }
                 togglePaletteSection();
+                
+                // Passer automatiquement à l'étape ADR si poids validé
+                if (validatePoids() && canProceedToStep(4)) {
+                    showStep(4);
+                }
             }
         } else {
             // Réafficher l'option colis si <= 60kg
@@ -449,11 +489,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (colisOption) {
                 colisOption.style.display = 'block';
             }
+            
+            // Passer à l'étape type si poids validé
+            if (validatePoids() && canProceedToStep(3)) {
+                showStep(3);
+            }
         }
         
-        if (validatePoids() && canProceedToStep(3)) {
-            showStep(3);
-        }
         calculatePrices();
     });
     
