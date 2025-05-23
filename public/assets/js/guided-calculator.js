@@ -541,11 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('active');
     });
     
-    window.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.remove('active');
-        }
-    });
+    // Le gestionnaire global des clics extérieurs est maintenant plus haut dans le code
     
     function loadHistorique() {
         const content = document.getElementById('historique-content');
