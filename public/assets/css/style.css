@@ -526,22 +526,21 @@ body {
   box-shadow: var(--shadow-hover);
 }
 
-/* Barre de progression */
-.progress-indicator {
-  flex: 1;
-  max-width: 300px;
-  height: 8px;
-  background: var(--bg-light);
-  border-radius: 4px;
+/* Barre de progression dans la zone résultat */
+.progress-indicator-result {
+  margin-top: 1rem;
+  height: 6px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
   overflow: hidden;
 }
 
-.progress-bar {
+.progress-indicator-result .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+  background: linear-gradient(90deg, var(--success-color), var(--primary-color));
   width: 0;
   transition: width 0.5s ease;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 /* =============================================================================
@@ -599,8 +598,183 @@ body {
 }
 
 /* =============================================================================
-   MODAL HISTORIQUE
+   MODAL COMPARAISON TRANSPORTEURS
 ============================================================================= */
+
+.comparison-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.comparison-modal.active {
+  display: flex;
+}
+
+.comparison-content {
+  background: white;
+  border-radius: var(--border-radius);
+  max-width: 800px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  animation: modalSlideIn 0.3s ease;
+}
+
+.comparison-header {
+  padding: 1.5rem;
+  background: var(--primary-color);
+  color: white;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.comparison-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.comparison-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: var(--transition);
+}
+
+.comparison-close:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.comparison-body {
+  padding: 1.5rem;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.comparison-card {
+  background: var(--bg-light);
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  text-align: center;
+  transition: var(--transition);
+  border: 2px solid transparent;
+  position: relative;
+}
+
+.comparison-card.best {
+  background: #e7f9e7;
+  border-color: var(--success-color);
+}
+
+.comparison-card.best::before {
+  content: "⭐ MEILLEUR TARIF";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--success-color);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.comparison-card h4 {
+  margin: 0 0 1rem 0;
+  color: var(--primary-color);
+  font-size: 1.1rem;
+}
+
+.comparison-price {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--success-color);
+  margin-bottom: 1rem;
+}
+
+.comparison-card.unavailable .comparison-price {
+  color: #999;
+  font-size: 1rem;
+}
+
+.btn-details {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: var(--transition);
+}
+
+.btn-details:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+}
+
+/* =============================================================================
+   FOOTER
+============================================================================= */
+
+.site-footer {
+  background: white;
+  border-top: 1px solid var(--border-color);
+  padding: 1.5rem;
+  margin-top: 3rem;
+}
+
+.footer-content {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.footer-info p {
+  margin: 0.25rem 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.footer-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.footer-links a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: var(--transition);
+}
+
+.footer-links a:hover {
+  opacity: 0.7;
+}
 
 .modal {
   display: none;
@@ -785,7 +959,12 @@ body {
 @media (max-width: 768px) {
   :root {
     --header-height: 70px;
-    --result-height: 100px;
+    --result-height: 120px;
+  }
+  
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
   }
   
   .site-header {
