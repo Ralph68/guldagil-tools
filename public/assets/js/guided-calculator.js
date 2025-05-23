@@ -186,15 +186,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 step.classList.add('active', 'reveal');
                 step.classList.remove('completed');
                 
-                // Scroll vers l'étape seulement si demandé
-                if (autoScroll) {
+                // Gestion du scroll selon l'étape
+                if (autoScroll === true) {
+                    // Scroll normal
                     setTimeout(() => {
                         step.scrollIntoView({ 
                             behavior: 'smooth', 
                             block: 'center' 
                         });
                     }, 100);
+                } else if (autoScroll === 'smart' || stepNumber === 4) {
+                    // Pour l'étape ADR, scroll intelligent pour éviter de cacher sous le header fixe
+                    setTimeout(() => {
+                        const headerHeight = document.querySelector('.fixed-header')?.offsetHeight || 200;
+                        const stepRect = step.getBoundingClientRect();
+                        const scrollTop = window.pageYOffset + stepRect.top - headerHeight - 20;
+                        
+                        window.scrollTo({
+                            top: scrollTop,
+                            behavior: 'smooth'
+                        });
+                    }, 100);
                 }
+                // Si autoScroll === false, pas de scroll du tout
             } else {
                 // Étapes futures : masquées
                 step.style.display = 'none';
@@ -681,7 +695,8 @@ document.addEventListener('DOMContentLoaded', () => {
     typeInputs.forEach(input => {
         input.addEventListener('change', () => {
             if (validateType() && canProceedToStep(4)) {
-                showStep(4);
+                // Pour l'étape ADR, scroll intelligent pour éviter de cacher sous le header
+                showStep(4, 'smart');
                 togglePaletteSection();
             }
             calculatePrices();
