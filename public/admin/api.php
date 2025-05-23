@@ -3,9 +3,9 @@
 require __DIR__ . '/auth.php'; // Vérification d'authentification
 require __DIR__ . '/../../config.php';
 
-// Inclure Transport seulement si pas déjà inclus
+// N'inclure Transport que si nécessaire et pas déjà inclus
 if (!class_exists('Transport')) {
-    require __DIR__ . '/../../lib/Transport.php';
+    require_once __DIR__ . '/../../lib/Transport.php';
 }
 
 header('Content-Type: application/json; charset=UTF-8');
