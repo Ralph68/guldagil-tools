@@ -71,8 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 resultContent.classList.remove('loading');
                 
                 // 1) Affrètement si besoin
-                if (data.affrètement) {
-                    displayAffrètement(data.message);
+                if (data.affretement) {
+                    displayAffretement(data.message);
                 // 2) Succès et meilleur transporteur
                 } 
                 else if (data.success && data.bestCarrier) {
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Afficher message d'affrètement
-    function displayAffrètement(message) {
+    function displayAffretement(message) {
         bestResult.innerHTML = `
             <div class="affrètement-message">
                 <h3>🚛 Affrètement nécessaire</h3>
