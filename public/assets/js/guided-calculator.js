@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="carrier-price">${bestCarrier.formatted}</div>
                 </div>
                 <div class="result-actions">
-                    <button type="button" class="btn-details" onclick="showAllCarriers()">
+                    <button type="button" class="btn-details" onclick="showComparison()">
                         📊 Comparer
                     </button>
                 </div>
@@ -343,28 +343,24 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         
         // Alertes de seuils
-        if (data.thresholds && data.poids) {
-            data.thresholds.forEach(threshold => {
-                if (data.poids >= threshold * 0.8 && data.poids < threshold) {
-                    const unitRate = data.results[data.bestCarrier] / data.poids;
-                    const thresholdPrice = unitRate * threshold;
-                    if (thresholdPrice < data.results[data.bestCarrier]) {
-                        html += `
-                            <div class="alert">
-                                💡 Économie possible : déclarer ${threshold} kg vous coûterait ${thresholdPrice.toFixed(2)} € 
-                                (soit ${(data.results[data.bestCarrier] - thresholdPrice).toFixed(2)} € d'économie)
-                            </div>
-                        `;
-                    }
+        if (data.alerts && data.alerts.length > 0) {
+            data.alerts.forEach(alert => {
+                if (alert.carrier === data.bestCarrier) {
+                    html += `
+                        <div class="alert">
+                            💡 ${alert.message} - Économie : ${alert.savings.toFixed(2)} €
+                        </div>
+                    `;
                 }
             });
         }
         
         // Message de remise en palette si applicable
-        if (data.overridePalette) {
+        if (data.fallback && data.fallback.hasBetter) {
             html += `
                 <div class="alert">
-                    ✨ Remise en palette disponible chez ${bestCarrier.name}
+                    ✨ Remise en palette disponible chez ${data.formatted[data.fallback.carrier].name}
+                    <br><small>Économie de ${data.fallback.savings.toFixed(2)} € en remettant sur palette</small>
                 </div>
             `;
         }
@@ -511,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Réinitialiser l'affichage
         showStep(1);
-        bestResult.innerHTML = '<p class="invite-message">🚀 Commencez par renseigner votre département de livraison</p>';
+        bestResult.innerHTML = '<p class="invite-message">🚀 Commence par renseigner ton département de livraison</p>';
         clearErrors();
         
         // Réinitialiser les états spéciaux
