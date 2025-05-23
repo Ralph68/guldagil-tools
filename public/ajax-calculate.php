@@ -50,8 +50,8 @@ if (!in_array($type, ['colis', 'palette'], true)) {
 if (!in_array($adr, ['oui', 'non'], true)) {
     $response['errors'][] = "Le choix ADR est requis";
 }
-if ($type === 'palette' && $palettes < 1) {
-    $response['errors'][] = "Le nombre de palettes doit être au moins 1 pour un envoi en palette";
+//if ($type === 'palette' && $palettes < 1) {
+//    $response['errors'][] = "Le nombre de palettes doit être au moins 1 pour un envoi en palette";
 }
 
 // Si erreurs, on renvoie directement
