@@ -49,7 +49,7 @@ if (!$adr) {
 // Vérifier si le poids dépasse les limites
 if ($poids > 3000) {
     $response['affrètement'] = true;
-    $response['message'] = "Pour un poids supérieur à 3000 kg, merci de contacter le service achat pour un affrètement.";
+    $response['message'] = "Pour un poids supérieur à 3000 kg, merci de contacter le service achat au 03 89 63 42 42 pour un affrètement.";
 } elseif (empty($response['errors'])) {
     try {
         $results = $transport->calculateAll($type, $adr, $poids, $option_sup, $dep);
