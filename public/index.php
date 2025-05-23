@@ -32,7 +32,12 @@ $transport = new Transport($db);
       <div class="result-content" id="result-content">
         <h2>💰 Votre tarif</h2>
         <div id="best-result">
-          <p class="invite-message">🚀 Commencez par renseigner votre département de livraison</p>
+          <p class="invite-message">🚀 Commence par renseigner ton département de livraison</p>
+        </div>
+        
+        <!-- Progress bar déplacée ici -->
+        <div class="progress-indicator-result">
+          <div class="progress-bar" id="progress-bar"></div>
         </div>
       </div>
     </section>
@@ -51,7 +56,7 @@ $transport = new Transport($db);
         <div class="form-step" id="step-departement" data-step="1">
           <div class="step-header">
             <span class="step-number">1</span>
-            <h3>Où livrez-vous ?</h3>
+            <h3>Où livres-tu ?</h3>
           </div>
           <div class="step-content">
             <label for="departement">Département de livraison</label>
@@ -63,7 +68,7 @@ $transport = new Transport($db);
                    placeholder="Ex: 67, 75, 13..."
                    autocomplete="off">
             <div class="field-help">
-              <small>Saisissez le numéro à 2 chiffres du département</small>
+              <small>Saisis le numéro à 2 chiffres du département</small>
             </div>
             <div class="error-message" id="error-departement"></div>
           </div>
@@ -73,7 +78,7 @@ $transport = new Transport($db);
         <div class="form-step" id="step-poids" data-step="2" style="display: none;">
           <div class="step-header">
             <span class="step-number">2</span>
-            <h3>Quel est le poids de votre envoi ?</h3>
+            <h3>Quel est le poids de ton envoi ?</h3>
           </div>
           <div class="step-content">
             <label for="poids">Poids réel en kg</label>
@@ -95,7 +100,7 @@ $transport = new Transport($db);
         <div class="form-step" id="step-type" data-step="3" style="display: none;">
           <div class="step-header">
             <span class="step-number">3</span>
-            <h3>Comment expédiez-vous ?</h3>
+            <h3>Comment expédies-tu ?</h3>
           </div>
           <div class="step-content">
             <div class="radio-group">
@@ -128,7 +133,7 @@ $transport = new Transport($db);
         <div class="form-step" id="step-adr" data-step="4" style="display: none;">
           <div class="step-header">
             <span class="step-number">4</span>
-            <h3>Votre marchandise est-elle dangereuse ?</h3>
+            <h3>Ta marchandise est-elle dangereuse ?</h3>
           </div>
           <div class="step-content">
             <div class="radio-group">
@@ -261,9 +266,6 @@ $transport = new Transport($db);
         <!-- Navigation et actions -->
         <div class="form-navigation">
           <button type="button" class="btn-secondary" id="btn-reset">🔄 Recommencer</button>
-          <div class="progress-indicator">
-            <div class="progress-bar" id="progress-bar"></div>
-          </div>
         </div>
       </form>
 
@@ -272,23 +274,37 @@ $transport = new Transport($db);
         <h4>💡 Besoin d'aide ?</h4>
         <div class="help-cards">
           <div class="help-card">
-            <h5>🚛 Service commercial</h5>
-            <p>03 89 63 42 42</p>
-            <small>Tarifs et devis spéciaux</small>
+            <h5>📦 Service logistique</h5>
+            <p>achats@guldagil.com</p>
+            <small>Tarifs et affrètements</small>
           </div>
           <div class="help-card">
-            <h5>📋 Affrètement</h5>
-            <p>03 89 63 42 42</p>
-            <small>Envois > 3000 kg</small>
+            <h5>🐛 Support technique</h5>
+            <p>runser.jean.thomas@guldagil.com</p>
+            <small>Bugs et améliorations</small>
           </div>
           <div class="help-card">
-            <h5>❓ Questions</h5>
-            <p>contact@guldagil.fr</p>
-            <small>Support technique</small>
+            <h5>❓ Pas trouvé ?</h5>
+            <p>📞 03 89 63 42 42</p>
+            <small>Autres demandes</small>
           </div>
         </div>
       </div>
     </main>
+    
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="footer-content">
+        <div class="footer-info">
+          <p><strong>Guldagil Port Calculator</strong> v1.2.0 - Usage interne</p>
+          <p>© 2025 Guldagil - Développé par Jean-Thomas Runser</p>
+        </div>
+        <div class="footer-links">
+          <a href="mailto:achats@guldagil.com">📦 Logistique</a>
+          <a href="mailto:runser.jean.thomas@guldagil.com">🐛 Support</a>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <!-- Modal Historique -->
