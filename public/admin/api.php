@@ -1,18 +1,26 @@
 <?php
 // public/admin/api.php
+require __DIR__ . '/auth.php'; // Vérification d'authentification
 require __DIR__ . '/../../config.php';
-require __DIR__ . '/../../lib/Transport.php';
+
+// Inclure Transport seulement si pas déjà inclus
+if (!class_exists('Transport')) {
+    require __DIR__ . '/../../lib/Transport.php';
+}
 
 header('Content-Type: application/json; charset=UTF-8');
-session_start();
 
-$transport = new Transport($db);
 $response = ['success' => false, 'message' => '', 'data' => null];
 
 // Récupérer l'action depuis POST ou GET
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 try {
+    // Vérifier les permissions selon l'action
+    if (in_array($action, ['delete_rate', 'delete_option', 'import'])) {
+        checkAdminPermission($action);
+    }
+    
     switch ($action) {
         
         // =============================================================================
