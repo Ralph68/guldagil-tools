@@ -19,6 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Délai pour éviter trop de requêtes
     let calculateTimeout = null;
+    // pour les seuils et poids renvoyés par l’API
+    let thresholds = [];
+    let inputPoids = 0;
+
     
     // Fonction de calcul dynamique
     function calculatePrices() {
@@ -66,13 +70,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 loading.classList.remove('active');
                 resultContent.classList.remove('loading');
                 
+                // 1) Affrètement si besoin
                 if (data.affrètement) {
                     displayAffrètement(data.message);
-                } else if (data.success && data.bestCarrier) {
-                    displayResults(data);
-                } else if (data.errors && data.errors.length > 0) {
-                    displayErrors(data.errors);
+                // 2) Succès et meilleur transporteur
+                } 
+                else if (data.success && data.bestCarrier) {
+                    // stocker thresholds + poids pour les alertes
+                    thresholds = data.thresholds;
+                    inputPoids = data.poids;
+
+                     // fallback palette si on est en “colis”
+                const typeValue = document.querySelector('input[name="type"]:checked').value;
+                if (typeValue === 'colis') {
+                    const palForm = new FormData();
+                    palForm.append('departement', departement.value);
+                    palForm.append('poids',      inputPoids);
+                    palForm.append('type',       'palette');
+                    palForm.append('adr',        document.querySelector('input[name="adr"]:checked').value);
+                    const selOpt = document.querySelector('input[name="option_sup"]:checked');
+                    if (selOpt) palForm.append('option_sup', selOpt.value);
+                    palForm.append('enlevement', enlevement.checked ? '1' : '0');
+                    palForm.append('palettes',   palettes.value);
+        
+                    fetch('ajax-calculate.php', { method: 'POST', body: palForm })
+                        .then(res => res.json())
+                        .then(palData => renderResultsWithFallback(data, palData));
                 } else {
+                    displayResults(data);
+                }
+                // 3) Erreurs retournées
+                } 
+                else if (data.errors && data.errors.length > 0) {
+                    displayErrors(data.errors);
+                } 
+                // 4) Aucun tarif dispo
+                else {
                     bestResult.innerHTML = '<p><em>Aucun tarif disponible pour ces critères</em></p>';
                 }
             })
@@ -91,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="affrètement-message">
                 <h3>🚛 Affrètement nécessaire</h3>
                 <p>${message}</p>
-                <p><strong>☎️ Service achat : 01 XX XX XX XX</strong></p>
+                <p><strong>☎️ Service achat : 03 89 63 42 42</strong></p>
             </div>
         `;
     }
@@ -102,6 +135,16 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = `
             <p><strong>${bestCarrier.name}</strong> : <span style="font-size: 1.3em; color: #4CAF50;">${bestCarrier.formatted}</span></p>
         `;
+    // alertes de seuils sous le meilleur tarif
+    thresholds.forEach(t => {
+        if (inputPoids >= t * 0.8 && inputPoids < t) {
+            const unitRate       = data.results[data.bestCarrier] / inputPoids;
+            const thresholdPrice = unitRate * t;
+            if (thresholdPrice < data.results[data.bestCarrier]) {
+                html += `<p class="alert">Payant pour → déclarer ${t} kg</p>`;
+            }
+        }
+    });
         
         // Détails du calcul
         if (bestCarrier.debug) {
@@ -148,6 +191,42 @@ document.addEventListener('DOMContentLoaded', () => {
         bestResult.innerHTML = html;
         errorContainer.innerHTML = '';
     }
+// ─────────────────────────────────────────────────────────────────────
+// Si colis, on compare avec le tarif palette XPO/K+N et on override si besoin
+function renderResultsWithFallback(data, palData) {
+    const colisHeppner = data.results['heppner'];
+    let override = null;
+
+    ['xpo', 'kn'].forEach(carrier => {
+        const palPrice = palData.results[carrier];
+        if (palPrice !== null && (colisHeppner === null || palPrice < colisHeppner)) {
+            override = { carrier, price: palPrice };
+        }
+    });
+
+    if (override) {
+        data.bestCarrier = override.carrier;
+        data.best         = override.price;
+        data.overridePalette = true;
+        data.formatted[override.carrier].price = override.price;
+        data.formatted[override.carrier].formatted =
+            override.price.toFixed(2).replace('.', ',') + ' €';
+    }
+
+    // réaffiche avec éventuel override
+    displayResults(data);
+
+    // message “remise en palette”
+    if (data.overridePalette) {
+        const msg = `<p class="alert">
+                        Remise en palette disponible 
+                        (${data.formatted[data.bestCarrier].name})
+                     </p>`;
+        bestResult.insertAdjacentHTML('beforeend', msg);
+    }
+}
+// ─────────────────────────────────────────────────────────────────────
+
     
     // Formater les détails du calcul
     function formatCalculationDetails(debug) {
