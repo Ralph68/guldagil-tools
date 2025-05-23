@@ -1,5 +1,7 @@
 // guided-calculator.js - Interface guidée avec calcul dynamique
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOM chargé, initialisation en cours...');
+    
     // =============================================================================
     // VARIABLES ET ÉLÉMENTS
     // =============================================================================
@@ -41,29 +43,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // =============================================================================
     
     function showComparison() {
-        console.log('showComparison appelée');
+        console.log('🔍 showComparison appelée');
         
         if (!window.lastCalculationData) {
-            console.error('Aucune donnée de calcul disponible');
+            console.error('❌ Aucune donnée de calcul disponible');
             alert('Aucune donnée de calcul disponible');
             return;
         }
         
         const data = window.lastCalculationData;
-        console.log('Données disponibles:', data);
+        console.log('✅ Données disponibles:', data);
         
+        // Re-chercher les éléments au moment de l'utilisation
         const modal = document.getElementById('comparison-modal');
         const body = document.getElementById('comparison-body');
         
+        console.log('🔍 Recherche des éléments modal:');
+        console.log('modal trouvée:', modal);
+        console.log('body trouvé:', body);
+        
         if (!modal) {
-            console.error('Modal comparison-modal non trouvée');
-            alert('Erreur: Modal non trouvée');
+            console.error('❌ Modal comparison-modal non trouvée dans le DOM');
+            console.log('🔍 Éléments disponibles avec id contenant "modal":');
+            document.querySelectorAll('[id*="modal"]').forEach(el => {
+                console.log('- ', el.id, el);
+            });
+            alert('Erreur: Modal non trouvée dans le DOM');
             return;
         }
         
         if (!body) {
-            console.error('Element comparison-body non trouvé');
-            alert('Erreur: Body modal non trouvé');
+            console.error('❌ Element comparison-body non trouvé dans le DOM');
+            console.log('🔍 Éléments disponibles avec id contenant "comparison":');
+            document.querySelectorAll('[id*="comparison"]').forEach(el => {
+                console.log('- ', el.id, el);
+            });
+            alert('Erreur: Body modal non trouvé dans le DOM');
             return;
         }
         
@@ -100,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         modal.classList.add('active');
         
-        console.log('Modal de comparaison affichée avec succès');
+        console.log('✅ Modal de comparaison affichée avec succès');
     }
     
     function closeComparison() {
@@ -625,15 +640,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     poids.addEventListener('input', () => {
-        // Annuler le timeout précédent
-        if (poidsTimeout) {
-            clearTimeout(poidsTimeout);
-        }
-        
-        // Délai de 1.5 seconde avant de passer à l'étape suivante
-        poidsTimeout = setTimeout(() => {
+        // Afficher l'étape 3 (type) dès la saisie du premier chiffre, SANS scroll
+        const poidsValue = parseFloat(poids.value);
+        if (poids.value.length > 0 && poidsValue > 0) {
             // Forcer palette si > 60kg
-            const poidsValue = parseFloat(poids.value);
             if (poidsValue > 60) {
                 const paletteRadio = document.getElementById('type-palette');
                 if (paletteRadio) {
@@ -657,12 +667,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     colisOption.style.display = 'block';
                 }
                 
-                // Passer à l'étape type si poids validé (SANS scroll)
-                if (validatePoids() && canProceedToStep(3)) {
+                // Passer à l'étape type dès la saisie (SANS scroll)
+                if (canProceedToStep(3)) {
                     showStep(3, false); // false = pas de scroll
                 }
             }
-        }, 1500); // Délai de 1,5 seconde
+        }
         
         calculatePrices();
     });
