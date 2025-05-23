@@ -901,6 +901,59 @@ body {
 }
 
 /* =============================================================================
+   RÉCAPITULATIF DE SAISIE
+============================================================================= */
+
+.recap-saisie {
+  background: white;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.recap-saisie h3 {
+  margin: 0 0 0.75rem 0;
+  color: var(--primary-color);
+  font-size: 1rem;
+}
+
+.recap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.recap-grid span {
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-light);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  border-left: 3px solid var(--primary-color);
+}
+
+.btn-modify {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  background: var(--text-muted);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: var(--transition);
+}
+
+.btn-modify:hover {
+  background: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+/* =============================================================================
    RÉSULTATS ET ALERTES
 ============================================================================= */
 
