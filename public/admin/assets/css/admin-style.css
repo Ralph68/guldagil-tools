@@ -1,14 +1,31 @@
-/* TEST - public/admin/assets/css/admin-style.css */
+/* FORCE CSS - public/admin/assets/css/admin-style.css */
 
-body {
-    background-color: red !important;
-    color: white !important;
+/* Test ultra-visible pour vérifier le chargement */
+* {
+    box-sizing: border-box !important;
 }
 
-.admin-header {
-    background: blue !important;
-    color: yellow !important;
+html, body {
+    background-color: red !important;
+    color: white !important;
+    font-family: Arial, sans-serif !important;
+    margin: 0 !important;
     padding: 20px !important;
 }
 
-/* Si vous voyez du rouge et bleu, le CSS se charge */
+.debug-box {
+    background: blue !important;
+    color: yellow !important;
+    border: 5px solid green !important;
+    padding: 30px !important;
+    margin: 20px !important;
+}
+
+.admin-header {
+    background: purple !important;
+    color: orange !important;
+    padding: 30px !important;
+    font-size: 24px !important;
+}
+
+/* Si RIEN ne change, c'est que PageSpeed bloque le CSS */
