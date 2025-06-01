@@ -517,7 +517,8 @@ $calculationsChangeFormatted = formatChange(rand(-10, 25));
 
     <!-- JavaScript Administration -->
     <script src="assets/js/admin.js"></script>
-    <script src="assets/js/rates-management.js"></script>
+    <script src="assets/js/debug-step.js"></script>
+    <!-- <script src="assets/js/rates-management.js"></script> -->
     
     <script>
         // Fonctions utilitaires spécifiques à cette page
