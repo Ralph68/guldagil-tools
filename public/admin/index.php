@@ -1,5 +1,5 @@
 <?php
-// public/admin/index.php - Interface d'administration propre et finale
+// public/admin/index.php - Interface d'administration complète
 require __DIR__ . '/../../config.php';
 
 // Vérifier si Transport est déjà inclus
@@ -310,15 +310,14 @@ $calculationsChangeFormatted = formatChange(rand(-10, 25));
                 </div>
                 <div class="admin-card-body">
                     <!-- Barre de recherche et filtres -->
-                    <div class="search-filters" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;">
+                    <div class="search-filters">
                         <div style="flex: 1; min-width: 250px;">
-                            <input type="text" id="search-rates" placeholder="Rechercher par département, transporteur..." 
-                                   class="form-control" style="width: 100%; padding: 0.75rem; border: 2px solid var(--border-color); border-radius: var(--border-radius);">
+                            <input type="text" id="search-rates" placeholder="Rechercher par département, transporteur..." class="form-control">
                         </div>
-                        <select id="filter-carrier" style="min-width: 150px; padding: 0.75rem; border: 2px solid var(--border-color); border-radius: var(--border-radius);">
+                        <select id="filter-carrier">
                             <option value="">Tous les transporteurs</option>
                         </select>
-                        <select id="filter-department" style="min-width: 150px; padding: 0.75rem; border: 2px solid var(--border-color); border-radius: var(--border-radius);">
+                        <select id="filter-department">
                             <option value="">Tous les départements</option>
                         </select>
                         <button class="btn btn-secondary" id="search-button">
@@ -515,11 +514,126 @@ $calculationsChangeFormatted = formatChange(rand(-10, 25));
         </div>
     </div>
 
+    <!-- Modal d'édition des tarifs -->
+    <div id="edit-rate-modal" class="modal" style="display: none;">
+        <div class="modal-content edit-rate-content">
+            <div class="modal-header">
+                <h3>✏️ Édition du tarif</h3>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-rate-form">
+                    <!-- Informations générales -->
+                    <div class="form-section">
+                        <h4>Informations générales</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edit-carrier">Transporteur</label>
+                                <input type="text" id="edit-carrier" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-department-num">Département</label>
+                                <input type="text" id="edit-department-num" readonly>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edit-department-name">Nom du département</label>
+                                <input type="text" id="edit-department-name" placeholder="Ex: Bas-Rhin">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-delay">Délai de livraison</label>
+                                <input type="text" id="edit-delay" placeholder="Ex: 24h, 24h-48h">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tarifs par tranche de poids -->
+                    <div class="form-section">
+                        <h4>Tarifs par tranche de poids (en €)</h4>
+                        <div class="tariffs-grid">
+                            <div class="form-group">
+                                <label for="edit-tarif-0-9">0-9 kg</label>
+                                <input type="number" id="edit-tarif-0-9" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-10-19">10-19 kg</label>
+                                <input type="number" id="edit-tarif-10-19" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-20-29">20-29 kg</label>
+                                <input type="number" id="edit-tarif-20-29" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-30-39">30-39 kg</label>
+                                <input type="number" id="edit-tarif-30-39" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-40-49">40-49 kg</label>
+                                <input type="number" id="edit-tarif-40-49" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-50-59">50-59 kg</label>
+                                <input type="number" id="edit-tarif-50-59" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-60-69">60-69 kg</label>
+                                <input type="number" id="edit-tarif-60-69" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-70-79">70-79 kg</label>
+                                <input type="number" id="edit-tarif-70-79" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-80-89">80-89 kg</label>
+                                <input type="number" id="edit-tarif-80-89" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-90-99">90-99 kg</label>
+                                <input type="number" id="edit-tarif-90-99" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-100-299">100-299 kg</label>
+                                <input type="number" id="edit-tarif-100-299" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-300-499">300-499 kg</label>
+                                <input type="number" id="edit-tarif-300-499" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-500-999">500-999 kg</label>
+                                <input type="number" id="edit-tarif-500-999" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-tarif-1000-1999">1000-1999 kg</label>
+                                <input type="number" id="edit-tarif-1000-1999" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <!-- Tarif spécial XPO -->
+                            <div class="form-group" id="edit-tarif-2000-group" style="display: none;">
+                                <label for="edit-tarif-2000-2999">2000-2999 kg</label>
+                                <input type="number" id="edit-tarif-2000-2999" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Champs cachés -->
+                    <input type="hidden" id="edit-rate-id">
+                    <input type="hidden" id="edit-carrier-code">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="saveRateChanges()">
+                    <span>💾</span>
+                    Enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript Administration -->
     <script src="assets/js/admin.js"></script>
-    <script src="assets/js/debug-step.js"></script>
     <script src="assets/js/rates-management.js"></script>
-    <script src="assets/js/test-rates.js"></script>
     
     <script>
         // Fonctions utilitaires spécifiques à cette page
@@ -548,268 +662,7 @@ $calculationsChangeFormatted = formatChange(rand(-10, 25));
             }
         });
         
-        // Style du modal
-        const modalStyle = document.createElement('style');
-        modalStyle.textContent = `
-            .modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.6);
-                backdrop-filter: blur(4px);
-                z-index: 1000;
-                align-items: center;
-                justify-content: center;
-                padding: 1rem;
-            }
-            .modal-content {
-                background: white;
-                border-radius: 8px;
-                max-width: 600px;
-                width: 100%;
-                max-height: 90vh;
-                overflow-y: auto;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            }
-            .modal-header {
-                padding: 1.5rem;
-                background: var(--primary-color);
-                color: white;
-                border-radius: 8px 8px 0 0;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .modal-header h3 {
-                margin: 0;
-                font-size: 1.2rem;
-            }
-            .modal-close {
-                background: none;
-                border: none;
-                color: white;
-                font-size: 24px;
-                cursor: pointer;
-                padding: 0.5rem;
-                border-radius: 50%;
-                transition: all 0.3s ease;
-            }
-            .modal-close:hover {
-                background: rgba(255,255,255,0.2);
-            }
-            .modal-body {
-                padding: 1.5rem;
-            }
-            .modal-footer {
-                padding: 1rem 1.5rem;
-                background: #f8f9fa;
-                border-top: 1px solid #ddd;
-                display: flex;
-                justify-content: flex-end;
-                gap: 1rem;
-                border-radius: 0 0 8px 8px;
-            }
-        `;
-        document.head.appendChild(modalStyle);
-        
         console.log('✅ Interface d\'administration chargée');
     </script>
-    <!-- Modal d'édition des tarifs -->
-<div id="edit-rate-modal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 800px;">
-        <div class="modal-header">
-            <h3>✏️ Édition du tarif</h3>
-            <button class="modal-close" onclick="closeEditModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="edit-rate-form">
-                <!-- Informations générales -->
-                <div class="form-section">
-                    <h4>Informations générales</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="edit-carrier">Transporteur</label>
-                            <input type="text" id="edit-carrier" readonly style="background: #f5f5f5;">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-department-num">Département</label>
-                            <input type="text" id="edit-department-num" readonly style="background: #f5f5f5;">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="edit-department-name">Nom du département</label>
-                            <input type="text" id="edit-department-name" placeholder="Ex: Bas-Rhin">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-delay">Délai de livraison</label>
-                            <input type="text" id="edit-delay" placeholder="Ex: 24h, 24h-48h">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tarifs par tranche de poids -->
-                <div class="form-section">
-                    <h4>Tarifs par tranche de poids (en €)</h4>
-                    <div class="tariffs-grid">
-                        <div class="form-group">
-                            <label for="edit-tarif-0-9">0-9 kg</label>
-                            <input type="number" id="edit-tarif-0-9" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-10-19">10-19 kg</label>
-                            <input type="number" id="edit-tarif-10-19" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-20-29">20-29 kg</label>
-                            <input type="number" id="edit-tarif-20-29" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-30-39">30-39 kg</label>
-                            <input type="number" id="edit-tarif-30-39" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-40-49">40-49 kg</label>
-                            <input type="number" id="edit-tarif-40-49" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-50-59">50-59 kg</label>
-                            <input type="number" id="edit-tarif-50-59" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-60-69">60-69 kg</label>
-                            <input type="number" id="edit-tarif-60-69" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-70-79">70-79 kg</label>
-                            <input type="number" id="edit-tarif-70-79" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-80-89">80-89 kg</label>
-                            <input type="number" id="edit-tarif-80-89" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-90-99">90-99 kg</label>
-                            <input type="number" id="edit-tarif-90-99" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-100-299">100-299 kg</label>
-                            <input type="number" id="edit-tarif-100-299" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-300-499">300-499 kg</label>
-                            <input type="number" id="edit-tarif-300-499" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-500-999">500-999 kg</label>
-                            <input type="number" id="edit-tarif-500-999" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-tarif-1000-1999">1000-1999 kg</label>
-                            <input type="number" id="edit-tarif-1000-1999" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <!-- Tarif spécial XPO -->
-                        <div class="form-group" id="edit-tarif-2000-group" style="display: none;">
-                            <label for="edit-tarif-2000-2999">2000-2999 kg</label>
-                            <input type="number" id="edit-tarif-2000-2999" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Champs cachés -->
-                <input type="hidden" id="edit-rate-id">
-                <input type="hidden" id="edit-carrier-code">
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Annuler</button>
-            <button type="button" class="btn btn-primary" onclick="saveRateChanges()">
-                <span>💾</span>
-                Enregistrer
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- CSS pour la modal d'édition -->
-<style>
-.form-section {
-    margin-bottom: 2rem;
-}
-
-.form-section h4 {
-    margin: 0 0 1rem 0;
-    color: var(--primary-color);
-    font-size: 1.1rem;
-    border-bottom: 2px solid var(--primary-color);
-    padding-bottom: 0.5rem;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-}
-
-.form-group label {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #555;
-    font-size: 0.9rem;
-}
-
-.form-group input {
-    padding: 0.75rem;
-    border: 2px solid var(--border-color);
-    border-radius: var(--border-radius);
-    font-size: 0.9rem;
-    transition: var(--transition);
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.1);
-}
-
-.tariffs-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-}
-
-.tariffs-grid .form-group label {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-.tariffs-grid .form-group input {
-    padding: 0.5rem;
-    font-size: 0.85rem;
-}
-
-@media (max-width: 768px) {
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .tariffs-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    }
-    
-    .modal-content {
-        margin: 1rem;
-        max-width: calc(100% - 2rem);
-    }
-}
-</style>
 </body>
 </html>
