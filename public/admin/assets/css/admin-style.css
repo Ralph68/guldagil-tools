@@ -1,31 +1,494 @@
-/* FORCE CSS - public/admin/assets/css/admin-style.css */
+/* public/admin/assets/css/admin-style.css - Version finale */
 
-/* Test ultra-visible pour vérifier le chargement */
+:root {
+    --primary-color: #007acc;
+    --primary-hover: #005f99;
+    --success-color: #4CAF50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+    --bg-light: #f8f9fa;
+    --bg-lighter: #eef6ff;
+    --border-color: #ddd;
+    --text-muted: #666;
+    --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --shadow-hover: 0 4px 12px rgba(0,0,0,0.15);
+    --border-radius: 8px;
+    --transition: all 0.3s ease;
+}
+
 * {
     box-sizing: border-box !important;
 }
 
-html, body {
-    background-color: red !important;
-    color: white !important;
-    font-family: Arial, sans-serif !important;
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif !important;
+    line-height: 1.6 !important;
+    color: #333 !important;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%) !important;
     margin: 0 !important;
-    padding: 20px !important;
+    padding: 0 !important;
+    min-height: 100vh !important;
 }
 
-.debug-box {
-    background: blue !important;
-    color: yellow !important;
-    border: 5px solid green !important;
-    padding: 30px !important;
-    margin: 20px !important;
-}
+/* =============================================================================
+   HEADER ADMINISTRATION
+============================================================================= */
 
 .admin-header {
-    background: purple !important;
-    color: orange !important;
-    padding: 30px !important;
-    font-size: 24px !important;
+    background: white !important;
+    box-shadow: var(--shadow) !important;
+    padding: 1rem 2rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
 }
 
-/* Si RIEN ne change, c'est que PageSpeed bloque le CSS */
+.admin-header h1 {
+    margin: 0 !important;
+    color: var(--primary-color) !important;
+    font-size: 1.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+}
+
+.subtitle {
+    font-size: 0.7em !important;
+    color: var(--text-muted) !important;
+    font-weight: normal !important;
+}
+
+.admin-nav {
+    display: flex !important;
+    gap: 1rem !important;
+}
+
+.admin-nav a,
+.admin-nav .user-info {
+    padding: 0.5rem 1rem !important;
+    background: var(--bg-light) !important;
+    color: var(--primary-color) !important;
+    text-decoration: none !important;
+    border-radius: var(--border-radius) !important;
+    transition: var(--transition) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    font-size: 0.9rem !important;
+}
+
+.admin-nav .user-info {
+    background: var(--primary-color) !important;
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+.admin-nav a:hover {
+    background: var(--primary-color) !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+}
+
+/* =============================================================================
+   CONTAINER ET LAYOUT
+============================================================================= */
+
+.admin-container {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    padding: 2rem !important;
+}
+
+/* =============================================================================
+   STATISTIQUES DASHBOARD
+============================================================================= */
+
+.stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    gap: 1.5rem !important;
+    margin-bottom: 2rem !important;
+}
+
+.stat-card {
+    background: white !important;
+    padding: 1.5rem !important;
+    border-radius: var(--border-radius) !important;
+    box-shadow: var(--shadow) !important;
+    transition: var(--transition) !important;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: var(--shadow-hover) !important;
+}
+
+.stat-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 1rem !important;
+}
+
+.stat-title {
+    font-size: 0.9rem !important;
+    color: var(--text-muted) !important;
+    font-weight: 500 !important;
+}
+
+.stat-icon {
+    font-size: 1.5rem !important;
+    opacity: 0.8 !important;
+}
+
+.stat-icon.primary { color: var(--primary-color) !important; }
+.stat-icon.success { color: var(--success-color) !important; }
+.stat-icon.warning { color: var(--warning-color) !important; }
+
+.stat-value {
+    font-size: 2rem !important;
+    font-weight: bold !important;
+    color: var(--primary-color) !important;
+    margin: 0.5rem 0 !important;
+}
+
+.stat-trend {
+    font-size: 0.8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+}
+
+.stat-trend.positive { color: var(--success-color) !important; }
+.stat-trend.negative { color: var(--error-color) !important; }
+.stat-trend.neutral { color: var(--text-muted) !important; }
+
+/* =============================================================================
+   NAVIGATION PAR ONGLETS
+============================================================================= */
+
+.tab-navigation {
+    display: flex !important;
+    background: white !important;
+    border-radius: var(--border-radius) !important;
+    box-shadow: var(--shadow) !important;
+    margin-bottom: 2rem !important;
+    overflow: hidden !important;
+}
+
+.tab-button {
+    flex: 1 !important;
+    padding: 1rem 2rem !important;
+    background: white !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    transition: var(--transition) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+}
+
+.tab-button.active {
+    background: var(--primary-color) !important;
+    color: white !important;
+}
+
+.tab-button:hover:not(.active) {
+    background: var(--bg-light) !important;
+    color: var(--primary-color) !important;
+}
+
+/* =============================================================================
+   CONTENU DES ONGLETS
+============================================================================= */
+
+.tab-content {
+    display: none !important;
+}
+
+.tab-content.active {
+    display: block !important;
+}
+
+/* =============================================================================
+   CARTES ADMINISTRATION
+============================================================================= */
+
+.admin-card {
+    background: white !important;
+    border-radius: var(--border-radius) !important;
+    box-shadow: var(--shadow) !important;
+    overflow: hidden !important;
+    margin-bottom: 2rem !important;
+}
+
+.admin-card-header {
+    background: var(--bg-light) !important;
+    padding: 1.5rem !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.admin-card-header h2,
+.admin-card-header h3 {
+    margin: 0 !important;
+    color: var(--primary-color) !important;
+    font-size: 1.3rem !important;
+}
+
+.admin-card-header h3 {
+    font-size: 1.1rem !important;
+}
+
+.admin-card-body {
+    padding: 1.5rem !important;
+}
+
+/* =============================================================================
+   BOUTONS
+============================================================================= */
+
+.btn {
+    padding: 0.75rem 1.5rem !important;
+    border: none !important;
+    border-radius: var(--border-radius) !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    transition: var(--transition) !important;
+    font-size: 0.9rem !important;
+    line-height: 1 !important;
+}
+
+.btn-primary {
+    background: var(--primary-color) !important;
+    color: white !important;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-hover) !important;
+}
+
+.btn-success {
+    background: var(--success-color) !important;
+    color: white !important;
+}
+
+.btn-success:hover {
+    background: #45a049 !important;
+    transform: translateY(-2px) !important;
+}
+
+.btn-warning {
+    background: var(--warning-color) !important;
+    color: white !important;
+}
+
+.btn-warning:hover {
+    background: #f57c00 !important;
+    transform: translateY(-2px) !important;
+}
+
+.btn-danger {
+    background: var(--error-color) !important;
+    color: white !important;
+}
+
+.btn-danger:hover {
+    background: #d32f2f !important;
+    transform: translateY(-2px) !important;
+}
+
+.btn-secondary {
+    background: var(--text-muted) !important;
+    color: white !important;
+}
+
+.btn-secondary:hover {
+    background: #555 !important;
+    transform: translateY(-2px) !important;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8rem !important;
+}
+
+/* =============================================================================
+   TABLEAUX
+============================================================================= */
+
+.table-container {
+    overflow-x: auto !important;
+    margin-top: 1rem !important;
+}
+
+.data-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    min-width: 800px !important;
+}
+
+.data-table th,
+.data-table td {
+    padding: 1rem !important;
+    text-align: left !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    white-space: nowrap !important;
+}
+
+.data-table th {
+    background: var(--bg-light) !important;
+    font-weight: 600 !important;
+    color: var(--primary-color) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+}
+
+.data-table tr:hover {
+    background: var(--bg-light) !important;
+}
+
+.data-table .actions {
+    display: flex !important;
+    gap: 0.5rem !important;
+    white-space: nowrap !important;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* =============================================================================
+   BADGES ET ÉLÉMENTS UI
+============================================================================= */
+
+.badge {
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 4px !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+}
+
+.badge-success {
+    background: #d4edda !important;
+    color: #155724 !important;
+}
+
+.badge-warning {
+    background: #fff3cd !important;
+    color: #856404 !important;
+}
+
+.badge-info {
+    background: #d1ecf1 !important;
+    color: #0c5460 !important;
+}
+
+.font-semibold { font-weight: 600 !important; }
+.font-medium { font-weight: 500 !important; }
+.text-primary { color: var(--primary-color) !important; }
+
+/* =============================================================================
+   ANIMATIONS
+============================================================================= */
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in-up {
+    animation: slideInUp 0.6s ease forwards !important;
+}
+
+/* =============================================================================
+   RESPONSIVE
+============================================================================= */
+
+@media (max-width: 768px) {
+    .admin-container {
+        padding: 1rem !important;
+    }
+
+    .admin-header {
+        padding: 1rem !important;
+        flex-direction: column !important;
+        gap: 1rem !important;
+        text-align: center !important;
+    }
+
+    .admin-nav {
+        justify-content: center !important;
+    }
+
+    .tab-navigation {
+        flex-direction: column !important;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    }
+
+    .data-table {
+        font-size: 0.9rem !important;
+        min-width: 600px !important;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 0.75rem 0.5rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-header h1 {
+        font-size: 1.2rem !important;
+    }
+
+    .subtitle {
+        display: none !important;
+    }
+
+    .admin-nav a {
+        padding: 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+
+    .stat-card {
+        padding: 1rem !important;
+    }
+
+    .stat-icon {
+        font-size: 1.2rem !important;
+    }
+
+    .stat-value {
+        font-size: 1.5rem !important;
+    }
+}
