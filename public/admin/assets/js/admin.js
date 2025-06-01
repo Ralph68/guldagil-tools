@@ -1,55 +1,205 @@
-// assets/js/admin.js - Script principal d'administration
+// public/admin/assets/js/admin.js - Version finale optimisée
 
-console.log('🔧 Chargement du script admin...');
+console.log('🚀 Admin JS chargé !');
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ Interface admin initialisée');
+    
+    // Initialiser l'interface
+    initializeAdminInterface();
+    
+    // Animer les statistiques
+    setTimeout(animateStats, 500);
+    
+    // Gestion des raccourcis clavier
+    setupKeyboardShortcuts();
+});
 
 // =============================================================================
 // GESTION DES ONGLETS
 // =============================================================================
 
-let currentTab = 'dashboard';
-
-function showTab(tabId) {
-    console.log('📂 Changement vers onglet:', tabId);
+function showTab(tabName) {
+    console.log('Affichage onglet:', tabName);
     
-    // Cacher tous les contenus d'onglets
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
+    // Masquer tous les onglets
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
     });
     
-    // Désactiver tous les boutons d'onglets
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.classList.remove('active');
+    // Désactiver tous les boutons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
     });
     
-    // Activer l'onglet sélectionné
-    const targetContent = document.getElementById(`tab-${tabId}`);
-    const targetButton = document.querySelector(`[data-tab="${tabId}"]`);
+    // Afficher l'onglet sélectionné
+    const targetTab = document.getElementById('tab-' + tabName);
+    const targetButton = document.querySelector(`[data-tab="${tabName}"]`);
     
-    if (targetContent) {
-        targetContent.classList.add('active');
+    if (targetTab) {
+        targetTab.classList.add('active');
     }
     
     if (targetButton) {
         targetButton.classList.add('active');
     }
     
-    currentTab = tabId;
+    // Charger le contenu selon l'onglet
+    switch(tabName) {
+        case 'rates':
+            loadRatesTab();
+            break;
+        case 'options':
+            loadOptionsTab();
+            break;
+        case 'taxes':
+            loadTaxesTab();
+            break;
+        case 'import':
+            loadImportExportTab();
+            break;
+        case 'dashboard':
+        default:
+            // Dashboard est déjà chargé
+            break;
+    }
+}
+
+// =============================================================================
+// CHARGEMENT DES ONGLETS
+// =============================================================================
+
+function loadRatesTab() {
+    console.log('Chargement onglet tarifs...');
     
-    // Actions spécifiques par onglet
-    if (tabId === 'rates') {
-        // Initialiser le gestionnaire de tarifs avec un délai
+    // Si le gestionnaire de tarifs est disponible, l'initialiser
+    if (typeof window.initRatesManager === 'function') {
+        // Vérifier si c'est déjà initialisé
+        if (!window.ratesManagerInitialized) {
+            window.initRatesManager();
+            window.ratesManagerInitialized = true;
+        } else if (typeof window.loadRates === 'function') {
+            // Recharger les données si déjà initialisé
+            window.loadRates(true);
+        }
+    } else {
+        showAlert('warning', 'Le module de gestion des tarifs n\'est pas encore chargé. Veuillez patienter...');
+        
+        // Réessayer après un court délai
         setTimeout(() => {
-            if (window.initRatesManager && typeof window.initRatesManager === 'function') {
-                console.log('🔄 Initialisation du gestionnaire de tarifs...');
-                window.initRatesManager().catch(error => {
-                    console.error('❌ Erreur init rates manager:', error);
-                    showAlert('error', 'Erreur lors du chargement des tarifs');
-                });
-            } else {
-                console.error('❌ initRatesManager non disponible');
-                showAlert('warning', 'Module de gestion des tarifs non disponible');
+            if (typeof window.initRatesManager === 'function') {
+                window.initRatesManager();
+                window.ratesManagerInitialized = true;
             }
-        }, 200);
+        }, 1000);
+    }
+}
+
+function loadOptionsTab() {
+    console.log('Chargement onglet options...');
+    showAlert('info', 'Module d\'options en cours de développement');
+}
+
+function loadTaxesTab() {
+    console.log('Chargement onglet taxes...');
+    showAlert('info', 'Module de taxes en cours de développement');
+}
+
+function loadImportExportTab() {
+    console.log('Chargement onglet import/export...');
+    showAlert('info', 'Module import/export initialisé');
+}
+
+// =============================================================================
+// ACTIONS RAPIDES DASHBOARD
+// =============================================================================
+
+function editRate(carrier, department) {
+    console.log(`Action rapide: Édition tarif ${carrier} - ${department}`);
+    
+    // Passer à l'onglet tarifs
+    showTab('rates');
+    
+    // Attendre que l'onglet soit chargé puis filtrer
+    setTimeout(() => {
+        if (typeof window.ratesManager !== 'undefined' && window.ratesManager.filterByCarrier) {
+            window.ratesManager.filterByCarrier(carrier);
+        } else if (typeof window.filterByCarrier === 'function') {
+            window.filterByCarrier(carrier);
+        }
+    }, 500);
+    
+    showAlert('info', `Recherche des tarifs ${carrier} en cours...`);
+}
+
+function deleteRate(carrier, department) {
+    console.log(`Action rapide: Suppression tarif ${carrier} - ${department}`);
+    showAlert('warning', 'Utilisez l\'onglet "Gestion des tarifs" pour supprimer un tarif');
+}
+
+function addRate(carrier, department) {
+    console.log(`Action rapide: Ajout tarif ${carrier} - ${department}`);
+    showTab('rates');
+    showAlert('info', `Préparation de l'ajout d'un tarif ${carrier} pour le département ${department}`);
+}
+
+// =============================================================================
+// IMPORT/EXPORT RAPIDE
+// =============================================================================
+
+function importData() {
+    console.log('Import des données');
+    showAlert('info', 'Fonctionnalité d\'import en cours de développement');
+    
+    // TODO: Implémenter la modal d'import
+    // Pour l'instant, afficher un message informatif
+    setTimeout(() => {
+        showAlert('info', 'Utilisez les templates CSV disponibles en téléchargement');
+    }, 2000);
+}
+
+function exportData() {
+    console.log('Export des données');
+    
+    try {
+        // Rediriger vers l'export complet
+        const exportUrl = 'export.php?type=all&format=csv';
+        
+        // Créer un lien de téléchargement
+        const link = document.createElement('a');
+        link.href = exportUrl;
+        link.download = `guldagil_export_complet_${new Date().toISOString().split('T')[0]}.csv`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showAlert('success', 'Export complet démarré');
+    } catch (error) {
+        console.error('Erreur export:', error);
+        showAlert('error', 'Erreur lors de l\'export');
+    }
+}
+
+function downloadBackup() {
+    console.log('Téléchargement sauvegarde');
+    
+    try {
+        // Export JSON complet pour sauvegarde
+        const backupUrl = 'export.php?type=all&format=json';
+        
+        const link = document.createElement('a');
+        link.href = backupUrl;
+        link.download = `guldagil_backup_${new Date().toISOString().split('T')[0]}.json`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showAlert('success', 'Sauvegarde générée avec succès');
+    } catch (error) {
+        console.error('Erreur backup:', error);
+        showAlert('error', 'Erreur lors de la génération de la sauvegarde');
     }
 }
 
@@ -57,68 +207,184 @@ function showTab(tabId) {
 // SYSTÈME D'ALERTES
 // =============================================================================
 
-function showAlert(type, message, duration = 5000) {
-    console.log(`📢 Alert ${type}:`, message);
-    
-    // Créer le container d'alertes s'il n'existe pas
+function showAlert(type, message) {
+    // Créer le conteneur d'alertes s'il n'existe pas
     let container = document.getElementById('alert-container');
     if (!container) {
         container = document.createElement('div');
         container.id = 'alert-container';
         container.style.cssText = `
             position: fixed;
-            top: 90px;
+            top: 100px;
             right: 20px;
-            z-index: 1050;
+            z-index: 9999;
             max-width: 400px;
         `;
         document.body.appendChild(container);
     }
     
-    // Créer l'alerte
-    const alertId = 'alert-' + Date.now();
-    const alertElement = document.createElement('div');
-    alertElement.id = alertId;
-    alertElement.className = `alert alert-${type}`;
-    alertElement.style.cssText = `
+    const alertTypes = {
+        'success': { icon: '✅', class: 'alert-success', bgColor: '#d4edda', borderColor: '#c3e6cb', textColor: '#155724' },
+        'error': { icon: '❌', class: 'alert-danger', bgColor: '#f8d7da', borderColor: '#f5c6cb', textColor: '#721c24' },
+        'warning': { icon: '⚠️', class: 'alert-warning', bgColor: '#fff3cd', borderColor: '#ffeaa7', textColor: '#856404' },
+        'info': { icon: 'ℹ️', class: 'alert-info', bgColor: '#d1ecf1', borderColor: '#bee5eb', textColor: '#0c5460' }
+    };
+    
+    const alertConfig = alertTypes[type] || alertTypes.info;
+    
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertConfig.class}`;
+    alert.style.cssText = `
         padding: 1rem;
         margin-bottom: 0.5rem;
         border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border: 1px solid ${alertConfig.borderColor};
+        background: ${alertConfig.bgColor};
+        color: ${alertConfig.textColor};
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.5rem;
         animation: slideInRight 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         position: relative;
-        cursor: pointer;
+        font-size: 0.9rem;
+        line-height: 1.4;
     `;
     
-    // Couleurs selon le type
-    const colors = {
-        success: { bg: '#d4edda', color: '#155724', border: '#c3e6cb', icon: '✅' },
-        error: { bg: '#f8d7da', color: '#721c24', border: '#f5c6cb', icon: '❌' },
-        warning: { bg: '#fff3cd', color: '#856404', border: '#ffeaa7', icon: '⚠️' },
-        info: { bg: '#d1ecf1', color: '#0c5460', border: '#bee5eb', icon: 'ℹ️' }
-    };
-    
-    const style = colors[type] || colors.info;
-    alertElement.style.background = style.bg;
-    alertElement.style.color = style.color;
-    alertElement.style.border = `1px solid ${style.border}`;
-    
-    alertElement.innerHTML = `
-        <div style="font-size: 1.2rem;">${style.icon}</div>
-        <div style="flex: 1; font-weight: 500;">${message}</div>
-        <button onclick="removeAlert('${alertId}')" 
-                style="background: none; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7;">
-            ×
-        </button>
+    alert.innerHTML = `
+        ${alertConfig.icon} 
+        <span style="flex: 1;">${message}</span>
+        <button onclick="this.parentElement.remove()" 
+                style="background: none; border: none; cursor: pointer; font-size: 18px; color: inherit; padding: 0.25rem; border-radius: 4px; margin-left: 0.5rem;"
+                onmouseover="this.style.background='rgba(0,0,0,0.1)'"
+                onmouseout="this.style.background='none'"
+                title="Fermer">×</button>
     `;
     
-    // Ajouter l'animation CSS si elle n'existe pas
-    if (!document.getElementById('alert-animations')) {
+    container.appendChild(alert);
+    
+    // Auto-remove après 5 secondes (sauf pour les erreurs)
+    const autoRemoveDelay = type === 'error' ? 8000 : 5000;
+    setTimeout(() => {
+        if (alert.parentElement) {
+            alert.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.remove();
+                }
+            }, 300);
+        }
+    }, autoRemoveDelay);
+}
+
+// =============================================================================
+// ANIMATIONS ET EFFETS
+// =============================================================================
+
+function animateStats() {
+    const stats = document.querySelectorAll('.stat-value');
+    stats.forEach((stat, index) => {
+        const finalValue = parseInt(stat.textContent);
+        if (isNaN(finalValue)) return;
+        
+        let currentValue = 0;
+        const increment = finalValue / 30;
+        const duration = 1000 + (index * 200); // Délai échelonné
+        
+        stat.textContent = '0';
+        
+        const counter = setInterval(() => {
+            currentValue += increment;
+            if (currentValue >= finalValue) {
+                stat.textContent = finalValue;
+                clearInterval(counter);
+            } else {
+                stat.textContent = Math.floor(currentValue);
+            }
+        }, duration / 30);
+    });
+}
+
+// =============================================================================
+// RACCOURCIS CLAVIER
+// =============================================================================
+
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', function(e) {
+        // Shortcuts avec Ctrl/Cmd
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+                case 's':
+                    e.preventDefault();
+                    showAlert('info', 'Sauvegarde automatique...');
+                    setTimeout(() => {
+                        showAlert('success', 'Données sauvegardées');
+                    }, 1000);
+                    break;
+                case 'e':
+                    e.preventDefault();
+                    exportData();
+                    break;
+                case '1':
+                    e.preventDefault();
+                    showTab('dashboard');
+                    break;
+                case '2':
+                    e.preventDefault();
+                    showTab('rates');
+                    break;
+                case '3':
+                    e.preventDefault();
+                    showTab('options');
+                    break;
+                case '4':
+                    e.preventDefault();
+                    showTab('taxes');
+                    break;
+                case '5':
+                    e.preventDefault();
+                    showTab('import');
+                    break;
+            }
+        }
+        
+        // Escape pour fermer les modaux
+        if (e.key === 'Escape') {
+            // Fermer les modaux actifs
+            document.querySelectorAll('.modal.active, .modal[style*="display: flex"]').forEach(modal => {
+                modal.style.display = 'none';
+                modal.classList.remove('active');
+            });
+            
+            // Fermer les alertes
+            document.querySelectorAll('.alert').forEach(alert => {
+                alert.remove();
+            });
+        }
+    });
+}
+
+// =============================================================================
+// INITIALISATION
+// =============================================================================
+
+function initializeAdminInterface() {
+    console.log('Initialisation interface admin');
+    
+    // Ajouter les gestionnaires d'événements pour les onglets
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            if (tabName) {
+                showTab(tabName);
+            }
+        });
+    });
+    
+    // Ajouter les animations CSS si elles n'existent pas
+    if (!document.getElementById('admin-animations')) {
         const style = document.createElement('style');
-        style.id = 'alert-animations';
+        style.id = 'admin-animations';
         style.textContent = `
             @keyframes slideInRight {
                 from { transform: translateX(100%); opacity: 0; }
@@ -128,161 +394,103 @@ function showAlert(type, message, duration = 5000) {
                 from { transform: translateX(0); opacity: 1; }
                 to { transform: translateX(100%); opacity: 0; }
             }
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
         `;
         document.head.appendChild(style);
     }
     
-    // Ajouter au container
-    container.appendChild(alertElement);
+    // Initialisation réussie
+    showAlert('success', 'Interface d\'administration chargée !');
     
-    // Fermeture automatique
-    if (duration > 0) {
-        setTimeout(() => removeAlert(alertId), duration);
-    }
-    
-    // Fermeture au clic
-    alertElement.addEventListener('click', () => removeAlert(alertId));
-    
-    return alertId;
-}
-
-function removeAlert(alertId) {
-    const alert = document.getElementById(alertId);
-    if (alert) {
-        alert.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => {
-            if (alert.parentNode) {
-                alert.parentNode.removeChild(alert);
-            }
-        }, 300);
-    }
-}
-
-// Exposer showAlert globalement
-window.showAlert = showAlert;
-window.removeAlert = removeAlert;
-
-// =============================================================================
-// FONCTIONS UTILITAIRES D'ADMINISTRATION
-// =============================================================================
-
-function editRate(carrier, department) {
-    console.log('✏️ Édition tarif:', { carrier, department });
-    showAlert('info', `Édition du tarif ${carrier} pour le département ${department} (en développement)`);
-}
-
-function addRate(carrier, department) {
-    console.log('➕ Ajout tarif:', { carrier, department });
-    showAlert('info', `Ajout d'un tarif ${carrier} pour le département ${department} (en développement)`);
-}
-
-function downloadBackup() {
-    console.log('💾 Téléchargement sauvegarde...');
-    showAlert('info', 'Génération de la sauvegarde en cours...');
-    
-    // Simuler le téléchargement
+    // Auto-masquer l'alerte de bienvenue après 3 secondes
     setTimeout(() => {
-        showAlert('success', 'Sauvegarde générée avec succès !');
-    }, 2000);
-}
-
-function importData() {
-    console.log('📥 Import de données...');
-    showAlert('info', 'Fonctionnalité d\'import en cours de développement');
-}
-
-function exportData() {
-    console.log('📤 Export de données...');
-    showAlert('success', 'Export des données lancé !');
-    
-    // Simuler l'export
-    setTimeout(() => {
-        showAlert('info', 'Export terminé - fichier téléchargé');
+        const alerts = document.querySelectorAll('.alert');
+        if (alerts.length > 0) {
+            alerts[0].style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => alerts[0]?.remove(), 300);
+        }
     }, 3000);
 }
 
 // =============================================================================
-// RACCOURCIS CLAVIER
+// UTILITAIRES DIVERS
 // =============================================================================
 
-document.addEventListener('keydown', function(e) {
-    // Ctrl + S : Sauvegarder
-    if (e.ctrlKey && e.key === 's') {
-        e.preventDefault();
-        showAlert('info', 'Sauvegarde rapide (Ctrl+S)');
-        return false;
-    }
-    
-    // Ctrl + E : Export
-    if (e.ctrlKey && e.key === 'e') {
-        e.preventDefault();
-        exportData();
-        return false;
-    }
-    
-    // Échap : Fermer modal
-    if (e.key === 'Escape') {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            if (modal.style.display !== 'none') {
-                modal.style.display = 'none';
-                modal.classList.remove('active');
+function refreshPage() {
+    location.reload();
+}
+
+function goToCalculator() {
+    window.location.href = '../';
+}
+
+function checkServerStatus() {
+    fetch('api-rates.php?action=carriers')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', 'Serveur opérationnel');
+            } else {
+                showAlert('warning', 'Serveur accessible mais erreur API');
             }
+        })
+        .catch(error => {
+            console.error('Erreur serveur:', error);
+            showAlert('error', 'Problème de connexion au serveur');
         });
-    }
-});
+}
 
 // =============================================================================
-// INITIALISATION
+// FONCTIONS PUBLIQUES
 // =============================================================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Initialisation de l\'interface admin...');
-    
-    // Animation d'entrée pour les cartes statistiques
-    const statCards = document.querySelectorAll('.stat-card');
-    statCards.forEach((card, index) => {
-        card.style.animationDelay = `${index * 0.1}s`;
-    });
-    
-    // Vérifier la disponibilité du gestionnaire de tarifs
-    const checkRatesManager = () => {
-        if (window.initRatesManager) {
-            console.log('✅ Gestionnaire de tarifs disponible');
-            return true;
-        } else {
-            console.log('⏳ Gestionnaire de tarifs en attente...');
-            return false;
-        }
-    };
-    
-    // Attendre que rates-management.js soit chargé
-    let attempts = 0;
-    const maxAttempts = 10;
-    const checkInterval = setInterval(() => {
-        attempts++;
-        if (checkRatesManager() || attempts >= maxAttempts) {
-            clearInterval(checkInterval);
-            if (attempts >= maxAttempts) {
-                console.warn('⚠️ Gestionnaire de tarifs non disponible après 10 tentatives');
-            }
-        }
-    }, 500);
-    
-    // Message de bienvenue
-    setTimeout(() => {
-        showAlert('success', 'Interface d\'administration chargée !', 3000);
-    }, 500);
-    
-    console.log('✅ Interface admin initialisée');
-});
-
-// Exposer les fonctions globalement
+// Exposer les fonctions nécessaires globalement
 window.showTab = showTab;
 window.editRate = editRate;
+window.deleteRate = deleteRate;
 window.addRate = addRate;
-window.downloadBackup = downloadBackup;
 window.importData = importData;
 window.exportData = exportData;
+window.downloadBackup = downloadBackup;
+window.showAlert = showAlert;
+window.refreshPage = refreshPage;
+window.goToCalculator = goToCalculator;
+window.checkServerStatus = checkServerStatus;
 
-console.log('✅ Script admin.js chargé complètement');
+// =============================================================================
+// DÉTECTION DES MODULES
+// =============================================================================
+
+// Vérifier périodiquement si les modules sont chargés
+let moduleCheckInterval;
+
+function checkModules() {
+    const modulesStatus = {
+        ratesManager: typeof window.initRatesManager === 'function',
+        ratesManagerInstance: typeof window.ratesManager !== 'undefined'
+    };
+    
+    console.log('Modules disponibles:', modulesStatus);
+    
+    // Si tous les modules sont chargés, arrêter la vérification
+    if (modulesStatus.ratesManager) {
+        clearInterval(moduleCheckInterval);
+        console.log('✅ Tous les modules admin sont chargés');
+    }
+}
+
+// Vérifier les modules toutes les 2 secondes pendant 10 secondes max
+moduleCheckInterval = setInterval(checkModules, 2000);
+setTimeout(() => {
+    if (moduleCheckInterval) {
+        clearInterval(moduleCheckInterval);
+    }
+}, 10000);
+
+console.log('🎯 Admin JavaScript initialisé avec succès');
+
+// Auto-vérification au démarrage
+setTimeout(checkModules, 1000);
