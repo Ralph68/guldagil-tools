@@ -1,4 +1,4 @@
-// assets/js/rates-management.js - Gestion complète des tarifs
+// assets/js/rates-management.js - Gestion complète des tarifs avec édition
 
 console.log('📦 Chargement du gestionnaire de tarifs...');
 
@@ -278,15 +278,181 @@ class RatesManager {
 
     async editRate(id, carrier) {
         try {
-            this.showInfo(`Édition du tarif ID: ${id} pour ${carrier} (fonctionnalité en développement)`);
-            
-            // TODO: Implémenter la modal d'édition
             console.log('📝 Édition tarif:', { id, carrier });
+            
+            // 1. Récupérer les données du tarif via l'API
+            const response = await fetch(`${this.apiUrl}?action=get&id=${id}&carrier=${carrier}`);
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.error || 'Erreur lors de la récupération du tarif');
+            }
+            
+            // 2. Remplir la modal avec les données
+            this.populateEditModal(result.data);
+            
+            // 3. Afficher la modal
+            this.showEditModal();
             
         } catch (error) {
             console.error('❌ Erreur lors de l\'édition:', error);
-            this.showError('Erreur lors de l\'édition du tarif');
+            this.showError('Erreur lors de l\'édition du tarif: ' + error.message);
         }
+    }
+
+    populateEditModal(rateData) {
+        console.log('📋 Remplissage modal avec:', rateData);
+        
+        // Informations générales
+        document.getElementById('edit-rate-id').value = rateData.id;
+        document.getElementById('edit-carrier-code').value = rateData.carrier_code;
+        document.getElementById('edit-carrier').value = rateData.carrier_name;
+        document.getElementById('edit-department-num').value = rateData.department_num;
+        document.getElementById('edit-department-name').value = rateData.department_name || '';
+        document.getElementById('edit-delay').value = rateData.delay || '';
+        
+        // Tarifs
+        const tariffFields = [
+            'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
+            'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
+            'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999'
+        ];
+        
+        tariffFields.forEach(field => {
+            const input = document.getElementById(`edit-${field.replace(/_/g, '-')}`);
+            if (input) {
+                const value = rateData.rates[field];
+                input.value = value !== null ? parseFloat(value).toFixed(2) : '';
+            }
+        });
+        
+        // Tarif spécial XPO (2000-2999 kg)
+        if (rateData.carrier_code === 'xpo') {
+            document.getElementById('edit-tarif-2000-group').style.display = 'block';
+            const xpoInput = document.getElementById('edit-tarif-2000-2999');
+            if (xpoInput) {
+                const value = rateData.rates.tarif_2000_2999;
+                xpoInput.value = value !== null ? parseFloat(value).toFixed(2) : '';
+            }
+        } else {
+            document.getElementById('edit-tarif-2000-group').style.display = 'none';
+        }
+    }
+
+    showEditModal() {
+        const modal = document.getElementById('edit-rate-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+            
+            // Focus sur le premier champ éditable
+            setTimeout(() => {
+                const firstInput = document.getElementById('edit-department-name');
+                if (firstInput) {
+                    firstInput.focus();
+                }
+            }, 100);
+        }
+    }
+
+    closeEditModal() {
+        const modal = document.getElementById('edit-rate-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+    }
+
+    async saveRateChanges() {
+        try {
+            console.log('💾 Sauvegarde des modifications...');
+            
+            // Récupérer les données du formulaire
+            const formData = this.getEditFormData();
+            
+            // Validation
+            if (!this.validateEditForm(formData)) {
+                return;
+            }
+            
+            // Envoyer les modifications via l'API
+            const response = await fetch(`${this.apiUrl}?action=update`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showSuccess('Tarif mis à jour avec succès !');
+                this.closeEditModal();
+                
+                // Recharger les données
+                this.loadRates(this.currentPage, this.currentFilters);
+            } else {
+                throw new Error(result.error || 'Erreur lors de la sauvegarde');
+            }
+            
+        } catch (error) {
+            console.error('❌ Erreur sauvegarde:', error);
+            this.showError('Erreur lors de la sauvegarde: ' + error.message);
+        }
+    }
+
+    getEditFormData() {
+        const formData = {
+            id: document.getElementById('edit-rate-id').value,
+            carrier_code: document.getElementById('edit-carrier-code').value,
+            department_name: document.getElementById('edit-department-name').value,
+            delay: document.getElementById('edit-delay').value,
+            rates: {}
+        };
+        
+        // Récupérer tous les tarifs
+        const tariffFields = [
+            'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
+            'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
+            'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999'
+        ];
+        
+        tariffFields.forEach(field => {
+            const input = document.getElementById(`edit-${field.replace(/_/g, '-')}`);
+            if (input) {
+                const value = input.value.trim();
+                formData.rates[field] = value !== '' ? parseFloat(value) : null;
+            }
+        });
+        
+        // Tarif spécial XPO
+        if (formData.carrier_code === 'xpo') {
+            const xpoInput = document.getElementById('edit-tarif-2000-2999');
+            if (xpoInput) {
+                const value = xpoInput.value.trim();
+                formData.rates.tarif_2000_2999 = value !== '' ? parseFloat(value) : null;
+            }
+        }
+        
+        return formData;
+    }
+
+    validateEditForm(formData) {
+        // Validation basique
+        if (!formData.id || !formData.carrier_code) {
+            this.showError('Données manquantes pour la sauvegarde');
+            return false;
+        }
+        
+        // Vérifier qu'au moins un tarif est renseigné
+        const hasAnyRate = Object.values(formData.rates).some(rate => rate !== null && rate > 0);
+        if (!hasAnyRate) {
+            this.showError('Veuillez renseigner au moins un tarif');
+            return false;
+        }
+        
+        return true;
     }
 
     async deleteRate(id, carrier, department) {
@@ -549,5 +715,18 @@ async function initRatesManager() {
 // Exposer les fonctions globalement
 window.initRatesManager = initRatesManager;
 window.RatesManager = RatesManager;
+
+// Fonctions globales pour la modal d'édition
+window.closeEditModal = function() {
+    if (window.ratesManager) {
+        window.ratesManager.closeEditModal();
+    }
+};
+
+window.saveRateChanges = function() {
+    if (window.ratesManager) {
+        window.ratesManager.saveRateChanges();
+    }
+};
 
 console.log('✅ Module de gestion des tarifs chargé complètement');
