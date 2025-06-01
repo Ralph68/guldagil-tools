@@ -25,6 +25,10 @@ try {
             handleListRates($db, $transport);
             break;
             
+        case 'get':
+            handleGetRequest($db);
+            break;
+            
         case 'carriers':
             handleGetCarriers($db);
             break;
@@ -37,6 +41,14 @@ try {
             handleDeleteRate($db, $transport);
             break;
             
+        case 'update':
+            handleUpdateRate($db);
+            break;
+            
+        case 'create':
+            handleCreateRate($db);
+            break;
+            
         default:
             throw new Exception("Action non supportée: $action");
     }
@@ -47,6 +59,307 @@ try {
         'success' => false,
         'error' => $e->getMessage()
     ]);
+}
+
+/**
+ * Gère les requêtes GET pour récupérer un tarif spécifique
+ */
+function handleGetRequest($db) {
+    $id = (int)($_GET['id'] ?? 0);
+    $carrier = $_GET['carrier'] ?? '';
+    
+    if (!$id || !$carrier) {
+        throw new Exception('ID et transporteur requis');
+    }
+    
+    $rate = getSingleRate($db, $carrier, $id);
+    
+    if ($rate) {
+        echo json_encode([
+            'success' => true,
+            'data' => $rate
+        ]);
+    } else {
+        http_response_code(404);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Tarif non trouvé'
+        ]);
+    }
+}
+
+/**
+ * Récupère un tarif spécifique par ID et transporteur
+ */
+function getSingleRate($db, $carrier, $id) {
+    $tables = [
+        'heppner' => 'gul_heppner_rates',
+        'xpo' => 'gul_xpo_rates',
+        'kn' => 'gul_kn_rates'
+    ];
+    
+    $carrierNames = [
+        'heppner' => 'Heppner',
+        'xpo' => 'XPO',
+        'kn' => 'Kuehne + Nagel'
+    ];
+    
+    if (!isset($tables[$carrier])) {
+        throw new Exception('Transporteur non valide');
+    }
+    
+    $table = $tables[$carrier];
+    $carrierName = $carrierNames[$carrier];
+    
+    // Construire la requête selon le transporteur
+    $query = "SELECT 
+        id,
+        '{$carrier}' as carrier_code,
+        '{$carrierName}' as carrier_name,
+        num_departement as department_num,
+        departement as department_name,
+        delais as delay,
+        tarif_0_9,
+        tarif_10_19,
+        tarif_20_29,
+        tarif_30_39,
+        tarif_40_49,
+        tarif_50_59,
+        tarif_60_69,
+        tarif_70_79,
+        tarif_80_89,
+        tarif_90_99,
+        tarif_100_299,
+        tarif_300_499,
+        tarif_500_999,
+        tarif_1000_1999";
+        
+    // Ajouter la colonne spécifique à XPO
+    if ($carrier === 'xpo') {
+        $query .= ", tarif_2000_2999";
+    } else {
+        $query .= ", NULL as tarif_2000_2999";
+    }
+    
+    $query .= " FROM {$table} WHERE id = :id LIMIT 1";
+    
+    $stmt = $db->prepare($query);
+    $stmt->execute([':id' => $id]);
+    $rate = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$rate) {
+        return null;
+    }
+    
+    // Formater les données
+    return [
+        'id' => $rate['id'],
+        'carrier_code' => $rate['carrier_code'],
+        'carrier_name' => $rate['carrier_name'],
+        'department_num' => $rate['department_num'],
+        'department_name' => $rate['department_name'] ?: 'Non défini',
+        'delay' => $rate['delay'],
+        'rates' => [
+            'tarif_0_9' => $rate['tarif_0_9'],
+            'tarif_10_19' => $rate['tarif_10_19'],
+            'tarif_20_29' => $rate['tarif_20_29'],
+            'tarif_30_39' => $rate['tarif_30_39'],
+            'tarif_40_49' => $rate['tarif_40_49'],
+            'tarif_50_59' => $rate['tarif_50_59'],
+            'tarif_60_69' => $rate['tarif_60_69'],
+            'tarif_70_79' => $rate['tarif_70_79'],
+            'tarif_80_89' => $rate['tarif_80_89'],
+            'tarif_90_99' => $rate['tarif_90_99'],
+            'tarif_100_299' => $rate['tarif_100_299'],
+            'tarif_300_499' => $rate['tarif_300_499'],
+            'tarif_500_999' => $rate['tarif_500_999'],
+            'tarif_1000_1999' => $rate['tarif_1000_1999'],
+            'tarif_2000_2999' => $rate['tarif_2000_2999']
+        ]
+    ];
+}
+
+/**
+ * Met à jour un tarif existant
+ */
+function handleUpdateRate($db) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        throw new Exception('Méthode POST requise');
+    }
+    
+    $id = (int)($_POST['id'] ?? 0);
+    $carrier = $_POST['carrier'] ?? '';
+    
+    if (!$id || !$carrier) {
+        throw new Exception('ID et transporteur requis');
+    }
+    
+    $tables = [
+        'heppner' => 'gul_heppner_rates',
+        'xpo' => 'gul_xpo_rates',
+        'kn' => 'gul_kn_rates'
+    ];
+    
+    if (!isset($tables[$carrier])) {
+        throw new Exception('Transporteur non valide');
+    }
+    
+    $table = $tables[$carrier];
+    
+    // Préparer les données à mettre à jour
+    $updateFields = [];
+    $params = [':id' => $id];
+    
+    // Champs généraux
+    if (isset($_POST['department_name'])) {
+        $updateFields[] = 'departement = :department_name';
+        $params[':department_name'] = $_POST['department_name'];
+    }
+    
+    if (isset($_POST['delay'])) {
+        $updateFields[] = 'delais = :delay';
+        $params[':delay'] = $_POST['delay'];
+    }
+    
+    // Tarifs
+    $tariffFields = [
+        'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
+        'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
+        'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999'
+    ];
+    
+    // Ajouter tarif_2000_2999 pour XPO
+    if ($carrier === 'xpo') {
+        $tariffFields[] = 'tarif_2000_2999';
+    }
+    
+    foreach ($tariffFields as $field) {
+        if (isset($_POST[$field])) {
+            $value = $_POST[$field];
+            if ($value === '' || $value === null) {
+                $updateFields[] = "{$field} = NULL";
+            } else {
+                $updateFields[] = "{$field} = :{$field}";
+                $params[":{$field}"] = (float)$value;
+            }
+        }
+    }
+    
+    if (empty($updateFields)) {
+        throw new Exception('Aucune donnée à mettre à jour');
+    }
+    
+    $query = "UPDATE {$table} SET " . implode(', ', $updateFields) . " WHERE id = :id";
+    
+    $stmt = $db->prepare($query);
+    $stmt->execute($params);
+    
+    if ($stmt->rowCount() > 0) {
+        // Récupérer le tarif mis à jour
+        $updatedRate = getSingleRate($db, $carrier, $id);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Tarif mis à jour avec succès',
+            'data' => $updatedRate
+        ]);
+    } else {
+        throw new Exception('Aucune modification effectuée');
+    }
+}
+
+/**
+ * Crée un nouveau tarif
+ */
+function handleCreateRate($db) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        throw new Exception('Méthode POST requise');
+    }
+    
+    $carrier = $_POST['carrier'] ?? '';
+    $departmentNum = $_POST['department_num'] ?? '';
+    
+    if (!$carrier || !$departmentNum) {
+        throw new Exception('Transporteur et numéro de département requis');
+    }
+    
+    $tables = [
+        'heppner' => 'gul_heppner_rates',
+        'xpo' => 'gul_xpo_rates',
+        'kn' => 'gul_kn_rates'
+    ];
+    
+    if (!isset($tables[$carrier])) {
+        throw new Exception('Transporteur non valide');
+    }
+    
+    $table = $tables[$carrier];
+    
+    // Vérifier si le tarif existe déjà
+    $checkStmt = $db->prepare("SELECT id FROM {$table} WHERE num_departement = :dept");
+    $checkStmt->execute([':dept' => $departmentNum]);
+    
+    if ($checkStmt->fetch()) {
+        throw new Exception('Un tarif existe déjà pour ce département et ce transporteur');
+    }
+    
+    // Préparer les données à insérer
+    $insertFields = ['num_departement'];
+    $insertValues = [':num_departement'];
+    $params = [':num_departement' => $departmentNum];
+    
+    // Champs optionnels
+    if (isset($_POST['department_name']) && $_POST['department_name'] !== '') {
+        $insertFields[] = 'departement';
+        $insertValues[] = ':department_name';
+        $params[':department_name'] = $_POST['department_name'];
+    }
+    
+    if (isset($_POST['delay']) && $_POST['delay'] !== '') {
+        $insertFields[] = 'delais';
+        $insertValues[] = ':delay';
+        $params[':delay'] = $_POST['delay'];
+    }
+    
+    // Tarifs
+    $tariffFields = [
+        'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
+        'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
+        'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999'
+    ];
+    
+    // Ajouter tarif_2000_2999 pour XPO
+    if ($carrier === 'xpo') {
+        $tariffFields[] = 'tarif_2000_2999';
+    }
+    
+    foreach ($tariffFields as $field) {
+        if (isset($_POST[$field]) && $_POST[$field] !== '') {
+            $insertFields[] = $field;
+            $insertValues[] = ":{$field}";
+            $params[":{$field}"] = (float)$_POST[$field];
+        }
+    }
+    
+    $query = "INSERT INTO {$table} (" . implode(', ', $insertFields) . ") VALUES (" . implode(', ', $insertValues) . ")";
+    
+    $stmt = $db->prepare($query);
+    $stmt->execute($params);
+    
+    $newId = $db->lastInsertId();
+    
+    if ($newId) {
+        // Récupérer le nouveau tarif
+        $newRate = getSingleRate($db, $carrier, $newId);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Tarif créé avec succès',
+            'data' => $newRate
+        ]);
+    } else {
+        throw new Exception('Erreur lors de la création du tarif');
+    }
 }
 
 /**
