@@ -1,292 +1,124 @@
-// public/admin/assets/js/admin.js - Version finale
+// assets/js/admin.js - Script principal d'administration
 
-console.log('🚀 Admin JS chargé !');
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ Interface admin initialisée');
-    
-    // Initialiser l'interface
-    initializeAdminInterface();
-    
-    // Animer les statistiques
-    setTimeout(animateStats, 500);
-    
-    // Gestion des raccourcis clavier
-    setupKeyboardShortcuts();
-});
+console.log('🔧 Chargement du script admin...');
 
 // =============================================================================
 // GESTION DES ONGLETS
 // =============================================================================
 
-function showTab(tabName) {
-    console.log('Affichage onglet:', tabName);
+let currentTab = 'dashboard';
+
+function showTab(tabId) {
+    console.log('📂 Changement vers onglet:', tabId);
     
-    // Masquer tous les onglets
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
+    // Cacher tous les contenus d'onglets
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
     });
     
-    // Désactiver tous les boutons
-    document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.classList.remove('active');
+    // Désactiver tous les boutons d'onglets
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active');
     });
     
-    // Afficher l'onglet sélectionné
-    const targetTab = document.getElementById('tab-' + tabName);
-    const targetButton = document.querySelector(`[data-tab="${tabName}"]`);
+    // Activer l'onglet sélectionné
+    const targetContent = document.getElementById(`tab-${tabId}`);
+    const targetButton = document.querySelector(`[data-tab="${tabId}"]`);
     
-    if (targetTab) {
-        targetTab.classList.add('active');
+    if (targetContent) {
+        targetContent.classList.add('active');
     }
     
     if (targetButton) {
         targetButton.classList.add('active');
     }
     
-    // Charger le contenu selon l'onglet
-    switch(tabName) {
-        case 'rates':
-            loadRates();
-            break;
-        case 'options':
-            loadOptions();
-            break;
-        case 'taxes':
-            loadTaxes();
-            break;
-        case 'import':
-            initializeImportExport();
-            break;
+    currentTab = tabId;
+    
+    // Actions spécifiques par onglet
+    if (tabId === 'rates') {
+        // Initialiser le gestionnaire de tarifs avec un délai
+        setTimeout(() => {
+            if (window.initRatesManager && typeof window.initRatesManager === 'function') {
+                console.log('🔄 Initialisation du gestionnaire de tarifs...');
+                window.initRatesManager().catch(error => {
+                    console.error('❌ Erreur init rates manager:', error);
+                    showAlert('error', 'Erreur lors du chargement des tarifs');
+                });
+            } else {
+                console.error('❌ initRatesManager non disponible');
+                showAlert('warning', 'Module de gestion des tarifs non disponible');
+            }
+        }, 200);
     }
 }
 
 // =============================================================================
-// GESTION DES DONNÉES
+// SYSTÈME D'ALERTES
 // =============================================================================
 
-function loadRates() {
-    console.log('Chargement des tarifs...');
-    showAlert('info', 'Chargement des tarifs...');
-}
-
-function loadOptions() {
-    console.log('Chargement des options...');
-    showAlert('info', 'Chargement des options...');
-}
-
-function loadTaxes() {
-    console.log('Chargement des taxes...');
-    showAlert('info', 'Chargement des taxes...');
-}
-
-function initializeImportExport() {
-    console.log('Initialisation Import/Export');
-    showAlert('info', 'Module Import/Export initialisé');
-}
-
-// =============================================================================
-// ACTIONS SUR LES DONNÉES
-// =============================================================================
-
-function editRate(carrier, department) {
-    console.log(`Édition tarif ${carrier} - ${department}`);
-    showAlert('info', `Édition du tarif ${carrier} pour le département ${department}`);
-}
-
-function deleteRate(carrier, department) {
-    if (confirm(`Supprimer le tarif ${carrier} pour le département ${department} ?`)) {
-        console.log(`Suppression tarif ${carrier} - ${department}`);
-        showAlert('success', 'Tarif supprimé avec succès');
-    }
-}
-
-function addRate(carrier, department) {
-    console.log(`Ajout tarif ${carrier} - ${department}`);
-    showAlert('info', `Ajout d'un tarif ${carrier} pour le département ${department}`);
-}
-
-function editOption(id) {
-    console.log(`Édition option ${id}`);
-    showAlert('info', `Édition de l'option ${id}`);
-}
-
-function deleteOption(id) {
-    if (confirm(`Supprimer l'option ${id} ?`)) {
-        console.log(`Suppression option ${id}`);
-        showAlert('success', 'Option supprimée avec succès');
-    }
-}
-
-function editTaxes() {
-    console.log('Édition des taxes');
-    showAlert('info', 'Édition des taxes et majorations');
-}
-
-// =============================================================================
-// IMPORT/EXPORT
-// =============================================================================
-
-function importData() {
-    console.log('Import des données');
-    showAlert('info', 'Import des données en cours...');
-}
-
-function exportData() {
-    console.log('Export des données');
-    showAlert('success', 'Export démarré avec succès');
-}
-
-function downloadBackup() {
-    console.log('Téléchargement sauvegarde');
-    showAlert('info', 'Génération de la sauvegarde...');
-}
-
-// =============================================================================
-// UTILITAIRES
-// =============================================================================
-
-function showAlert(type, message) {
-    // Créer le conteneur d'alertes s'il n'existe pas
+function showAlert(type, message, duration = 5000) {
+    console.log(`📢 Alert ${type}:`, message);
+    
+    // Créer le container d'alertes s'il n'existe pas
     let container = document.getElementById('alert-container');
     if (!container) {
         container = document.createElement('div');
         container.id = 'alert-container';
         container.style.cssText = `
             position: fixed;
-            top: 100px;
+            top: 90px;
             right: 20px;
-            z-index: 9999;
+            z-index: 1050;
             max-width: 400px;
         `;
         document.body.appendChild(container);
     }
     
-    const alertTypes = {
-        'success': { icon: '✅', class: 'alert-success' },
-        'error': { icon: '❌', class: 'alert-danger' },
-        'warning': { icon: '⚠️', class: 'alert-warning' },
-        'info': { icon: 'ℹ️', class: 'alert-info' }
-    };
-    
-    const alertConfig = alertTypes[type] || alertTypes.info;
-    
-    const alert = document.createElement('div');
-    alert.className = `alert ${alertConfig.class}`;
-    alert.style.cssText = `
+    // Créer l'alerte
+    const alertId = 'alert-' + Date.now();
+    const alertElement = document.createElement('div');
+    alertElement.id = alertId;
+    alertElement.className = `alert alert-${type}`;
+    alertElement.style.cssText = `
         padding: 1rem;
         margin-bottom: 0.5rem;
         border-radius: 8px;
-        border: 1px solid transparent;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
         animation: slideInRight 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        position: relative;
+        cursor: pointer;
     `;
     
-    alert.innerHTML = `
-        ${alertConfig.icon} ${message}
-        <button onclick="this.parentElement.remove()" 
-                style="margin-left: auto; background: none; border: none; cursor: pointer; font-size: 18px; color: inherit;">×</button>
+    // Couleurs selon le type
+    const colors = {
+        success: { bg: '#d4edda', color: '#155724', border: '#c3e6cb', icon: '✅' },
+        error: { bg: '#f8d7da', color: '#721c24', border: '#f5c6cb', icon: '❌' },
+        warning: { bg: '#fff3cd', color: '#856404', border: '#ffeaa7', icon: '⚠️' },
+        info: { bg: '#d1ecf1', color: '#0c5460', border: '#bee5eb', icon: 'ℹ️' }
+    };
+    
+    const style = colors[type] || colors.info;
+    alertElement.style.background = style.bg;
+    alertElement.style.color = style.color;
+    alertElement.style.border = `1px solid ${style.border}`;
+    
+    alertElement.innerHTML = `
+        <div style="font-size: 1.2rem;">${style.icon}</div>
+        <div style="flex: 1; font-weight: 500;">${message}</div>
+        <button onclick="removeAlert('${alertId}')" 
+                style="background: none; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7;">
+            ×
+        </button>
     `;
     
-    // Styles selon le type
-    switch(type) {
-        case 'success':
-            alert.style.background = '#d4edda';
-            alert.style.borderColor = '#c3e6cb';
-            alert.style.color = '#155724';
-            break;
-        case 'error':
-            alert.style.background = '#f8d7da';
-            alert.style.borderColor = '#f5c6cb';
-            alert.style.color = '#721c24';
-            break;
-        case 'warning':
-            alert.style.background = '#fff3cd';
-            alert.style.borderColor = '#ffeaa7';
-            alert.style.color = '#856404';
-            break;
-        case 'info':
-            alert.style.background = '#d1ecf1';
-            alert.style.borderColor = '#bee5eb';
-            alert.style.color = '#0c5460';
-            break;
-    }
-    
-    container.appendChild(alert);
-    
-    // Auto-remove après 5 secondes
-    setTimeout(() => {
-        if (alert.parentElement) {
-            alert.style.animation = 'slideOutRight 0.3s ease';
-            setTimeout(() => alert.remove(), 300);
-        }
-    }, 5000);
-}
-
-function animateStats() {
-    const stats = document.querySelectorAll('.stat-value');
-    stats.forEach((stat, index) => {
-        const finalValue = parseInt(stat.textContent);
-        if (isNaN(finalValue)) return;
-        
-        let currentValue = 0;
-        const increment = finalValue / 30;
-        
-        const counter = setInterval(() => {
-            currentValue += increment;
-            if (currentValue >= finalValue) {
-                stat.textContent = finalValue;
-                clearInterval(counter);
-            } else {
-                stat.textContent = Math.floor(currentValue);
-            }
-        }, 50 + (index * 10));
-    });
-}
-
-function setupKeyboardShortcuts() {
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey || e.metaKey) {
-            switch(e.key) {
-                case 's':
-                    e.preventDefault();
-                    showAlert('info', 'Sauvegarde en cours...');
-                    break;
-                case 'e':
-                    e.preventDefault();
-                    exportData();
-                    break;
-            }
-        }
-        if (e.key === 'Escape') {
-            // Fermer les modaux s'il y en a
-            document.querySelectorAll('.modal.active').forEach(modal => {
-                modal.classList.remove('active');
-            });
-        }
-    });
-}
-
-function initializeAdminInterface() {
-    console.log('Initialisation interface admin');
-    
-    // Ajouter les gestionnaires d'événements pour les onglets
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', function() {
-            const tabName = this.getAttribute('data-tab');
-            if (tabName) {
-                showTab(tabName);
-            }
-        });
-    });
-    
-    // Ajouter les animations CSS si elles n'existent pas
-    if (!document.getElementById('admin-animations')) {
+    // Ajouter l'animation CSS si elle n'existe pas
+    if (!document.getElementById('alert-animations')) {
         const style = document.createElement('style');
-        style.id = 'admin-animations';
+        style.id = 'alert-animations';
         style.textContent = `
             @keyframes slideInRight {
                 from { transform: translateX(100%); opacity: 0; }
@@ -300,24 +132,157 @@ function initializeAdminInterface() {
         document.head.appendChild(style);
     }
     
-    showAlert('success', 'Interface d\'administration chargée !');
+    // Ajouter au container
+    container.appendChild(alertElement);
+    
+    // Fermeture automatique
+    if (duration > 0) {
+        setTimeout(() => removeAlert(alertId), duration);
+    }
+    
+    // Fermeture au clic
+    alertElement.addEventListener('click', () => removeAlert(alertId));
+    
+    return alertId;
+}
+
+function removeAlert(alertId) {
+    const alert = document.getElementById(alertId);
+    if (alert) {
+        alert.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 300);
+    }
+}
+
+// Exposer showAlert globalement
+window.showAlert = showAlert;
+window.removeAlert = removeAlert;
+
+// =============================================================================
+// FONCTIONS UTILITAIRES D'ADMINISTRATION
+// =============================================================================
+
+function editRate(carrier, department) {
+    console.log('✏️ Édition tarif:', { carrier, department });
+    showAlert('info', `Édition du tarif ${carrier} pour le département ${department} (en développement)`);
+}
+
+function addRate(carrier, department) {
+    console.log('➕ Ajout tarif:', { carrier, department });
+    showAlert('info', `Ajout d'un tarif ${carrier} pour le département ${department} (en développement)`);
+}
+
+function downloadBackup() {
+    console.log('💾 Téléchargement sauvegarde...');
+    showAlert('info', 'Génération de la sauvegarde en cours...');
+    
+    // Simuler le téléchargement
+    setTimeout(() => {
+        showAlert('success', 'Sauvegarde générée avec succès !');
+    }, 2000);
+}
+
+function importData() {
+    console.log('📥 Import de données...');
+    showAlert('info', 'Fonctionnalité d\'import en cours de développement');
+}
+
+function exportData() {
+    console.log('📤 Export de données...');
+    showAlert('success', 'Export des données lancé !');
+    
+    // Simuler l'export
+    setTimeout(() => {
+        showAlert('info', 'Export terminé - fichier téléchargé');
+    }, 3000);
 }
 
 // =============================================================================
-// FONCTIONS GLOBALES POUR L'INTERFACE
+// RACCOURCIS CLAVIER
 // =============================================================================
 
-// Exposer les fonctions nécessaires globalement
+document.addEventListener('keydown', function(e) {
+    // Ctrl + S : Sauvegarder
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        showAlert('info', 'Sauvegarde rapide (Ctrl+S)');
+        return false;
+    }
+    
+    // Ctrl + E : Export
+    if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        exportData();
+        return false;
+    }
+    
+    // Échap : Fermer modal
+    if (e.key === 'Escape') {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (modal.style.display !== 'none') {
+                modal.style.display = 'none';
+                modal.classList.remove('active');
+            }
+        });
+    }
+});
+
+// =============================================================================
+// INITIALISATION
+// =============================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initialisation de l\'interface admin...');
+    
+    // Animation d'entrée pour les cartes statistiques
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+    });
+    
+    // Vérifier la disponibilité du gestionnaire de tarifs
+    const checkRatesManager = () => {
+        if (window.initRatesManager) {
+            console.log('✅ Gestionnaire de tarifs disponible');
+            return true;
+        } else {
+            console.log('⏳ Gestionnaire de tarifs en attente...');
+            return false;
+        }
+    };
+    
+    // Attendre que rates-management.js soit chargé
+    let attempts = 0;
+    const maxAttempts = 10;
+    const checkInterval = setInterval(() => {
+        attempts++;
+        if (checkRatesManager() || attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            if (attempts >= maxAttempts) {
+                console.warn('⚠️ Gestionnaire de tarifs non disponible après 10 tentatives');
+            }
+        }
+    }, 500);
+    
+    // Message de bienvenue
+    setTimeout(() => {
+        showAlert('success', 'Interface d\'administration chargée !', 3000);
+    }, 500);
+    
+    console.log('✅ Interface admin initialisée');
+});
+
+// Exposer les fonctions globalement
 window.showTab = showTab;
 window.editRate = editRate;
-window.deleteRate = deleteRate;
 window.addRate = addRate;
-window.editOption = editOption;
-window.deleteOption = deleteOption;
-window.editTaxes = editTaxes;
+window.downloadBackup = downloadBackup;
 window.importData = importData;
 window.exportData = exportData;
-window.downloadBackup = downloadBackup;
-window.showAlert = showAlert;
 
-console.log('🎯 Admin JavaScript initialisé avec succès');
+console.log('✅ Script admin.js chargé complètement');
