@@ -303,20 +303,73 @@ $calculationsChangeFormatted = formatChange(rand(-10, 25));
             <div class="admin-card">
                 <div class="admin-card-header">
                     <h2>💰 Gestion des tarifs par transporteur</h2>
-                    <button class="btn btn-primary" onclick="showAlert('info', 'Module en cours de développement')">
+                    <button class="btn btn-primary" id="add-rate-button">
                         <span>➕</span>
                         Ajouter un tarif
                     </button>
                 </div>
                 <div class="admin-card-body">
-                    <p>Interface de gestion des tarifs en cours de développement...</p>
-                    <p>Fonctionnalités prévues :</p>
-                    <ul>
-                        <li>Ajout/modification/suppression des tarifs</li>
-                        <li>Import en masse via fichier Excel</li>
-                        <li>Recherche et filtrage avancés</li>
-                        <li>Historique des modifications</li>
-                    </ul>
+                    <!-- Barre de recherche et filtres -->
+                    <div class="search-filters" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <input type="text" id="search-rates" placeholder="Rechercher par département, transporteur..." 
+                                   class="form-control" style="width: 100%; padding: 0.75rem; border: 2px solid var(--border-color); border-radius: var(--border-radius);">
+                        </div>
+                        <select id="filter-carrier" style="min-width: 150px; padding: 0.75rem; border: 2px solid var(--border-color); border-radius: var(--border-radius);">
+                            <option value="">Tous les transporteurs</option>
+                        </select>
+                        <select id="filter-department" style="min-width: 150px; padding: 0.75rem; border: 2px solid var(--border-color); border-radius: var(--border-radius);">
+                            <option value="">Tous les départements</option>
+                        </select>
+                        <button class="btn btn-secondary" id="search-button">
+                            <span>🔍</span>
+                            Rechercher
+                        </button>
+                        <button class="btn btn-secondary" id="clear-filters-button">
+                            <span>🔄</span>
+                            Effacer
+                        </button>
+                        <button class="btn btn-secondary" id="refresh-rates-button">
+                            <span>↻</span>
+                            Actualiser
+                        </button>
+                        <button class="btn btn-secondary" id="export-rates-button">
+                            <span>📥</span>
+                            Exporter
+                        </button>
+                    </div>
+
+                    <!-- Informations sur les filtres actifs -->
+                    <div id="filters-info" style="display: none; margin-bottom: 1rem;"></div>
+
+                    <!-- Tableau des tarifs -->
+                    <div class="table-container">
+                        <table class="data-table" id="rates-table">
+                            <thead>
+                                <tr>
+                                    <th>Transporteur</th>
+                                    <th>Département</th>
+                                    <th>0-9kg</th>
+                                    <th>10-19kg</th>
+                                    <th>90-99kg</th>
+                                    <th>100-299kg</th>
+                                    <th>500-999kg</th>
+                                    <th>Délai</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rates-tbody">
+                                <tr>
+                                    <td colspan="9" class="text-center">
+                                        <div class="loading-spinner">Chargement des tarifs...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="pagination-container"></div>
                 </div>
             </div>
         </div>
@@ -464,6 +517,7 @@ $calculationsChangeFormatted = formatChange(rand(-10, 25));
 
     <!-- JavaScript Administration -->
     <script src="assets/js/admin.js"></script>
+    <script src="assets/js/rates-management.js"></script>
     
     <script>
         // Fonctions utilitaires spécifiques à cette page
