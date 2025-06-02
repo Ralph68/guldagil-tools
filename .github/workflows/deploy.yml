@@ -58,24 +58,8 @@ jobs:
             README.md
             deploy-log.txt
 
-      # 5) Notification email (succès)
-      - name: Envoi d’un email (succès)
-        if: success()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ secrets.MAIL_HOST }}
-          server_port:    ${{ secrets.MAIL_PORT }}
-          username:       ${{ secrets.MAIL_USERNAME }}
-          password:       ${{ secrets.MAIL_PASSWORD }}
-          subject:        "✅ Déploiement ${{ github.ref_name }} réussi"
-          body: |
-            Le déploiement de ${{ github.repository }} sur la branche ${{ github.ref_name }} a réussi.
-            Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          to:   ${{ secrets.MAIL_TO }}
-          from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
-
-      # 6) Notification email (échec)
-      - name: Envoi d’un email (échec)
+      # 5) Notification email uniquement en cas d'échec
+      - name: Envoi d'un email (échec)
         if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
@@ -85,7 +69,28 @@ jobs:
           password:       ${{ secrets.MAIL_PASSWORD }}
           subject:        "❌ Échec du déploiement vers port.gul.runser.ovh"
           body: |
-            Le déploiement de ${{ github.repository }} sur la branche ${{ github.ref_name }} a échoué.
-            Voir l’action : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            ⚠️ ÉCHEC DU DÉPLOIEMENT ⚠️
+            
+            Repository: ${{ github.repository }}
+            Branche: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Auteur: ${{ github.actor }}
+            Date: ${{ github.event.head_commit.timestamp }}
+            
+            Message du commit: "${{ github.event.head_commit.message }}"
+            
+            🔗 Voir les détails de l'erreur :
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            Veuillez vérifier les logs et corriger le problème.
           to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
+
+      # 6) Log de succès silencieux (optionnel - juste pour les logs GitHub)
+      - name: Déploiement réussi
+        if: success()
+        run: |
+          echo "✅ Déploiement réussi vers port.gul.runser.ovh"
+          echo "📅 Date: $(date)"
+          echo "👤 Auteur: ${{ github.actor }}"
+          echo "📝 Commit: ${{ github.sha }}"
