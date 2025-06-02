@@ -1,5 +1,8 @@
 <?php
-// public/admin/api-rates.php - Version corrigée et simplifiée
+// public/admin/api-rates.php - Version simple et fonctionnelle
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require __DIR__ . '/../../config.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -12,262 +15,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-/**
- * Récupère un tarif spécifique pour l'édition
- */
-function handleGetSingleRate($db) {
-    $id = (int)($_GET['id'] ?? 0);
-    $carrier = $_GET['carrier'] ?? '';
-    
-    if (!$id || !$carrier) {
-        throw new Exception('ID et transporteur requis');
-    }
-    
-    $tables = [
-        'heppner' => 'gul_heppner_rates',
-        'xpo' => 'gul_xpo_rates',
-        'kn' => 'gul_kn_rates'
-    ];
-    
-    if (!isset($tables[$carrier])) {
-        throw new Exception('Transporteur non valide');
-    }
-    
-    $table = $tables[$carrier];
-    
-    try {
-        $stmt = $db->prepare("SELECT * FROM `$table` WHERE id = ?");
-        $stmt->execute([$id]);
-        $rate = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$rate) {
-            throw new Exception('Tarif non trouvé');
-        }
-        
-        // Formater la réponse
-        $formattedRate = [
-            'id' => $rate['id'],
-            'carrier_code' => $carrier,
-            'carrier_name' => getCarrierName($carrier),
-            'department_num' => $rate['num_departement'],
-            'department_name' => $rate['departement'] ?: 'Non défini',
-            'delay' => $rate['delais'] ?? '',
-            'rates' => [
-                'tarif_0_9' => formatPrice($rate['tarif_0_9'] ?? null),
-                'tarif_10_19' => formatPrice($rate['tarif_10_19'] ?? null),
-                'tarif_20_29' => formatPrice($rate['tarif_20_29'] ?? null),
-                'tarif_30_39' => formatPrice($rate['tarif_30_39'] ?? null),
-                'tarif_40_49' => formatPrice($rate['tarif_40_49'] ?? null),
-                'tarif_50_59' => formatPrice($rate['tarif_50_59'] ?? null),
-                'tarif_60_69' => formatPrice($rate['tarif_60_69'] ?? null),
-                'tarif_70_79' => formatPrice($rate['tarif_70_79'] ?? null),
-                'tarif_80_89' => formatPrice($rate['tarif_80_89'] ?? null),
-                'tarif_90_99' => formatPrice($rate['tarif_90_99'] ?? null),
-                'tarif_100_299' => formatPrice($rate['tarif_100_299'] ?? null),
-                'tarif_300_499' => formatPrice($rate['tarif_300_499'] ?? null),
-                'tarif_500_999' => formatPrice($rate['tarif_500_999'] ?? null),
-                'tarif_1000_1999' => formatPrice($rate['tarif_1000_1999'] ?? null),
-                'tarif_2000_2999' => formatPrice($rate['tarif_2000_2999'] ?? null)
-            ]
-        ];
-        
-        echo json_encode([
-            'success' => true,
-            'data' => $formattedRate
-        ]);
-        
-    } catch (PDOException $e) {
-        throw new Exception('Erreur lors de la récupération: ' . $e->getMessage());
-    }
-}
-
-/**
- * Retourne le nom d'un transporteur
- */
-function getCarrierName($carrier) {
-    $names = [
-        'heppner' => 'Heppner',
-        'xpo' => 'XPO',
-        'kn' => 'Kuehne + Nagel'
-    ];
-    return $names[$carrier] ?? $carrier;
-}
-
-/**
- * Gère les requêtes GET
- */
-function handleGetRequest($db, $action) {
-    switch ($action) {
-        case 'list':
-            handleListRates($db);
-            break;
-        case 'carriers':
-            handleGetCarriers($db);
-            break;
-        case 'departments':
-            handleGetDepartments($db);
-            break;
-        case 'delete':
-            handleDeleteRate($db);
-            break;
-        case 'get':
-            handleGetSingleRate($db);
-            break;
-        default:
-            handleListRates($db);
-    }
-}
-
-/**
- * Gère les requêtes PUT (mise à jour)
- */
-function handlePutRequest($db) {
-    handleUpdateRate($db);
-}
-
-/**
- * Gère les requêtes POST (création)
- */
-function handlePostRequest($db, $action) {
-    // Pour plus tard si on ajoute la création
-    throw new Exception("Création de tarifs non implémentée");
-}
-
-/**
- * Gère les requêtes DELETE
- */
-function handleDeleteRequest($db) {
-    handleDeleteRate($db);
-}
-
+$method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? 'list';
+
+error_log("API Call: Method=$method, Action=$action, GET=" . json_encode($_GET));
 
 try {
     switch ($action) {
         case 'list':
             handleListRates($db);
             break;
+            
         case 'carriers':
             handleGetCarriers($db);
             break;
+            
         case 'departments':
             handleGetDepartments($db);
             break;
+            
+        case 'get':
+            handleGetSingleRate($db);
+            break;
+            
         case 'delete':
             handleDeleteRate($db);
             break;
+            
         default:
-            throw new Exception("Action non supportée: $action");
+            if ($method === 'PUT') {
+                handleUpdateRate($db);
+            } else {
+                handleListRates($db);
+            }
     }
 } catch (Exception $e) {
+    error_log("API Error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
         'debug' => [
+            'method' => $method,
             'action' => $action,
-            'method' => $_SERVER['REQUEST_METHOD'],
-            'get' => $_GET
+            'get' => $_GET,
+            'post' => $_POST
         ]
     ]);
 }
 
 /**
- * Met à jour un tarif
- */
-function handleUpdateRate($db) {
-    // Lire les données JSON du body
-    $input = file_get_contents('php://input');
-    $data = json_decode($input, true);
-    
-    if (!$data) {
-        throw new Exception('Données JSON invalides');
-    }
-    
-    $id = $data['id'] ?? null;
-    $carrier = $data['carrier_code'] ?? '';
-    
-    if (!$id || !$carrier) {
-        throw new Exception('ID et transporteur requis pour la mise à jour');
-    }
-    
-    $tables = [
-        'heppner' => 'gul_heppner_rates',
-        'xpo' => 'gul_xpo_rates',
-        'kn' => 'gul_kn_rates'
-    ];
-    
-    if (!isset($tables[$carrier])) {
-        throw new Exception('Transporteur non valide');
-    }
-    
-    $table = $tables[$carrier];
-    
-    // Préparer les données de mise à jour
-    $updateFields = [];
-    $params = [];
-    
-    // Informations générales
-    if (isset($data['department_name'])) {
-        $updateFields[] = 'departement = ?';
-        $params[] = $data['department_name'];
-    }
-    
-    if (isset($data['delay'])) {
-        $updateFields[] = 'delais = ?';
-        $params[] = $data['delay'];
-    }
-    
-    // Tarifs
-    if (isset($data['rates']) && is_array($data['rates'])) {
-        $rateFields = [
-            'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
-            'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
-            'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999'
-        ];
-        
-        // Ajouter tarif_2000_2999 pour XPO
-        if ($carrier === 'xpo') {
-            $rateFields[] = 'tarif_2000_2999';
-        }
-        
-        foreach ($rateFields as $field) {
-            if (array_key_exists($field, $data['rates'])) {
-                $updateFields[] = "`$field` = ?";
-                $value = $data['rates'][$field];
-                $params[] = ($value !== null && $value !== '') ? (float)$value : null;
-            }
-        }
-    }
-    
-    if (empty($updateFields)) {
-        throw new Exception('Aucune donnée à mettre à jour');
-    }
-    
-    // Ajouter l'ID à la fin pour la clause WHERE
-    $params[] = $id;
-    
-    $sql = "UPDATE `$table` SET " . implode(', ', $updateFields) . " WHERE id = ?";
-    
-    try {
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        
-        if ($stmt->rowCount() > 0) {
-            echo json_encode([
-                'success' => true,
-                'message' => 'Tarif mis à jour avec succès'
-            ]);
-        } else {
-            throw new Exception('Aucun tarif trouvé avec cet ID ou aucune modification détectée');
-        }
-    } catch (PDOException $e) {
-        throw new Exception('Erreur lors de la mise à jour: ' . $e->getMessage());
-    }
-}
-
-/**
- * Liste les tarifs avec pagination simplifiée
+ * Liste les tarifs
  */
 function handleListRates($db) {
     $page = max(1, (int)($_GET['page'] ?? 1));
@@ -283,7 +81,6 @@ function handleListRates($db) {
     $allRates = [];
     $totalCount = 0;
     
-    // Traiter chaque transporteur séparément pour éviter les erreurs UNION
     $carriers = [
         'heppner' => ['table' => 'gul_heppner_rates', 'name' => 'Heppner'],
         'xpo' => ['table' => 'gul_xpo_rates', 'name' => 'XPO'],
@@ -291,7 +88,6 @@ function handleListRates($db) {
     ];
     
     foreach ($carriers as $carrierCode => $carrierInfo) {
-        // Filtrer par transporteur si spécifié
         if ($filters['carrier'] && $filters['carrier'] !== $carrierCode) {
             continue;
         }
@@ -301,17 +97,14 @@ function handleListRates($db) {
             $allRates = array_merge($allRates, $rates);
             $totalCount += count($rates);
         } catch (Exception $e) {
-            // Log l'erreur mais continue avec les autres transporteurs
             error_log("Erreur transporteur $carrierCode: " . $e->getMessage());
         }
     }
     
-    // Trier par département
     usort($allRates, function($a, $b) {
         return strcmp($a['department_num'], $b['department_num']);
     });
     
-    // Appliquer la pagination
     $paginatedRates = array_slice($allRates, $offset, $limit);
     $totalPages = ceil($totalCount / $limit);
     
@@ -331,24 +124,21 @@ function handleListRates($db) {
 }
 
 /**
- * Récupère les tarifs d'un transporteur spécifique
+ * Récupère les tarifs d'un transporteur
  */
 function getCarrierRates($db, $carrierCode, $carrierInfo, $filters) {
     $table = $carrierInfo['table'];
     $carrierName = $carrierInfo['name'];
     
-    // Construire la requête avec conditions
     $sql = "SELECT * FROM `$table` WHERE 1=1";
     $params = [];
     
-    // Filtre par département
     if ($filters['department']) {
         $sql .= " AND (num_departement LIKE ? OR departement LIKE ?)";
         $params[] = '%' . $filters['department'] . '%';
         $params[] = '%' . $filters['department'] . '%';
     }
     
-    // Filtre par recherche
     if ($filters['search']) {
         $sql .= " AND (num_departement LIKE ? OR departement LIKE ?)";
         $params[] = '%' . $filters['search'] . '%';
@@ -395,6 +185,188 @@ function getCarrierRates($db, $carrierCode, $carrierInfo, $filters) {
 }
 
 /**
+ * Récupère un tarif spécifique
+ */
+function handleGetSingleRate($db) {
+    $id = (int)($_GET['id'] ?? 0);
+    $carrier = $_GET['carrier'] ?? '';
+    
+    if (!$id || !$carrier) {
+        throw new Exception('ID et transporteur requis');
+    }
+    
+    $tables = [
+        'heppner' => 'gul_heppner_rates',
+        'xpo' => 'gul_xpo_rates',
+        'kn' => 'gul_kn_rates'
+    ];
+    
+    if (!isset($tables[$carrier])) {
+        throw new Exception('Transporteur non valide');
+    }
+    
+    $table = $tables[$carrier];
+    
+    $stmt = $db->prepare("SELECT * FROM `$table` WHERE id = ?");
+    $stmt->execute([$id]);
+    $rate = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$rate) {
+        throw new Exception('Tarif non trouvé');
+    }
+    
+    $formattedRate = [
+        'id' => $rate['id'],
+        'carrier_code' => $carrier,
+        'carrier_name' => getCarrierName($carrier),
+        'department_num' => $rate['num_departement'],
+        'department_name' => $rate['departement'] ?: 'Non défini',
+        'delay' => $rate['delais'] ?? '',
+        'rates' => [
+            'tarif_0_9' => formatPrice($rate['tarif_0_9'] ?? null),
+            'tarif_10_19' => formatPrice($rate['tarif_10_19'] ?? null),
+            'tarif_20_29' => formatPrice($rate['tarif_20_29'] ?? null),
+            'tarif_30_39' => formatPrice($rate['tarif_30_39'] ?? null),
+            'tarif_40_49' => formatPrice($rate['tarif_40_49'] ?? null),
+            'tarif_50_59' => formatPrice($rate['tarif_50_59'] ?? null),
+            'tarif_60_69' => formatPrice($rate['tarif_60_69'] ?? null),
+            'tarif_70_79' => formatPrice($rate['tarif_70_79'] ?? null),
+            'tarif_80_89' => formatPrice($rate['tarif_80_89'] ?? null),
+            'tarif_90_99' => formatPrice($rate['tarif_90_99'] ?? null),
+            'tarif_100_299' => formatPrice($rate['tarif_100_299'] ?? null),
+            'tarif_300_499' => formatPrice($rate['tarif_300_499'] ?? null),
+            'tarif_500_999' => formatPrice($rate['tarif_500_999'] ?? null),
+            'tarif_1000_1999' => formatPrice($rate['tarif_1000_1999'] ?? null),
+            'tarif_2000_2999' => formatPrice($rate['tarif_2000_2999'] ?? null)
+        ]
+    ];
+    
+    echo json_encode([
+        'success' => true,
+        'data' => $formattedRate
+    ]);
+}
+
+/**
+ * Met à jour un tarif
+ */
+function handleUpdateRate($db) {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    
+    if (!$data) {
+        throw new Exception('Données JSON invalides');
+    }
+    
+    $id = $data['id'] ?? null;
+    $carrier = $data['carrier_code'] ?? '';
+    
+    if (!$id || !$carrier) {
+        throw new Exception('ID et transporteur requis');
+    }
+    
+    $tables = [
+        'heppner' => 'gul_heppner_rates',
+        'xpo' => 'gul_xpo_rates',
+        'kn' => 'gul_kn_rates'
+    ];
+    
+    if (!isset($tables[$carrier])) {
+        throw new Exception('Transporteur non valide');
+    }
+    
+    $table = $tables[$carrier];
+    
+    $updateFields = [];
+    $params = [];
+    
+    if (isset($data['department_name'])) {
+        $updateFields[] = 'departement = ?';
+        $params[] = $data['department_name'];
+    }
+    
+    if (isset($data['delay'])) {
+        $updateFields[] = 'delais = ?';
+        $params[] = $data['delay'];
+    }
+    
+    if (isset($data['rates']) && is_array($data['rates'])) {
+        $rateFields = [
+            'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
+            'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
+            'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999'
+        ];
+        
+        if ($carrier === 'xpo') {
+            $rateFields[] = 'tarif_2000_2999';
+        }
+        
+        foreach ($rateFields as $field) {
+            if (array_key_exists($field, $data['rates'])) {
+                $updateFields[] = "`$field` = ?";
+                $value = $data['rates'][$field];
+                $params[] = ($value !== null && $value !== '') ? (float)$value : null;
+            }
+        }
+    }
+    
+    if (empty($updateFields)) {
+        throw new Exception('Aucune donnée à mettre à jour');
+    }
+    
+    $params[] = $id;
+    $sql = "UPDATE `$table` SET " . implode(', ', $updateFields) . " WHERE id = ?";
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    
+    if ($stmt->rowCount() > 0) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Tarif mis à jour avec succès'
+        ]);
+    } else {
+        throw new Exception('Aucun tarif trouvé avec cet ID');
+    }
+}
+
+/**
+ * Supprime un tarif
+ */
+function handleDeleteRate($db) {
+    $id = (int)($_GET['id'] ?? 0);
+    $carrier = $_GET['carrier'] ?? '';
+    
+    if (!$id || !$carrier) {
+        throw new Exception('ID et transporteur requis');
+    }
+    
+    $tables = [
+        'heppner' => 'gul_heppner_rates',
+        'xpo' => 'gul_xpo_rates',
+        'kn' => 'gul_kn_rates'
+    ];
+    
+    if (!isset($tables[$carrier])) {
+        throw new Exception('Transporteur non valide');
+    }
+    
+    $table = $tables[$carrier];
+    
+    $stmt = $db->prepare("DELETE FROM `$table` WHERE id = ?");
+    $stmt->execute([$id]);
+    
+    if ($stmt->rowCount() > 0) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Tarif supprimé avec succès'
+        ]);
+    } else {
+        throw new Exception('Aucun tarif trouvé avec cet ID');
+    }
+}
+
+/**
  * Récupère la liste des transporteurs
  */
 function handleGetCarriers($db) {
@@ -404,7 +376,6 @@ function handleGetCarriers($db) {
         ['code' => 'kn', 'name' => 'Kuehne + Nagel', 'table' => 'gul_kn_rates']
     ];
     
-    // Ajouter le nombre de tarifs par transporteur
     foreach ($carriers as &$carrier) {
         try {
             $stmt = $db->prepare("SELECT COUNT(*) as count FROM `{$carrier['table']}`");
@@ -449,7 +420,6 @@ function handleGetDepartments($db) {
         }
     }
     
-    // Trier par numéro de département
     ksort($departments);
     
     echo json_encode([
@@ -459,47 +429,7 @@ function handleGetDepartments($db) {
 }
 
 /**
- * Supprime un tarif
- */
-function handleDeleteRate($db) {
-    $id = (int)($_GET['id'] ?? 0);
-    $carrier = $_GET['carrier'] ?? '';
-    
-    if (!$id || !$carrier) {
-        throw new Exception('ID et transporteur requis pour la suppression');
-    }
-    
-    $tables = [
-        'heppner' => 'gul_heppner_rates',
-        'xpo' => 'gul_xpo_rates',
-        'kn' => 'gul_kn_rates'
-    ];
-    
-    if (!isset($tables[$carrier])) {
-        throw new Exception('Transporteur non valide');
-    }
-    
-    $table = $tables[$carrier];
-    
-    try {
-        $stmt = $db->prepare("DELETE FROM `$table` WHERE id = ?");
-        $stmt->execute([$id]);
-        
-        if ($stmt->rowCount() > 0) {
-            echo json_encode([
-                'success' => true,
-                'message' => 'Tarif supprimé avec succès'
-            ]);
-        } else {
-            throw new Exception('Aucun tarif trouvé avec cet ID');
-        }
-    } catch (PDOException $e) {
-        throw new Exception('Erreur lors de la suppression: ' . $e->getMessage());
-    }
-}
-
-/**
- * Formate un prix
+ * Fonctions utilitaires
  */
 function formatPrice($price) {
     if ($price === null || $price === '' || $price <= 0) {
@@ -508,9 +438,6 @@ function formatPrice($price) {
     return number_format((float)$price, 2, '.', '');
 }
 
-/**
- * Détermine le statut d'un tarif
- */
 function determineStatus($rate) {
     $rateFields = ['tarif_0_9', 'tarif_10_19', 'tarif_90_99', 'tarif_100_299'];
     $filledRates = 0;
@@ -528,5 +455,14 @@ function determineStatus($rate) {
     } else {
         return 'vide';
     }
+}
+
+function getCarrierName($carrier) {
+    $names = [
+        'heppner' => 'Heppner',
+        'xpo' => 'XPO',
+        'kn' => 'Kuehne + Nagel'
+    ];
+    return $names[$carrier] ?? $carrier;
 }
 ?>
