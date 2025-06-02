@@ -148,9 +148,9 @@ function loadRates(force = false) {
         action: 'list',
         page: currentPage,
         limit: 25,
-        carrier: currentFilters.carrier,
-        department: currentFilters.department,
-        search: currentFilters.search
+        carrier: currentFilters.carrier || '',
+        department: currentFilters.department || '',
+        search: currentFilters.search || ''
     });
     
     const url = `api-rates.php?${params.toString()}`;
@@ -162,7 +162,17 @@ function loadRates(force = false) {
             if (!response.ok) {
                 return response.text().then(text => {
                     console.error('❌ Erreur API (texte):', text);
-                    throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+                    let errorMsg = `HTTP ${response.status}`;
+                    try {
+                        const errorData = JSON.parse(text);
+                        if (errorData.error) {
+                            errorMsg = errorData.error;
+                        }
+                    } catch (e) {
+                        // Si ce n'est pas du JSON, utiliser les premiers caractères
+                        errorMsg += ': ' + text.substring(0, 200);
+                    }
+                    throw new Error(errorMsg);
                 });
             }
             return response.json();
@@ -170,11 +180,15 @@ function loadRates(force = false) {
         .then(data => {
             console.log('📊 Données reçues:', data);
             if (data.success) {
-                ratesData = data.data.rates;
-                displayRates(data.data.rates);
-                displayPagination(data.data.pagination);
-                updateFiltersInfo(data.data.filters);
-                console.log('✅ Tarifs affichés:', data.data.rates.length);
+                ratesData = data.data.rates || [];
+                displayRates(ratesData);
+                if (data.data.pagination) {
+                    displayPagination(data.data.pagination);
+                }
+                if (data.data.filters) {
+                    updateFiltersInfo(data.data.filters);
+                }
+                console.log('✅ Tarifs affichés:', ratesData.length);
             } else {
                 throw new Error(data.error || 'Erreur inconnue');
             }
@@ -501,15 +515,48 @@ function editRateModal(carrier, department, id) {
     // Trouver les données du tarif dans ratesData
     const rate = ratesData.find(r => r.id == id && r.carrier_code === carrier);
     
-    if (!rate) {
-        showError('Tarif non trouvé');
-        return;
+    if (rate) {
+        // Utiliser les données déjà chargées
+        populateEditModal(rate);
+        showEditModal();
+    } else {
+        // Si pas trouvé, faire une requête API
+        console.log('🔍 Tarif non trouvé localement, requête API...');
+        fetchRateForEdit(carrier, id);
     }
+}
+
+/**
+ * Récupère un tarif spécifique via l'API pour l'édition
+ */
+function fetchRateForEdit(carrier, id) {
+    const url = `api-rates.php?action=get&carrier=${carrier}&id=${id}`;
     
-    // Remplir la modal avec les données
-    populateEditModal(rate);
-    
-    // Afficher la modal
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                populateEditModal(data.data);
+                showEditModal();
+            } else {
+                throw new Error(data.error || 'Erreur lors de la récupération du tarif');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur récupération tarif:', error);
+            showError('Erreur lors de la récupération du tarif: ' + error.message);
+        });
+}
+
+/**
+ * Affiche la modal d'édition
+ */
+function showEditModal() {
     const modal = document.getElementById('edit-rate-modal');
     if (modal) {
         modal.style.display = 'flex';
