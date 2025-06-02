@@ -1,9 +1,9 @@
-// public/admin/assets/js/options-management.js - Gestion des options supplémentaires
+// public/admin/assets/js/options-management.js - Version corrigée
 console.log('⚙️ Chargement du module de gestion des options...');
 
 // Variables globales
 let optionsData = [];
-let currentFilters = {
+let optionsFilters = { // CHANGÉ: renommé pour éviter le conflit
     carrier: '',
     status: ''
 };
@@ -61,14 +61,14 @@ function setupOptionsEventListeners() {
  * Charge la liste des options
  */
 function loadOptions(force = false) {
-    console.log('⚙️ Chargement des options...', { filters: currentFilters, force });
+    console.log('⚙️ Chargement des options...', { filters: optionsFilters, force });
     
     showOptionsLoading(true);
     
     const params = new URLSearchParams({
         action: 'list',
-        carrier: currentFilters.carrier || '',
-        status: currentFilters.status || ''
+        carrier: optionsFilters.carrier || '',
+        status: optionsFilters.status || ''
     });
     
     const url = `api-options.php?${params.toString()}`;
@@ -239,10 +239,10 @@ function handleOptionsFilter() {
     const carrierFilter = document.getElementById('filter-options-carrier');
     const statusFilter = document.getElementById('filter-options-status');
     
-    currentFilters.carrier = carrierFilter?.value || '';
-    currentFilters.status = statusFilter?.value || '';
+    optionsFilters.carrier = carrierFilter?.value || '';
+    optionsFilters.status = statusFilter?.value || '';
     
-    console.log('🔍 Filtres options mis à jour:', currentFilters);
+    console.log('🔍 Filtres options mis à jour:', optionsFilters);
     loadOptions();
 }
 
@@ -289,7 +289,7 @@ function editOptionModal(id) {
     
     // Remplir le formulaire
     document.getElementById('option-id').value = option.id;
-    document.getElementById('option-transporteur').value = option.transporteur; // Utiliser le code directement
+    document.getElementById('option-transporteur').value = option.transporteur;
     document.getElementById('option-transporteur').disabled = true;
     document.getElementById('option-code').value = option.code_option;
     document.getElementById('option-code').disabled = true;
@@ -328,7 +328,7 @@ function saveOption() {
     
     const formData = {
         id: document.getElementById('option-id').value,
-        transporteur: document.getElementById('option-transporteur').value, // Utiliser le code directement
+        transporteur: document.getElementById('option-transporteur').value,
         code_option: document.getElementById('option-code').value,
         libelle: document.getElementById('option-libelle').value,
         montant: parseFloat(document.getElementById('option-montant').value),
@@ -365,7 +365,7 @@ function saveOption() {
         if (data.success) {
             showSuccess(data.message || (isEdit ? 'Option modifiée' : 'Option créée') + ' avec succès');
             closeOptionModal();
-            loadOptions(); // Recharger la liste
+            loadOptions();
         } else {
             throw new Error(data.error || 'Erreur lors de la sauvegarde');
         }
@@ -472,15 +472,6 @@ function updateOptionLabel() {
 /**
  * Fonctions utilitaires
  */
-function getCarrierId(carrierName) {
-    const mapping = {
-        'Heppner': 'heppner',
-        'XPO': 'xpo',
-        'Kuehne + Nagel': 'kn'
-    };
-    return mapping[carrierName] || carrierName.toLowerCase();
-}
-
 function getCarrierName(carrierId) {
     const mapping = {
         'heppner': 'Heppner',
@@ -549,31 +540,5 @@ if (originalShowTab) {
         }
     };
 }
-
-// Initialiser les event listeners spécifiques aux options
-document.addEventListener('DOMContentLoaded', function() {
-    // Event listener pour la mise à jour automatique du libellé
-    const codeSelect = document.getElementById('option-code');
-    if (codeSelect) {
-        codeSelect.addEventListener('change', updateOptionLabel);
-    }
-    
-    // Event listener pour fermer la modal en cliquant à l'extérieur
-    document.addEventListener('click', function(e) {
-        if (e.target.id === 'option-modal') {
-            closeOptionModal();
-        }
-    });
-    
-    // Event listener pour la touche Echap
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            const modal = document.getElementById('option-modal');
-            if (modal && modal.style.display === 'flex') {
-                closeOptionModal();
-            }
-        }
-    });
-});
 
 console.log('✅ Module de gestion des options chargé avec succès');
