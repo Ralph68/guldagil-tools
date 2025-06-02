@@ -1,5 +1,5 @@
 <?php
-// public/admin/api-options.php - API pour les options supplémentaires
+// public/admin/api-options.php - API pour la gestion des options supplémentaires
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -34,20 +34,20 @@ try {
             handleCreateOption($db);
             break;
             
+        case 'update':
+            handleUpdateOption($db);
+            break;
+            
         case 'delete':
             handleDeleteOption($db);
             break;
             
-        case 'toggle':
-            handleToggleOption($db);
+        case 'carriers':
+            handleGetCarriers($db);
             break;
             
         default:
-            if ($method === 'PUT') {
-                handleUpdateOption($db);
-            } else {
-                handleListOptions($db);
-            }
+            handleListOptions($db);
     }
 } catch (Exception $e) {
     error_log("Options API Error: " . $e->getMessage());
@@ -58,70 +58,119 @@ try {
         'debug' => [
             'method' => $method,
             'action' => $action,
-            'get' => $_GET
+            'get' => $_GET,
+            'post' => $_POST
         ]
     ]);
 }
 
 /**
- * Liste toutes les options
+ * Liste toutes les options supplémentaires
  */
 function handleListOptions($db) {
-    $carrier = $_GET['carrier'] ?? '';
-    $status = $_GET['status'] ?? '';
+    $page = max(1, (int)($_GET['page'] ?? 1));
+    $limit = max(1, min(100, (int)($_GET['limit'] ?? 25)));
+    $offset = ($page - 1) * $limit;
     
+    $filters = [
+        'carrier' => $_GET['carrier'] ?? '',
+        'status' => $_GET['status'] ?? '',
+        'search' => $_GET['search'] ?? ''
+    ];
+    
+    // Construction de la requête avec filtres
     $sql = "SELECT * FROM gul_options_supplementaires WHERE 1=1";
     $params = [];
     
-    if ($carrier) {
+    if ($filters['carrier']) {
         $sql .= " AND transporteur = ?";
-        $params[] = $carrier;
+        $params[] = $filters['carrier'];
     }
     
-    if ($status === 'active') {
-        $sql .= " AND actif = 1";
-    } elseif ($status === 'inactive') {
-        $sql .= " AND actif = 0";
+    if ($filters['status'] !== '') {
+        if ($filters['status'] === 'active') {
+            $sql .= " AND actif = 1";
+        } elseif ($filters['status'] === 'inactive') {
+            $sql .= " AND actif = 0";
+        }
     }
     
-    $sql .= " ORDER BY transporteur, code_option";
+    if ($filters['search']) {
+        $sql .= " AND (code_option LIKE ? OR libelle LIKE ?)";
+        $params[] = '%' . $filters['search'] . '%';
+        $params[] = '%' . $filters['search'] . '%';
+    }
+    
+    // Compter le total
+    $countSql = "SELECT COUNT(*) as total FROM gul_options_supplementaires WHERE 1=1";
+    $countParams = [];
+    
+    if ($filters['carrier']) {
+        $countSql .= " AND transporteur = ?";
+        $countParams[] = $filters['carrier'];
+    }
+    
+    if ($filters['status'] !== '') {
+        if ($filters['status'] === 'active') {
+            $countSql .= " AND actif = 1";
+        } elseif ($filters['status'] === 'inactive') {
+            $countSql .= " AND actif = 0";
+        }
+    }
+    
+    if ($filters['search']) {
+        $countSql .= " AND (code_option LIKE ? OR libelle LIKE ?)";
+        $countParams[] = '%' . $filters['search'] . '%';
+        $countParams[] = '%' . $filters['search'] . '%';
+    }
+    
+    $countStmt = $db->prepare($countSql);
+    $countStmt->execute($countParams);
+    $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Récupérer les données avec pagination
+    $sql .= " ORDER BY transporteur, code_option LIMIT ? OFFSET ?";
+    $params[] = $limit;
+    $params[] = $offset;
     
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
     $options = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Formater les données
     $formattedOptions = [];
     foreach ($options as $option) {
         $formattedOptions[] = [
-            'id' => $option['id'],
-            'transporteur' => $option['transporteur'], // Garder le code (xpo, heppner, kn)
-            'transporteur_name' => getCarrierDisplayName($option['transporteur']), // Nom d'affichage
+            'id' => (int)$option['id'],
+            'transporteur' => $option['transporteur'],
+            'transporteur_nom' => getCarrierName($option['transporteur']),
             'code_option' => $option['code_option'],
             'libelle' => $option['libelle'],
-            'montant' => formatPrice($option['montant']),
+            'montant' => number_format((float)$option['montant'], 2, '.', ''),
             'unite' => $option['unite'],
             'actif' => (bool)$option['actif'],
-            'created_at' => date('Y-m-d H:i:s')
+            'status' => (bool)$option['actif'] ? 'active' : 'inactive'
         ];
     }
     
-    // Statistiques
-    $stats = [
-        'total' => count($formattedOptions),
-        'active' => count(array_filter($formattedOptions, fn($o) => $o['actif'])),
-        'inactive' => count(array_filter($formattedOptions, fn($o) => !$o['actif'])),
-        'by_carrier' => []
-    ];
-    
-    foreach (['heppner', 'xpo', 'kn'] as $c) {
-        $stats['by_carrier'][$c] = count(array_filter($formattedOptions, fn($o) => $o['transporteur'] === $c));
-    }
+    $totalPages = ceil($totalCount / $limit);
     
     echo json_encode([
         'success' => true,
         'data' => [
             'options' => $formattedOptions,
-            'stats' => $stats
+            'pagination' => [
+                'page' => $page,
+                'pages' => $totalPages,
+                'total' => $totalCount,
+                'limit' => $limit
+            ],
+            'filters' => $filters,
+            'stats' => [
+                'total' => $totalCount,
+                'active' => getActiveOptionsCount($db),
+                'inactive' => $totalCount - getActiveOptionsCount($db)
+            ]
         ]
     ]);
 }
@@ -145,11 +194,12 @@ function handleGetSingleOption($db) {
     }
     
     $formattedOption = [
-        'id' => $option['id'],
+        'id' => (int)$option['id'],
         'transporteur' => $option['transporteur'],
+        'transporteur_nom' => getCarrierName($option['transporteur']),
         'code_option' => $option['code_option'],
         'libelle' => $option['libelle'],
-        'montant' => $option['montant'],
+        'montant' => number_format((float)$option['montant'], 2, '.', ''),
         'unite' => $option['unite'],
         'actif' => (bool)$option['actif']
     ];
@@ -168,66 +218,71 @@ function handleCreateOption($db) {
     $data = json_decode($input, true);
     
     if (!$data) {
-        throw new Exception('Données JSON invalides');
+        $data = $_POST; // Fallback pour formulaires standards
     }
     
     // Validation
     $required = ['transporteur', 'code_option', 'libelle', 'montant', 'unite'];
     foreach ($required as $field) {
-        if (!isset($data[$field]) || $data[$field] === '') {
+        if (empty($data[$field])) {
             throw new Exception("Le champ '$field' est requis");
         }
     }
     
-    // Vérifier l'unicité
-    $stmt = $db->prepare("SELECT id FROM gul_options_supplementaires WHERE transporteur = ? AND code_option = ?");
+    // Vérifier l'unicité de la combinaison transporteur + code_option
+    $stmt = $db->prepare("SELECT COUNT(*) FROM gul_options_supplementaires WHERE transporteur = ? AND code_option = ?");
     $stmt->execute([$data['transporteur'], $data['code_option']]);
     
-    if ($stmt->fetch()) {
+    if ($stmt->fetchColumn() > 0) {
         throw new Exception('Cette option existe déjà pour ce transporteur');
     }
     
-    // Insérer (utiliser directement le code transporteur)
-    $sql = "INSERT INTO gul_options_supplementaires (transporteur, code_option, libelle, montant, unite, actif) 
-            VALUES (?, ?, ?, ?, ?, ?)";
-    
-    $stmt = $db->prepare($sql);
-    $stmt->execute([
-        $data['transporteur'], // Garder le code (xpo, heppner, kn)
+    // Insérer la nouvelle option
+    $sql = "INSERT INTO gul_options_supplementaires (transporteur, code_option, libelle, montant, unite, actif) VALUES (?, ?, ?, ?, ?, ?)";
+    $params = [
+        $data['transporteur'],
         $data['code_option'],
         $data['libelle'],
         (float)$data['montant'],
         $data['unite'],
-        isset($data['actif']) ? (int)$data['actif'] : 1
-    ]);
+        isset($data['actif']) ? (bool)$data['actif'] : true
+    ];
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     
     $newId = $db->lastInsertId();
     
     echo json_encode([
         'success' => true,
-        'data' => ['id' => $newId],
-        'message' => 'Option créée avec succès'
+        'message' => 'Option créée avec succès',
+        'data' => ['id' => $newId]
     ]);
 }
 
 /**
- * Met à jour une option
+ * Met à jour une option existante
  */
 function handleUpdateOption($db) {
     $input = file_get_contents('php://input');
     $data = json_decode($input, true);
     
-    if (!$data || !isset($data['id'])) {
-        throw new Exception('Données invalides ou ID manquant');
+    if (!$data) {
+        $data = $_POST; // Fallback pour formulaires standards
     }
     
-    $id = $data['id'];
+    $id = $data['id'] ?? null;
+    
+    if (!$id) {
+        throw new Exception('ID requis');
+    }
     
     // Vérifier que l'option existe
-    $stmt = $db->prepare("SELECT id FROM gul_options_supplementaires WHERE id = ?");
+    $stmt = $db->prepare("SELECT * FROM gul_options_supplementaires WHERE id = ?");
     $stmt->execute([$id]);
+    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if (!$stmt->fetch()) {
+    if (!$existing) {
         throw new Exception('Option non trouvée');
     }
     
@@ -235,15 +290,16 @@ function handleUpdateOption($db) {
     $updateFields = [];
     $params = [];
     
-    $updatableFields = ['libelle', 'montant', 'unite', 'actif'];
+    $allowedFields = ['transporteur', 'code_option', 'libelle', 'montant', 'unite', 'actif'];
     
-    foreach ($updatableFields as $field) {
-        if (isset($data[$field])) {
+    foreach ($allowedFields as $field) {
+        if (array_key_exists($field, $data)) {
             $updateFields[] = "$field = ?";
+            
             if ($field === 'montant') {
                 $params[] = (float)$data[$field];
             } elseif ($field === 'actif') {
-                $params[] = (int)$data[$field];
+                $params[] = (bool)$data[$field];
             } else {
                 $params[] = $data[$field];
             }
@@ -252,6 +308,19 @@ function handleUpdateOption($db) {
     
     if (empty($updateFields)) {
         throw new Exception('Aucune donnée à mettre à jour');
+    }
+    
+    // Vérifier l'unicité si transporteur ou code_option a changé
+    if (isset($data['transporteur']) || isset($data['code_option'])) {
+        $newTransporteur = $data['transporteur'] ?? $existing['transporteur'];
+        $newCodeOption = $data['code_option'] ?? $existing['code_option'];
+        
+        $stmt = $db->prepare("SELECT COUNT(*) FROM gul_options_supplementaires WHERE transporteur = ? AND code_option = ? AND id != ?");
+        $stmt->execute([$newTransporteur, $newCodeOption, $id]);
+        
+        if ($stmt->fetchColumn() > 0) {
+            throw new Exception('Cette option existe déjà pour ce transporteur');
+        }
     }
     
     $params[] = $id;
@@ -270,7 +339,7 @@ function handleUpdateOption($db) {
  * Supprime une option
  */
 function handleDeleteOption($db) {
-    $id = (int)($_GET['id'] ?? 0);
+    $id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
     
     if (!$id) {
         throw new Exception('ID requis');
@@ -290,56 +359,43 @@ function handleDeleteOption($db) {
 }
 
 /**
- * Active/désactive une option
+ * Récupère la liste des transporteurs
  */
-function handleToggleOption($db) {
-    $id = (int)($_GET['id'] ?? 0);
+function handleGetCarriers($db) {
+    $carriers = [
+        ['code' => 'heppner', 'name' => 'Heppner'],
+        ['code' => 'xpo', 'name' => 'XPO'],
+        ['code' => 'kn', 'name' => 'Kuehne + Nagel']
+    ];
     
-    if (!$id) {
-        throw new Exception('ID requis');
+    // Ajouter le nombre d'options par transporteur
+    foreach ($carriers as &$carrier) {
+        $stmt = $db->prepare("SELECT COUNT(*) as count FROM gul_options_supplementaires WHERE transporteur = ?");
+        $stmt->execute([$carrier['code']]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $carrier['options_count'] = $result['count'] ?? 0;
     }
-    
-    // Récupérer l'état actuel
-    $stmt = $db->prepare("SELECT actif FROM gul_options_supplementaires WHERE id = ?");
-    $stmt->execute([$id]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$result) {
-        throw new Exception('Option non trouvée');
-    }
-    
-    $newStatus = $result['actif'] ? 0 : 1;
-    
-    // Mettre à jour
-    $stmt = $db->prepare("UPDATE gul_options_supplementaires SET actif = ? WHERE id = ?");
-    $stmt->execute([$newStatus, $id]);
     
     echo json_encode([
         'success' => true,
-        'data' => ['actif' => (bool)$newStatus],
-        'message' => $newStatus ? 'Option activée' : 'Option désactivée'
+        'data' => $carriers
     ]);
 }
 
 /**
  * Fonctions utilitaires
  */
-function formatPrice($price) {
-    if ($price === null || $price === '') {
-        return '0.00';
-    }
-    return number_format((float)$price, 2, '.', '');
-}
-
-/**
- * Convertit le code transporteur en nom d'affichage
- */
-function getCarrierDisplayName($carrierCode) {
-    $mapping = [
+function getCarrierName($carrierCode) {
+    $names = [
         'heppner' => 'Heppner',
         'xpo' => 'XPO',
         'kn' => 'Kuehne + Nagel'
     ];
-    return $mapping[$carrierCode] ?? ucfirst($carrierCode);
+    return $names[$carrierCode] ?? $carrierCode;
+}
+
+function getActiveOptionsCount($db) {
+    $stmt = $db->query("SELECT COUNT(*) FROM gul_options_supplementaires WHERE actif = 1");
+    return $stmt->fetchColumn();
 }
 ?>
