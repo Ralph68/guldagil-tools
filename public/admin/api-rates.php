@@ -13,6 +13,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 /**
+ * Récupère un tarif spécifique pour l'édition
+ */
+function handleGetSingleRate($db) {
+    $id = (int)($_GET['id'] ?? 0);
+    $carrier = $_GET['carrier'] ?? '';
+    
+    if (!$id || !$carrier) {
+        throw new Exception('ID et transporteur requis');
+    }
+    
+    $tables = [
+        'heppner' => 'gul_heppner_rates',
+        'xpo' => 'gul_xpo_rates',
+        'kn' => 'gul_kn_rates'
+    ];
+    
+    if (!isset($tables[$carrier])) {
+        throw new Exception('Transporteur non valide');
+    }
+    
+    $table = $tables[$carrier];
+    
+    try {
+        $stmt = $db->prepare("SELECT * FROM `$table` WHERE id = ?");
+        $stmt->execute([$id]);
+        $rate = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$rate) {
+            throw new Exception('Tarif non trouvé');
+        }
+        
+        // Formater la réponse
+        $formattedRate = [
+            'id' => $rate['id'],
+            'carrier_code' => $carrier,
+            'carrier_name' => getCarrierName($carrier),
+            'department_num' => $rate['num_departement'],
+            'department_name' => $rate['departement'] ?: 'Non défini',
+            'delay' => $rate['delais'] ?? '',
+            'rates' => [
+                'tarif_0_9' => formatPrice($rate['tarif_0_9'] ?? null),
+                'tarif_10_19' => formatPrice($rate['tarif_10_19'] ?? null),
+                'tarif_20_29' => formatPrice($rate['tarif_20_29'] ?? null),
+                'tarif_30_39' => formatPrice($rate['tarif_30_39'] ?? null),
+                'tarif_40_49' => formatPrice($rate['tarif_40_49'] ?? null),
+                'tarif_50_59' => formatPrice($rate['tarif_50_59'] ?? null),
+                'tarif_60_69' => formatPrice($rate['tarif_60_69'] ?? null),
+                'tarif_70_79' => formatPrice($rate['tarif_70_79'] ?? null),
+                'tarif_80_89' => formatPrice($rate['tarif_80_89'] ?? null),
+                'tarif_90_99' => formatPrice($rate['tarif_90_99'] ?? null),
+                'tarif_100_299' => formatPrice($rate['tarif_100_299'] ?? null),
+                'tarif_300_499' => formatPrice($rate['tarif_300_499'] ?? null),
+                'tarif_500_999' => formatPrice($rate['tarif_500_999'] ?? null),
+                'tarif_1000_1999' => formatPrice($rate['tarif_1000_1999'] ?? null),
+                'tarif_2000_2999' => formatPrice($rate['tarif_2000_2999'] ?? null)
+            ]
+        ];
+        
+        echo json_encode([
+            'success' => true,
+            'data' => $formattedRate
+        ]);
+        
+    } catch (PDOException $e) {
+        throw new Exception('Erreur lors de la récupération: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Retourne le nom d'un transporteur
+ */
+function getCarrierName($carrier) {
+    $names = [
+        'heppner' => 'Heppner',
+        'xpo' => 'XPO',
+        'kn' => 'Kuehne + Nagel'
+    ];
+    return $names[$carrier] ?? $carrier;
+}
+
+/**
  * Gère les requêtes GET
  */
 function handleGetRequest($db, $action) {
@@ -28,6 +109,9 @@ function handleGetRequest($db, $action) {
             break;
         case 'delete':
             handleDeleteRate($db);
+            break;
+        case 'get':
+            handleGetSingleRate($db);
             break;
         default:
             handleListRates($db);
