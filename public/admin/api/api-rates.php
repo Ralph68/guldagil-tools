@@ -1,24 +1,46 @@
 <?php
-// public/admin/api-rates.php - Version simple et fonctionnelle
+// public/admin/api-rates.php - Version corrigée
+// Démarrer la capture de sortie pour éviter les sorties parasites
+ob_start();
+
+// Configuration des erreurs pour éviter l'affichage HTML
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // IMPORTANT: Désactiver l'affichage des erreurs
+ini_set('log_errors', 1);
 
-require __DIR__ . '/../../config.php';
-
+// Headers JSON dès le début
 header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
+// Gestion des requêtes OPTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Nettoyer la sortie avant de commencer
+ob_clean();
+
+// Inclure la configuration
+try {
+    require __DIR__ . '/../../config.php';
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Erreur de configuration de la base de données'
+    ]);
     exit;
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? 'list';
 
-error_log("API Call: Method=$method, Action=$action, GET=" . json_encode($_GET));
+// Log pour debug
+error_log("API Rates Call: Method=$method, Action=$action");
 
 try {
     switch ($action) {
@@ -50,7 +72,7 @@ try {
             }
     }
 } catch (Exception $e) {
-    error_log("API Error: " . $e->getMessage());
+    error_log("API Rates Error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
@@ -59,8 +81,15 @@ try {
             'method' => $method,
             'action' => $action,
             'get' => $_GET,
-            'post' => $_POST
+            'post' => $_POST ?? []
         ]
+    ]);
+} catch (Error $e) {
+    error_log("API Rates Fatal Error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Erreur fatale du serveur'
     ]);
 }
 
@@ -98,11 +127,13 @@ function handleListRates($db) {
             $totalCount += count($rates);
         } catch (Exception $e) {
             error_log("Erreur transporteur $carrierCode: " . $e->getMessage());
+            // Continuer avec les autres transporteurs
         }
     }
     
+    // Trier par département
     usort($allRates, function($a, $b) {
-        return strcmp($a['department_num'], $b['department_num']);
+        return (int)$a['department_num'] - (int)$b['department_num'];
     });
     
     $paginatedRates = array_slice($allRates, $offset, $limit);
@@ -130,6 +161,12 @@ function getCarrierRates($db, $carrierCode, $carrierInfo, $filters) {
     $table = $carrierInfo['table'];
     $carrierName = $carrierInfo['name'];
     
+    // Vérifier que la table existe
+    $stmt = $db->query("SHOW TABLES LIKE '$table'");
+    if (!$stmt->fetch()) {
+        throw new Exception("Table $table non trouvée");
+    }
+    
     $sql = "SELECT * FROM `$table` WHERE 1=1";
     $params = [];
     
@@ -154,7 +191,7 @@ function getCarrierRates($db, $carrierCode, $carrierInfo, $filters) {
     $formattedRates = [];
     foreach ($rates as $rate) {
         $formattedRates[] = [
-            'id' => $rate['id'],
+            'id' => (int)$rate['id'],
             'carrier_code' => $carrierCode,
             'carrier_name' => $carrierName,
             'department_num' => $rate['num_departement'],
@@ -216,7 +253,7 @@ function handleGetSingleRate($db) {
     }
     
     $formattedRate = [
-        'id' => $rate['id'],
+        'id' => (int)$rate['id'],
         'carrier_code' => $carrier,
         'carrier_name' => getCarrierName($carrier),
         'department_num' => $rate['num_departement'],
@@ -384,6 +421,7 @@ function handleGetCarriers($db) {
             $carrier['rates_count'] = $result['count'] ?? 0;
         } catch (Exception $e) {
             $carrier['rates_count'] = 0;
+            error_log("Erreur comptage {$carrier['table']}: " . $e->getMessage());
         }
     }
     
@@ -465,4 +503,7 @@ function getCarrierName($carrier) {
     ];
     return $names[$carrier] ?? $carrier;
 }
+
+// Nettoyer la sortie à la fin
+ob_end_clean();
 ?>
