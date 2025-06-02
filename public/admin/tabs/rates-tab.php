@@ -330,4 +330,101 @@
 
 .bulk-actions-buttons .btn {
     background: rgba(255,255,255,0.2) !important;
-    border: 1px solid rgba
+    border: 1px solid rgba(255,255,255,0.3) !important;
+    color: white !important;
+    padding: 0.5rem 1rem !important;
+}
+
+.bulk-actions-buttons .btn:hover {
+    background: rgba(255,255,255,0.3) !important;
+    transform: translateY(-1px);
+}
+
+.help-section {
+    padding: 1rem;
+    background: var(--bg-light);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--primary-color);
+}
+
+.help-section h5 {
+    margin: 0 0 0.75rem 0;
+    color: var(--primary-color);
+    font-size: 0.95rem;
+}
+
+.help-section ul {
+    margin: 0;
+    padding-left: 1.2rem;
+    list-style: disc;
+}
+
+.help-section li {
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.loading-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem;
+    color: var(--text-muted);
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .search-filters {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .filter-actions {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .carriers-summary {
+        grid-template-columns: 1fr;
+    }
+    
+    .bulk-actions {
+        left: 10px;
+        right: 10px;
+        transform: none;
+        border-radius: var(--border-radius);
+    }
+    
+    .bulk-actions-content {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+}
+</style>
