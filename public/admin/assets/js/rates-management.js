@@ -1,7 +1,5 @@
-// public/admin/assets/js/rates-management.js
-// Gestion complète des tarifs - Version finale et fonctionnelle
-
-console.log('📋 Gestionnaire de tarifs chargé');
+// public/admin/assets/js/rates-management.js - Version corrigée
+console.log('📊 Chargement du module de gestion des tarifs...');
 
 // Variables globales
 let currentPage = 1;
@@ -10,67 +8,62 @@ let currentFilters = {
     department: '',
     search: ''
 };
-let editingRateId = null;
-let editingCarrier = null;
+let ratesData = [];
 
-// =============================================================================
-// INITIALISATION
-// =============================================================================
-
+// Initialisation
 document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('rates-tbody')) {
-        initializeRatesManagement();
-    }
+    console.log('✅ Module tarifs initialisé');
+    initializeRatesInterface();
 });
 
-function initializeRatesManagement() {
-    console.log('🚀 Initialisation du gestionnaire de tarifs');
+function initializeRatesInterface() {
+    console.log('🔧 Initialisation interface tarifs');
+    
+    // Event listeners pour les boutons et filtres
+    setupEventListeners();
     
     // Charger les données initiales
-    Promise.all([
-        loadCarriers(),
-        loadDepartments()
-    ]).then(() => {
-        loadRates();
-        showAlert('success', 'Interface des tarifs chargée !');
-    }).catch(error => {
-        console.error('Erreur initialisation:', error);
-        showAlert('error', 'Erreur lors de l\'initialisation');
-    });
+    loadCarriers();
+    loadDepartments();
     
-    // Event listeners
-    setupEventListeners();
+    // Charger les tarifs si on est sur l'onglet tarifs
+    if (document.getElementById('tab-rates')?.classList.contains('active')) {
+        loadRates();
+    }
 }
 
 function setupEventListeners() {
-    console.log('🎧 Configuration des événements...');
-    
-    // Recherche
-    const searchInput = document.getElementById('search-rates');
+    // Bouton de recherche
     const searchButton = document.getElementById('search-button');
-    const clearButton = document.getElementById('clear-filters-button');
-    const refreshButton = document.getElementById('refresh-rates-button');
-    
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        });
-    }
-    
     if (searchButton) {
-        searchButton.addEventListener('click', performSearch);
+        searchButton.addEventListener('click', handleSearch);
     }
     
+    // Bouton effacer filtres
+    const clearButton = document.getElementById('clear-filters-button');
     if (clearButton) {
         clearButton.addEventListener('click', clearFilters);
     }
     
+    // Bouton actualiser
+    const refreshButton = document.getElementById('refresh-rates-button');
     if (refreshButton) {
-        refreshButton.addEventListener('click', function() {
-            loadRates(true);
-            showAlert('info', 'Données actualisées');
+        refreshButton.addEventListener('click', () => loadRates(true));
+    }
+    
+    // Bouton export
+    const exportButton = document.getElementById('export-rates-button');
+    if (exportButton) {
+        exportButton.addEventListener('click', exportRates);
+    }
+    
+    // Recherche en temps réel
+    const searchInput = document.getElementById('search-rates');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(handleSearch, 500);
         });
     }
     
@@ -79,147 +72,159 @@ function setupEventListeners() {
     const departmentFilter = document.getElementById('filter-department');
     
     if (carrierFilter) {
-        carrierFilter.addEventListener('change', performSearch);
+        carrierFilter.addEventListener('change', handleSearch);
     }
     
     if (departmentFilter) {
-        departmentFilter.addEventListener('change', performSearch);
-    }
-    
-    // Export
-    const exportButton = document.getElementById('export-rates-button');
-    if (exportButton) {
-        exportButton.addEventListener('click', exportRates);
-    }
-    
-    // Bouton ajout
-    const addButton = document.getElementById('add-rate-button');
-    if (addButton) {
-        addButton.addEventListener('click', function() {
-            showAlert('info', 'Fonctionnalité d\'ajout en cours de développement');
-        });
+        departmentFilter.addEventListener('change', handleSearch);
     }
 }
 
-// =============================================================================
-// CHARGEMENT DES DONNÉES
-// =============================================================================
-
-async function loadRates(showLoading = false) {
-    const tbody = document.getElementById('rates-tbody');
+/**
+ * Charge la liste des transporteurs
+ */
+function loadCarriers() {
+    console.log('📦 Chargement des transporteurs...');
     
-    if (showLoading && tbody) {
+    fetch('api-rates.php?action=carriers')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                populateCarrierFilter(data.data);
+                console.log('✅ Transporteurs chargés:', data.data.length);
+            } else {
+                throw new Error(data.error || 'Erreur inconnue');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur chargement transporteurs:', error);
+            showError('Erreur lors du chargement des transporteurs: ' + error.message);
+        });
+}
+
+/**
+ * Charge la liste des départements
+ */
+function loadDepartments() {
+    console.log('🗺️ Chargement des départements...');
+    
+    fetch('api-rates.php?action=departments')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                populateDepartmentFilter(data.data);
+                console.log('✅ Départements chargés:', data.data.length);
+            } else {
+                throw new Error(data.error || 'Erreur inconnue');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur chargement départements:', error);
+            showError('Erreur lors du chargement des départements: ' + error.message);
+        });
+}
+
+/**
+ * Charge les tarifs avec les filtres actuels
+ */
+function loadRates(force = false) {
+    console.log('💰 Chargement des tarifs...', { page: currentPage, filters: currentFilters, force });
+    
+    // Afficher le loading
+    showLoading(true);
+    
+    // Construire l'URL avec les paramètres
+    const params = new URLSearchParams({
+        action: 'list',
+        page: currentPage,
+        limit: 25,
+        carrier: currentFilters.carrier,
+        department: currentFilters.department,
+        search: currentFilters.search
+    });
+    
+    const url = `api-rates.php?${params.toString()}`;
+    console.log('📡 Requête API:', url);
+    
+    fetch(url)
+        .then(response => {
+            console.log('📥 Réponse API:', response.status, response.statusText);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error('❌ Erreur API (texte):', text);
+                    throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('📊 Données reçues:', data);
+            if (data.success) {
+                ratesData = data.data.rates;
+                displayRates(data.data.rates);
+                displayPagination(data.data.pagination);
+                updateFiltersInfo(data.data.filters);
+                console.log('✅ Tarifs affichés:', data.data.rates.length);
+            } else {
+                throw new Error(data.error || 'Erreur inconnue');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur chargement tarifs:', error);
+            showError('Erreur lors du chargement des tarifs: ' + error.message);
+            displayRates([]); // Afficher un tableau vide
+        })
+        .finally(() => {
+            showLoading(false);
+        });
+}
+
+/**
+ * Affiche le loading
+ */
+function showLoading(show) {
+    const tbody = document.getElementById('rates-tbody');
+    if (!tbody) return;
+    
+    if (show) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" class="text-center" style="padding: 2rem;">
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                        <div class="spinner"></div>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 1rem;">
+                        <div class="spinner" style="width: 20px; height: 20px; border: 2px solid #f3f3f3; border-top: 2px solid #007acc; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                         Chargement des tarifs...
                     </div>
                 </td>
             </tr>
         `;
     }
-    
-    try {
-        const params = new URLSearchParams({
-            action: 'list',
-            page: currentPage,
-            limit: 25,
-            ...currentFilters
-        });
-        
-        console.log('🌐 Requête API:', `api-rates.php?${params}`);
-        
-        const response = await fetch(`api-rates.php?${params}`);
-        
-        if (!response.ok) {
-            throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('📨 Réponse API:', data);
-        
-        if (data.success) {
-            displayRates(data.data.rates);
-            displayPagination(data.data.pagination);
-            updateFiltersInfo(data.data.filters);
-        } else {
-            throw new Error(data.error || 'Erreur lors du chargement');
-        }
-        
-    } catch (error) {
-        console.error('❌ Erreur lors du chargement:', error);
-        if (tbody) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="9" class="text-center" style="padding: 2rem;">
-                        <div style="color: var(--error-color); text-align: center;">
-                            <div style="font-size: 2rem; margin-bottom: 1rem;">⚠️</div>
-                            <div>Erreur: ${error.message}</div>
-                            <button class="btn btn-secondary btn-sm" onclick="loadRates(true)" style="margin-top: 1rem;">
-                                🔄 Réessayer
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-        showAlert('error', 'Erreur lors du chargement des tarifs');
-    }
 }
 
-async function loadCarriers() {
-    try {
-        console.log('🚚 Chargement des transporteurs...');
-        const response = await fetch('api-rates.php?action=carriers');
-        const data = await response.json();
-        
-        if (data.success) {
-            populateCarrierFilter(data.data);
-            console.log('✅ Transporteurs chargés:', data.data.length);
-        }
-    } catch (error) {
-        console.error('❌ Erreur chargement transporteurs:', error);
-    }
-}
-
-async function loadDepartments() {
-    try {
-        console.log('📍 Chargement des départements...');
-        const response = await fetch('api-rates.php?action=departments');
-        const data = await response.json();
-        
-        if (data.success) {
-            populateDepartmentFilter(data.data);
-            console.log('✅ Départements chargés:', data.data.length);
-        }
-    } catch (error) {
-        console.error('❌ Erreur chargement départements:', error);
-    }
-}
-
-// =============================================================================
-// AFFICHAGE DES DONNÉES
-// =============================================================================
-
+/**
+ * Affiche les tarifs dans le tableau
+ */
 function displayRates(rates) {
     const tbody = document.getElementById('rates-tbody');
-    if (!tbody) {
-        console.error('❌ Element rates-tbody non trouvé');
-        return;
-    }
-
-    console.log('📊 Affichage de', rates.length, 'tarifs');
-
-    if (rates.length === 0) {
+    if (!tbody) return;
+    
+    if (!rates || rates.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" class="text-center" style="padding: 2rem; color: #666;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 2rem; margin-bottom: 1rem;">📭</div>
-                        <div>Aucun tarif trouvé pour ces critères</div>
-                        <button class="btn btn-primary btn-sm" onclick="clearFilters()" style="margin-top: 1rem;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                        <div style="font-size: 2rem;">📭</div>
+                        <div>Aucun tarif trouvé</div>
+                        <button class="btn btn-primary btn-sm" onclick="clearFilters()">
                             🔄 Effacer les filtres
                         </button>
                     </div>
@@ -228,31 +233,37 @@ function displayRates(rates) {
         `;
         return;
     }
-
-    tbody.innerHTML = rates.map(rate => {
-        const departmentText = rate.department_name && rate.department_name !== 'Non défini' 
-            ? `${rate.department_num} - ${rate.department_name}` 
-            : rate.department_num;
-            
-        return `
-            <tr data-rate-id="${rate.id}" data-carrier="${rate.carrier_code}">
-                <td class="font-semibold text-primary">${rate.carrier_name}</td>
-                <td>${departmentText}</td>
-                <td>${formatPrice(rate.rates.tarif_0_9)}</td>
-                <td>${formatPrice(rate.rates.tarif_10_19)}</td>
-                <td>${formatPrice(rate.rates.tarif_90_99)}</td>
-                <td>${formatPrice(rate.rates.tarif_100_299)}</td>
-                <td>${formatPrice(rate.rates.tarif_500_999)}</td>
-                <td>${rate.delay || '-'}</td>
+    
+    let html = '';
+    rates.forEach(rate => {
+        const statusBadge = getStatusBadge(rate.status);
+        
+        html += `
+            <tr style="transition: background-color 0.2s ease;">
+                <td>
+                    <div style="font-weight: 600; color: var(--primary-color);">${rate.carrier_name}</div>
+                    <div style="font-size: 0.8rem; color: #666;">${rate.carrier_code}</div>
+                </td>
+                <td>
+                    <div style="font-weight: 500;">${rate.department_num} - ${rate.department_name}</div>
+                </td>
+                <td>${formatDisplayPrice(rate.rates.tarif_0_9)}</td>
+                <td>${formatDisplayPrice(rate.rates.tarif_10_19)}</td>
+                <td>${formatDisplayPrice(rate.rates.tarif_90_99)}</td>
+                <td style="font-weight: 600;">${formatDisplayPrice(rate.rates.tarif_100_299)}</td>
+                <td>${formatDisplayPrice(rate.rates.tarif_500_999)}</td>
+                <td>
+                    <span class="badge badge-info">${rate.delay || 'Non défini'}</span>
+                </td>
                 <td class="text-center">
-                    <div class="actions">
+                    <div class="actions" style="display: flex; gap: 0.5rem; justify-content: center;">
                         <button class="btn btn-secondary btn-sm" 
-                                onclick="editRate(${rate.id}, '${rate.carrier_code}')" 
+                                onclick="editRateModal('${rate.carrier_code}', '${rate.department_num}', ${rate.id})" 
                                 title="Modifier">
                             ✏️
                         </button>
                         <button class="btn btn-danger btn-sm" 
-                                onclick="deleteRate(${rate.id}, '${rate.carrier_code}', '${departmentText}')" 
+                                onclick="confirmDeleteRate('${rate.carrier_code}', '${rate.department_num}', ${rate.id})" 
                                 title="Supprimer">
                             🗑️
                         </button>
@@ -260,146 +271,114 @@ function displayRates(rates) {
                 </td>
             </tr>
         `;
-    }).join('');
+    });
+    
+    tbody.innerHTML = html;
 }
 
+/**
+ * Formate le prix pour l'affichage
+ */
+function formatDisplayPrice(price) {
+    if (price === null || price === undefined || price === '') {
+        return '<span style="color: #999;">-</span>';
+    }
+    return `<span style="font-weight: 500;">${parseFloat(price).toFixed(2)} €</span>`;
+}
+
+/**
+ * Retourne un badge de statut
+ */
+function getStatusBadge(status) {
+    const badges = {
+        'complet': '<span class="badge badge-success">Complet</span>',
+        'partiel': '<span class="badge badge-warning">Partiel</span>',
+        'vide': '<span class="badge badge-danger">Vide</span>'
+    };
+    return badges[status] || '<span class="badge badge-info">Inconnu</span>';
+}
+
+/**
+ * Affiche la pagination
+ */
 function displayPagination(pagination) {
     const container = document.getElementById('pagination-container');
-    if (!container) return;
+    if (!container || !pagination) return;
     
-    const { page, pages, total } = pagination;
-    
-    if (pages <= 1) {
-        container.innerHTML = `
-            <div style="text-align: center; color: #666; margin: 1rem 0; padding: 1rem; background: var(--bg-light); border-radius: var(--border-radius);">
-                Total: ${total} tarifs
-            </div>
-        `;
+    if (pagination.pages <= 1) {
+        container.innerHTML = '';
         return;
     }
     
     let html = `
-        <div class="pagination-wrapper" style="display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0; padding: 1rem; background: var(--bg-light); border-radius: var(--border-radius);">
-            <span style="color: #666; font-size: 0.9rem;">
-                Page ${page} sur ${pages} • ${total} tarifs au total
-            </span>
-            <div class="pagination" style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+            <div style="font-size: 0.9rem; color: #666;">
+                Page ${pagination.page} sur ${pagination.pages} 
+                (${pagination.total} résultats)
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
     `;
     
     // Bouton précédent
-    if (page > 1) {
-        html += `<button class="btn btn-secondary btn-sm" onclick="changePage(${page - 1})">‹ Précédent</button>`;
+    if (pagination.page > 1) {
+        html += `<button class="btn btn-secondary btn-sm" onclick="goToPage(${pagination.page - 1})">« Précédent</button>`;
     }
     
     // Numéros de pages
-    const startPage = Math.max(1, page - 2);
-    const endPage = Math.min(pages, page + 2);
-    
-    if (startPage > 1) {
-        html += `<button class="btn btn-secondary btn-sm" onclick="changePage(1)">1</button>`;
-        if (startPage > 2) {
-            html += `<span style="padding: 0.5rem;">...</span>`;
-        }
-    }
+    const startPage = Math.max(1, pagination.page - 2);
+    const endPage = Math.min(pagination.pages, pagination.page + 2);
     
     for (let i = startPage; i <= endPage; i++) {
-        const isActive = i === page ? 'btn-primary' : 'btn-secondary';
-        const disabled = i === page ? 'style="cursor: default;"' : `onclick="changePage(${i})"`;
-        html += `<button class="btn ${isActive} btn-sm" ${disabled}>${i}</button>`;
-    }
-    
-    if (endPage < pages) {
-        if (endPage < pages - 1) {
-            html += `<span style="padding: 0.5rem;">...</span>`;
-        }
-        html += `<button class="btn btn-secondary btn-sm" onclick="changePage(${pages})">${pages}</button>`;
+        const isActive = i === pagination.page;
+        html += `<button class="btn ${isActive ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="goToPage(${i})">${i}</button>`;
     }
     
     // Bouton suivant
-    if (page < pages) {
-        html += `<button class="btn btn-secondary btn-sm" onclick="changePage(${page + 1})">Suivant ›</button>`;
+    if (pagination.page < pagination.pages) {
+        html += `<button class="btn btn-secondary btn-sm" onclick="goToPage(${pagination.page + 1})">Suivant »</button>`;
     }
     
-    html += `</div></div>`;
+    html += `
+            </div>
+        </div>
+    `;
     
     container.innerHTML = html;
 }
 
-function populateCarrierFilter(carriers) {
-    const select = document.getElementById('filter-carrier');
-    if (!select) return;
-    
-    const options = carriers.map(carrier => 
-        `<option value="${carrier.code}">${carrier.name} (${carrier.rates_count} tarifs)</option>`
-    ).join('');
-    
-    select.innerHTML = '<option value="">Tous les transporteurs</option>' + options;
+/**
+ * Va à une page spécifique
+ */
+function goToPage(page) {
+    currentPage = page;
+    loadRates();
 }
 
-function populateDepartmentFilter(departments) {
-    const select = document.getElementById('filter-department');
-    if (!select) return;
+/**
+ * Gère la recherche
+ */
+function handleSearch() {
+    console.log('🔍 Recherche déclenchée');
     
-    const options = departments.map(dept => 
-        `<option value="${dept.num}">${dept.num} - ${dept.name}</option>`
-    ).join('');
+    // Récupérer les valeurs des filtres
+    currentFilters.carrier = document.getElementById('filter-carrier')?.value || '';
+    currentFilters.department = document.getElementById('filter-department')?.value || '';
+    currentFilters.search = document.getElementById('search-rates')?.value || '';
     
-    select.innerHTML = '<option value="">Tous les départements</option>' + options;
-}
-
-function updateFiltersInfo(filters) {
-    const container = document.getElementById('filters-info');
-    if (!container) return;
-    
-    const activeFilters = [];
-    
-    if (filters.carrier) {
-        const carrierName = document.querySelector(`#filter-carrier option[value="${filters.carrier}"]`)?.textContent || filters.carrier;
-        activeFilters.push(`Transporteur: ${carrierName}`);
-    }
-    
-    if (filters.department) {
-        activeFilters.push(`Département: ${filters.department}`);
-    }
-    
-    if (filters.search) {
-        activeFilters.push(`Recherche: "${filters.search}"`);
-    }
-    
-    if (activeFilters.length > 0) {
-        container.innerHTML = `
-            <div class="active-filters" style="background: #e3f2fd; border: 1px solid #2196f3; color: #1565c0; padding: 0.75rem; border-radius: var(--border-radius); font-size: 0.9rem; margin-bottom: 1rem;">
-                <strong>Filtres actifs:</strong> ${activeFilters.join(' • ')}
-                <button onclick="clearFilters()" style="float: right; background: none; border: none; color: #1565c0; cursor: pointer; font-weight: bold;">✕</button>
-            </div>
-        `;
-        container.style.display = 'block';
-    } else {
-        container.style.display = 'none';
-    }
-}
-
-// =============================================================================
-// ACTIONS UTILISATEUR
-// =============================================================================
-
-function performSearch() {
-    const searchInput = document.getElementById('search-rates');
-    const carrierFilter = document.getElementById('filter-carrier');
-    const departmentFilter = document.getElementById('filter-department');
-    
-    currentFilters = {
-        search: searchInput?.value || '',
-        carrier: carrierFilter?.value || '',
-        department: departmentFilter?.value || ''
-    };
-    
-    console.log('🔍 Application des filtres:', currentFilters);
+    // Remettre à la page 1
     currentPage = 1;
-    loadRates(true);
+    
+    // Charger les tarifs
+    loadRates();
 }
 
+/**
+ * Efface tous les filtres
+ */
 function clearFilters() {
+    console.log('🔄 Effacement des filtres');
+    
+    // Réinitialiser les champs
     const searchInput = document.getElementById('search-rates');
     const carrierFilter = document.getElementById('filter-carrier');
     const departmentFilter = document.getElementById('filter-department');
@@ -408,275 +387,84 @@ function clearFilters() {
     if (carrierFilter) carrierFilter.value = '';
     if (departmentFilter) departmentFilter.value = '';
     
-    currentFilters = { search: '', carrier: '', department: '' };
+    // Réinitialiser les filtres
+    currentFilters = { carrier: '', department: '', search: '' };
     currentPage = 1;
-    loadRates(true);
     
-    showAlert('info', 'Filtres effacés');
+    // Recharger
+    loadRates();
 }
 
-function changePage(page) {
-    currentPage = page;
-    loadRates(true);
-}
-
-async function editRate(id, carrier) {
-    console.log('📝 Édition tarif:', { id, carrier });
+/**
+ * Met à jour les informations de filtres
+ */
+function updateFiltersInfo(filters) {
+    const container = document.getElementById('filters-info');
+    if (!container) return;
     
-    editingRateId = id;
-    editingCarrier = carrier;
+    const activeFilters = [];
+    if (filters.carrier) activeFilters.push(`Transporteur: ${filters.carrier}`);
+    if (filters.department) activeFilters.push(`Département: ${filters.department}`);
+    if (filters.search) activeFilters.push(`Recherche: "${filters.search}"`);
     
-    try {
-        // Charger les données du tarif
-        const response = await fetch(`api-rates.php?action=get&id=${id}&carrier=${carrier}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            populateEditForm(data.data);
-            showEditModal();
-        } else {
-            throw new Error(data.error || 'Erreur lors du chargement du tarif');
-        }
-        
-    } catch (error) {
-        console.error('❌ Erreur:', error);
-        showAlert('error', 'Impossible de charger le tarif pour édition');
+    if (activeFilters.length > 0) {
+        container.innerHTML = `
+            <div style="background: #e3f2fd; border: 1px solid #1976d2; padding: 0.75rem; border-radius: 6px; font-size: 0.9rem;">
+                <strong>Filtres actifs:</strong> ${activeFilters.join(', ')}
+                <button onclick="clearFilters()" style="margin-left: 1rem; padding: 0.25rem 0.5rem; background: #1976d2; color: white; border: none; border-radius: 4px; font-size: 0.8rem;">Effacer</button>
+            </div>
+        `;
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
     }
 }
 
-async function deleteRate(id, carrier, departmentText) {
-    if (!confirm(`Supprimer le tarif ${carrier.toUpperCase()} pour le département ${departmentText} ?\n\nCette action est irréversible.`)) {
-        return;
-    }
+/**
+ * Remplit le filtre des transporteurs
+ */
+function populateCarrierFilter(carriers) {
+    const filter = document.getElementById('filter-carrier');
+    if (!filter) return;
     
-    try {
-        console.log('🗑️ Suppression tarif:', { id, carrier, departmentText });
-        
-        const response = await fetch(`api-rates.php?action=delete&id=${id}&carrier=${carrier}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('success', 'Tarif supprimé avec succès');
-            loadRates(true);
-        } else {
-            throw new Error(data.error || 'Erreur lors de la suppression');
-        }
-        
-    } catch (error) {
-        console.error('❌ Erreur:', error);
-        showAlert('error', 'Erreur lors de la suppression du tarif');
-    }
-}
-
-function exportRates() {
-    try {
-        const params = new URLSearchParams(currentFilters);
-        const url = `export.php?type=rates&format=csv&${params}`;
-        
-        // Ouvrir dans un nouvel onglet
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.download = `tarifs_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        showAlert('success', 'Export des tarifs démarré');
-    } catch (error) {
-        console.error('❌ Erreur export:', error);
-        showAlert('error', 'Erreur lors de l\'export');
-    }
-}
-
-// =============================================================================
-// MODAL D'ÉDITION
-// =============================================================================
-
-function showEditModal() {
-    const modal = document.getElementById('edit-rate-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-        
-        // Focus sur le premier champ éditable
-        setTimeout(() => {
-            const firstInput = document.getElementById('edit-department-name');
-            if (firstInput) {
-                firstInput.focus();
-                firstInput.select();
-            }
-        }, 100);
-    }
-}
-
-function closeEditModal() {
-    const modal = document.getElementById('edit-rate-modal');
-    if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('active');
-    }
+    // Garder l'option "Tous"
+    let html = '<option value="">Tous les transporteurs</option>';
     
-    editingRateId = null;
-    editingCarrier = null;
-}
-
-function populateEditForm(rate) {
-    console.log('📋 Remplissage modal avec:', rate);
-    
-    // Informations générales
-    document.getElementById('edit-carrier').value = rate.carrier_name;
-    document.getElementById('edit-department-num').value = rate.department_num;
-    document.getElementById('edit-department-name').value = rate.department_name || '';
-    document.getElementById('edit-delay').value = rate.delay || '';
-    
-    // Tarifs
-    const tariffFields = [
-        'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
-        'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
-        'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999', 'tarif_2000_2999'
-    ];
-    
-    tariffFields.forEach(field => {
-        const input = document.getElementById(`edit-${field.replace(/_/g, '-')}`);
-        if (input) {
-            const value = rate.rates[field];
-            input.value = value !== null && value !== undefined ? parseFloat(value).toFixed(2) : '';
-        }
+    carriers.forEach(carrier => {
+        html += `<option value="${carrier.code}">${carrier.name} (${carrier.rates_count} tarifs)</option>`;
     });
     
-    // Afficher/masquer le champ 2000-2999 pour XPO
-    const tarif2000Group = document.getElementById('edit-tarif-2000-group');
-    if (tarif2000Group) {
-        tarif2000Group.style.display = rate.carrier_code === 'xpo' ? 'block' : 'none';
-    }
+    filter.innerHTML = html;
+}
+
+/**
+ * Remplit le filtre des départements
+ */
+function populateDepartmentFilter(departments) {
+    const filter = document.getElementById('filter-department');
+    if (!filter) return;
     
-    // Champs cachés
-    document.getElementById('edit-rate-id').value = rate.id;
-    document.getElementById('edit-carrier-code').value = rate.carrier_code;
-}
-
-async function saveRateChanges() {
-    if (!editingRateId || !editingCarrier) {
-        showAlert('error', 'Erreur: aucun tarif en cours d\'édition');
-        return;
-    }
+    // Garder l'option "Tous"
+    let html = '<option value="">Tous les départements</option>';
     
-    try {
-        console.log('💾 Sauvegarde des modifications...');
-        
-        const formData = new FormData();
-        formData.append('id', editingRateId);
-        formData.append('carrier', editingCarrier);
-        
-        // Ajouter tous les champs du formulaire
-        const form = document.getElementById('edit-rate-form');
-        const inputs = form.querySelectorAll('input[type="text"], input[type="number"]');
-        
-        inputs.forEach(input => {
-            if (!input.readOnly && input.id !== 'edit-rate-id' && input.id !== 'edit-carrier-code') {
-                const fieldName = input.id.replace('edit-', '').replace(/-/g, '_');
-                const value = input.value.trim();
-                
-                if (fieldName.startsWith('tarif_')) {
-                    // Pour les tarifs, envoyer null si vide, sinon la valeur numérique
-                    formData.append(fieldName, value !== '' ? parseFloat(value) : '');
-                } else {
-                    // Pour les autres champs, envoyer la valeur string
-                    formData.append(fieldName, value);
-                }
-            }
-        });
-        
-        // Log des données envoyées
-        console.log('📤 Données envoyées:');
-        for (let [key, value] of formData.entries()) {
-            console.log(`  ${key}: ${value}`);
-        }
-        
-        const response = await fetch('api-rates.php?action=update', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('success', 'Tarif mis à jour avec succès !');
-            closeEditModal();
-            loadRates(true);
-        } else {
-            throw new Error(data.error || 'Erreur lors de la sauvegarde');
-        }
-        
-    } catch (error) {
-        console.error('❌ Erreur sauvegarde:', error);
-        showAlert('error', 'Erreur lors de la sauvegarde: ' + error.message);
-    }
-}
-
-// =============================================================================
-// UTILITAIRES
-// =============================================================================
-
-function formatPrice(price) {
-    if (price === null || price === undefined || price === '') {
-        return '<span style="color: #999;">-</span>';
-    }
+    departments.forEach(dept => {
+        html += `<option value="${dept.num}">${dept.num} - ${dept.name}</option>`;
+    });
     
-    return parseFloat(price).toFixed(2).replace('.', ',') + ' €';
+    filter.innerHTML = html;
 }
 
-// Fermer le modal en cliquant à l'extérieur
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('modal')) {
-        closeEditModal();
+/**
+ * Confirme la suppression d'un tarif
+ */
+function confirmDeleteRate(carrier, department, id) {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer le tarif ${carrier.toUpperCase()} pour le département ${department} ?`)) {
+        deleteRate(carrier, id);
     }
-});
-
-// Fermer le modal avec Escape
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeEditModal();
-    }
-});
-
-// Ajouter le CSS du spinner si pas déjà présent
-if (!document.getElementById('rates-spinner-css')) {
-    const spinnerCSS = document.createElement('style');
-    spinnerCSS.id = 'rates-spinner-css';
-    spinnerCSS.textContent = `
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid var(--primary-color);
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    `;
-    document.head.appendChild(spinnerCSS);
 }
 
-// =============================================================================
-// EXPOSITION GLOBALE DES FONCTIONS
-// =============================================================================
-
-// Exposer les fonctions nécessaires globalement
-window.editRate = editRate;
-window.deleteRate = deleteRate;
-window.changePage = changePage;
-window.closeEditModal = closeEditModal;
-window.saveRateChanges = saveRateChanges;
-window.performSearch = performSearch;
-window.clearFilters = clearFilters;
-window.loadRates = loadRates;
-
-// Fonction d'initialisation accessible globalement
-window.initRatesManager = initializeRatesManagement;
-
-console.log('✅ Gestionnaire de tarifs initialisé - 732 lignes de fonctionnalités complètes');
+/**
+ * Supprime un tarif
+ */
+function deleteRate(carrier, id) {
+    console.log('
