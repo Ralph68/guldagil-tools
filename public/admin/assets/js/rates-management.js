@@ -467,4 +467,240 @@ function confirmDeleteRate(carrier, department, id) {
  * Supprime un tarif
  */
 function deleteRate(carrier, id) {
-    console.log('
+    console.log('🗑️ Suppression tarif:', { carrier, id });
+    
+    const url = `api-rates.php?action=delete&carrier=${carrier}&id=${id}`;
+    
+    fetch(url, { method: 'GET' })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showSuccess('Tarif supprimé avec succès');
+                loadRates(); // Recharger la liste
+            } else {
+                throw new Error(data.error || 'Erreur lors de la suppression');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur suppression:', error);
+            showError('Erreur lors de la suppression: ' + error.message);
+        });
+}
+
+/**
+ * Ouvre la modal d'édition d'un tarif
+ */
+function editRateModal(carrier, department, id) {
+    console.log('✏️ Édition tarif:', { carrier, department, id });
+    
+    // Trouver les données du tarif dans ratesData
+    const rate = ratesData.find(r => r.id == id && r.carrier_code === carrier);
+    
+    if (!rate) {
+        showError('Tarif non trouvé');
+        return;
+    }
+    
+    // Remplir la modal avec les données
+    populateEditModal(rate);
+    
+    // Afficher la modal
+    const modal = document.getElementById('edit-rate-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+}
+
+/**
+ * Remplit la modal d'édition avec les données
+ */
+function populateEditModal(rate) {
+    // Informations générales
+    document.getElementById('edit-carrier').value = rate.carrier_name;
+    document.getElementById('edit-carrier-code').value = rate.carrier_code;
+    document.getElementById('edit-department-num').value = rate.department_num;
+    document.getElementById('edit-department-name').value = rate.department_name;
+    document.getElementById('edit-delay').value = rate.delay || '';
+    document.getElementById('edit-rate-id').value = rate.id;
+    
+    // Tarifs
+    const rateFields = [
+        'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
+        'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
+        'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999', 'tarif_2000_2999'
+    ];
+    
+    rateFields.forEach(field => {
+        const input = document.getElementById(`edit-${field.replace(/_/g, '-')}`);
+        if (input) {
+            const value = rate.rates[field];
+            input.value = value !== null && value !== undefined ? value : '';
+        }
+    });
+    
+    // Afficher/masquer le champ XPO 2000-2999
+    const xpoGroup = document.getElementById('edit-tarif-2000-group');
+    if (xpoGroup) {
+        xpoGroup.style.display = rate.carrier_code === 'xpo' ? 'block' : 'none';
+    }
+}
+
+/**
+ * Ferme la modal d'édition
+ */
+function closeEditModal() {
+    const modal = document.getElementById('edit-rate-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+}
+
+/**
+ * Sauvegarde les modifications d'un tarif
+ */
+function saveRateChanges() {
+    console.log('💾 Sauvegarde des modifications...');
+    
+    // Récupérer les données du formulaire
+    const formData = {
+        id: document.getElementById('edit-rate-id').value,
+        carrier_code: document.getElementById('edit-carrier-code').value,
+        department_name: document.getElementById('edit-department-name').value,
+        delay: document.getElementById('edit-delay').value,
+        rates: {}
+    };
+    
+    // Récupérer tous les tarifs
+    const rateFields = [
+        'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
+        'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
+        'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999', 'tarif_2000_2999'
+    ];
+    
+    rateFields.forEach(field => {
+        const input = document.getElementById(`edit-${field.replace(/_/g, '-')}`);
+        if (input) {
+            const value = input.value.trim();
+            formData.rates[field] = value !== '' ? parseFloat(value) : null;
+        }
+    });
+    
+    console.log('📊 Données à sauvegarder:', formData);
+    
+    // Envoyer la requête de mise à jour
+    fetch('api-rates.php', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showSuccess('Tarif mis à jour avec succès');
+            closeEditModal();
+            loadRates(); // Recharger la liste
+        } else {
+            throw new Error(data.error || 'Erreur lors de la mise à jour');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erreur sauvegarde:', error);
+        showError('Erreur lors de la sauvegarde: ' + error.message);
+    });
+}
+
+/**
+ * Exporte les tarifs
+ */
+function exportRates() {
+    console.log('📤 Export des tarifs');
+    
+    // Construire l'URL d'export avec les filtres actuels
+    const params = new URLSearchParams({
+        type: 'rates',
+        format: 'csv',
+        carrier: currentFilters.carrier,
+        department: currentFilters.department
+    });
+    
+    const url = `export.php?${params.toString()}`;
+    
+    // Ouvrir dans un nouvel onglet pour déclencher le téléchargement
+    window.open(url, '_blank');
+    
+    showSuccess('Export en cours...');
+}
+
+/**
+ * Affiche un message de succès
+ */
+function showSuccess(message) {
+    if (typeof showAlert === 'function') {
+        showAlert('success', message);
+    } else {
+        console.log('✅ Succès:', message);
+        alert(message);
+    }
+}
+
+/**
+ * Affiche un message d'erreur
+ */
+function showError(message) {
+    if (typeof showAlert === 'function') {
+        showAlert('error', message);
+    } else {
+        console.error('❌ Erreur:', message);
+        alert('Erreur: ' + message);
+    }
+}
+
+// =============================================================================
+// FONCTIONS GLOBALES POUR L'INTERFACE
+// =============================================================================
+
+// Exposer les fonctions nécessaires globalement
+window.loadRates = loadRates;
+window.editRateModal = editRateModal;
+window.confirmDeleteRate = confirmDeleteRate;
+window.deleteRate = deleteRate;
+window.closeEditModal = closeEditModal;
+window.saveRateChanges = saveRateChanges;
+window.exportRates = exportRates;
+window.clearFilters = clearFilters;
+window.goToPage = goToPage;
+window.handleSearch = handleSearch;
+
+// Override de la fonction showTab pour charger les tarifs quand on affiche l'onglet
+const originalShowTab = window.showTab;
+if (originalShowTab) {
+    window.showTab = function(tabName) {
+        originalShowTab(tabName);
+        
+        // Si on affiche l'onglet tarifs, charger les données
+        if (tabName === 'rates') {
+            console.log('📊 Chargement onglet tarifs');
+            setTimeout(() => {
+                if (!ratesData || ratesData.length === 0) {
+                    loadRates();
+                }
+            }, 100);
+        }
+    };
+}
+
+console.log('✅ Module de gestion des tarifs chargé avec succès');
