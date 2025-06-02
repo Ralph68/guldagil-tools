@@ -45,6 +45,100 @@ try {
 }
 
 /**
+ * Met à jour un tarif
+ */
+function handleUpdateRate($db) {
+    // Lire les données JSON du body
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    
+    if (!$data) {
+        throw new Exception('Données JSON invalides');
+    }
+    
+    $id = $data['id'] ?? null;
+    $carrier = $data['carrier_code'] ?? '';
+    
+    if (!$id || !$carrier) {
+        throw new Exception('ID et transporteur requis pour la mise à jour');
+    }
+    
+    $tables = [
+        'heppner' => 'gul_heppner_rates',
+        'xpo' => 'gul_xpo_rates',
+        'kn' => 'gul_kn_rates'
+    ];
+    
+    if (!isset($tables[$carrier])) {
+        throw new Exception('Transporteur non valide');
+    }
+    
+    $table = $tables[$carrier];
+    
+    // Préparer les données de mise à jour
+    $updateFields = [];
+    $params = [];
+    
+    // Informations générales
+    if (isset($data['department_name'])) {
+        $updateFields[] = 'departement = ?';
+        $params[] = $data['department_name'];
+    }
+    
+    if (isset($data['delay'])) {
+        $updateFields[] = 'delais = ?';
+        $params[] = $data['delay'];
+    }
+    
+    // Tarifs
+    if (isset($data['rates']) && is_array($data['rates'])) {
+        $rateFields = [
+            'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
+            'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
+            'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999'
+        ];
+        
+        // Ajouter tarif_2000_2999 pour XPO
+        if ($carrier === 'xpo') {
+            $rateFields[] = 'tarif_2000_2999';
+        }
+        
+        foreach ($rateFields as $field) {
+            if (array_key_exists($field, $data['rates'])) {
+                $updateFields[] = "`$field` = ?";
+                $value = $data['rates'][$field];
+                $params[] = ($value !== null && $value !== '') ? (float)$value : null;
+            }
+        }
+    }
+    
+    if (empty($updateFields)) {
+        throw new Exception('Aucune donnée à mettre à jour');
+    }
+    
+    // Ajouter l'ID à la fin pour la clause WHERE
+    $params[] = $id;
+    
+    $sql = "UPDATE `$table` SET " . implode(', ', $updateFields) . " WHERE id = ?";
+    
+    try {
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        
+        if ($stmt->rowCount() > 0) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Tarif mis à jour avec succès'
+            ]);
+        } else {
+            throw new Exception('Aucun tarif trouvé avec cet ID ou aucune modification détectée');
+        }
+    } catch (PDOException $e) {
+        throw new Exception('Erreur lors de la mise à jour: ' . $e->getMessage());
+    }
+}
+
+/**
  * Liste les tarifs avec pagination simplifiée
  */
 function handleListRates($db) {
