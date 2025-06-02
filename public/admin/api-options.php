@@ -94,7 +94,8 @@ function handleListOptions($db) {
     foreach ($options as $option) {
         $formattedOptions[] = [
             'id' => $option['id'],
-            'transporteur' => $option['transporteur'],
+            'transporteur' => $option['transporteur'], // Garder le code (xpo, heppner, kn)
+            'transporteur_name' => getCarrierDisplayName($option['transporteur']), // Nom d'affichage
             'code_option' => $option['code_option'],
             'libelle' => $option['libelle'],
             'montant' => formatPrice($option['montant']),
@@ -186,13 +187,13 @@ function handleCreateOption($db) {
         throw new Exception('Cette option existe déjà pour ce transporteur');
     }
     
-    // Insérer
+    // Insérer (utiliser directement le code transporteur)
     $sql = "INSERT INTO gul_options_supplementaires (transporteur, code_option, libelle, montant, unite, actif) 
             VALUES (?, ?, ?, ?, ?, ?)";
     
     $stmt = $db->prepare($sql);
     $stmt->execute([
-        $data['transporteur'],
+        $data['transporteur'], // Garder le code (xpo, heppner, kn)
         $data['code_option'],
         $data['libelle'],
         (float)$data['montant'],
@@ -321,12 +322,24 @@ function handleToggleOption($db) {
 }
 
 /**
- * Formate un prix
+ * Fonctions utilitaires
  */
 function formatPrice($price) {
     if ($price === null || $price === '') {
         return '0.00';
     }
     return number_format((float)$price, 2, '.', '');
+}
+
+/**
+ * Convertit le code transporteur en nom d'affichage
+ */
+function getCarrierDisplayName($carrierCode) {
+    $mapping = [
+        'heppner' => 'Heppner',
+        'xpo' => 'XPO',
+        'kn' => 'Kuehne + Nagel'
+    ];
+    return $mapping[$carrierCode] ?? ucfirst($carrierCode);
 }
 ?>
