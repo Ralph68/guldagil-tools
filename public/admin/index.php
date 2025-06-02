@@ -485,11 +485,13 @@ $userInfo = getAdminUser();
     <!-- Modals existants... -->
     <?php include 'modals/help-modal.php'; ?>
     <?php include 'modals/edit-rate-modal.php'; ?>
+    <?php include 'modals/import-modal.php'; ?>
 
     <!-- JavaScript Administration -->
     <script src="assets/js/admin.js"></script>
     <script src="assets/js/rates-management.js"></script>
     <script src="assets/js/options-management.js"></script>
+    <script src="assets/js/import-export.js"></script>
     
     <script>
         // Fonctions utilitaires spécifiques améliorées
