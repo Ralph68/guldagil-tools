@@ -215,10 +215,11 @@ function showAlert(type, message) {
         container.id = 'alert-container';
         container.style.cssText = `
             position: fixed;
-            top: 100px;
+            top: 150px;
             right: 20px;
-            z-index: 9999;
+            z-index: 10000;
             max-width: 400px;
+            pointer-events: none;
         `;
         document.body.appendChild(container);
     }
@@ -245,10 +246,12 @@ function showAlert(type, message) {
         align-items: center;
         gap: 0.5rem;
         animation: slideInRight 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
         position: relative;
         font-size: 0.9rem;
         line-height: 1.4;
+        pointer-events: all;
+        z-index: 10001;
     `;
     
     alert.innerHTML = `
@@ -397,6 +400,10 @@ function initializeAdminInterface() {
             @keyframes pulse {
                 0%, 100% { transform: scale(1); }
                 50% { transform: scale(1.05); }
+            }
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
             }
         `;
         document.head.appendChild(style);
