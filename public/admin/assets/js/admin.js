@@ -1,5 +1,4 @@
-// public/admin/assets/js/admin.js - Version finale optimisée
-
+// public/admin/assets/js/admin.js - Version corrigée
 console.log('🚀 Admin JS chargé !');
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -8,11 +7,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser l'interface
     initializeAdminInterface();
     
-    // Animer les statistiques
+    // Animer les statistiques après un délai
     setTimeout(animateStats, 500);
     
     // Gestion des raccourcis clavier
     setupKeyboardShortcuts();
+    
+    // Vérifier les modules disponibles
+    setTimeout(checkModulesAvailability, 1000);
 });
 
 // =============================================================================
@@ -70,43 +72,64 @@ function showTab(tabName) {
 // =============================================================================
 
 function loadRatesTab() {
-    console.log('Chargement onglet tarifs...');
+    console.log('📊 Chargement onglet tarifs...');
     
-    // Si le gestionnaire de tarifs est disponible, l'initialiser
-    if (typeof window.initRatesManager === 'function') {
-        // Vérifier si c'est déjà initialisé
-        if (!window.ratesManagerInitialized) {
-            window.initRatesManager();
-            window.ratesManagerInitialized = true;
-        } else if (typeof window.loadRates === 'function') {
-            // Recharger les données si déjà initialisé
-            window.loadRates(true);
+    // Vérifier si le module de gestion des tarifs est disponible
+    if (typeof window.loadRates === 'function') {
+        // Si les données ne sont pas encore chargées, les charger
+        if (!window.ratesData || window.ratesData.length === 0) {
+            setTimeout(() => {
+                window.loadRates();
+            }, 100);
         }
+        showAlert('info', 'Module tarifs chargé');
     } else {
-        showAlert('warning', 'Le module de gestion des tarifs n\'est pas encore chargé. Veuillez patienter...');
+        // Le module n'est pas encore chargé, attendre
+        showAlert('warning', 'Chargement du module tarifs en cours...');
         
-        // Réessayer après un court délai
+        // Réessayer après un délai
         setTimeout(() => {
-            if (typeof window.initRatesManager === 'function') {
-                window.initRatesManager();
-                window.ratesManagerInitialized = true;
+            if (typeof window.loadRates === 'function') {
+                window.loadRates();
+                showAlert('success', 'Module tarifs prêt');
+            } else {
+                showAlert('error', 'Impossible de charger le module tarifs');
             }
-        }, 1000);
+        }, 2000);
     }
 }
 
 function loadOptionsTab() {
-    console.log('Chargement onglet options...');
-    showAlert('info', 'Module d\'options en cours de développement');
+    console.log('⚙️ Chargement onglet options...');
+    
+    if (typeof window.loadOptions === 'function') {
+        if (!window.optionsData || window.optionsData.length === 0) {
+            setTimeout(() => {
+                window.loadOptions();
+            }, 100);
+        }
+        showAlert('info', 'Module options chargé');
+    } else {
+        showAlert('warning', 'Chargement du module options en cours...');
+        
+        setTimeout(() => {
+            if (typeof window.loadOptions === 'function') {
+                window.loadOptions();
+                showAlert('success', 'Module options prêt');
+            } else {
+                showAlert('info', 'Module options en développement');
+            }
+        }, 2000);
+    }
 }
 
 function loadTaxesTab() {
-    console.log('Chargement onglet taxes...');
-    showAlert('info', 'Module de taxes en cours de développement');
+    console.log('📋 Chargement onglet taxes...');
+    showAlert('info', 'Module taxes en développement');
 }
 
 function loadImportExportTab() {
-    console.log('Chargement onglet import/export...');
+    console.log('📤 Chargement onglet import/export...');
     showAlert('info', 'Module import/export initialisé');
 }
 
@@ -122,12 +145,15 @@ function editRate(carrier, department) {
     
     // Attendre que l'onglet soit chargé puis filtrer
     setTimeout(() => {
-        if (typeof window.ratesManager !== 'undefined' && window.ratesManager.filterByCarrier) {
-            window.ratesManager.filterByCarrier(carrier);
-        } else if (typeof window.filterByCarrier === 'function') {
-            window.filterByCarrier(carrier);
+        // Essayer de filtrer par transporteur si possible
+        const carrierFilter = document.getElementById('filter-carrier');
+        if (carrierFilter) {
+            carrierFilter.value = carrier;
+            if (typeof window.handleSearch === 'function') {
+                window.handleSearch();
+            }
         }
-    }, 500);
+    }, 1000);
     
     showAlert('info', `Recherche des tarifs ${carrier} en cours...`);
 }
@@ -151,8 +177,6 @@ function importData() {
     console.log('Import des données');
     showAlert('info', 'Fonctionnalité d\'import en cours de développement');
     
-    // TODO: Implémenter la modal d'import
-    // Pour l'instant, afficher un message informatif
     setTimeout(() => {
         showAlert('info', 'Utilisez les templates CSV disponibles en téléchargement');
     }, 2000);
@@ -204,7 +228,7 @@ function downloadBackup() {
 }
 
 // =============================================================================
-// SYSTÈME D'ALERTES
+// SYSTÈME D'ALERTES AMÉLIORÉ
 // =============================================================================
 
 function showAlert(type, message) {
@@ -266,8 +290,8 @@ function showAlert(type, message) {
     
     container.appendChild(alert);
     
-    // Auto-remove après 5 secondes (sauf pour les erreurs)
-    const autoRemoveDelay = type === 'error' ? 8000 : 5000;
+    // Auto-remove avec délai adapté au type
+    const autoRemoveDelay = type === 'error' ? 8000 : (type === 'warning' ? 6000 : 4000);
     setTimeout(() => {
         if (alert.parentElement) {
             alert.style.animation = 'slideOutRight 0.3s ease';
@@ -351,7 +375,7 @@ function setupKeyboardShortcuts() {
             }
         }
         
-        // Escape pour fermer les modaux
+        // Escape pour fermer les modaux et alertes
         if (e.key === 'Escape') {
             // Fermer les modaux actifs
             document.querySelectorAll('.modal.active, .modal[style*="display: flex"]').forEach(modal => {
@@ -368,11 +392,43 @@ function setupKeyboardShortcuts() {
 }
 
 // =============================================================================
+// VÉRIFICATION DES MODULES
+// =============================================================================
+
+function checkModulesAvailability() {
+    const modules = {
+        ratesManager: typeof window.loadRates === 'function',
+        optionsManager: typeof window.loadOptions === 'function'
+    };
+    
+    console.log('🔍 Modules disponibles:', modules);
+    
+    let loadedCount = 0;
+    let totalModules = Object.keys(modules).length;
+    
+    Object.entries(modules).forEach(([name, loaded]) => {
+        if (loaded) {
+            loadedCount++;
+            console.log(`✅ Module ${name} chargé`);
+        } else {
+            console.log(`⏳ Module ${name} en attente`);
+        }
+    });
+    
+    const loadingPercentage = Math.round((loadedCount / totalModules) * 100);
+    console.log(`📊 Modules chargés: ${loadedCount}/${totalModules} (${loadingPercentage}%)`);
+    
+    if (loadedCount === totalModules) {
+        console.log('🎉 Tous les modules sont chargés');
+    }
+}
+
+// =============================================================================
 // INITIALISATION
 // =============================================================================
 
 function initializeAdminInterface() {
-    console.log('Initialisation interface admin');
+    console.log('🔧 Initialisation interface admin');
     
     // Ajouter les gestionnaires d'événements pour les onglets
     document.querySelectorAll('.tab-button').forEach(button => {
@@ -427,14 +483,20 @@ function initializeAdminInterface() {
 // =============================================================================
 
 function refreshPage() {
-    location.reload();
+    if (confirm('Voulez-vous vraiment actualiser la page ? Les données non sauvegardées seront perdues.')) {
+        location.reload();
+    }
 }
 
 function goToCalculator() {
-    window.location.href = '../';
+    if (confirm('Voulez-vous quitter l\'administration pour aller au calculateur ?')) {
+        window.location.href = '../';
+    }
 }
 
 function checkServerStatus() {
+    showAlert('info', 'Vérification du serveur...');
+    
     fetch('api-rates.php?action=carriers')
         .then(response => response.json())
         .then(data => {
@@ -467,37 +529,16 @@ window.refreshPage = refreshPage;
 window.goToCalculator = goToCalculator;
 window.checkServerStatus = checkServerStatus;
 
-// =============================================================================
-// DÉTECTION DES MODULES
-// =============================================================================
-
-// Vérifier périodiquement si les modules sont chargés
-let moduleCheckInterval;
-
-function checkModules() {
-    const modulesStatus = {
-        ratesManager: typeof window.initRatesManager === 'function',
-        ratesManagerInstance: typeof window.ratesManager !== 'undefined'
-    };
-    
-    console.log('Modules disponibles:', modulesStatus);
-    
-    // Si tous les modules sont chargés, arrêter la vérification
-    if (modulesStatus.ratesManager) {
-        clearInterval(moduleCheckInterval);
-        console.log('✅ Tous les modules admin sont chargés');
-    }
-}
-
-// Vérifier les modules toutes les 2 secondes pendant 10 secondes max
-moduleCheckInterval = setInterval(checkModules, 2000);
-setTimeout(() => {
-    if (moduleCheckInterval) {
-        clearInterval(moduleCheckInterval);
-    }
-}, 10000);
-
 console.log('🎯 Admin JavaScript initialisé avec succès');
 
-// Auto-vérification au démarrage
-setTimeout(checkModules, 1000);
+// Vérification périodique des modules (pendant 10 secondes max)
+let moduleCheckCount = 0;
+const moduleCheckInterval = setInterval(() => {
+    moduleCheckCount++;
+    checkModulesAvailability();
+    
+    if (moduleCheckCount >= 5) { // Vérifier 5 fois max
+        clearInterval(moduleCheckInterval);
+        console.log('🔚 Arrêt de la vérification des modules');
+    }
+}, 2000);
