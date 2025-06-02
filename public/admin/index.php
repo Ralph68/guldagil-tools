@@ -529,5 +529,20 @@ $userInfo = getAdminUser();
         console.log('✅ Interface d\'administration améliorée chargée');
         console.log('📊 Statistiques : <?= $totalCarriers ?> transporteurs, <?= $totalDepartments ?> départements, <?= $totalOptions ?> options');
     </script>
+    <!-- Modal de comparaison transporteurs - À ajouter avant la fermeture du body -->
+<div id="comparison-modal" class="modal" style="display: none;">
+    <div class="modal-content comparison-content">
+        <div class="modal-header comparison-header">
+            <h3>📊 Comparaison des transporteurs</h3>
+            <button class="modal-close comparison-close" onclick="closeComparison()">&times;</button>
+        </div>
+        <div class="modal-body comparison-body" id="comparison-body">
+            <p>Chargement de la comparaison...</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeComparison()">Fermer</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
