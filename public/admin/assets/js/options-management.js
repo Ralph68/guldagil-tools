@@ -153,13 +153,13 @@ function displayOptions(options) {
             ? '<span class="badge badge-success">Actif</span>'
             : '<span class="badge badge-warning">Inactif</span>';
             
-        const carrierId = getCarrierId(option.transporteur);
+        const transporteurDisplay = option.transporteur_name || getCarrierName(option.transporteur);
         
         html += `
             <tr style="transition: background-color 0.2s ease;">
                 <td>
-                    <div style="font-weight: 600; color: var(--primary-color);">${option.transporteur}</div>
-                    <div style="font-size: 0.8rem; color: #666;">${carrierId}</div>
+                    <div style="font-weight: 600; color: var(--primary-color);">${transporteurDisplay}</div>
+                    <div style="font-size: 0.8rem; color: #666;">${option.transporteur}</div>
                 </td>
                 <td>
                     <div style="font-weight: 500;">${option.code_option}</div>
@@ -289,7 +289,7 @@ function editOptionModal(id) {
     
     // Remplir le formulaire
     document.getElementById('option-id').value = option.id;
-    document.getElementById('option-transporteur').value = getCarrierId(option.transporteur);
+    document.getElementById('option-transporteur').value = option.transporteur; // Utiliser le code directement
     document.getElementById('option-transporteur').disabled = true;
     document.getElementById('option-code').value = option.code_option;
     document.getElementById('option-code').disabled = true;
@@ -328,7 +328,7 @@ function saveOption() {
     
     const formData = {
         id: document.getElementById('option-id').value,
-        transporteur: getCarrierName(document.getElementById('option-transporteur').value),
+        transporteur: document.getElementById('option-transporteur').value, // Utiliser le code directement
         code_option: document.getElementById('option-code').value,
         libelle: document.getElementById('option-libelle').value,
         montant: parseFloat(document.getElementById('option-montant').value),
