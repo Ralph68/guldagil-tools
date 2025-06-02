@@ -12,6 +12,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+/**
+ * Gère les requêtes GET
+ */
+function handleGetRequest($db, $action) {
+    switch ($action) {
+        case 'list':
+            handleListRates($db);
+            break;
+        case 'carriers':
+            handleGetCarriers($db);
+            break;
+        case 'departments':
+            handleGetDepartments($db);
+            break;
+        case 'delete':
+            handleDeleteRate($db);
+            break;
+        default:
+            handleListRates($db);
+    }
+}
+
+/**
+ * Gère les requêtes PUT (mise à jour)
+ */
+function handlePutRequest($db) {
+    handleUpdateRate($db);
+}
+
+/**
+ * Gère les requêtes POST (création)
+ */
+function handlePostRequest($db, $action) {
+    // Pour plus tard si on ajoute la création
+    throw new Exception("Création de tarifs non implémentée");
+}
+
+/**
+ * Gère les requêtes DELETE
+ */
+function handleDeleteRequest($db) {
+    handleDeleteRate($db);
+}
+
 $action = $_GET['action'] ?? 'list';
 
 try {
