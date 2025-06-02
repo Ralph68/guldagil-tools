@@ -155,6 +155,10 @@ function handleListOptions($db) {
     
     $totalPages = ceil($totalCount / $limit);
     
+    // Calculer les statistiques
+    $statsActive = $db->query("SELECT COUNT(*) FROM gul_options_supplementaires WHERE actif = 1")->fetchColumn();
+    $statsInactive = $totalCount - $statsActive;
+    
     echo json_encode([
         'success' => true,
         'data' => [
@@ -168,8 +172,8 @@ function handleListOptions($db) {
             'filters' => $filters,
             'stats' => [
                 'total' => $totalCount,
-                'active' => getActiveOptionsCount($db),
-                'inactive' => $totalCount - getActiveOptionsCount($db)
+                'active' => $statsActive,
+                'inactive' => $statsInactive
             ]
         ]
     ]);
@@ -392,10 +396,5 @@ function getCarrierName($carrierCode) {
         'kn' => 'Kuehne + Nagel'
     ];
     return $names[$carrierCode] ?? $carrierCode;
-}
-
-function getActiveOptionsCount($db) {
-    $stmt = $db->query("SELECT COUNT(*) FROM gul_options_supplementaires WHERE actif = 1");
-    return $stmt->fetchColumn();
 }
 ?>
