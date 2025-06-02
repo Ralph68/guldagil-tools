@@ -28,6 +28,7 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     min-height: 100vh !important;
+    padding-top: 140px !important; /* AJOUT : Espace pour header + menu fixes */
 }
 
 /* =============================================================================
@@ -41,9 +42,12 @@ body {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    position: sticky !important;
+    position: fixed !important; /* CHANGÉ : de sticky à fixed */
     top: 0 !important;
-    z-index: 100 !important;
+    left: 0 !important; /* AJOUT */
+    right: 0 !important; /* AJOUT */
+    z-index: 1000 !important; /* CHANGÉ : de 100 à 1000 */
+    height: 80px !important; /* AJOUT */
 }
 
 .admin-header h1 {
@@ -173,10 +177,16 @@ body {
 .tab-navigation {
     display: flex !important;
     background: white !important;
-    border-radius: var(--border-radius) !important;
+    border-radius: 0 !important; /* CHANGÉ : supprime le radius pour le menu fixe */
     box-shadow: var(--shadow) !important;
-    margin-bottom: 2rem !important;
+    margin-bottom: 0 !important; /* CHANGÉ : de 2rem à 0 */
     overflow: hidden !important;
+    position: fixed !important; /* AJOUT */
+    top: 80px !important; /* AJOUT : sous le header */
+    left: 0 !important; /* AJOUT */
+    right: 0 !important; /* AJOUT */
+    z-index: 999 !important; /* AJOUT */
+    height: 60px !important; /* AJOUT */
 }
 
 .tab-button {
@@ -203,6 +213,45 @@ body {
 .tab-button:hover:not(.active) {
     background: var(--bg-light) !important;
     color: var(--primary-color) !important;
+}
+
+/* =============================================================================
+   ALERTES ET NOTIFICATIONS
+============================================================================= */
+
+#alert-container {
+    position: fixed !important;
+    top: 150px !important; /* Sous header (80px) + menu (60px) + marge */
+    right: 20px !important;
+    z-index: 10000 !important; /* Au-dessus de tout */
+    max-width: 400px !important;
+    pointer-events: none !important;
+}
+
+#alert-container .alert {
+    pointer-events: all !important;
+    margin-bottom: 0.5rem !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important; /* Ombre renforcée */
+    border-radius: 8px !important;
+    padding: 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    animation: slideInRight 0.3s ease !important;
+    position: relative !important;
+    z-index: 10001 !important;
+    border: 1px solid transparent !important;
+}
+
+/* Animation pour les alertes */
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
 }
 
 /* =============================================================================
@@ -663,12 +712,16 @@ body {
 ============================================================================= */
 
 @media (max-width: 768px) {
+    body {
+        padding-top: 120px !important; /* AJOUT : Moins d'espace sur mobile */
+    }
     .admin-container {
         padding: 1rem !important;
     }
 
     .admin-header {
         padding: 1rem !important;
+        height: 70px !important;
         flex-direction: column !important;
         gap: 1rem !important;
         text-align: center !important;
@@ -679,6 +732,8 @@ body {
     }
 
     .tab-navigation {
+        top: 70px !important;
+        height: 50px !important;
         flex-direction: column !important;
     }
 
@@ -727,6 +782,12 @@ body {
     .pagination .btn {
         padding: 0.5rem 0.75rem !important;
         font-size: 0.8rem !important;
+    }
+    #alert-container {
+        top: 130px !important; /* AJOUT : Ajustement pour mobile */
+        right: 10px !important; /* AJOUT */
+        left: 10px !important; /* AJOUT */
+        max-width: none !important; /* AJOUT */
     }
 }
 
