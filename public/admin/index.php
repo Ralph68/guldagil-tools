@@ -374,27 +374,323 @@ $calculationsChangeFormatted = formatChange(rand(-10, 25));
         </div>
 
         <!-- Onglet Options supplémentaires -->
-        <div id="tab-options" class="tab-content">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <h2>⚙️ Options supplémentaires</h2>
-                    <button class="btn btn-primary" onclick="showAlert('info', 'Module en cours de développement')">
-                        <span>➕</span>
-                        Ajouter une option
-                    </button>
+<div id="tab-options" class="tab-content">
+    <!-- Statistiques des options -->
+    <div class="stats-grid" style="margin-bottom: 2rem;">
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-title">Total options</div>
+                <div class="stat-icon primary">⚙️</div>
+            </div>
+            <div class="stat-value" id="options-total">0</div>
+            <div class="stat-trend neutral">
+                <span>📊</span>
+                Toutes options confondues
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-title">Options actives</div>
+                <div class="stat-icon success">✅</div>
+            </div>
+            <div class="stat-value" id="options-active">0</div>
+            <div class="stat-trend positive">
+                <span>▶️</span>
+                En service
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-title">Options inactives</div>
+                <div class="stat-icon warning">⏸️</div>
+            </div>
+            <div class="stat-value" id="options-inactive">0</div>
+            <div class="stat-trend neutral">
+                <span>⏸️</span>
+                Désactivées
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-title">Répartition</div>
+                <div class="stat-icon primary">📊</div>
+            </div>
+            <div id="options-distribution" style="font-size: 0.8rem; margin-top: 0.5rem;">
+                <!-- Répartition par transporteur -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Gestion des options -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h2>⚙️ Gestion des options supplémentaires</h2>
+            <button class="btn btn-primary" id="add-option-button">
+                <span>➕</span>
+                Ajouter une option
+            </button>
+        </div>
+        <div class="admin-card-body">
+            <!-- Barre de filtres -->
+            <div class="search-filters">
+                <select id="filter-options-carrier">
+                    <option value="">Tous les transporteurs</option>
+                    <option value="heppner">Heppner</option>
+                    <option value="xpo">XPO</option>
+                    <option value="kn">Kuehne + Nagel</option>
+                </select>
+                <select id="filter-options-status">
+                    <option value="">Tous les statuts</option>
+                    <option value="active">Actives seulement</option>
+                    <option value="inactive">Inactives seulement</option>
+                </select>
+                <button class="btn btn-secondary" id="refresh-options-button">
+                    <span>🔄</span>
+                    Actualiser
+                </button>
+            </div>
+
+            <!-- Tableau des options -->
+            <div class="table-container">
+                <table class="data-table" id="options-table">
+                    <thead>
+                        <tr>
+                            <th>Transporteur</th>
+                            <th>Code</th>
+                            <th>Libellé</th>
+                            <th>Montant</th>
+                            <th>Unité</th>
+                            <th class="text-center">Statut</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="options-tbody">
+                        <tr>
+                            <td colspan="7" class="text-center">
+                                <div class="loading-spinner">Chargement des options...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guide des options -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3>📋 Guide des options disponibles</h3>
+        </div>
+        <div class="admin-card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                <div class="help-card">
+                    <h5>🚛 Options de livraison</h5>
+                    <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li><strong>rdv</strong> - Prise de rendez-vous</li>
+                        <li><strong>premium13</strong> - Livraison avant 13h</li>
+                        <li><strong>premium18</strong> - Livraison avant 18h</li>
+                        <li><strong>datefixe</strong> - Livraison à date fixe</li>
+                    </ul>
                 </div>
-                <div class="admin-card-body">
-                    <p>Gestion des options de transport (RDV, Premium, Date fixe, etc.)</p>
-                    <p>Fonctionnalités prévues :</p>
-                    <ul>
-                        <li>Configuration des options par transporteur</li>
-                        <li>Tarification flexible (forfait, pourcentage, par palette)</li>
-                        <li>Activation/désactivation des options</li>
-                        <li>Conditions d'application</li>
+                
+                <div class="help-card">
+                    <h5>📦 Options de service</h5>
+                    <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li><strong>enlevement</strong> - Enlèvement sur site</li>
+                        <li><strong>palette</strong> - Frais par palette EUR</li>
+                        <li><strong>assurance</strong> - Assurance renforcée</li>
+                        <li><strong>livraison_etage</strong> - Livraison étage</li>
+                    </ul>
+                </div>
+                
+                <div class="help-card">
+                    <h5>💰 Types de tarification</h5>
+                    <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li><strong>Forfait</strong> - Montant fixe</li>
+                        <li><strong>Par palette</strong> - Montant × nb palettes</li>
+                        <li><strong>Pourcentage</strong> - % du tarif de base</li>
                     </ul>
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Modal d'ajout/édition d'option -->
+<div id="option-modal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>➕ Nouvelle option</h3>
+            <button class="modal-close" onclick="closeOptionModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="option-form">
+                <div class="form-section">
+                    <h4>Informations de base</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="option-transporteur">Transporteur *</label>
+                            <select id="option-transporteur" required>
+                                <option value="">Choisir un transporteur...</option>
+                                <option value="heppner">Heppner</option>
+                                <option value="xpo">XPO</option>
+                                <option value="kn">Kuehne + Nagel</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="option-code">Code option *</label>
+                            <select id="option-code" required onchange="updateOptionLabel()">
+                                <option value="">Choisir un code...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="option-libelle">Libellé *</label>
+                        <input type="text" id="option-libelle" placeholder="Description de l'option" required>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Tarification</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="option-montant">Montant *</label>
+                            <input type="number" id="option-montant" step="0.01" min="0" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="option-unite">Unité *</label>
+                            <select id="option-unite" required>
+                                <option value="forfait">Forfait</option>
+                                <option value="palette">Par palette</option>
+                                <option value="pourcentage">Pourcentage</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Statut</h4>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="option-actif" checked>
+                        <label for="option-actif">
+                            <div class="option-icon">✅</div>
+                            <div class="option-text">
+                                <strong>Option active</strong>
+                                <small>L'option sera disponible dans le calculateur</small>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <input type="hidden" id="option-id">
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeOptionModal()">Annuler</button>
+            <button type="button" class="btn btn-primary" onclick="saveOption()">
+                <span>💾</span>
+                Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- CSS pour les options -->
+<style>
+.help-card {
+    padding: 1rem;
+    background: var(--bg-light);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--primary-color);
+}
+
+.help-card h5 {
+    margin: 0 0 0.5rem 0;
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+.help-card ul {
+    list-style: disc;
+    color: #666;
+}
+
+.help-card li {
+    margin-bottom: 0.25rem;
+}
+
+.checkbox-option {
+    margin-bottom: 1rem;
+}
+
+.checkbox-option input[type="checkbox"] {
+    display: none;
+}
+
+.checkbox-option label {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-light);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    margin-bottom: 0;
+}
+
+.checkbox-option label:hover {
+    border-color: var(--primary-color);
+    background: #f0f8ff;
+}
+
+.checkbox-option input:checked + label {
+    background: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+
+.option-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.option-text {
+    flex: 1;
+}
+
+.option-text strong {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.option-text small {
+    opacity: 0.8;
+    font-size: 0.85rem;
+    line-height: 1.3;
+}
+
+select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    background: white;
+    transition: var(--transition);
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.1);
+}
+</style>
 
         <!-- Onglet Taxes et majorations -->
         <div id="tab-taxes" class="tab-content">
