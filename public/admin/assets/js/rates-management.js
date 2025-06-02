@@ -25,11 +25,6 @@ function initializeRatesInterface() {
     // Charger les données initiales
     loadCarriers();
     loadDepartments();
-    
-    // Charger les tarifs si on est sur l'onglet tarifs
-    if (document.getElementById('tab-rates')?.classList.contains('active')) {
-        loadRates();
-    }
 }
 
 function setupEventListeners() {
@@ -169,7 +164,6 @@ function loadRates(force = false) {
                             errorMsg = errorData.error;
                         }
                     } catch (e) {
-                        // Si ce n'est pas du JSON, utiliser les premiers caractères
                         errorMsg += ': ' + text.substring(0, 200);
                     }
                     throw new Error(errorMsg);
@@ -196,7 +190,7 @@ function loadRates(force = false) {
         .catch(error => {
             console.error('❌ Erreur chargement tarifs:', error);
             showError('Erreur lors du chargement des tarifs: ' + error.message);
-            displayRates([]); // Afficher un tableau vide
+            displayRates([]);
         })
         .finally(() => {
             showLoading(false);
@@ -333,12 +327,10 @@ function displayPagination(pagination) {
             <div style="display: flex; gap: 0.5rem;">
     `;
     
-    // Bouton précédent
     if (pagination.page > 1) {
         html += `<button class="btn btn-secondary btn-sm" onclick="goToPage(${pagination.page - 1})">« Précédent</button>`;
     }
     
-    // Numéros de pages
     const startPage = Math.max(1, pagination.page - 2);
     const endPage = Math.min(pagination.pages, pagination.page + 2);
     
@@ -347,7 +339,6 @@ function displayPagination(pagination) {
         html += `<button class="btn ${isActive ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="goToPage(${i})">${i}</button>`;
     }
     
-    // Bouton suivant
     if (pagination.page < pagination.pages) {
         html += `<button class="btn btn-secondary btn-sm" onclick="goToPage(${pagination.page + 1})">Suivant »</button>`;
     }
@@ -361,38 +352,27 @@ function displayPagination(pagination) {
 }
 
 /**
- * Va à une page spécifique
+ * Fonctions utilitaires
  */
 function goToPage(page) {
     currentPage = page;
     loadRates();
 }
 
-/**
- * Gère la recherche
- */
 function handleSearch() {
     console.log('🔍 Recherche déclenchée');
     
-    // Récupérer les valeurs des filtres
     currentFilters.carrier = document.getElementById('filter-carrier')?.value || '';
     currentFilters.department = document.getElementById('filter-department')?.value || '';
     currentFilters.search = document.getElementById('search-rates')?.value || '';
     
-    // Remettre à la page 1
     currentPage = 1;
-    
-    // Charger les tarifs
     loadRates();
 }
 
-/**
- * Efface tous les filtres
- */
 function clearFilters() {
     console.log('🔄 Effacement des filtres');
     
-    // Réinitialiser les champs
     const searchInput = document.getElementById('search-rates');
     const carrierFilter = document.getElementById('filter-carrier');
     const departmentFilter = document.getElementById('filter-department');
@@ -401,17 +381,12 @@ function clearFilters() {
     if (carrierFilter) carrierFilter.value = '';
     if (departmentFilter) departmentFilter.value = '';
     
-    // Réinitialiser les filtres
     currentFilters = { carrier: '', department: '', search: '' };
     currentPage = 1;
     
-    // Recharger
     loadRates();
 }
 
-/**
- * Met à jour les informations de filtres
- */
 function updateFiltersInfo(filters) {
     const container = document.getElementById('filters-info');
     if (!container) return;
@@ -434,14 +409,10 @@ function updateFiltersInfo(filters) {
     }
 }
 
-/**
- * Remplit le filtre des transporteurs
- */
 function populateCarrierFilter(carriers) {
     const filter = document.getElementById('filter-carrier');
     if (!filter) return;
     
-    // Garder l'option "Tous"
     let html = '<option value="">Tous les transporteurs</option>';
     
     carriers.forEach(carrier => {
@@ -451,14 +422,10 @@ function populateCarrierFilter(carriers) {
     filter.innerHTML = html;
 }
 
-/**
- * Remplit le filtre des départements
- */
 function populateDepartmentFilter(departments) {
     const filter = document.getElementById('filter-department');
     if (!filter) return;
     
-    // Garder l'option "Tous"
     let html = '<option value="">Tous les départements</option>';
     
     departments.forEach(dept => {
@@ -468,18 +435,12 @@ function populateDepartmentFilter(departments) {
     filter.innerHTML = html;
 }
 
-/**
- * Confirme la suppression d'un tarif
- */
 function confirmDeleteRate(carrier, department, id) {
     if (confirm(`Êtes-vous sûr de vouloir supprimer le tarif ${carrier.toUpperCase()} pour le département ${department} ?`)) {
         deleteRate(carrier, id);
     }
 }
 
-/**
- * Supprime un tarif
- */
 function deleteRate(carrier, id) {
     console.log('🗑️ Suppression tarif:', { carrier, id });
     
@@ -495,7 +456,7 @@ function deleteRate(carrier, id) {
         .then(data => {
             if (data.success) {
                 showSuccess('Tarif supprimé avec succès');
-                loadRates(); // Recharger la liste
+                loadRates();
             } else {
                 throw new Error(data.error || 'Erreur lors de la suppression');
             }
@@ -506,29 +467,19 @@ function deleteRate(carrier, id) {
         });
 }
 
-/**
- * Ouvre la modal d'édition d'un tarif
- */
 function editRateModal(carrier, department, id) {
     console.log('✏️ Édition tarif:', { carrier, department, id });
     
-    // Trouver les données du tarif dans ratesData
     const rate = ratesData.find(r => r.id == id && r.carrier_code === carrier);
     
     if (rate) {
-        // Utiliser les données déjà chargées
         populateEditModal(rate);
         showEditModal();
     } else {
-        // Si pas trouvé, faire une requête API
-        console.log('🔍 Tarif non trouvé localement, requête API...');
         fetchRateForEdit(carrier, id);
     }
 }
 
-/**
- * Récupère un tarif spécifique via l'API pour l'édition
- */
 function fetchRateForEdit(carrier, id) {
     const url = `api-rates.php?action=get&carrier=${carrier}&id=${id}`;
     
@@ -553,9 +504,6 @@ function fetchRateForEdit(carrier, id) {
         });
 }
 
-/**
- * Affiche la modal d'édition
- */
 function showEditModal() {
     const modal = document.getElementById('edit-rate-modal');
     if (modal) {
@@ -564,11 +512,7 @@ function showEditModal() {
     }
 }
 
-/**
- * Remplit la modal d'édition avec les données
- */
 function populateEditModal(rate) {
-    // Informations générales
     document.getElementById('edit-carrier').value = rate.carrier_name;
     document.getElementById('edit-carrier-code').value = rate.carrier_code;
     document.getElementById('edit-department-num').value = rate.department_num;
@@ -576,7 +520,6 @@ function populateEditModal(rate) {
     document.getElementById('edit-delay').value = rate.delay || '';
     document.getElementById('edit-rate-id').value = rate.id;
     
-    // Tarifs
     const rateFields = [
         'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
         'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
@@ -591,16 +534,12 @@ function populateEditModal(rate) {
         }
     });
     
-    // Afficher/masquer le champ XPO 2000-2999
     const xpoGroup = document.getElementById('edit-tarif-2000-group');
     if (xpoGroup) {
         xpoGroup.style.display = rate.carrier_code === 'xpo' ? 'block' : 'none';
     }
 }
 
-/**
- * Ferme la modal d'édition
- */
 function closeEditModal() {
     const modal = document.getElementById('edit-rate-modal');
     if (modal) {
@@ -609,13 +548,9 @@ function closeEditModal() {
     }
 }
 
-/**
- * Sauvegarde les modifications d'un tarif
- */
 function saveRateChanges() {
     console.log('💾 Sauvegarde des modifications...');
     
-    // Récupérer les données du formulaire
     const formData = {
         id: document.getElementById('edit-rate-id').value,
         carrier_code: document.getElementById('edit-carrier-code').value,
@@ -624,7 +559,6 @@ function saveRateChanges() {
         rates: {}
     };
     
-    // Récupérer tous les tarifs
     const rateFields = [
         'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
         'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
@@ -641,7 +575,6 @@ function saveRateChanges() {
     
     console.log('📊 Données à sauvegarder:', formData);
     
-    // Envoyer la requête de mise à jour
     fetch('api-rates.php', {
         method: 'PUT',
         headers: {
@@ -659,7 +592,7 @@ function saveRateChanges() {
         if (data.success) {
             showSuccess('Tarif mis à jour avec succès');
             closeEditModal();
-            loadRates(); // Recharger la liste
+            loadRates();
         } else {
             throw new Error(data.error || 'Erreur lors de la mise à jour');
         }
@@ -670,13 +603,9 @@ function saveRateChanges() {
     });
 }
 
-/**
- * Exporte les tarifs
- */
 function exportRates() {
     console.log('📤 Export des tarifs');
     
-    // Construire l'URL d'export avec les filtres actuels
     const params = new URLSearchParams({
         type: 'rates',
         format: 'csv',
@@ -685,16 +614,10 @@ function exportRates() {
     });
     
     const url = `export.php?${params.toString()}`;
-    
-    // Ouvrir dans un nouvel onglet pour déclencher le téléchargement
     window.open(url, '_blank');
-    
     showSuccess('Export en cours...');
 }
 
-/**
- * Affiche un message de succès
- */
 function showSuccess(message) {
     if (typeof showAlert === 'function') {
         showAlert('success', message);
@@ -704,9 +627,6 @@ function showSuccess(message) {
     }
 }
 
-/**
- * Affiche un message d'erreur
- */
 function showError(message) {
     if (typeof showAlert === 'function') {
         showAlert('error', message);
@@ -716,11 +636,7 @@ function showError(message) {
     }
 }
 
-// =============================================================================
-// FONCTIONS GLOBALES POUR L'INTERFACE
-// =============================================================================
-
-// Exposer les fonctions nécessaires globalement
+// Exposer les fonctions globalement
 window.loadRates = loadRates;
 window.editRateModal = editRateModal;
 window.confirmDeleteRate = confirmDeleteRate;
@@ -732,13 +648,12 @@ window.clearFilters = clearFilters;
 window.goToPage = goToPage;
 window.handleSearch = handleSearch;
 
-// Override de la fonction showTab pour charger les tarifs quand on affiche l'onglet
+// Override de showTab pour charger les tarifs
 const originalShowTab = window.showTab;
 if (originalShowTab) {
     window.showTab = function(tabName) {
         originalShowTab(tabName);
         
-        // Si on affiche l'onglet tarifs, charger les données
         if (tabName === 'rates') {
             console.log('📊 Chargement onglet tarifs');
             setTimeout(() => {
