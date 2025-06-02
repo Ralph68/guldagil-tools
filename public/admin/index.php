@@ -485,7 +485,7 @@ $userInfo = getAdminUser();
     <!-- Modals existants... -->
     <?php include 'modals/help-modal.php'; ?>
     <?php include 'modals/edit-rate-modal.php'; ?>
-    <?php include 'modals/import-modal.php'; ?>
+    <!-- <!?php include 'modals/import-modal.php'; ?> -->
     <?php include 'modals/option-modal.php'; ?>
 
     <!-- JavaScript Administration -->
