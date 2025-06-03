@@ -1,6 +1,7 @@
-// guided-calculator.js - Interface guidée avec calcul dynamique
+// =============================================================================
+// CONFIGURATION CENTRALISÉE
+// =============================================================================
 
-// Configuration centralisée - AJOUTER EN HAUT DU FICHIER
 const CONFIG = {
     WEIGHT_THRESHOLDS: {
         PALETTE_SUGGESTION: 60,
@@ -9,11 +10,14 @@ const CONFIG = {
         MAX_WEIGHT: 3500
     },
     PRICE_ALERT_THRESHOLD: 30,
-    AUTO_SAVE_DELAY: 2000,
+    AUTO_SAVE_DELAY: 500,
     MAX_HISTORY_ITEMS: 50
 };
 
-// Utilitaires - AJOUTER APRÈS CONFIG
+// =============================================================================
+// UTILITAIRES
+// =============================================================================
+
 const utils = {
     formatPrice: (price) => new Intl.NumberFormat('fr-FR', { 
         style: 'currency', 
@@ -22,960 +26,662 @@ const utils = {
     
     formatWeight: (weight) => `${weight} kg`,
     
-    showAlert: (message, type = 'info') => {
-        const alert = document.createElement('div');
-        alert.className = `alert alert-${type} alert-dismissible fade show`;
-        alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-        document.getElementById('alerts-container').appendChild(alert);
+    showAlert: (message, type = 'info', container = 'alerts-container') => {
+        const alertsContainer = document.getElementById(container);
+        if (!alertsContainer) return;
         
-        setTimeout(() => alert.remove(), 5000);
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.innerHTML = message;
+        alertsContainer.appendChild(alert);
+        
+        // Auto-remove après 8 secondes pour les infos, permanent pour warnings
+        if (type === 'info') {
+            setTimeout(() => alert.remove(), 8000);
+        }
+    },
+    
+    clearAlerts: (container = 'alerts-container') => {
+        const alertsContainer = document.getElementById(container);
+        if (alertsContainer) {
+            alertsContainer.innerHTML = '';
+        }
+    },
+    
+    debounce: (func, wait) => {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOM chargé, initialisation en cours...');
+// =============================================================================
+// VARIABLES GLOBALES
+// =============================================================================
+
+let currentData = null;
+let isCalculating = false;
+
+// Éléments DOM
+const elements = {
+    // Formulaire
+    form: document.getElementById('calc-form'),
+    departement: document.getElementById('departement'),
+    poids: document.getElementById('poids'),
+    typeInputs: document.querySelectorAll('input[name="type"]'),
+    adrInputs: document.querySelectorAll('input[name="adr"]'),
+    optionSup: document.getElementById('option_sup'),
+    enlevement: document.getElementById('enlevement'),
+    palettes: document.getElementById('palettes'),
     
-    // =============================================================================
-    // VARIABLES ET ÉLÉMENTS
-    // =============================================================================
+    // Sections
+    advancedOptions: document.getElementById('advanced-options'),
+    paletteField: document.getElementById('palette-field'),
     
-    // Éléments du formulaire
-    const form = document.getElementById('calc-form');
-    const steps = document.querySelectorAll('.form-step');
-    const progressBar = document.getElementById('progress-bar');
+    // Résultat
+    loading: document.getElementById('loading'),
+    resultContent: document.getElementById('result-content'),
+    resultStatus: document.getElementById('result-status'),
+    resultActions: document.getElementById('result-actions'),
     
-    // Champs de saisie
-    const departement = document.getElementById('departement');
-    const poids = document.getElementById('poids');
-    const typeInputs = document.querySelectorAll('input[name="type"]');
-    const adrInputs = document.querySelectorAll('input[name="adr"]');
-    const optionInputs = document.querySelectorAll('input[name="option_sup"]');
-    const enlevement = document.getElementById('enlevement');
-    const palettes = document.getElementById('palettes');
+    // Boutons
+    btnReset: document.getElementById('btn-reset'),
+    btnCompare: document.getElementById('btn-compare'),
     
-    // Éléments de résultat et UI
-    const loading = document.getElementById('loading');
-    const resultContent = document.getElementById('result-content');
-    const bestResult = document.getElementById('best-result');
-    const errorContainer = document.getElementById('error-container');
-    const resetBtn = document.getElementById('btn-reset');
+    // Erreurs
+    errorContainer: document.getElementById('error-container')
+};
+
+// =============================================================================
+// VALIDATION
+// =============================================================================
+
+const validators = {
+    departement: (value) => {
+        if (!value || !value.trim()) return { valid: false, message: "Département requis" };
+        if (!/^\d{2}$/.test(value)) return { valid: false, message: "Format: 2 chiffres (ex: 67)" };
+        const num = parseInt(value);
+        if (num < 1 || num > 95) return { valid: false, message: "Département invalide (01-95)" };
+        return { valid: true };
+    },
     
-    // Sections spéciales
-    const paletteSection = document.getElementById('palette-section');
-    const paletteButtons = document.querySelectorAll('.palette-btn');
-    const paletteInfo = document.getElementById('palette-info');
-    
-    // État de l'application
-    let currentStep = 1;
-    let formData = {};
-    let calculateTimeout = null;
-    let hasFirstCalculation = false;
-    
-    // =============================================================================
-    // MODAL DE COMPARAISON - Définies en premier
-    // =============================================================================
-    
-    function showComparison() {
-        console.log('🔍 showComparison appelée');
-        
-        if (!window.lastCalculationData) {
-            console.error('❌ Aucune donnée de calcul disponible');
-            alert('Aucune donnée de calcul disponible');
-            return;
+    poids: (value) => {
+        if (!value || value.trim() === '') return { valid: false, message: "Poids requis" };
+        const poids = parseInt(value);
+        if (isNaN(poids) || poids < 1) return { valid: false, message: "Poids minimum: 1 kg" };
+        if (poids > CONFIG.WEIGHT_THRESHOLDS.MAX_WEIGHT) {
+            return { valid: false, message: `Poids maximum: ${CONFIG.WEIGHT_THRESHOLDS.MAX_WEIGHT} kg` };
         }
-        
-        const data = window.lastCalculationData;
-        console.log('✅ Données disponibles:', data);
-        
-        // Re-chercher les éléments au moment de l'utilisation
-        const modal = document.getElementById('comparison-modal');
-        const body = document.getElementById('comparison-body');
-        
-        console.log('🔍 Recherche des éléments modal:');
-        console.log('modal trouvée:', modal);
-        console.log('body trouvé:', body);
-        
-        if (!modal) {
-            console.error('❌ Modal comparison-modal non trouvée dans le DOM');
-            console.log('🔍 Éléments disponibles avec id contenant "modal":');
-            document.querySelectorAll('[id*="modal"]').forEach(el => {
-                console.log('- ', el.id, el);
-            });
-            alert('Erreur: Modal non trouvée dans le DOM');
-            return;
-        }
-        
-        if (!body) {
-            console.error('❌ Element comparison-body non trouvé dans le DOM');
-            console.log('🔍 Éléments disponibles avec id contenant "comparison":');
-            document.querySelectorAll('[id*="comparison"]').forEach(el => {
-                console.log('- ', el.id, el);
-            });
-            alert('Erreur: Body modal non trouvé dans le DOM');
-            return;
-        }
-        
-        let html = '<div class="comparison-grid">';
-        
-        Object.keys(data.formatted).forEach(key => {
-            const carrier = data.formatted[key];
-            const isBest = key === data.bestCarrier;
-            const isAvailable = carrier.price !== null;
-            
-            html += `
-                <div class="comparison-card ${isBest ? 'best' : ''} ${!isAvailable ? 'unavailable' : ''}" data-carrier="${key}">
-                    <h4>${carrier.name}</h4>
-                    <div class="comparison-price">${carrier.formatted}</div>
-                    ${carrier.debug && isAvailable ? 
-                        `<button class="btn-details" data-carrier="${key}">📋 Détails</button>` 
-                        : ''}
-                    <div class="carrier-details" id="details-${key}" style="display: none;"></div>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-        body.innerHTML = html;
-        
-        // Ajouter les event listeners pour les boutons détails
-        const detailButtons = body.querySelectorAll('.btn-details');
-        detailButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const carrierId = e.target.getAttribute('data-carrier');
-                toggleCarrierDetails(carrierId);
-            });
-        });
-        
-        modal.classList.add('active');
-        
-        console.log('✅ Modal de comparaison affichée avec succès');
-    }
+        return { valid: true };
+    },
     
-    function closeComparison() {
-        const modal = document.getElementById('comparison-modal');
-        if (modal) {
-            modal.classList.remove('active');
-        }
-    }
+    type: () => {
+        const selected = document.querySelector('input[name="type"]:checked');
+        if (!selected) return { valid: false, message: "Sélectionnez un type d'envoi" };
+        return { valid: true };
+    },
     
-    function toggleCarrierDetails(carrierId) {
-        if (!window.lastCalculationData) return;
-        
-        const carrier = window.lastCalculationData.formatted[carrierId];
-        const debug = carrier.debug;
-        const detailsDiv = document.getElementById(`details-${carrierId}`);
-        
-        if (!debug || !detailsDiv) return;
-        
-        if (detailsDiv.style.display === 'none') {
-            // Afficher les détails
-            let detailsHtml = `
-                <div style="margin-top: 1rem; padding: 1rem; background: #f9f9f9; border-radius: 6px; text-align: left;">
-                    <h6 style="margin: 0 0 0.5rem 0; color: #333;">Détail du calcul</h6>
-                    <table style="width: 100%; font-size: 0.8rem;">
-            `;
-            
-            Object.keys(debug).forEach(key => {
-                if (key === 'carrier' || key === 'error') return;
-                
-                let label = key.replace(/_/g, ' ');
-                label = label.charAt(0).toUpperCase() + label.slice(1);
-                const value = debug[key];
-                
-                if (typeof value === 'number') {
-                    detailsHtml += `<tr><td style="padding: 0.2rem 0;">${label}:</td><td style="text-align: right;">${value.toFixed(2)} €</td></tr>`;
-                } else if (typeof value === 'boolean') {
-                    detailsHtml += `<tr><td style="padding: 0.2rem 0;">${label}:</td><td style="text-align: right;">${value ? 'Oui' : 'Non'}</td></tr>`;
-                } else {
-                    detailsHtml += `<tr><td style="padding: 0.2rem 0;">${label}:</td><td style="text-align: right;">${value}</td></tr>`;
-                }
-            });
-            
-            detailsHtml += '</table></div>';
-            detailsDiv.innerHTML = detailsHtml;
-            detailsDiv.style.display = 'block';
-        } else {
-            // Masquer les détails
-            detailsDiv.style.display = 'none';
-        }
+    adr: () => {
+        const selected = document.querySelector('input[name="adr"]:checked');
+        if (!selected) return { valid: false, message: "Indiquez si marchandise dangereuse" };
+        return { valid: true };
     }
-    
-    // =============================================================================
-    // GESTION DES ÉTAPES
-    // =============================================================================
-    
-    function showStep(stepNumber, autoScroll = true) {
-        steps.forEach(step => {
-            const stepNum = parseInt(step.dataset.step);
-            
-            if (stepNum < stepNumber) {
-                // Étapes précédentes : completées
-                step.style.display = 'block';
-                step.classList.add('completed');
-                step.classList.remove('active');
-            } else if (stepNum === stepNumber) {
-                // Étape actuelle : active
-                step.style.display = 'block';
-                step.classList.add('active', 'reveal');
-                step.classList.remove('completed');
-                
-                // Gestion du scroll selon l'étape
-                if (autoScroll === true) {
-                    // Scroll normal
-                    setTimeout(() => {
-                        step.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'center' 
-                        });
-                    }, 100);
-                } else if (autoScroll === 'smart' || stepNumber === 4) {
-                    // Pour l'étape ADR, scroll intelligent pour éviter de cacher sous le header fixe
-                    setTimeout(() => {
-                        const headerHeight = document.querySelector('.fixed-header')?.offsetHeight || 200;
-                        const stepRect = step.getBoundingClientRect();
-                        const scrollTop = window.pageYOffset + stepRect.top - headerHeight - 20;
-                        
-                        window.scrollTo({
-                            top: scrollTop,
-                            behavior: 'smooth'
-                        });
-                    }, 100);
-                }
-                // Si autoScroll === false, pas de scroll du tout
-            } else {
-                // Étapes futures : masquées
-                step.style.display = 'none';
-                step.classList.remove('active', 'completed', 'reveal');
-            }
-        });
-        
-        updateProgressBar(stepNumber);
-        currentStep = stepNumber;
+};
+
+// =============================================================================
+// GESTION DES ERREURS
+// =============================================================================
+
+function showFieldError(fieldName, message) {
+    const errorEl = document.getElementById(`error-${fieldName}`);
+    if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.classList.add('show');
     }
-    
-    function updateProgressBar(stepNumber) {
-        const totalSteps = 6;
-        const progress = (stepNumber / totalSteps) * 100;
-        progressBar.style.width = `${progress}%`;
-    }
-    
-    function nextStep() {
-        if (currentStep < 6) {
-            showStep(currentStep + 1);
-        }
-    }
-    
-    function canProceedToStep(stepNumber) {
-        switch (stepNumber) {
-            case 2: // Poids
-                return validateDepartement();
-            case 3: // Type (sauf si > 60kg)
-                const poidsValue = parseFloat(poids.value);
-                if (poidsValue > 60) {
-                    // Si > 60kg, on peut passer directement à l'étape 4 (ADR)
-                    return validateDepartement() && validatePoids();
-                }
-                return validateDepartement() && validatePoids();
-            case 4: // ADR
-                return validateDepartement() && validatePoids() && validateType();
-            case 5: // Options (après premier calcul)
-                return hasFirstCalculation;
-            case 6: // Compléments
-                return hasFirstCalculation;
-            default:
-                return true;
-        }
-    }
-    
-    // =============================================================================
-    // VALIDATION DES CHAMPS
-    // =============================================================================
-    
-    function validateDepartement() {
-        const value = departement.value.trim();
-        const errorEl = document.getElementById('error-departement');
-        
-        if (!value) {
-            showFieldError('departement', 'Le département est requis');
-            return false;
-        }
-        
-        if (!/^[0-9]{2}$/.test(value)) {
-            showFieldError('departement', 'Le département doit être composé de 2 chiffres');
-            return false;
-        }
-        
-        hideFieldError('departement');
-        return true;
-    }
-    
-    function validatePoids(value) {
-    const poids = parseInt(value); // MODIFIÉ : parseInt au lieu de parseFloat
-    if (isNaN(poids) || poids < 1) {
-        return { valid: false, message: "Le poids doit être un nombre entier ≥ 1 kg" };
-    }
-    if (poids > CONFIG.WEIGHT_THRESHOLDS.MAX_WEIGHT) { // MODIFIÉ : utilise CONFIG
-        return { valid: false, message: `Poids maximum : ${CONFIG.WEIGHT_THRESHOLDS.MAX_WEIGHT} kg` };
-    }
-    return { valid: true };
 }
-    // Alertes seuils critiques - NOUVELLE FONCTION
-function checkWeightThresholds(poids, results) {
-    const alerts = [];
-    
-    // Seuils critiques économiques
-    if (poids >= CONFIG.WEIGHT_THRESHOLDS.PALETTE_SUGGESTION && poids < CONFIG.WEIGHT_THRESHOLDS.PALETTE_MANDATORY) {
-        alerts.push({
-            type: 'warning',
-            message: `⚠️ ATTENTION : Poids ${poids}kg proche du seuil palette (${CONFIG.WEIGHT_THRESHOLDS.PALETTE_MANDATORY}kg). Vérifiez si palettisation possible pour économies.`
-        });
+
+function hideFieldError(fieldName) {
+    const errorEl = document.getElementById(`error-${fieldName}`);
+    if (errorEl) {
+        errorEl.classList.remove('show');
     }
+}
+
+function clearAllErrors() {
+    document.querySelectorAll('.field-error').forEach(el => el.classList.remove('show'));
+    elements.errorContainer.classList.remove('show');
+    utils.clearAlerts();
+}
+
+function showGlobalError(message) {
+    elements.errorContainer.innerHTML = message;
+    elements.errorContainer.classList.add('show');
+}
+
+// =============================================================================
+// VALIDATION FORMULAIRE
+// =============================================================================
+
+function validateForm() {
+    let isValid = true;
+    const errors = [];
+    
+    // Validation champ par champ
+    ['departement', 'poids', 'type', 'adr'].forEach(field => {
+        const result = validators[field](elements[field]?.value);
+        if (!result.valid) {
+            showFieldError(field, result.message);
+            errors.push(result.message);
+            isValid = false;
+        } else {
+            hideFieldError(field);
+        }
+    });
+    
+    return { valid: isValid, errors };
+}
+
+function canCalculate() {
+    return validateForm().valid;
+}
+
+// =============================================================================
+// GESTION DU POIDS ET SUGGESTIONS
+// =============================================================================
+
+function handleWeightChange(weight) {
+    const poids = parseInt(weight);
+    if (isNaN(poids)) return;
+    
+    // Auto-sélection palette si > 60kg
+    if (poids >= CONFIG.WEIGHT_THRESHOLDS.PALETTE_SUGGESTION) {
+        const paletteRadio = document.getElementById('type-palette');
+        const colisRadio = document.getElementById('type-colis');
+        
+        if (paletteRadio && !paletteRadio.checked) {
+            paletteRadio.checked = true;
+            colisRadio.disabled = true;
+            togglePaletteField();
+            
+            utils.showAlert(
+                `⚠️ Poids ${poids}kg → Palette automatiquement sélectionnée (recommandé > ${CONFIG.WEIGHT_THRESHOLDS.PALETTE_SUGGESTION}kg)`,
+                'warning'
+            );
+        }
+    } else {
+        // Réactiver l'option colis si < 60kg
+        const colisRadio = document.getElementById('type-colis');
+        if (colisRadio) {
+            colisRadio.disabled = false;
+        }
+    }
+    
+    // Alertes seuils économiques
+    checkWeightThresholds(poids);
+}
+
+function checkWeightThresholds(poids) {
+    utils.clearAlerts();
     
     if (poids >= CONFIG.WEIGHT_THRESHOLDS.VOLUME_DISCOUNT) {
-        alerts.push({
-            type: 'info', 
-            message: `💡 CONSEIL : Poids ${poids}kg éligible aux tarifs dégressifs. Contactez le service achat pour négociation.`
-        });
+        utils.showAlert(
+            `💡 CONSEIL: Poids ${poids}kg éligible aux tarifs dégressifs. Contactez le service achat pour négociation spéciale.`,
+            'info'
+        );
     }
     
-    // Alertes par transporteur si écarts importants
-    if (results && results.length > 1) {
-        const prices = results.map(r => r.price).sort((a,b) => a-b);
-        const ecart = ((prices[prices.length-1] - prices[0]) / prices[0] * 100);
-        
-        if (ecart > CONFIG.PRICE_ALERT_THRESHOLD) {
-            alerts.push({
-                type: 'warning',
-                message: `💰 ÉCART IMPORTANT : ${ecart.toFixed(0)}% entre le moins cher et le plus cher. Justification requise si choix non-optimal.`
-            });
-        }
+    if (poids >= CONFIG.WEIGHT_THRESHOLDS.PALETTE_SUGGESTION && poids < CONFIG.WEIGHT_THRESHOLDS.PALETTE_MANDATORY) {
+        utils.showAlert(
+            `⚠️ ATTENTION: Poids ${poids}kg proche du seuil palette (${CONFIG.WEIGHT_THRESHOLDS.PALETTE_MANDATORY}kg). Vérifiez si palettisation possible pour économies.`,
+            'warning'
+        );
     }
-    
-    return alerts;
 }
+
+// =============================================================================
+// GESTION INTERFACE
+// =============================================================================
+
+function togglePaletteField() {
+    const selectedType = document.querySelector('input[name="type"]:checked');
+    const paletteField = elements.paletteField;
     
-    function validateType() {
-        const selectedType = document.querySelector('input[name="type"]:checked');
-        
-        // Si > 60kg, forcer automatiquement palette (pas d'erreur)
-        const poidsValue = parseFloat(poids.value);
-        if (poidsValue > 60) {
-            const paletteRadio = document.getElementById('type-palette');
-            if (!selectedType && paletteRadio) {
-                paletteRadio.checked = true;
-            }
-            hideFieldError('type');
-            return true;
+    if (selectedType && selectedType.value === 'palette') {
+        paletteField.style.display = 'block';
+        if (!elements.palettes.value) {
+            elements.palettes.value = '1';
+            updatePaletteButtons();
         }
-        
-        // Sinon validation normale
-        if (!selectedType) {
-            showFieldError('type', 'Veuillez sélectionner un type d\'envoi');
-            return false;
+    } else {
+        paletteField.style.display = 'none';
+        elements.palettes.value = '0';
+    }
+}
+
+function updatePaletteButtons() {
+    const currentValue = elements.palettes.value;
+    document.querySelectorAll('.palette-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.value === currentValue) {
+            btn.classList.add('active');
         }
-        
-        hideFieldError('type');
-        return true;
+    });
+}
+
+function showAdvancedOptions() {
+    elements.advancedOptions.style.display = 'block';
+    elements.resultActions.style.display = 'block';
+}
+
+function updateResultStatus(message) {
+    elements.resultStatus.textContent = message;
+}
+
+// =============================================================================
+// CALCUL PRINCIPAL
+// =============================================================================
+
+const debouncedCalculate = utils.debounce(performCalculation, CONFIG.AUTO_SAVE_DELAY);
+
+function triggerCalculation() {
+    if (canCalculate() && !isCalculating) {
+        debouncedCalculate();
+    }
+}
+
+function performCalculation() {
+    if (isCalculating) return;
+    
+    clearAllErrors();
+    isCalculating = true;
+    
+    // Afficher loading
+    elements.loading.style.display = 'block';
+    elements.resultContent.innerHTML = '';
+    updateResultStatus('Calcul en cours...');
+    
+    // Préparer les données
+    const formData = new FormData();
+    formData.append('departement', elements.departement.value);
+    formData.append('poids', elements.poids.value);
+    
+    const selectedType = document.querySelector('input[name="type"]:checked');
+    const selectedAdr = document.querySelector('input[name="adr"]:checked');
+    
+    if (selectedType) formData.append('type', selectedType.value);
+    if (selectedAdr) formData.append('adr', selectedAdr.value);
+    
+    formData.append('option_sup', elements.optionSup.value);
+    formData.append('enlevement', elements.enlevement.checked ? '1' : '0');
+    formData.append('palettes', elements.palettes.value || '0');
+    
+    // Requête AJAX
+    fetch('ajax-calculate.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        handleCalculationResult(data);
+    })
+    .catch(error => {
+        console.error('Erreur calcul:', error);
+        showGlobalError('❌ Erreur lors du calcul. Veuillez réessayer.');
+        updateResultStatus('Erreur');
+    })
+    .finally(() => {
+        isCalculating = false;
+        elements.loading.style.display = 'none';
+    });
+}
+
+// =============================================================================
+// TRAITEMENT RÉSULTATS
+// =============================================================================
+
+function handleCalculationResult(data) {
+    currentData = data;
+    
+    if (data.affretement) {
+        displayAffretement(data.message);
+        return;
     }
     
-    function validateADR() {
-        const selectedAdr = document.querySelector('input[name="adr"]:checked');
-        if (!selectedAdr) {
-            showFieldError('adr', 'Veuillez indiquer si la marchandise est dangereuse');
-            return false;
-        }
-        
-        hideFieldError('adr');
-        return true;
+    if (data.errors && data.errors.length > 0) {
+        showGlobalError('❌ ' + data.errors.join('<br>'));
+        updateResultStatus('Erreur de validation');
+        return;
     }
     
-    function showFieldError(fieldName, message) {
-        const errorEl = document.getElementById(`error-${fieldName}`);
-        if (errorEl) {
-            errorEl.textContent = message;
-            errorEl.classList.add('show');
-        }
+    if (data.success && data.bestCarrier) {
+        displayResults(data);
+        showAdvancedOptions();
+        
+        // Alertes d'écart de prix
+        checkPriceAlerts(data);
+    } else {
+        elements.resultContent.innerHTML = '<div class="result-placeholder"><p>❌ Aucun tarif disponible pour ces critères</p></div>';
+        updateResultStatus('Aucun tarif disponible');
+    }
+}
+
+function displayResults(data) {
+    const bestCarrier = data.formatted[data.bestCarrier];
+    const bestPrice = data.best;
+    
+    // Récap des paramètres
+    const selectedType = document.querySelector('input[name="type"]:checked');
+    const selectedAdr = document.querySelector('input[name="adr"]:checked');
+    
+    let html = `
+        <div class="result-best">
+            <div class="result-recap">
+                <small style="color: var(--gul-gray-500);">
+                    ${elements.departement.value} • ${elements.poids.value}kg • 
+                    ${selectedType?.value || '?'} • ADR:${selectedAdr?.value === 'oui' ? 'Oui' : 'Non'}
+                </small>
+            </div>
+            
+            <div class="best-carrier" style="margin-top: 1rem;">
+                <div style="font-size: 1.1rem; font-weight: 600; color: var(--gul-blue-primary); margin-bottom: 0.5rem;">
+                    🏆 ${bestCarrier.name}
+                </div>
+                <div style="font-size: 2rem; font-weight: bold; color: var(--gul-success);">
+                    ${utils.formatPrice(bestPrice)}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Message de remise en palette si applicable
+    if (data.fallback && data.fallback.hasBetter) {
+        html += `
+            <div style="margin-top: 1rem; padding: 0.75rem; background: #e7f3ff; border-radius: 0.5rem; border-left: 4px solid var(--gul-blue-primary);">
+                <strong>✨ Remise en palette disponible</strong><br>
+                <small>Économie de ${utils.formatPrice(data.fallback.savings)} en passant sur palette</small>
+            </div>
+        `;
     }
     
-    function hideFieldError(fieldName) {
-        const errorEl = document.getElementById(`error-${fieldName}`);
-        if (errorEl) {
-            errorEl.classList.remove('show');
-        }
+    elements.resultContent.innerHTML = html;
+    updateResultStatus(`Meilleur tarif: ${utils.formatPrice(bestPrice)}`);
+}
+
+function displayAffretement(message) {
+    elements.resultContent.innerHTML = `
+        <div style="text-align: center; padding: 2rem 1rem; background: #fffbeb; border-radius: 0.5rem; border: 2px solid var(--gul-warning);">
+            <div style="font-size: 1.5rem; margin-bottom: 1rem;">🚛</div>
+            <h4 style="color: var(--gul-warning); margin-bottom: 1rem;">Affrètement nécessaire</h4>
+            <p style="margin-bottom: 1rem;">${message}</p>
+            <strong style="color: var(--gul-blue-primary);">📞 Service achat : 03 89 63 42 42</strong>
+        </div>
+    `;
+    updateResultStatus('Affrètement requis');
+}
+
+function checkPriceAlerts(data) {
+    if (!data.results) return;
+    
+    const prices = Object.values(data.results).filter(p => p !== null).sort((a, b) => a - b);
+    if (prices.length < 2) return;
+    
+    const minPrice = prices[0];
+    const maxPrice = prices[prices.length - 1];
+    const ecart = ((maxPrice - minPrice) / minPrice) * 100;
+    
+    if (ecart > CONFIG.PRICE_ALERT_THRESHOLD) {
+        utils.showAlert(
+            `💰 ÉCART IMPORTANT: ${ecart.toFixed(0)}% entre le moins cher (${utils.formatPrice(minPrice)}) et le plus cher (${utils.formatPrice(maxPrice)}). Justification requise si choix non-optimal.`,
+            'critical'
+        );
+    }
+}
+
+// =============================================================================
+// COMPARAISON TRANSPORTEURS
+// =============================================================================
+
+function showComparison() {
+    if (!currentData || !currentData.formatted) {
+        alert('Aucune donnée de comparaison disponible');
+        return;
     }
     
-    // =============================================================================
-    // GESTION DES SECTIONS SPÉCIALES
-    // =============================================================================
+    let html = '<div style="margin-top: 1rem;"><h4>📊 Comparaison détaillée</h4><div style="display: grid; gap: 0.75rem; margin-top: 1rem;">';
     
-    function togglePaletteSection() {
-        const selectedType = document.querySelector('input[name="type"]:checked');
-        if (selectedType && selectedType.value === 'palette') {
-            paletteSection.style.display = 'block';
-            // Sélectionner 1 palette par défaut
-            if (!palettes.value) {
-                palettes.value = '1';
-                updatePaletteButtons();
-            }
-        } else {
-            paletteSection.style.display = 'none';
-            palettes.value = '0';
-        }
-    }
+    // Trier par prix croissant
+    const sortedResults = Object.entries(currentData.formatted)
+        .filter(([key, carrier]) => carrier.price !== null)
+        .sort(([,a], [,b]) => a.price - b.price);
     
-    function updatePaletteButtons() {
-        const currentValue = palettes.value;
-        paletteButtons.forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.palettes === currentValue) {
-                btn.classList.add('active');
-            }
-        });
-    }
+    sortedResults.forEach(([key, carrier], index) => {
+        const isBest = index === 0;
+        const priceDiff = index === 0 ? 0 : carrier.price - sortedResults[0][1].price;
+        
+        html += `
+            <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; padding: 0.75rem; border-radius: 0.5rem; ${isBest ? 'background: #e7f9e7; border: 2px solid var(--gul-success);' : 'background: var(--gul-gray-50); border: 1px solid var(--gul-gray-200);'}">
+                <div>
+                    <strong>${carrier.name}</strong>
+                    ${isBest ? '<span style="color: var(--gul-success); font-size: 0.8rem; margin-left: 0.5rem;">⭐ OPTIMAL</span>' : ''}
+                </div>
+                <div style="font-weight: bold; color: ${isBest ? 'var(--gul-success)' : 'var(--gul-gray-700)'};">
+                    ${carrier.formatted}
+                </div>
+                <div style="font-size: 0.9rem; color: var(--gul-gray-500);">
+                    ${priceDiff > 0 ? '+' + utils.formatPrice(priceDiff) : ''}
+                </div>
+            </div>
+        `;
+    });
     
-    function handleEnlevementChange() {
-        if (enlevement.checked) {
-            // Désactiver les options premium quand enlèvement activé
-            optionInputs.forEach(input => {
-                if (input.value !== 'standard') {
-                    input.disabled = true;
-                    input.closest('label').style.opacity = '0.5';
-                }
-            });
-            // Forcer option standard
-            document.getElementById('opt-standard').checked = true;
-        } else {
-            // Réactiver toutes les options
-            optionInputs.forEach(input => {
-                input.disabled = false;
-                input.closest('label').style.opacity = '1';
-            });
-        }
-    }
+    html += '</div></div>';
     
-    // =============================================================================
-    // CALCUL DYNAMIQUE
-    // =============================================================================
+    elements.resultContent.innerHTML += html;
+}
+
+// =============================================================================
+// RESET FORMULAIRE
+// =============================================================================
+
+function resetForm() {
+    if (!confirm('Voulez-vous vraiment recommencer ?')) return;
     
-    function shouldCalculate() {
-        const poidsValue = parseFloat(poids.value);
-        
-        // Si > 60kg, palette est automatiquement sélectionnée
-        if (poidsValue > 60) {
-            return validateDepartement() && 
-                   validatePoids() && 
-                   validateADR();
-        }
-        
-        // Sinon validation normale
-        return validateDepartement() && 
-               validatePoids() && 
-               validateType() && 
-               validateADR();
-    }
+    // Reset du formulaire
+    elements.form.reset();
     
-    function calculatePrices() {
-        // Annuler le calcul précédent
-        if (calculateTimeout) {
-            clearTimeout(calculateTimeout);
-        }
-        
-        // Vérifier si on peut calculer
-        if (!shouldCalculate()) {
-            return;
-        }
-        
-        // Attendre un peu pour éviter trop de requêtes (debounce)
-        calculateTimeout = setTimeout(() => {
-            performCalculation();
-        }, 300);
-    }
+    // Reset des états
+    clearAllErrors();
+    currentData = null;
+    isCalculating = false;
     
-    function performCalculation() {
-        // Préparer les données
-        const formData = new FormData();
-        formData.append('departement', departement.value);
-        formData.append('poids', poids.value);
-        
-        const selectedType = document.querySelector('input[name="type"]:checked');
-        const selectedAdr = document.querySelector('input[name="adr"]:checked');
-        const selectedOption = document.querySelector('input[name="option_sup"]:checked');
-        
-        if (selectedType) formData.append('type', selectedType.value);
-        if (selectedAdr) formData.append('adr', selectedAdr.value);
-        if (selectedOption) formData.append('option_sup', selectedOption.value);
-        
-        formData.append('enlevement', enlevement.checked ? '1' : '0');
-        formData.append('palettes', palettes.value || '0');
-        
-        // Afficher le loading
-        showLoading();
-        
-        // Faire la requête AJAX
-        fetch('ajax-calculate.php', {
-            method: 'POST',
-            body: formData
-        })
+    // Reset de l'interface
+    elements.advancedOptions.style.display = 'none';
+    elements.paletteField.style.display = 'none';
+    elements.resultActions.style.display = 'none';
+    
+    // Reset du résultat
+    elements.resultContent.innerHTML = `
+        <div class="result-placeholder">
+            <div class="placeholder-icon">🚀</div>
+            <p>Renseignez vos informations pour voir les tarifs</p>
+        </div>
+    `;
+    updateResultStatus('En attente...');
+    
+    // Réactiver tous les champs
+    document.getElementById('type-colis').disabled = false;
+    
+    // Focus sur le premier champ
+    setTimeout(() => elements.departement.focus(), 100);
+}
+
+// =============================================================================
+// GESTION HISTORIQUE
+// =============================================================================
+
+window.showHistorique = function() {
+    const modal = document.getElementById('historique-modal');
+    modal.classList.add('active');
+    loadHistorique();
+};
+
+function loadHistorique() {
+    const content = document.getElementById('historique-content');
+    content.innerHTML = '<p>Chargement...</p>';
+    
+    fetch('ajax-historique.php?action=get')
         .then(response => response.json())
         .then(data => {
-            hideLoading();
-            handleCalculationResult(data);
+            if (data.success && data.historique.length > 0) {
+                let html = `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <thead>
+                            <tr style="background: var(--gul-gray-100);">
+                                <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--gul-gray-300);">Date</th>
+                                <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--gul-gray-300);">Critères</th>
+                                <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--gul-gray-300);">Transporteur</th>
+                                <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid var(--gul-gray-300);">Prix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                data.historique.forEach(entry => {
+                    html += `
+                        <tr style="border-bottom: 1px solid var(--gul-gray-200);">
+                            <td style="padding: 0.5rem; font-size: 0.8rem; color: var(--gul-gray-600);">
+                                ${new Date(entry.date).toLocaleDateString('fr-FR')}<br>
+                                ${new Date(entry.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                            </td>
+                            <td style="padding: 0.5rem;">
+                                ${entry.departement} • ${entry.poids}kg<br>
+                                <small style="color: var(--gul-gray-500);">${entry.type} • ADR:${entry.adr}</small>
+                            </td>
+                            <td style="padding: 0.5rem; font-weight: 600; color: var(--gul-blue-primary);">
+                                ${entry.best_carrier}
+                            </td>
+                            <td style="padding: 0.5rem; text-align: right; font-weight: bold; color: var(--gul-success);">
+                                ${utils.formatPrice(entry.best_price)}
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = '<p style="text-align: center; color: var(--gul-gray-500); padding: 2rem;">Aucun historique disponible</p>';
+            }
         })
         .catch(error => {
-            hideLoading();
-            console.error('Erreur:', error);
-            showError('Erreur lors du calcul des tarifs');
+            content.innerHTML = '<p style="color: var(--gul-error); text-align: center; padding: 2rem;">Erreur lors du chargement</p>';
         });
-    }
+}
+
+window.clearHistorique = function() {
+    if (!confirm('Voulez-vous vraiment effacer tout l\'historique ?')) return;
     
-    function handleCalculationResult(data) {
-        clearErrors();
-        
-        // 1. Affrètement nécessaire
-        if (data.affretement) {
-            displayAffretement(data.message);
-            return;
-        }
-        
-        // 2. Erreurs de validation
-        if (data.errors && data.errors.length > 0) {
-            displayErrors(data.errors);
-            return;
-        }
-        
-        // 3. Résultat valide
-        if (data.success && data.bestCarrier) {
-            displayBestResult(data);
-            
-            // Premier calcul : débloquer les étapes suivantes
-            if (!hasFirstCalculation) {
-                hasFirstCalculation = true;
-                // Révéler l'étape options si pas encore visible
-                if (currentStep === 4) {
-                    nextStep(); // Aller à l'étape 5 (options)
-                }
+    fetch('ajax-historique.php?action=clear')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadHistorique();
             }
-        } else {
-            showError('Aucun tarif disponible pour ces critères');
-        }
-    }
-    
-    function displayBestResult(data) {
-        const bestCarrier = data.formatted[data.bestCarrier];
-        
-        // Récupérer les données saisies pour le récapitulatif
-        const selectedType = document.querySelector('input[name="type"]:checked');
-        const selectedAdr = document.querySelector('input[name="adr"]:checked');
-        const selectedOption = document.querySelector('input[name="option_sup"]:checked');
-        
-        let html = `
-            <!-- Récapitulatif de la saisie -->
-            <div class="recap-saisie">
-                <h3>📋 Récapitulatif</h3>
-                <div class="recap-grid">
-                    <span><strong>Département:</strong> ${departement.value}</span>
-                    <span><strong>Poids:</strong> ${poids.value} kg</span>
-                    <span><strong>Type:</strong> ${selectedType ? selectedType.value : 'Non défini'}</span>
-                    <span><strong>ADR:</strong> ${selectedAdr ? (selectedAdr.value === 'oui' ? 'Oui' : 'Non') : 'Non défini'}</span>
-                    ${selectedOption && selectedOption.value !== 'standard' ? 
-                        `<span><strong>Option:</strong> ${getOptionLabel(selectedOption.value)}</span>` : ''}
-                    ${enlevement.checked ? '<span><strong>Enlèvement:</strong> Oui</span>' : ''}
-                    ${palettes.value && palettes.value !== '0' ? 
-                        `<span><strong>Palettes:</strong> ${palettes.value}</span>` : ''}
-                </div>
-                <button type="button" class="btn-modify" onclick="scrollToFirstStep()">✏️ Modifier</button>
-            </div>
-            
-            <!-- Meilleur résultat -->
-            <div class="best-result">
-                <div class="carrier-info">
-                    <div class="carrier-name">${bestCarrier.name}</div>
-                    <div class="carrier-price">${bestCarrier.formatted}</div>
-                </div>
-                <div class="result-actions">
-                    <button type="button" class="btn-details" id="btn-compare">
-                        📊 Comparer
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        // Alertes de seuils
-        if (data.alerts && data.alerts.length > 0) {
-            data.alerts.forEach(alert => {
-                if (alert.carrier === data.bestCarrier) {
-                    html += `
-                        <div class="alert">
-                            💡 ${alert.message} - Économie : ${alert.savings.toFixed(2)} €
-                        </div>
-                    `;
-                }
-            });
-        }
-        
-        // Message de remise en palette si applicable
-        if (data.fallback && data.fallback.hasBetter) {
-            html += `
-                <div class="alert">
-                    ✨ Remise en palette disponible chez ${data.formatted[data.fallback.carrier].name}
-                    <br><small>Économie de ${data.fallback.savings.toFixed(2)} € en remettant sur palette</small>
-                </div>
-            `;
-        }
-        
-        bestResult.innerHTML = html;
-        
-        // Ajouter l'event listener après avoir créé le bouton
-        const compareBtn = document.getElementById('btn-compare');
-        if (compareBtn) {
-            compareBtn.addEventListener('click', showComparison);
-            console.log('Event listener ajouté au bouton Comparer');
-        }
-        
-        // Sauvegarder les données pour comparaison
-        window.lastCalculationData = data;
-        
-        console.log('Données sauvegardées pour comparaison:', data);
-    }
-    
-    // Fonction pour obtenir le libellé des options
-    function getOptionLabel(optionValue) {
-        const labels = {
-            'rdv': 'Prise de RDV',
-            'premium13': 'Premium avant 13h',
-            'premium18': 'Premium avant 18h',
-            'datefixe': 'Date fixe'
-        };
-        return labels[optionValue] || optionValue;
-    }
-    
-    // Fonction pour revenir à la première étape
-    window.scrollToFirstStep = function() {
-        showStep(1, true); // avec scroll
-        setTimeout(() => departement.focus(), 300);
-    };
-    
-    function displayAffretement(message) {
-        bestResult.innerHTML = `
-            <div class="affretement-message">
-                <h3>🚛 Affrètement nécessaire</h3>
-                <p>${message}</p>
-                <p><strong>📞 Service achat : 03 89 63 42 42</strong></p>
-            </div>
-        `;
-    }
-    
-    function displayErrors(errors) {
-        let html = '<div class="error"><ul>';
-        errors.forEach(error => {
-            html += `<li>${error}</li>`;
+        })
+        .catch(error => {
+            alert('Erreur lors de la suppression');
         });
-        html += '</ul></div>';
-        errorContainer.innerHTML = html;
-    }
-    
-    function showError(message) {
-        errorContainer.innerHTML = `<div class="error">${message}</div>`;
-    }
-    
-    function clearErrors() {
-        errorContainer.innerHTML = '';
-    }
-    
-    function showLoading() {
-        loading.classList.add('active');
-        resultContent.classList.add('loading');
-    }
-    
-    function hideLoading() {
-        loading.classList.remove('active');
-        resultContent.classList.remove('loading');
-    }
-    
-    // =============================================================================
-    // GESTION DES ÉVÉNEMENTS
-    // =============================================================================
-    
-    // Auto-focus et progression des étapes
-    let poidsTimeout = null;
-    
-    departement.addEventListener('input', () => {
-        if (departement.value.length === 2 && validateDepartement()) {
-            if (canProceedToStep(2)) {
-                showStep(2);
-                setTimeout(() => poids.focus(), 200);
-            }
+};
+
+// =============================================================================
+// EVENT LISTENERS
+// =============================================================================
+
+function setupEventListeners() {
+    // Auto-progression et validation
+    elements.departement.addEventListener('input', (e) => {
+        if (e.target.value.length === 2 && validators.departement(e.target.value).valid) {
+            elements.poids.focus();
         }
-        calculatePrices();
+        triggerCalculation();
     });
     
-    departement.addEventListener('focus', () => {
-        departement.select();
+    elements.departement.addEventListener('focus', () => elements.departement.select());
+    
+    elements.poids.addEventListener('input', (e) => {
+        handleWeightChange(e.target.value);
+        triggerCalculation();
     });
     
-    poids.addEventListener('input', () => {
-        // Afficher l'étape 3 (type) dès la saisie du premier chiffre, SANS scroll
-        const poidsValue = parseFloat(poids.value);
-        if (poids.value.length > 0 && poidsValue > 0) {
-            // Forcer palette si > 60kg
-            if (poidsValue > 60) {
-                const paletteRadio = document.getElementById('type-palette');
-                if (paletteRadio) {
-                    paletteRadio.checked = true;
-                    // Masquer l'option colis
-                    const colisOption = document.querySelector('.radio-option:has(#type-colis)');
-                    if (colisOption) {
-                        colisOption.style.display = 'none';
-                    }
-                    togglePaletteSection();
-                    
-                    // Passer automatiquement à l'étape ADR si poids validé (SANS scroll)
-                    if (validatePoids() && canProceedToStep(4)) {
-                        showStep(4, false); // false = pas de scroll
-                    }
-                }
-            } else {
-                // Réafficher l'option colis si <= 60kg
-                const colisOption = document.querySelector('.radio-option:has(#type-colis)');
-                if (colisOption) {
-                    colisOption.style.display = 'block';
-                }
-                
-                // Passer à l'étape type dès la saisie (SANS scroll)
-                if (canProceedToStep(3)) {
-                    showStep(3, false); // false = pas de scroll
-                }
-            }
-        }
-        
-        calculatePrices();
-    });
-    
-    // Types d'envoi
-    typeInputs.forEach(input => {
+    // Radio buttons
+    elements.typeInputs.forEach(input => {
         input.addEventListener('change', () => {
-            if (validateType() && canProceedToStep(4)) {
-                // Pour l'étape ADR, scroll intelligent pour éviter de cacher sous le header
-                showStep(4, 'smart');
-                togglePaletteSection();
-            }
-            calculatePrices();
+            togglePaletteField();
+            triggerCalculation();
         });
     });
     
-    // ADR
-    adrInputs.forEach(input => {
-        input.addEventListener('change', () => {
-            if (validateADR()) {
-                calculatePrices(); // Premier calcul possible
-            }
-        });
+    elements.adrInputs.forEach(input => {
+        input.addEventListener('change', triggerCalculation);
     });
     
-    // Options (recalcul seulement)
-    optionInputs.forEach(input => {
-        input.addEventListener('change', () => {
-            if (hasFirstCalculation) {
-                calculatePrices();
-            }
-        });
-    });
+    // Options avancées
+    elements.optionSup.addEventListener('change', triggerCalculation);
+    elements.enlevement.addEventListener('change', triggerCalculation);
     
-    // Enlèvement
-    enlevement.addEventListener('change', () => {
-        handleEnlevementChange();
-        if (hasFirstCalculation) {
-            calculatePrices();
-        }
-    });
-    
-    // Palettes EUR
-    paletteButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const value = btn.dataset.palettes;
+    // Palettes
+    document.querySelectorAll('.palette-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const value = e.target.dataset.value;
             
             if (value === 'plus') {
-                paletteInfo.style.display = 'block';
-                palettes.value = '';
-                paletteButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+                utils.showAlert('⚠️ Pour plus de 3 palettes, contactez notre service achat : 📞 03 89 63 42 42', 'warning');
+                elements.palettes.value = '';
             } else {
-                paletteInfo.style.display = 'none';
-                palettes.value = value;
+                elements.palettes.value = value;
                 updatePaletteButtons();
-                if (hasFirstCalculation) {
-                    calculatePrices();
-                }
+                triggerCalculation();
             }
         });
     });
     
-    // Reset
-    resetBtn.addEventListener('click', () => {
-        if (confirm('Voulez-vous vraiment recommencer ?')) {
-            resetForm();
-        }
+    // Boutons
+    elements.btnReset.addEventListener('click', resetForm);
+    elements.btnCompare.addEventListener('click', showComparison);
+    
+    // Modal
+    document.querySelector('.modal-close').addEventListener('click', () => {
+        document.getElementById('historique-modal').classList.remove('active');
     });
     
-    function resetForm() {
-        form.reset();
-        currentStep = 1;
-        hasFirstCalculation = false;
-        formData = {};
-        
-        // Réinitialiser l'affichage
-        showStep(1);
-        bestResult.innerHTML = '<p class="invite-message">🚀 Commence par renseigner ton département de livraison</p>';
-        clearErrors();
-        
-        // Réinitialiser les états spéciaux
-        paletteSection.style.display = 'none';
-        paletteInfo.style.display = 'none';
-        palettes.value = '1';
-        
-        // Réactiver toutes les options
-        optionInputs.forEach(input => {
-            input.disabled = false;
-            input.closest('label').style.opacity = '1';
-        });
-        
-        // Focus sur le premier champ
-        setTimeout(() => departement.focus(), 100);
-    }
-    
-    // =============================================================================
-    // GESTION DE L'HISTORIQUE (Modal)
-    // =============================================================================
-    
-    const modal = document.getElementById('historique-modal');
-    const closeBtn = document.querySelector('.close');
-    
-    window.showHistorique = function() {
-        modal.classList.add('active');
-        loadHistorique();
-    };
-    
-    closeBtn.addEventListener('click', () => {
-        modal.classList.remove('active');
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('historique-modal');
+        if (e.target === modal) {
+            modal.classList.remove('active');
+        }
     });
+}
+
+// =============================================================================
+// INITIALISATION
+// =============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Calculateur Guldagil - Initialisation...');
     
-    // Le gestionnaire global des clics extérieurs est maintenant plus haut dans le code
-    
-    function loadHistorique() {
-        const content = document.getElementById('historique-content');
-        content.innerHTML = '<p>Chargement...</p>';
-        
-        fetch('ajax-historique.php?action=get')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.historique.length > 0) {
-                    let html = '<table class="historique-table">';
-                    html += '<thead><tr>';
-                    html += '<th>Date</th><th>Dép.</th><th>Poids</th><th>Type</th>';
-                    html += '<th>Transporteur</th><th>Prix</th>';
-                    html += '</tr></thead><tbody>';
-                    
-                    data.historique.forEach(entry => {
-                        html += '<tr>';
-                        html += `<td>${new Date(entry.date).toLocaleDateString('fr-FR')}</td>`;
-                        html += `<td>${entry.departement}</td>`;
-                        html += `<td>${entry.poids} kg</td>`;
-                        html += `<td>${entry.type}</td>`;
-                        html += `<td><strong>${entry.best_carrier}</strong></td>`;
-                        html += `<td><strong>${entry.best_price.toFixed(2)} €</strong></td>`;
-                        html += '</tr>';
-                    });
-                    
-                    html += '</tbody></table>';
-                    content.innerHTML = html;
-                } else {
-                    content.innerHTML = '<p>Aucun historique disponible</p>';
-                }
-            })
-            .catch(error => {
-                content.innerHTML = '<p style="color: red;">Erreur lors du chargement</p>';
-            });
-    }
-    
-    window.clearHistorique = function() {
-        if (confirm('Voulez-vous vraiment effacer tout l\'historique ?')) {
-            fetch('ajax-historique.php?action=clear')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        loadHistorique();
-                    }
-                })
-                .catch(error => {
-                    alert('Erreur lors de la suppression');
-                });
-        }
-    };
-    
-    // =============================================================================
-    // COMPARAISON TOUS TRANSPORTEURS
-    // =============================================================================
-    
-    window.showAllCarriers = function() {
-        if (!window.lastCalculationData) return;
-        
-        const data = window.lastCalculationData;
-        let html = '<div class="all-carriers-modal">';
-        html += '<h3>Comparaison des transporteurs</h3>';
-        html += '<div class="carrier-grid">';
-        
-        Object.keys(data.formatted).forEach(key => {
-            const carrier = data.formatted[key];
-            const isBest = key === data.bestCarrier;
-            const isAvailable = carrier.price !== null;
-            
-            html += `
-                <div class="carrier-card ${isBest ? 'best' : ''} ${!isAvailable ? 'unavailable' : ''}">
-                    <h4>${carrier.name} ${isBest ? '⭐' : ''}</h4>
-                    <div class="carrier-price">${carrier.formatted}</div>
-                    ${carrier.debug ? '<button onclick="showCarrierDetails(\'' + key + '\')">Détails</button>' : ''}
-                </div>
-            `;
-        });
-        
-        html += '</div></div>';
-        
-        // Afficher dans un modal ou intégrer dans les résultats
-        const existingModal = document.querySelector('.all-carriers-modal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-        
-        bestResult.insertAdjacentHTML('afterend', html);
-    };
-    
-    // =============================================================================
-    // INITIALISATION
-    // =============================================================================
-    
-    // Initialiser l'interface
-    showStep(1);
+    setupEventListeners();
     
     // Focus initial
     setTimeout(() => {
-        departement.focus();
+        elements.departement.focus();
     }, 500);
     
-    // Vérifier que les modals existent
-    console.log('Vérification des modals:');
-    console.log('comparison-modal:', document.getElementById('comparison-modal'));
-    console.log('comparison-body:', document.getElementById('comparison-body'));
-    console.log('historique-modal:', document.getElementById('historique-modal'));
-    
-    // Gérer l'auto-complétion du navigateur
-    setTimeout(() => {
-        if (departement.value && poids.value) {
-            // Si des valeurs sont pré-remplies, valider et avancer
-            if (validateDepartement()) showStep(2);
-            if (validatePoids()) showStep(3);
-            // etc.
-        }
-    }, 1000);
-    
-    console.log('✅ Interface guidée initialisée');
+    console.log('✅ Calculateur initialisé avec succès');
 });
