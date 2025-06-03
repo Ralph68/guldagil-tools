@@ -309,23 +309,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
     
-    function validatePoids() {
-        const value = parseFloat(poids.value);
-        const errorEl = document.getElementById('error-poids');
-        
-        if (!value || value <= 0) {
-            showFieldError('poids', 'Le poids doit être supérieur à 0');
-            return false;
-        }
-        
-        if (value > 3500) {
-            showFieldError('poids', 'Le poids ne peut pas dépasser 3500 kg');
-            return false;
-        }
-        
-        hideFieldError('poids');
-        return true;
+    function validatePoids(value) {
+    const poids = parseInt(value); // MODIFIÉ : parseInt au lieu de parseFloat
+    if (isNaN(poids) || poids < 1) {
+        return { valid: false, message: "Le poids doit être un nombre entier ≥ 1 kg" };
     }
+    if (poids > CONFIG.WEIGHT_THRESHOLDS.MAX_WEIGHT) { // MODIFIÉ : utilise CONFIG
+        return { valid: false, message: `Poids maximum : ${CONFIG.WEIGHT_THRESHOLDS.MAX_WEIGHT} kg` };
+    }
+    return { valid: true };
+}
     
     function validateType() {
         const selectedType = document.querySelector('input[name="type"]:checked');
