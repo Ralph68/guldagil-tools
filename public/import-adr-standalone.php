@@ -54,31 +54,159 @@ echo "<!DOCTYPE html>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Import ADR - Guldagil</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .step { margin: 20px 0; padding: 15px; border-left: 4px solid #007acc; background: #f8f9fa; }
-        .success { border-left-color: #28a745; background: #d4edda; }
-        .error { border-left-color: #dc3545; background: #f8d7da; }
-        .warning { border-left-color: #ffc107; background: #fff3cd; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
-        .btn { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+            background: #f5f7fa; 
+            line-height: 1.6; 
+            color: #333; 
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        }
+        h1 { color: #007acc; margin-bottom: 10px; }
+        .step { 
+            margin: 25px 0; 
+            padding: 20px; 
+            border-left: 4px solid #007acc; 
+            background: #f8f9fa; 
+            border-radius: 6px;
+        }
+        .success { border-left-color: #28a745; background: #d4edda; color: #155724; }
+        .error { border-left-color: #dc3545; background: #f8d7da; color: #721c24; }
+        .warning { border-left-color: #ffc107; background: #fff3cd; color: #856404; }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 15px 0; 
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        th, td { 
+            border: 1px solid #dee2e6; 
+            padding: 12px 8px; 
+            text-align: left; 
+            font-size: 14px;
+        }
+        th { 
+            background: #f8f9fa; 
+            font-weight: 600; 
+            color: #495057;
+        }
+        tr:nth-child(even) { background: #f8f9fa; }
+        
+        .btn { 
+            padding: 12px 24px; 
+            margin: 8px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s ease;
+        }
         .btn-primary { background: #007acc; color: white; }
+        .btn-primary:hover { background: #005f99; transform: translateY(-1px); }
         .btn-success { background: #28a745; color: white; }
-        .btn-warning { background: #ffc107; color: black; }
-        .form-group { margin: 15px 0; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; }
-        input[type=file] { width: 100%; padding: 10px; border: 2px dashed #ddd; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
-        .stat-card { padding: 15px; text-align: center; border-radius: 8px; }
-        .stat-card.info { background: #d1ecf1; }
-        .stat-card.success { background: #d4edda; }
-        .stat-card.warning { background: #fff3cd; }
-        .stat-card.danger { background: #f8d7da; }
-        .stat-value { font-size: 24px; font-weight: bold; }
-        .stat-label { font-size: 12px; color: #666; }
-        .preview-table { max-height: 300px; overflow-y: auto; }
+        .btn-success:hover { background: #218838; transform: translateY(-1px); }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; }
+        
+        .form-group { margin: 20px 0; }
+        label { 
+            display: block; 
+            font-weight: 600; 
+            margin-bottom: 8px; 
+            color: #495057;
+        }
+        input[type=file] { 
+            width: 100%; 
+            padding: 15px; 
+            border: 2px dashed #007acc; 
+            border-radius: 6px;
+            background: #f8f9fa;
+            cursor: pointer;
+        }
+        input[type=file]:hover { border-color: #005f99; background: #e3f2fd; }
+        
+        .stats { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); 
+            gap: 20px; 
+            margin: 25px 0; 
+        }
+        .stat-card { 
+            padding: 20px; 
+            text-align: center; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-card.info { background: linear-gradient(135deg, #d1ecf1, #bee5eb); }
+        .stat-card.success { background: linear-gradient(135deg, #d4edda, #c3e6cb); }
+        .stat-card.warning { background: linear-gradient(135deg, #fff3cd, #ffeaa7); }
+        .stat-card.danger { background: linear-gradient(135deg, #f8d7da, #f5c6cb); }
+        
+        .stat-value { 
+            font-size: 32px; 
+            font-weight: bold; 
+            margin-bottom: 5px;
+            color: #495057;
+        }
+        .stat-label { 
+            font-size: 13px; 
+            color: #6c757d; 
+            font-weight: 500;
+        }
+        
+        .preview-table { 
+            max-height: 400px; 
+            overflow: auto; 
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+        }
+        
+        small { 
+            color: #6c757d; 
+            font-style: italic; 
+        }
+        
+        code { 
+            background: #f8f9fa; 
+            padding: 3px 6px; 
+            border-radius: 3px; 
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: #e83e8c;
+        }
+        
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #007acc, #28a745);
+            height: 8px;
+            transition: width 0.3s ease;
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 15px; margin: 10px; }
+            .stats { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+            .stat-value { font-size: 24px; }
+            table { font-size: 12px; }
+            th, td { padding: 8px 4px; }
+        }
     </style>
 </head>
 <body>";
@@ -341,11 +469,23 @@ function previewCSV($file, $db) {
         echo "</table>";
         echo "</div>";
         
-        // Actions  
-        echo "<p><strong>🎯 Pour importer ces données :</strong></p>";
-        echo "<p>1. Vérifiez l'aperçu ci-dessus</p>";
-        echo "<p>2. Re-uploadez le même fichier en choisissant 'Import direct'</p>";
-        echo "<p>3. Ou recommencez le processus</p>";
+        // Actions après aperçu
+        echo "<div style='margin-top: 30px; padding: 20px; background: #e3f2fd; border-radius: 8px; border: 2px solid #007acc;'>";
+        echo "<h4 style='color: #007acc; margin-bottom: 15px;'>🎯 Prêt pour l'import ?</h4>";
+        echo "<p style='margin-bottom: 20px;'>L'aperçu semble correct ? Lancez l'import définitif :</p>";
+        
+        echo "<form method='POST' enctype='multipart/form-data' style='display: inline-block; margin-right: 15px;'>";
+        echo "<input type='file' name='csv_file' accept='.csv,.txt' required style='margin-bottom: 15px;'>";
+        echo "<input type='hidden' name='mode' value='import'>";
+        echo "<button type='submit' class='btn btn-success' onclick='return confirm(\"Êtes-vous sûr de vouloir importer ces données ?\")'>✅ CONFIRMER L'IMPORT</button>";
+        echo "</form>";
+        
+        echo "<button class='btn btn-warning' onclick='location.reload()'>🔄 Recommencer</button>";
+        echo "</div>";
+        
+        echo "<div style='margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 6px;'>";
+        echo "<p><strong>⚠️ Note :</strong> Vous devez re-sélectionner votre fichier CSV ci-dessus car les fichiers temporaires ne sont pas conservés entre les requêtes.</p>";
+        echo "</div>";
         
     } catch (Exception $e) {
         echo "<div class='error'>❌ Erreur : " . htmlspecialchars($e->getMessage()) . "</div>";
