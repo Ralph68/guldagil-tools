@@ -1152,3 +1152,32 @@ body {
 .form-step.active {
   animation: pulse 2s infinite;
 }
+/* Alertes seuils renforcées */
+.threshold-alert {
+    border-left: 4px solid #ffc107;
+    background: linear-gradient(90deg, #fff3cd 0%, #ffffff 100%);
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { border-left-color: #ffc107; }
+    50% { border-left-color: #fd7e14; }
+}
+
+.critical-alert {
+    border-left: 4px solid #dc3545;
+    background: linear-gradient(90deg, #f8d7da 0%, #ffffff 100%);
+    animation: pulse-critical 1.5s infinite;
+}
+
+@keyframes pulse-critical {
+    0%, 100% { border-left-color: #dc3545; }
+    50% { border-left-color: #721c24; }
+}
+
+/* Améliorations responsive desktop */
+@media (min-width: 1200px) {
+    .container-fluid { max-width: 1400px; }
+    .col-md-8 { flex: 0 0 60%; }
+    .col-md-4 { flex: 0 0 40%; }
+}
