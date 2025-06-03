@@ -1,10 +1,10 @@
 <?php
 // import-adr-standalone.php - Script d'import standalone pour produits ADR
-// Placez ce fichier dans le dossier /public/ de votre projet
+// SANS MOT DE PASSE - Supprimez après utilisation !
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-set_time_limit(300); // 5 minutes max
+set_time_limit(300);
 
 // Utilisation de votre config.php existant
 $configPaths = [
@@ -19,7 +19,6 @@ foreach ($configPaths as $configPath) {
         try {
             require_once $configPath;
             $configLoaded = true;
-            echo "<div style='background: #d4edda; padding: 10px; margin: 10px; border-radius: 4px;'>✅ Configuration chargée depuis : " . basename($configPath) . "</div>";
             break;
         } catch (Exception $e) {
             echo "<div style='background: #fff3cd; padding: 10px; margin: 10px; border-radius: 4px;'>⚠️ Erreur config : " . htmlspecialchars($e->getMessage()) . "</div>";
@@ -37,12 +36,6 @@ if (!$configLoaded) {
         echo "<li>$exists " . htmlspecialchars($path) . "</li>";
     }
     echo "</ul>";
-    echo "<p><strong>Vérifiez que :</strong></p>";
-    echo "<ul>";
-    echo "<li>Le fichier config.php existe à la racine du projet</li>";
-    echo "<li>Le fichier .env existe et contient les paramètres BDD</li>";
-    echo "<li>Les permissions sont correctes</li>";
-    echo "</ul>";
     exit;
 }
 
@@ -50,20 +43,9 @@ if (!$configLoaded) {
 if (!isset($db) || !($db instanceof PDO)) {
     echo "<div style='background: #f8d7da; padding: 20px; margin: 20px; border-radius: 8px;'>";
     echo "<h3>❌ Problème de connexion base de données</h3>";
-    echo "<p>La variable \$db n'est pas définie ou n'est pas une instance PDO valide.</p>";
-    echo "<p><strong>Vérifiez votre fichier .env :</strong></p>";
-    echo "<pre>";
-    echo "DB_HOST=localhost\n";
-    echo "DB_NAME=votre_base_de_donnees\n";
-    echo "DB_USER=votre_utilisateur\n";
-    echo "DB_PASS=votre_mot_de_passe\n";
-    echo "DB_CHARSET=utf8mb4";
-    echo "</pre>";
+    echo "<p>Vérifiez votre fichier .env</p>";
     exit;
 }
-
-// Pas de mot de passe pour simplifier
-// (Supprimez ce script après utilisation pour des raisons de sécurité)
 
 echo "<!DOCTYPE html>
 <html lang='fr'>
@@ -101,12 +83,14 @@ echo "<!DOCTYPE html>
 </head>
 <body>";
 
-    echo "<div class='container'>
+echo "<div class='container'>
     <h1>🚛 Import Produits ADR - Guldagil</h1>
     <p><strong>Script standalone</strong> - Version : " . date('Y-m-d H:i:s') . "</p>
     <div style='background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0;'>
         ⚠️ <strong>Sécurité :</strong> Supprimez ce script après utilisation !
     </div>";
+
+echo "<div style='background: #d4edda; padding: 10px; margin: 10px; border-radius: 4px;'>✅ Configuration chargée avec succès</div>";
 
 // Étape 1 : Création des tables si nécessaire
 if (isset($_POST['create_tables'])) {
@@ -127,11 +111,6 @@ if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_OK
 }
 
 echo "</div></body></html>";
-
-/**
- * Formulaire de connexion - SUPPRIMÉ
- */
-// Plus de mot de passe pour simplifier l'utilisation
 
 /**
  * Création des tables ADR
@@ -176,38 +155,6 @@ function createADRTables($db) {
             
             $db->exec($sql);
             echo "<div class='success'>✅ Table 'gul_adr_products' créée avec succès</div>";
-        }
-        
-        // Table des quotas (plus simple)
-        $stmt = $db->query("SHOW TABLES LIKE 'gul_adr_quotas'");
-        if ($stmt->rowCount() === 0) {
-            $sql = "CREATE TABLE `gul_adr_quotas` (
-                `id` int(11) NOT NULL AUTO_INCREMENT,
-                `categorie_transport` varchar(10) NOT NULL,
-                `quota_max_vehicule` decimal(10,3) NOT NULL,
-                `quota_max_colis` decimal(10,3) NOT NULL,
-                `description` varchar(255) NOT NULL,
-                PRIMARY KEY (`id`),
-                UNIQUE KEY `categorie_transport` (`categorie_transport`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-            
-            $db->exec($sql);
-            
-            // Insérer les quotas de base
-            $stmt = $db->prepare("INSERT INTO gul_adr_quotas (categorie_transport, quota_max_vehicule, quota_max_colis, description) VALUES (?, ?, ?, ?)");
-            $quotas = [
-                ['0', 999999, 999999, 'Catégorie 0 - Pas de restrictions ADR'],
-                ['1', 20, 20, 'Catégorie 1 - Très dangereux'],
-                ['2', 333, 333, 'Catégorie 2 - Dangereux'],
-                ['3', 1000, 1000, 'Catégorie 3 - Moyennement dangereux'],
-                ['4', 999999, 999999, 'Catégorie 4 - Peu dangereux']
-            ];
-            
-            foreach ($quotas as $quota) {
-                $stmt->execute($quota);
-            }
-            
-            echo "<div class='success'>✅ Table 'gul_adr_quotas' créée avec quotas réglementaires</div>";
         }
         
         echo "<p><strong>✅ Base de données prête pour l'import ADR</strong></p>";
@@ -278,7 +225,6 @@ function showUploadForm($db) {
     echo "<div class='step'>
         <h3>📤 Upload du fichier CSV</h3>
         <form method='POST' enctype='multipart/form-data'>
-            <input type='hidden' name='password' value='" . htmlspecialchars($_POST['password']) . "'>
             
             <div class='form-group'>
                 <label>📄 Sélectionnez votre fichier CSV :</label>
