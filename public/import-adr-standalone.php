@@ -395,13 +395,11 @@ function previewCSV($file, $db) {
         echo "</table>";
         echo "</div>";
         
-        // Actions
-        echo "<form method='POST' enctype='multipart/form-data'>
-            <input type='hidden' name='confirmed_file' value='" . htmlspecialchars($file['name']) . "'>
-            <!-- Vous devrez re-upload le fichier ou le sauvegarder temporairement -->
-            <p><strong>🎯 Prêt pour l'import ?</strong></p>
-            <button type='submit' name='mode' value='import' class='btn btn-success'>✅ Confirmer l'import</button>
-        </form>";
+        // Actions  
+        echo "<p><strong>🎯 Pour importer ces données :</strong></p>";
+        echo "<p>1. Vérifiez l'aperçu ci-dessus</p>";
+        echo "<p>2. Re-uploadez le même fichier en choisissant 'Import direct'</p>";
+        echo "<p>3. Ou recommencez le processus</p>";
         
     } catch (Exception $e) {
         echo "<div class='error'>❌ Erreur : " . htmlspecialchars($e->getMessage()) . "</div>";
