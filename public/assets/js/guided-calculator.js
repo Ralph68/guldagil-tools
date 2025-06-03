@@ -319,6 +319,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return { valid: true };
 }
+    // Alertes seuils critiques - NOUVELLE FONCTION
+function checkWeightThresholds(poids, results) {
+    const alerts = [];
+    
+    // Seuils critiques économiques
+    if (poids >= CONFIG.WEIGHT_THRESHOLDS.PALETTE_SUGGESTION && poids < CONFIG.WEIGHT_THRESHOLDS.PALETTE_MANDATORY) {
+        alerts.push({
+            type: 'warning',
+            message: `⚠️ ATTENTION : Poids ${poids}kg proche du seuil palette (${CONFIG.WEIGHT_THRESHOLDS.PALETTE_MANDATORY}kg). Vérifiez si palettisation possible pour économies.`
+        });
+    }
+    
+    if (poids >= CONFIG.WEIGHT_THRESHOLDS.VOLUME_DISCOUNT) {
+        alerts.push({
+            type: 'info', 
+            message: `💡 CONSEIL : Poids ${poids}kg éligible aux tarifs dégressifs. Contactez le service achat pour négociation.`
+        });
+    }
+    
+    // Alertes par transporteur si écarts importants
+    if (results && results.length > 1) {
+        const prices = results.map(r => r.price).sort((a,b) => a-b);
+        const ecart = ((prices[prices.length-1] - prices[0]) / prices[0] * 100);
+        
+        if (ecart > CONFIG.PRICE_ALERT_THRESHOLD) {
+            alerts.push({
+                type: 'warning',
+                message: `💰 ÉCART IMPORTANT : ${ecart.toFixed(0)}% entre le moins cher et le plus cher. Justification requise si choix non-optimal.`
+            });
+        }
+    }
+    
+    return alerts;
+}
     
     function validateType() {
         const selectedType = document.querySelector('input[name="type"]:checked');
