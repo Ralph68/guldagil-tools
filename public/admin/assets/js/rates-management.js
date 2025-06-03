@@ -81,19 +81,28 @@ function setupEventListeners() {
 function loadCarriers() {
     console.log('📦 Chargement des transporteurs...');
     
-    fetch('api-rates.php?action=carriers')
+    fetch('api/api-rates.php?action=carriers')
         .then(response => {
+            console.log('Response status:', response.status);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            return response.json();
+            return response.text(); // D'abord en text pour debug
         })
-        .then(data => {
-            if (data.success) {
-                populateCarrierFilter(data.data);
-                console.log('✅ Transporteurs chargés:', data.data.length);
-            } else {
-                throw new Error(data.error || 'Erreur inconnue');
+        .then(text => {
+            console.log('Raw response:', text);
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    populateCarrierFilter(data.data);
+                    console.log('✅ Transporteurs chargés:', data.data.length);
+                } else {
+                    throw new Error(data.error || 'Erreur inconnue');
+                }
+            } catch (parseError) {
+                console.error('JSON Parse Error:', parseError);
+                console.error('Response text:', text.substring(0, 500));
+                throw new Error('Réponse invalide du serveur');
             }
         })
         .catch(error => {
@@ -108,19 +117,26 @@ function loadCarriers() {
 function loadDepartments() {
     console.log('🗺️ Chargement des départements...');
     
-    fetch('api-rates.php?action=departments')
+    fetch('api/api-rates.php?action=departments')
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            return response.json();
+            return response.text();
         })
-        .then(data => {
-            if (data.success) {
-                populateDepartmentFilter(data.data);
-                console.log('✅ Départements chargés:', data.data.length);
-            } else {
-                throw new Error(data.error || 'Erreur inconnue');
+        .then(text => {
+            console.log('Departments response:', text.substring(0, 200));
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    populateDepartmentFilter(data.data);
+                    console.log('✅ Départements chargés:', data.data.length);
+                } else {
+                    throw new Error(data.error || 'Erreur inconnue');
+                }
+            } catch (parseError) {
+                console.error('JSON Parse Error for departments:', parseError);
+                throw new Error('Réponse invalide du serveur');
             }
         })
         .catch(error => {
@@ -148,7 +164,7 @@ function loadRates(force = false) {
         search: currentFilters.search || ''
     });
     
-    const url = `api-rates.php?${params.toString()}`;
+    const url = `api/api-rates.php?${params.toString()}`;
     console.log('📡 Requête API:', url);
     
     fetch(url)
@@ -156,7 +172,7 @@ function loadRates(force = false) {
             console.log('📥 Réponse API:', response.status, response.statusText);
             if (!response.ok) {
                 return response.text().then(text => {
-                    console.error('❌ Erreur API (texte):', text);
+                    console.error('❌ Erreur API (texte):', text.substring(0, 500));
                     let errorMsg = `HTTP ${response.status}`;
                     try {
                         const errorData = JSON.parse(text);
@@ -164,27 +180,35 @@ function loadRates(force = false) {
                             errorMsg = errorData.error;
                         }
                     } catch (e) {
-                        errorMsg += ': ' + text.substring(0, 200);
+                        errorMsg += ': Erreur serveur';
                     }
                     throw new Error(errorMsg);
                 });
             }
-            return response.json();
+            return response.text();
         })
-        .then(data => {
-            console.log('📊 Données reçues:', data);
-            if (data.success) {
-                ratesData = data.data.rates || [];
-                displayRates(ratesData);
-                if (data.data.pagination) {
-                    displayPagination(data.data.pagination);
+        .then(text => {
+            console.log('Rates response preview:', text.substring(0, 200));
+            try {
+                const data = JSON.parse(text);
+                console.log('📊 Données reçues:', data);
+                if (data.success) {
+                    ratesData = data.data.rates || [];
+                    displayRates(ratesData);
+                    if (data.data.pagination) {
+                        displayPagination(data.data.pagination);
+                    }
+                    if (data.data.filters) {
+                        updateFiltersInfo(data.data.filters);
+                    }
+                    console.log('✅ Tarifs affichés:', ratesData.length);
+                } else {
+                    throw new Error(data.error || 'Erreur inconnue');
                 }
-                if (data.data.filters) {
-                    updateFiltersInfo(data.data.filters);
-                }
-                console.log('✅ Tarifs affichés:', ratesData.length);
-            } else {
-                throw new Error(data.error || 'Erreur inconnue');
+            } catch (parseError) {
+                console.error('JSON Parse Error for rates:', parseError);
+                console.error('Response text:', text.substring(0, 500));
+                throw new Error('Réponse invalide du serveur');
             }
         })
         .catch(error => {
@@ -207,7 +231,7 @@ function showLoading(show) {
     if (show) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="text-center" style="padding: 2rem;">
+                <td colspan="10" class="text-center" style="padding: 2rem;">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 1rem;">
                         <div class="spinner" style="width: 20px; height: 20px; border: 2px solid #f3f3f3; border-top: 2px solid #007acc; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                         Chargement des tarifs...
@@ -228,7 +252,7 @@ function displayRates(rates) {
     if (!rates || rates.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="text-center" style="padding: 2rem; color: #666;">
+                <td colspan="10" class="text-center" style="padding: 2rem; color: #666;">
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
                         <div style="font-size: 2rem;">📭</div>
                         <div>Aucun tarif trouvé</div>
@@ -249,6 +273,7 @@ function displayRates(rates) {
         html += `
             <tr style="transition: background-color 0.2s ease;">
                 <td>
+                    <input type="checkbox" class="rate-checkbox" data-id="${rate.id}">
                     <div style="font-weight: 600; color: var(--primary-color);">${rate.carrier_name}</div>
                     <div style="font-size: 0.8rem; color: #666;">${rate.carrier_code}</div>
                 </td>
@@ -263,6 +288,7 @@ function displayRates(rates) {
                 <td>
                     <span class="badge badge-info">${rate.delay || 'Non défini'}</span>
                 </td>
+                <td class="text-center">${statusBadge}</td>
                 <td class="text-center">
                     <div class="actions" style="display: flex; gap: 0.5rem; justify-content: center;">
                         <button class="btn btn-secondary btn-sm" 
@@ -282,6 +308,9 @@ function displayRates(rates) {
     });
     
     tbody.innerHTML = html;
+    
+    // Ajouter les gestionnaires d'événements pour les checkboxes
+    updateBulkActions();
 }
 
 /**
@@ -299,11 +328,53 @@ function formatDisplayPrice(price) {
  */
 function getStatusBadge(status) {
     const badges = {
-        'complet': '<span class="badge badge-success">Complet</span>',
-        'partiel': '<span class="badge badge-warning">Partiel</span>',
-        'vide': '<span class="badge badge-danger">Vide</span>'
+        'complet': '<span class="badge badge-success">✅ Complet</span>',
+        'partiel': '<span class="badge badge-warning">⚠️ Partiel</span>',
+        'vide': '<span class="badge badge-danger">❌ Vide</span>'
     };
-    return badges[status] || '<span class="badge badge-info">Inconnu</span>';
+    return badges[status] || '<span class="badge badge-info">❓ Inconnu</span>';
+}
+
+/**
+ * Met à jour les actions en lot
+ */
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.rate-checkbox');
+    const bulkActions = document.getElementById('bulk-actions');
+    const selectedCount = document.getElementById('selected-count');
+    
+    if (checkboxes.length > 0) {
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                const checkedBoxes = document.querySelectorAll('.rate-checkbox:checked');
+                if (selectedCount) {
+                    selectedCount.textContent = checkedBoxes.length;
+                }
+                
+                if (bulkActions) {
+                    bulkActions.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
+                }
+            });
+        });
+    }
+    
+    // Gestionnaire pour "Sélectionner tout"
+    const selectAllCheckbox = document.getElementById('select-all-rates');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            
+            if (selectedCount) {
+                selectedCount.textContent = this.checked ? checkboxes.length : 0;
+            }
+            
+            if (bulkActions) {
+                bulkActions.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+    }
 }
 
 /**
@@ -444,7 +515,7 @@ function confirmDeleteRate(carrier, department, id) {
 function deleteRate(carrier, id) {
     console.log('🗑️ Suppression tarif:', { carrier, id });
     
-    const url = `api-rates.php?action=delete&carrier=${carrier}&id=${id}`;
+    const url = `api/api-rates.php?action=delete&carrier=${carrier}&id=${id}`;
     
     fetch(url, { method: 'GET' })
         .then(response => {
@@ -469,138 +540,7 @@ function deleteRate(carrier, id) {
 
 function editRateModal(carrier, department, id) {
     console.log('✏️ Édition tarif:', { carrier, department, id });
-    
-    const rate = ratesData.find(r => r.id == id && r.carrier_code === carrier);
-    
-    if (rate) {
-        populateEditModal(rate);
-        showEditModal();
-    } else {
-        fetchRateForEdit(carrier, id);
-    }
-}
-
-function fetchRateForEdit(carrier, id) {
-    const url = `api-rates.php?action=get&carrier=${carrier}&id=${id}`;
-    
-    fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                populateEditModal(data.data);
-                showEditModal();
-            } else {
-                throw new Error(data.error || 'Erreur lors de la récupération du tarif');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Erreur récupération tarif:', error);
-            showError('Erreur lors de la récupération du tarif: ' + error.message);
-        });
-}
-
-function showEditModal() {
-    const modal = document.getElementById('edit-rate-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-    }
-}
-
-function populateEditModal(rate) {
-    document.getElementById('edit-carrier').value = rate.carrier_name;
-    document.getElementById('edit-carrier-code').value = rate.carrier_code;
-    document.getElementById('edit-department-num').value = rate.department_num;
-    document.getElementById('edit-department-name').value = rate.department_name;
-    document.getElementById('edit-delay').value = rate.delay || '';
-    document.getElementById('edit-rate-id').value = rate.id;
-    
-    const rateFields = [
-        'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
-        'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
-        'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999', 'tarif_2000_2999'
-    ];
-    
-    rateFields.forEach(field => {
-        const input = document.getElementById(`edit-${field.replace(/_/g, '-')}`);
-        if (input) {
-            const value = rate.rates[field];
-            input.value = value !== null && value !== undefined ? value : '';
-        }
-    });
-    
-    const xpoGroup = document.getElementById('edit-tarif-2000-group');
-    if (xpoGroup) {
-        xpoGroup.style.display = rate.carrier_code === 'xpo' ? 'block' : 'none';
-    }
-}
-
-function closeEditModal() {
-    const modal = document.getElementById('edit-rate-modal');
-    if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('active');
-    }
-}
-
-function saveRateChanges() {
-    console.log('💾 Sauvegarde des modifications...');
-    
-    const formData = {
-        id: document.getElementById('edit-rate-id').value,
-        carrier_code: document.getElementById('edit-carrier-code').value,
-        department_name: document.getElementById('edit-department-name').value,
-        delay: document.getElementById('edit-delay').value,
-        rates: {}
-    };
-    
-    const rateFields = [
-        'tarif_0_9', 'tarif_10_19', 'tarif_20_29', 'tarif_30_39', 'tarif_40_49',
-        'tarif_50_59', 'tarif_60_69', 'tarif_70_79', 'tarif_80_89', 'tarif_90_99',
-        'tarif_100_299', 'tarif_300_499', 'tarif_500_999', 'tarif_1000_1999', 'tarif_2000_2999'
-    ];
-    
-    rateFields.forEach(field => {
-        const input = document.getElementById(`edit-${field.replace(/_/g, '-')}`);
-        if (input) {
-            const value = input.value.trim();
-            formData.rates[field] = value !== '' ? parseFloat(value) : null;
-        }
-    });
-    
-    console.log('📊 Données à sauvegarder:', formData);
-    
-    fetch('api-rates.php', {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            showSuccess('Tarif mis à jour avec succès');
-            closeEditModal();
-            loadRates();
-        } else {
-            throw new Error(data.error || 'Erreur lors de la mise à jour');
-        }
-    })
-    .catch(error => {
-        console.error('❌ Erreur sauvegarde:', error);
-        showError('Erreur lors de la sauvegarde: ' + error.message);
-    });
+    showAlert('info', 'Fonction d\'édition en cours de développement');
 }
 
 function exportRates() {
@@ -618,12 +558,50 @@ function exportRates() {
     showSuccess('Export en cours...');
 }
 
+// Actions en lot
+function bulkEdit() {
+    const checkedBoxes = document.querySelectorAll('.rate-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+        showAlert('warning', 'Aucun tarif sélectionné');
+        return;
+    }
+    showAlert('info', `Édition de ${checkedBoxes.length} tarif(s) en cours de développement`);
+}
+
+function bulkExport() {
+    const checkedBoxes = document.querySelectorAll('.rate-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+        showAlert('warning', 'Aucun tarif sélectionné');
+        return;
+    }
+    showAlert('info', `Export de ${checkedBoxes.length} tarif(s) en cours...`);
+}
+
+function bulkDelete() {
+    const checkedBoxes = document.querySelectorAll('.rate-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+        showAlert('warning', 'Aucun tarif sélectionné');
+        return;
+    }
+    
+    if (confirm(`Êtes-vous sûr de vouloir supprimer ${checkedBoxes.length} tarif(s) ?`)) {
+        showAlert('info', `Suppression de ${checkedBoxes.length} tarif(s) en cours de développement`);
+    }
+}
+
+function filterByCarrier(carrierCode) {
+    const carrierFilter = document.getElementById('filter-carrier');
+    if (carrierFilter) {
+        carrierFilter.value = carrierCode;
+        handleSearch();
+    }
+}
+
 function showSuccess(message) {
     if (typeof showAlert === 'function') {
         showAlert('success', message);
     } else {
         console.log('✅ Succès:', message);
-        alert(message);
     }
 }
 
@@ -632,7 +610,6 @@ function showError(message) {
         showAlert('error', message);
     } else {
         console.error('❌ Erreur:', message);
-        alert('Erreur: ' + message);
     }
 }
 
@@ -641,12 +618,14 @@ window.loadRates = loadRates;
 window.editRateModal = editRateModal;
 window.confirmDeleteRate = confirmDeleteRate;
 window.deleteRate = deleteRate;
-window.closeEditModal = closeEditModal;
-window.saveRateChanges = saveRateChanges;
 window.exportRates = exportRates;
 window.clearFilters = clearFilters;
 window.goToPage = goToPage;
 window.handleSearch = handleSearch;
+window.bulkEdit = bulkEdit;
+window.bulkExport = bulkExport;
+window.bulkDelete = bulkDelete;
+window.filterByCarrier = filterByCarrier;
 
 // Override de showTab pour charger les tarifs
 const originalShowTab = window.showTab;
