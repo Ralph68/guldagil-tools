@@ -1,4 +1,37 @@
 // guided-calculator.js - Interface guidée avec calcul dynamique
+
+// Configuration centralisée - AJOUTER EN HAUT DU FICHIER
+const CONFIG = {
+    WEIGHT_THRESHOLDS: {
+        PALETTE_SUGGESTION: 60,
+        PALETTE_MANDATORY: 70,
+        VOLUME_DISCOUNT: 500,
+        MAX_WEIGHT: 3500
+    },
+    PRICE_ALERT_THRESHOLD: 30,
+    AUTO_SAVE_DELAY: 2000,
+    MAX_HISTORY_ITEMS: 50
+};
+
+// Utilitaires - AJOUTER APRÈS CONFIG
+const utils = {
+    formatPrice: (price) => new Intl.NumberFormat('fr-FR', { 
+        style: 'currency', 
+        currency: 'EUR' 
+    }).format(price),
+    
+    formatWeight: (weight) => `${weight} kg`,
+    
+    showAlert: (message, type = 'info') => {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        document.getElementById('alerts-container').appendChild(alert);
+        
+        setTimeout(() => alert.remove(), 5000);
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOM chargé, initialisation en cours...');
     
