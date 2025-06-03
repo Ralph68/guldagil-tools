@@ -82,13 +82,11 @@ $transport = new Transport($db);
           </div>
           <div class="step-content">
             <label for="poids">Poids réel en kg</label>
-            <input type="number" 
-                   name="poids" 
-                   id="poids" 
-                   step="0.1" 
-                   min="0.1" 
-                   max="3500"
-                   placeholder="Ex: 25.5">
+            <input type="number" id="poids" class="form-control" 
+       placeholder="Ex: 25" 
+       min="1" max="3500" 
+       step="1"
+       oninput="this.value = Math.floor(this.value)">
             <div class="field-help">
               <small>⚠️ Au-delà de 3000 kg, nous vous orienterons vers notre service affrètement</small>
             </div>
