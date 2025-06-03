@@ -1,13 +1,66 @@
 <?php
 // import-adr-standalone.php - Script d'import standalone pour produits ADR
-// Placez ce fichier à la racine de votre projet et appelez-le via navigateur
+// Placez ce fichier dans le dossier /public/ de votre projet
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 set_time_limit(300); // 5 minutes max
 
-// Configuration base de données (adaptez selon votre config.php)
-require_once __DIR__ . '/config.php';
+// Utilisation de votre config.php existant
+$configPaths = [
+    __DIR__ . '/../config.php',        // Si script dans /public/
+    __DIR__ . '/config.php',           // Si script à la racine
+    dirname(__DIR__) . '/config.php'   // Dossier parent
+];
+
+$configLoaded = false;
+foreach ($configPaths as $configPath) {
+    if (file_exists($configPath)) {
+        try {
+            require_once $configPath;
+            $configLoaded = true;
+            echo "<div style='background: #d4edda; padding: 10px; margin: 10px; border-radius: 4px;'>✅ Configuration chargée depuis : " . basename($configPath) . "</div>";
+            break;
+        } catch (Exception $e) {
+            echo "<div style='background: #fff3cd; padding: 10px; margin: 10px; border-radius: 4px;'>⚠️ Erreur config : " . htmlspecialchars($e->getMessage()) . "</div>";
+        }
+    }
+}
+
+if (!$configLoaded) {
+    echo "<div style='background: #f8d7da; padding: 20px; margin: 20px; border-radius: 8px;'>";
+    echo "<h3>❌ Configuration non trouvée</h3>";
+    echo "<p>Le fichier config.php n'a pas pu être chargé. Chemins testés :</p>";
+    echo "<ul>";
+    foreach ($configPaths as $path) {
+        $exists = file_exists($path) ? '✅' : '❌';
+        echo "<li>$exists " . htmlspecialchars($path) . "</li>";
+    }
+    echo "</ul>";
+    echo "<p><strong>Vérifiez que :</strong></p>";
+    echo "<ul>";
+    echo "<li>Le fichier config.php existe à la racine du projet</li>";
+    echo "<li>Le fichier .env existe et contient les paramètres BDD</li>";
+    echo "<li>Les permissions sont correctes</li>";
+    echo "</ul>";
+    exit;
+}
+
+// Vérifier que la connexion BDD fonctionne
+if (!isset($db) || !($db instanceof PDO)) {
+    echo "<div style='background: #f8d7da; padding: 20px; margin: 20px; border-radius: 8px;'>";
+    echo "<h3>❌ Problème de connexion base de données</h3>";
+    echo "<p>La variable \$db n'est pas définie ou n'est pas une instance PDO valide.</p>";
+    echo "<p><strong>Vérifiez votre fichier .env :</strong></p>";
+    echo "<pre>";
+    echo "DB_HOST=localhost\n";
+    echo "DB_NAME=votre_base_de_donnees\n";
+    echo "DB_USER=votre_utilisateur\n";
+    echo "DB_PASS=votre_mot_de_passe\n";
+    echo "DB_CHARSET=utf8mb4";
+    echo "</pre>";
+    exit;
+}
 
 // Sécurité basique
 $password = 'guldagil2025'; // Changez ce mot de passe !
