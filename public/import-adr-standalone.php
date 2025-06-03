@@ -62,14 +62,8 @@ if (!isset($db) || !($db instanceof PDO)) {
     exit;
 }
 
-// Sécurité basique
-$password = 'guldagil2025'; // Changez ce mot de passe !
-$submitted_password = $_POST['password'] ?? $_GET['password'] ?? '';
-
-if ($submitted_password !== $password) {
-    showLoginForm();
-    exit;
-}
+// Pas de mot de passe pour simplifier
+// (Supprimez ce script après utilisation pour des raisons de sécurité)
 
 echo "<!DOCTYPE html>
 <html lang='fr'>
@@ -107,9 +101,12 @@ echo "<!DOCTYPE html>
 </head>
 <body>";
 
-echo "<div class='container'>
+    echo "<div class='container'>
     <h1>🚛 Import Produits ADR - Guldagil</h1>
-    <p><strong>Script standalone</strong> - Version : " . date('Y-m-d H:i:s') . "</p>";
+    <p><strong>Script standalone</strong> - Version : " . date('Y-m-d H:i:s') . "</p>
+    <div style='background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0;'>
+        ⚠️ <strong>Sécurité :</strong> Supprimez ce script après utilisation !
+    </div>";
 
 // Étape 1 : Création des tables si nécessaire
 if (isset($_POST['create_tables'])) {
@@ -132,26 +129,9 @@ if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_OK
 echo "</div></body></html>";
 
 /**
- * Formulaire de connexion
+ * Formulaire de connexion - SUPPRIMÉ
  */
-function showLoginForm() {
-    echo "<!DOCTYPE html>
-    <html><head><meta charset='UTF-8'><title>Connexion - Import ADR</title>
-    <style>body{font-family:Arial;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f5f5f5;}
-    .login{background:white;padding:30px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
-    input{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:4px;}
-    button{width:100%;padding:10px;background:#007acc;color:white;border:none;border-radius:4px;cursor:pointer;}
-    </style></head><body>
-    <div class='login'>
-        <h2>🔐 Import ADR - Guldagil</h2>
-        <form method='POST'>
-            <label>Mot de passe :</label>
-            <input type='password' name='password' required>
-            <button type='submit'>Accéder</button>
-        </form>
-        <p><small>Contact : runser.jean.thomas@guldagil.com</small></p>
-    </div></body></html>";
-}
+// Plus de mot de passe pour simplifier l'utilisation
 
 /**
  * Création des tables ADR
@@ -257,7 +237,6 @@ function showUploadForm($db) {
             <h3>⚠️ Tables manquantes</h3>
             <p>Les tables ADR n'existent pas encore dans la base de données.</p>
             <form method='POST'>
-                <input type='hidden' name='password' value='" . htmlspecialchars($_POST['password']) . "'>
                 <button type='submit' name='create_tables' class='btn btn-warning'>🗄️ Créer les tables ADR</button>
             </form>
         </div>";
@@ -418,7 +397,6 @@ function previewCSV($file, $db) {
         
         // Actions
         echo "<form method='POST' enctype='multipart/form-data'>
-            <input type='hidden' name='password' value='" . htmlspecialchars($_POST['password']) . "'>
             <input type='hidden' name='confirmed_file' value='" . htmlspecialchars($file['name']) . "'>
             <!-- Vous devrez re-upload le fichier ou le sauvegarder temporairement -->
             <p><strong>🎯 Prêt pour l'import ?</strong></p>
