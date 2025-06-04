@@ -5,7 +5,7 @@
 //}
 ?>
 
-<!-- Modal Maintenance ADR -->
+
 <div id="maintenance-modal" class="modal" style="display: none;">
     <div class="modal-content" style="max-width: 1200px;">
         <div class="modal-header">
@@ -22,7 +22,7 @@
                 <button class="tab-btn" onclick="showMaintenanceTab('logs')">📝 Logs</button>
             </div>
             
-            <!-- Onglet Base de données -->
+            
             <div id="maintenance-tab-database" class="maintenance-tab-content active">
                 <h4>🗄️ Gestion base de données</h4>
                 
@@ -64,7 +64,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Nettoyage -->
+            
             <div id="maintenance-tab-cleanup" class="maintenance-tab-content">
                 <h4>🧹 Nettoyage système</h4>
                 
@@ -113,7 +113,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Sauvegarde -->
+            
             <div id="maintenance-tab-backup" class="maintenance-tab-content">
                 <h4>💾 Sauvegarde et restauration</h4>
                 
@@ -210,7 +210,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Monitoring -->
+            
             <div id="maintenance-tab-monitoring" class="maintenance-tab-content">
                 <h4>📊 Monitoring système</h4>
                 
@@ -287,7 +287,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Logs -->
+            
             <div id="maintenance-tab-logs" class="maintenance-tab-content">
                 <h4>📝 Gestion des logs</h4>
                 
