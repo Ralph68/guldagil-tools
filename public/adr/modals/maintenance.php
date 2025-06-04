@@ -828,12 +828,7 @@ function optimizeTables() {
     
     const progressBar = createProgressBar('optimization-result');
     
-    const optimizeNext = () => {
-        if (currentTable >= tables.length) {
-            showMaintenanceResult('optimization-result', '✅ Optimisation
-// Continuation du fichier public/adr/modals/maintenance.php
-
-    const optimizeNext = () => {
+        const optimizeNext = () => {
         if (currentTable >= tables.length) {
             showMaintenanceResult('optimization-result', '✅ Optimisation terminée avec succès', 'success');
             return;
