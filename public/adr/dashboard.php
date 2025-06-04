@@ -492,12 +492,9 @@ try {
                 padding-top: 120px;
             }
         }
-    </style>
-    <!-- dans le <head> -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+    </style></head>
 <body>
-    <!-- Header ADR -->
+    
     <header class="adr-header">
         <div class="header-container">
             <div class="header-title">
@@ -533,7 +530,7 @@ try {
     </header>
 
     <div class="dashboard-container">
-        <!-- Section recherche intelligente -->
+        
         <section class="search-section">
             <div class="search-header">
                 <div class="search-icon">🔍</div>
@@ -561,7 +558,7 @@ try {
             </div>
         </section>
 
-        <!-- Section résultats de recherche -->
+        
         <section class="results-section" id="search-results">
             <div class="results-header">
                 <h3 id="results-title">Résultats de recherche</h3>
@@ -572,11 +569,11 @@ try {
             </div>
             
             <div id="results-content">
-                <!-- Les résultats seront affichés ici -->
+                
             </div>
         </section>
 
-        <!-- Statistiques du catalogue -->
+        
         <section class="stats-grid">
             <div class="stat-card primary">
                 <div class="stat-header">
@@ -615,7 +612,7 @@ try {
             </div>
         </section>
 
-        <!-- Répartition par catégories ADR -->
+        
         <section class="categories-section">
             <h3>📊 Répartition par catégories de transport</h3>
             <div class="categories-grid">
@@ -1064,81 +1061,6 @@ try {
 
         console.log('✅ Dashboard ADR initialisé');
         console.log('💡 Raccourcis: Ctrl+K (recherche), Flèches (navigation), Enter (sélection), Escape (fermer)');
-    </script>
-
-    <!-- Outils internes en développement -->
-
-    <!-- Modal Dev Tools -->
-    <div class="modal fade" id="devToolsModal" tabindex="-1" aria-labelledby="devToolsLabel" aria-hidden="true">
-      <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="devToolsLabel">Outils de développement</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-          </div>
-          <div class="modal-body" id="devToolsContent">
-            Chargement…
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal Maintenance -->
-    <div class="modal fade" id="maintenanceModal" tabindex="-1" aria-labelledby="maintenanceLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="maintenanceLabel">Maintenance</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-          </div>
-          <div class="modal-body" id="maintenanceContent">
-            Chargement…
-          </div>
-        </div>
-      </div>
-    </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    
-<script>
-function insertHtmlWithScripts(targetId, html) {
-  const container = document.getElementById(targetId);
-  container.innerHTML = html;
-  container.querySelectorAll('script').forEach(old => {
-    const s = document.createElement('script');
-    if (old.src) s.src = old.src; else s.textContent = old.textContent;
-    old.remove();
-    container.appendChild(s);
-  });
-}
-
-function loadDevTools() {
-  fetch('/adr/modals/dev-tools.php')
-    .then(r => r.text())
-    .then(html => {
-      insertHtmlWithScripts('devToolsContent', html);
-      new bootstrap.Modal(document.getElementById('devToolsModal')).show();
-    })
-    .catch(() => {
-      document.getElementById('devToolsContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
-    });
-}
-
-function loadMaintenance() {
-  fetch('/adr/modals/maintenance.php')
-    .then(r => r.text())
-    .then(html => {
-      insertHtmlWithScripts('maintenanceContent', html);
-      if (typeof updateMonitoringData === 'function') {
-        updateMonitoringData();
-      }
-      new bootstrap.Modal(document.getElementById('maintenanceModal')).show();
-    })
-    .catch(() => {
-      document.getElementById('maintenanceContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
-    });
-}
-</script>
-
     
 
 </body>

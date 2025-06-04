@@ -659,7 +659,7 @@ $adrEnabled = true; // Pour l'instant, toujours activé
     </div>
   </div>
 
-  <script src="assets/js/guided-calculator.js"></script>
+  <script src="assets/js/calculateur.js"></script>
   <script>
     // Fonctions pour les modals et interactions
     function showADRInfo() {

@@ -5,7 +5,7 @@
 //}
 ?>
 
-<!-- Modal Maintenance ADR -->
+
             <div class="maintenance-tabs">
                 <button class="tab-btn active" onclick="showMaintenanceTab('database')">🗄️ Base de données</button>
                 <button class="tab-btn" onclick="showMaintenanceTab('cleanup')">🧹 Nettoyage</button>
@@ -14,7 +14,7 @@
                 <button class="tab-btn" onclick="showMaintenanceTab('logs')">📝 Logs</button>
             </div>
             
-            <!-- Onglet Base de données -->
+            
             <div id="maintenance-tab-database" class="maintenance-tab-content active">
                 <h4>🗄️ Gestion base de données</h4>
                 
@@ -56,7 +56,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Nettoyage -->
+            
             <div id="maintenance-tab-cleanup" class="maintenance-tab-content">
                 <h4>🧹 Nettoyage système</h4>
                 
@@ -105,7 +105,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Sauvegarde -->
+            
             <div id="maintenance-tab-backup" class="maintenance-tab-content">
                 <h4>💾 Sauvegarde et restauration</h4>
                 
@@ -202,7 +202,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Monitoring -->
+            
             <div id="maintenance-tab-monitoring" class="maintenance-tab-content">
                 <h4>📊 Monitoring système</h4>
                 
@@ -279,7 +279,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Logs -->
+            
             <div id="maintenance-tab-logs" class="maintenance-tab-content">
                 <h4>📝 Gestion des logs</h4>
                 
@@ -805,12 +805,7 @@ function optimizeTables() {
     
     const progressBar = createProgressBar('optimization-result');
     
-    const optimizeNext = () => {
-        if (currentTable >= tables.length) {
-            showMaintenanceResult('optimization-result', '✅ Optimisation
-// Continuation du fichier public/adr/modals/maintenance.php
-
-    const optimizeNext = () => {
+        const optimizeNext = () => {
         if (currentTable >= tables.length) {
             showMaintenanceResult('optimization-result', '✅ Optimisation terminée avec succès', 'success');
             return;
@@ -1314,5 +1309,6 @@ function toggleMaintenanceMode() {
         showMaintenanceResult('maintenance-status', 'Mode normal restauré - Système accessible', 'success');
     }
 }
+
 
 </script>
