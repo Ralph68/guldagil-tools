@@ -628,11 +628,16 @@ try {
     <script>
         // Configuration
         const searchConfig = {
-            minChars: 2,
-            delay: 300,
+            // L'autocomplete démarre désormais à partir de 3 caractères
+            minChars: 3,
+            // Délai réduit pour une recherche plus dynamique
+            delay: 150,
             maxResults: 20
         };
 
+        // Cache simple pour éviter les requêtes répétées
+        const searchCache = {};
+        
         let searchTimeout;
         let currentSearchTerm = '';
         let selectedIndex = -1;
@@ -708,14 +713,21 @@ try {
             }
         }
 
-        // Recherche AJAX des produits
+        // Recherche AJAX des produits avec mise en cache
         function searchProducts(term) {
             console.log('🔍 Recherche:', term);
-            
+
+            // Utiliser le cache si disponible
+            if (searchCache[term]) {
+                displaySuggestions(searchCache[term]);
+                return;
+            }
+
             fetch(`search/api.php?q=${encodeURIComponent(term)}&limit=${searchConfig.maxResults}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                         console.error('Erreur AJAX:', error);
                         displaySuggestions(data.suggestions);
                     } else {
                         console.error('Erreur recherche:', data.error);
