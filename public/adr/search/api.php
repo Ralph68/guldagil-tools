@@ -24,7 +24,8 @@ const SEARCH_CONFIG = [
 // Paramètres de la requête
 $action = $_GET['action'] ?? 'suggestions';
 $query = trim($_GET['q'] ?? '');
-$limit = min((int)($_GET['limit'] ?? SEARCH_CONFIG['max_suggestions']), SEARCH_CONFIG['max_results']);
+$rawLimit = (int)($_GET['limit'] ?? SEARCH_CONFIG['max_suggestions']);
+$limit = max(1, min($rawLimit, SEARCH_CONFIG['max_results']));
 
 try {
     switch ($action) {
@@ -302,19 +303,25 @@ function searchByName($db, $name, $limit, $suggestionsOnly) {
     $whereClause = implode(' AND ', $searchTerms);
     
     // Recherche exacte d'abord, puis floue
+    // Lorsque le nombre de résultats demandé est inférieur à 5, la limite
+    // négative du second SELECT provoquait une erreur SQL. On s'assure
+    // d'avoir une valeur positive.
+    $firstLimit  = min($limit, 10);
+    $secondLimit = max($limit - 5, 0);
+
     $sql = "
-        (SELECT *, 1 as priority FROM vue_adr_products_complet 
-         WHERE nom_produit LIKE ? 
-         LIMIT " . min($limit, 10) . ")
-        
+        (SELECT *, 1 as priority FROM vue_adr_products_complet
+         WHERE nom_produit LIKE ?
+         LIMIT $firstLimit)
+
         UNION ALL
-        
-        (SELECT *, 2 as priority FROM vue_adr_products_complet 
+
+        (SELECT *, 2 as priority FROM vue_adr_products_complet
          WHERE $whereClause
          AND nom_produit NOT LIKE ?
-         LIMIT " . ($limit - 5) . ")
-        
-        ORDER BY priority, 
+         LIMIT $secondLimit)
+
+        ORDER BY priority,
                  CASE WHEN numero_un IS NOT NULL THEN 1 ELSE 2 END,
                  nom_produit
         LIMIT ?
