@@ -1102,7 +1102,71 @@ try {
   </div>
 </div>
 
-    <!-- avant </body> -->
+    <!-- avant 
+<div class="container mt-4">
+  <div class="d-flex gap-3">
+    <button class="btn btn-secondary" onclick="loadDevTools()">🛠️ Outils Dev</button>
+    <button class="btn btn-warning" onclick="loadMaintenance()">🧰 Maintenance</button>
+  </div>
+</div>
+
+<!-- Modal Dev Tools -->
+<div class="modal fade" id="devToolsModal" tabindex="-1" aria-labelledby="devToolsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="devToolsLabel">Outils de développement</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="devToolsContent">
+        Chargement…
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Maintenance -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1" aria-labelledby="maintenanceLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="maintenanceLabel">Maintenance</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="maintenanceContent">
+        Chargement…
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function loadDevTools() {
+  fetch('/adr/dev-tools.php')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('devToolsContent').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('devToolsModal')).show();
+    })
+    .catch(() => {
+      document.getElementById('devToolsContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
+    });
+}
+
+function loadMaintenance() {
+  fetch('/adr/modals/maintenance.php')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('maintenanceContent').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('maintenanceModal')).show();
+    })
+    .catch(() => {
+      document.getElementById('maintenanceContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
+    });
+}
+</script>
+
+</body> -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
 <script>
@@ -1132,5 +1196,69 @@ function loadMaintenance() {
 </script>
 
     
+
+<div class="container mt-4">
+  <div class="d-flex gap-3">
+    <button class="btn btn-secondary" onclick="loadDevTools()">🛠️ Outils Dev</button>
+    <button class="btn btn-warning" onclick="loadMaintenance()">🧰 Maintenance</button>
+  </div>
+</div>
+
+<!-- Modal Dev Tools -->
+<div class="modal fade" id="devToolsModal" tabindex="-1" aria-labelledby="devToolsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="devToolsLabel">Outils de développement</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="devToolsContent">
+        Chargement…
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Maintenance -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1" aria-labelledby="maintenanceLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="maintenanceLabel">Maintenance</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="maintenanceContent">
+        Chargement…
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function loadDevTools() {
+  fetch('/adr/dev-tools.php')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('devToolsContent').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('devToolsModal')).show();
+    })
+    .catch(() => {
+      document.getElementById('devToolsContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
+    });
+}
+
+function loadMaintenance() {
+  fetch('/adr/modals/maintenance.php')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('maintenanceContent').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('maintenanceModal')).show();
+    })
+    .catch(() => {
+      document.getElementById('maintenanceContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
+    });
+}
+</script>
+
 </body>
 </html>
