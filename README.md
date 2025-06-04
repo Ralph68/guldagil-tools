@@ -92,6 +92,27 @@ $db = new PDO(
      actif BOOLEAN DEFAULT TRUE,
      UNIQUE KEY (transporteur, code_option)
    );
+
+   -- Destinataires (clients)
+   CREATE TABLE gul_clients (
+     id INT AUTO_INCREMENT PRIMARY KEY,
+     nom VARCHAR(255) NOT NULL,
+     adresse_complete TEXT DEFAULT NULL,
+     code_postal VARCHAR(10) NOT NULL,
+     ville VARCHAR(100) NOT NULL,
+     pays VARCHAR(50) DEFAULT 'France',
+     telephone VARCHAR(50) DEFAULT NULL,
+     email VARCHAR(100) DEFAULT NULL,
+     actif TINYINT(1) DEFAULT 1,
+     cree_par VARCHAR(50) DEFAULT 'system',
+     date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Mise à jour des déclarations ADR
+   ALTER TABLE gul_adr_declarations
+     ADD COLUMN destinataire_id INT DEFAULT NULL,
+     ADD CONSTRAINT fk_declaration_destinataire FOREIGN KEY (destinataire_id)
+       REFERENCES gul_clients(id);
    ```
 
 4. **Insérer** quelques données de test dans `gul_options_supplementaires` :
