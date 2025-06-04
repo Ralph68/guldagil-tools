@@ -41,6 +41,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_W
                 echo json_encode(getQuotasJour($db, $_POST['date'] ?? date('Y-m-d'), $_POST['transporteur'] ?? ''));
                 break;
                 
+            case 'search_products':
+                echo json_encode(searchProducts($db, $_POST['query'] ?? ''));
+                break;
+                
+            case 'get_product_info':
+                echo json_encode(getProductInfo($db, $_POST['code'] ?? ''));
+                break;
+                
             default:
                 throw new Exception('Action non supportée');
         }
@@ -137,6 +145,68 @@ function saveClient($db, $data) {
             'message' => 'Client enregistré avec succès',
             'client' => $client
         ];
+        
+    } catch (Exception $e) {
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+/**
+ * Recherche de produits ADR
+ */
+function searchProducts($db, $query) {
+    if (strlen($query) < 2) {
+        return ['success' => true, 'products' => []];
+    }
+    
+    try {
+        $stmt = $db->prepare("
+            SELECT code_produit, designation, numero_onu, categorie_transport, points_adr_par_unite
+            FROM gul_adr_products 
+            WHERE (code_produit LIKE ? OR designation LIKE ?) 
+            AND actif = 1
+            ORDER BY code_produit
+            LIMIT 10
+        ");
+        
+        $searchTerm = '%' . $query . '%';
+        $stmt->execute([$searchTerm, $searchTerm]);
+        
+        return [
+            'success' => true,
+            'products' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+        ];
+        
+    } catch (Exception $e) {
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+/**
+ * Récupère les infos d'un produit spécifique
+ */
+function getProductInfo($db, $code) {
+    try {
+        $stmt = $db->prepare("
+            SELECT code_produit, designation, numero_onu, categorie_transport, points_adr_par_unite
+            FROM gul_adr_products 
+            WHERE code_produit = ? AND actif = 1
+        ");
+        
+        $stmt->execute([$code]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($product) {
+            return [
+                'success' => true,
+                'product' => $product
+            ];
+        } else {
+            return [
+                'success' => false,
+                'error' => 'Produit non trouvé'
+            ];
+        }
         
     } catch (Exception $e) {
         return ['success' => false, 'error' => $e->getMessage()];
@@ -835,7 +905,7 @@ function processExpeditionForm($db, $data) {
                         <h4 style="color: var(--adr-primary); margin-bottom: 1rem;">➕ Ajouter un produit</h4>
                         
                         <div class="form-row">
-<div class="form-group">
+                            <div class="form-group">
                                 <label for="produit-code">Code produit Guldagil <span style="color: var(--adr-danger);">*</span></label>
                                 <input type="text" 
                                        class="form-control" 
@@ -1064,6 +1134,7 @@ function processExpeditionForm($db, $data) {
         let selectedClient = null;
         let expeditionProducts = [];
         let quotasData = null;
+        let availableProducts = [];
         
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
@@ -1254,18 +1325,51 @@ function processExpeditionForm($db, $data) {
         // ========== GESTION PRODUITS ==========
         
         function loadAvailableProducts() {
-            // Pour démo - remplacer par un appel API réel
-            const products = [
-                { code: 'GUL-001', designation: 'Acide chlorhydrique 33%', numero_onu: 'UN1789', categorie: '8' },
-                { code: 'GUL-002', designation: 'Hydroxyde de sodium 25%', numero_onu: 'UN1824', categorie: '8' },
-                { code: 'GUL-003', designation: 'Peroxyde d\'hydrogène 35%', numero_onu: 'UN2014', categorie: '5.1' }
-            ];
+            // Charger depuis l'API
+            const formData = new FormData();
+            formData.append('action', 'search_products');
+            formData.append('query', ''); // Tous les produits
             
+            fetch('', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    availableProducts = data.products;
+                    populateProductsList();
+                } else {
+                    console.error('Erreur chargement produits:', data.error);
+                    // Fallback avec des produits de démo
+                    loadDemoProducts();
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                loadDemoProducts();
+            });
+        }
+
+        function loadDemoProducts() {
+            // Produits de démonstration en cas d'erreur API
+            availableProducts = [
+                { code_produit: 'GUL-001', designation: 'Acide chlorhydrique 33%', numero_onu: 'UN1789', points_adr_par_unite: 1 },
+                { code_produit: 'GUL-002', designation: 'Hydroxyde de sodium 25%', numero_onu: 'UN1824', points_adr_par_unite: 1 },
+                { code_produit: 'GUL-003', designation: 'Peroxyde d\'hydrogène 35%', numero_onu: 'UN2014', points_adr_par_unite: 3 }
+            ];
+            populateProductsList();
+        }
+
+        function populateProductsList() {
             const datalist = document.getElementById('produits-list');
-            products.forEach(product => {
+            datalist.innerHTML = '';
+            
+            availableProducts.forEach(product => {
                 const option = document.createElement('option');
-                option.value = product.code;
-                option.textContent = `${product.code} - ${product.designation}`;
+                option.value = product.code_produit;
+                option.textContent = `${product.code_produit} - ${product.designation}`;
                 datalist.appendChild(option);
             });
         }
@@ -1280,22 +1384,42 @@ function processExpeditionForm($db, $data) {
         function loadProductInfo() {
             const code = document.getElementById('produit-code').value;
             
-            // Simulation - remplacer par API réelle
-            const products = {
-                'GUL-001': { designation: 'Acide chlorhydrique 33%', numero_onu: 'UN1789', points_par_litre: 1 },
-                'GUL-002': { designation: 'Hydroxyde de sodium 25%', numero_onu: 'UN1824', points_par_litre: 1 },
-                'GUL-003': { designation: 'Peroxyde d\'hydrogène 35%', numero_onu: 'UN2014', points_par_litre: 3 }
-            };
+            // Rechercher dans les produits chargés
+            const product = availableProducts.find(p => p.code_produit === code);
             
-            if (products[code]) {
-                const product = products[code];
+            if (product) {
                 document.getElementById('produit-designation').value = product.designation;
                 document.getElementById('produit-numero-onu').value = product.numero_onu;
-                window.currentProductPoints = product.points_par_litre;
+                window.currentProductPoints = parseFloat(product.points_adr_par_unite) || 1;
             } else {
-                document.getElementById('produit-designation').value = '';
-                document.getElementById('produit-numero-onu').value = '';
-                window.currentProductPoints = 0;
+                // Appel API pour un produit spécifique
+                const formData = new FormData();
+                formData.append('action', 'get_product_info');
+                formData.append('code', code);
+                
+                fetch('', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const product = data.product;
+                        document.getElementById('produit-designation').value = product.designation;
+                        document.getElementById('produit-numero-onu').value = product.numero_onu;
+                        window.currentProductPoints = parseFloat(product.points_adr_par_unite) || 1;
+                    } else {
+                        // Produit non trouvé
+                        document.getElementById('produit-designation').value = '';
+                        document.getElementById('produit-numero-onu').value = '';
+                        window.currentProductPoints = 0;
+                    }
+                    updatePointsCalculation();
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                });
             }
             
             updatePointsCalculation();
@@ -1305,7 +1429,7 @@ function processExpeditionForm($db, $data) {
             const quantite = parseFloat(document.getElementById('produit-quantite').value) || 0;
             const points = quantite * (window.currentProductPoints || 0);
             
-            // Afficher les points calculés (optionnel)
+            // Afficher les points calculés dans un élément (optionnel)
             console.log(`Quantité: ${quantite}L/Kg, Points: ${points}`);
         }
 
@@ -1320,6 +1444,11 @@ function processExpeditionForm($db, $data) {
                 return;
             }
             
+            if (!designation || !numeroOnu) {
+                alert('❌ Produit non reconnu. Vérifiez le code produit.');
+                return;
+            }
+            
             const points = quantite * (window.currentProductPoints || 0);
             
             const product = {
@@ -1328,7 +1457,8 @@ function processExpeditionForm($db, $data) {
                 designation,
                 numero_onu: numeroOnu,
                 quantite,
-                points
+                points,
+                points_par_unite: window.currentProductPoints || 0
             };
             
             expeditionProducts.push(product);
@@ -1401,7 +1531,7 @@ function processExpeditionForm($db, $data) {
             const product = expeditionProducts.find(p => p.id === id);
             if (product) {
                 product.quantite = parseFloat(quantite) || 0;
-                product.points = product.quantite * (window.currentProductPoints || 1); // Approximation
+                product.points = product.quantite * (product.points_par_unite || 1);
                 updateProductsTable();
                 updateProgressInfo();
                 updateQuotasWithCurrentProducts();
@@ -1422,6 +1552,7 @@ function processExpeditionForm($db, $data) {
             document.getElementById('produit-designation').value = '';
             document.getElementById('produit-numero-onu').value = '';
             document.getElementById('produit-quantite').value = '';
+            window.currentProductPoints = 0;
         }
 
         // ========== GESTION QUOTAS ==========
@@ -1433,454 +1564,3 @@ function processExpeditionForm($db, $data) {
             if (!transporteur || !date) {
                 document.getElementById('quota-info').style.display = 'none';
                 document.getElementById('quota-placeholder').style.display = 'block';
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('action', 'get_quotas_jour');
-            formData.append('transporteur', transporteur);
-            formData.append('date', date);
-            
-            fetch('', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    quotasData = data;
-                    updateQuotasDisplay();
-                } else {
-                    console.error('Erreur quotas:', data.error);
-                }
-            });
-        }
-
-        function updateQuotasDisplay() {
-            if (!quotasData) return;
-            
-            document.getElementById('quota-placeholder').style.display = 'none';
-            document.getElementById('quota-info').style.display = 'block';
-            
-            // Calculer les points de l'expédition actuelle
-            const currentPoints = expeditionProducts.reduce((sum, p) => sum + p.points, 0);
-            const totalPointsWithCurrent = quotasData.points_utilises + currentPoints;
-            const pourcentageWithCurrent = (totalPointsWithCurrent / quotasData.quota_max) * 100;
-            
-            // Mettre à jour l'affichage
-            const transporteurs = <?= json_encode($transporteurs) ?>;
-            const transporteurCode = document.getElementById('expedition-transporteur').value;
-            document.getElementById('quota-transporteur-name').textContent = transporteurs[transporteurCode] || transporteurCode;
-            document.getElementById('quota-date').textContent = new Date(document.getElementById('expedition-date').value).toLocaleDateString('fr-FR');
-            
-            document.getElementById('quota-utilise').textContent = `${totalPointsWithCurrent.toFixed(1)} points`;
-            document.getElementById('quota-restant').textContent = `${Math.max(0, quotasData.quota_max - totalPointsWithCurrent).toFixed(1)} restants`;
-            
-            // Barre de progression
-            const fill = document.getElementById('quota-fill');
-            fill.style.width = `${Math.min(100, pourcentageWithCurrent)}%`;
-            
-            // Alerte dépassement
-            const alert = document.getElementById('quota-alert');
-            if (totalPointsWithCurrent > quotasData.quota_max) {
-                alert.style.display = 'block';
-                fill.style.background = 'var(--adr-danger)';
-            } else {
-                alert.style.display = 'none';
-                fill.style.background = '';
-            }
-        }
-
-        function updateQuotasWithCurrentProducts() {
-            if (quotasData) {
-                updateQuotasDisplay();
-            }
-        }
-
-        // ========== NAVIGATION ÉTAPES ==========
-        
-        function nextToProducts() {
-            if (!selectedClient) {
-                alert('❌ Veuillez sélectionner un client');
-                return;
-            }
-            showStep('products');
-        }
-
-        function backToDestinataire() {
-            showStep('destinataire');
-        }
-
-        function nextToValidation() {
-            if (expeditionProducts.length === 0) {
-                alert('❌ Veuillez ajouter au moins un produit');
-                return;
-            }
-            
-            generateExpeditionSummary();
-            showStep('validation');
-        }
-
-        function backToProducts() {
-            showStep('products');
-        }
-
-        function showStep(stepName) {
-            // Masquer tous les contenus
-            document.querySelectorAll('.step-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            // Afficher le contenu demandé
-            document.getElementById('step-' + stepName).classList.add('active');
-            
-            // Mettre à jour les étapes dans la sidebar
-            document.querySelectorAll('.step').forEach(step => {
-                step.classList.remove('active', 'completed');
-                if (step.dataset.step === stepName) {
-                    step.classList.add('active');
-                } else {
-                    const stepOrder = ['destinataire', 'products', 'validation'];
-                    const currentIndex = stepOrder.indexOf(stepName);
-                    const stepIndex = stepOrder.indexOf(step.dataset.step);
-                    
-                    if (stepIndex < currentIndex) {
-                        step.classList.add('completed');
-                        step.classList.remove('disabled');
-                    } else if (stepIndex > currentIndex) {
-                        step.classList.add('disabled');
-                    }
-                }
-            });
-            
-            currentStep = stepName;
-        }
-
-        function generateExpeditionSummary() {
-            const container = document.getElementById('expedition-summary');
-            const transporteur = document.getElementById('expedition-transporteur').value;
-            const date = document.getElementById('expedition-date').value;
-            const transporteurs = <?= json_encode($transporteurs) ?>;
-            
-            const totalPoints = expeditionProducts.reduce((sum, p) => sum + p.points, 0);
-            
-            let html = `
-                <!-- Informations générales -->
-                <div style="background: var(--adr-light); padding: 1.5rem; border-radius: var(--border-radius); margin-bottom: 2rem;">
-                    <h4 style="color: var(--adr-primary); margin-bottom: 1rem;">📋 Informations générales</h4>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                        <div>
-                            <h5>📤 Expéditeur</h5>
-                            <div><strong><?= GULDAGIL_EXPEDITEUR['nom'] ?></strong></div>
-                            <div style="white-space: pre-line; font-size: 0.9rem;"><?= GULDAGIL_EXPEDITEUR['adresse'] ?></div>
-                            <div style="font-size: 0.9rem;">Tél: <?= GULDAGIL_EXPEDITEUR['telephone'] ?></div>
-                        </div>
-                        
-                        <div>
-                            <h5>📥 Destinataire</h5>
-                            <div><strong>${selectedClient.nom}</strong></div>
-                            <div style="font-size: 0.9rem;">${selectedClient.adresse_complete || ''}</div>
-                            <div style="font-size: 0.9rem;"><strong>${selectedClient.code_postal} ${selectedClient.ville}</strong></div>
-                            ${selectedClient.telephone ? `<div style="font-size: 0.9rem;">Tél: ${selectedClient.telephone}</div>` : ''}
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ddd;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                            <div>
-                                <strong>🚚 Transporteur:</strong><br>
-                                ${transporteurs[transporteur] || transporteur}
-                            </div>
-                            <div>
-                                <strong>📅 Date d'expédition:</strong><br>
-                                ${new Date(date).toLocaleDateString('fr-FR')}
-                            </div>
-                            <div>
-                                <strong>⚠️ Total points ADR:</strong><br>
-                                <span style="color: var(--adr-primary); font-weight: bold;">${totalPoints.toFixed(1)} points</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Détail des produits -->
-                <div style="background: white; border: 1px solid #ddd; border-radius: var(--border-radius); overflow: hidden; margin-bottom: 2rem;">
-                    <div style="background: var(--adr-primary); color: white; padding: 1rem;">
-                        <h4 style="margin: 0;">⚠️ Produits dangereux (${expeditionProducts.length} référence${expeditionProducts.length > 1 ? 's' : ''})</h4>
-                    </div>
-                    
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: var(--adr-light);">
-                                <tr>
-                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd;">Code produit</th>
-                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd;">Désignation officielle</th>
-                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd;">N° ONU</th>
-                                    <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid #ddd;">Quantité</th>
-                                    <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid #ddd;">Points ADR</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-            `;
-            
-            expeditionProducts.forEach(product => {
-                html += `
-                    <tr>
-                        <td style="padding: 0.75rem; border-bottom: 1px solid #eee;"><strong>${product.code}</strong></td>
-                        <td style="padding: 0.75rem; border-bottom: 1px solid #eee;">${product.designation}</td>
-                        <td style="padding: 0.75rem; border-bottom: 1px solid #eee;"><strong>${product.numero_onu}</strong></td>
-                        <td style="padding: 0.75rem; border-bottom: 1px solid #eee; text-align: right;">${product.quantite} L/Kg</td>
-                        <td style="padding: 0.75rem; border-bottom: 1px solid #eee; text-align: right;"><strong>${product.points.toFixed(1)}</strong></td>
-                    </tr>
-                `;
-            });
-            
-            html += `
-                            </tbody>
-                            <tfoot style="background: var(--adr-light); font-weight: bold;">
-                                <tr>
-                                    <td colspan="4" style="padding: 0.75rem; border-top: 2px solid var(--adr-primary);">TOTAL DE L'EXPÉDITION</td>
-                                    <td style="padding: 0.75rem; border-top: 2px solid var(--adr-primary); text-align: right; color: var(--adr-primary);">${totalPoints.toFixed(1)} points</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- Mentions légales et signatures -->
-                <div style="background: white; border: 1px solid #ddd; border-radius: var(--border-radius); padding: 1.5rem;">
-                    <h4 style="color: var(--adr-primary); margin-bottom: 1rem;">📝 Document officiel de transport</h4>
-                    
-                    <div style="font-size: 0.9rem; line-height: 1.6; margin-bottom: 2rem;">
-                        <p><strong>Fiches de Données de Sécurité (FDS) :</strong><br>
-                        Disponibles sur la plateforme <strong>QuickFDS</strong> - Accès transporteur garanti</p>
-                        
-                        <p><strong>Déclaration de l'expéditeur :</strong><br>
-                        Je soussigné certifie que les marchandises décrites ci-dessus sont correctement emballées, marquées, étiquetées et en état d'être transportées par route conformément aux dispositions applicables du règlement ADR.</p>
-                        
-                        <p><strong>Responsabilités :</strong><br>
-                        - L'expéditeur certifie la conformité des marchandises aux règlements ADR<br>
-                        - Le transporteur doit vérifier la conformité extérieure avant enlèvement<br>
-                        - Document à conserver 5 ans minimum par toutes les parties</p>
-                    </div>
-                    
-                    <!-- Zone signatures -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; border-top: 1px solid #ddd; padding-top: 1.5rem;">
-                        <div>
-                            <h5 style="margin-bottom: 1rem;">📤 Signature expéditeur</h5>
-                            <div style="border: 1px solid #ddd; height: 80px; border-radius: 4px; position: relative;">
-                                <div style="position: absolute; bottom: 5px; left: 10px; font-size: 0.8rem; color: #666;">
-                                    Date: ${new Date().toLocaleDateString('fr-FR')}<br>
-                                    Nom: ________________________
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <h5 style="margin-bottom: 1rem;">🚚 Signature transporteur</h5>
-                            <div style="border: 1px solid #ddd; height: 80px; border-radius: 4px; position: relative;">
-                                <div style="position: absolute; bottom: 5px; left: 10px; font-size: 0.8rem; color: #666;">
-                                    Date: ____________________<br>
-                                    Nom: ________________________
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            container.innerHTML = html;
-        }
-
-        // ========== MISE À JOUR INTERFACE ==========
-        
-        function updateProgressInfo() {
-            const progressContainer = document.getElementById('expedition-progress');
-            
-            if (!selectedClient && expeditionProducts.length === 0) {
-                progressContainer.style.display = 'none';
-                return;
-            }
-            
-            progressContainer.style.display = 'block';
-            
-            const clientInfo = selectedClient ? 
-                `✅ Client: ${selectedClient.nom}` : 
-                '⏳ Client: non sélectionné';
-                
-            const productsInfo = expeditionProducts.length > 0 ? 
-                `✅ Produits: ${expeditionProducts.length} référence${expeditionProducts.length > 1 ? 's' : ''}` : 
-                '⏳ Produits: aucun ajouté';
-                
-            const totalPoints = expeditionProducts.reduce((sum, p) => sum + p.points, 0);
-            const pointsInfo = totalPoints > 0 ? 
-                `Total: ${totalPoints.toFixed(1)} points ADR` : 
-                'Aucun point ADR';
-            
-            document.getElementById('progress-client').textContent = clientInfo;
-            document.getElementById('progress-products').textContent = productsInfo;
-            document.getElementById('progress-points').textContent = pointsInfo;
-        }
-
-        // ========== ACTIONS FINALES ==========
-        
-        function saveAsDraft() {
-            if (!selectedClient || expeditionProducts.length === 0) {
-                alert('❌ Impossible de sauvegarder : données incomplètes');
-                return;
-            }
-            
-            const draftData = {
-                client: selectedClient,
-                products: expeditionProducts,
-                transporteur: document.getElementById('expedition-transporteur').value,
-                date: document.getElementById('expedition-date').value
-            };
-            
-            // Sauvegarder en localStorage pour démo
-            localStorage.setItem('adr_expedition_draft', JSON.stringify(draftData));
-            alert('💾 Brouillon sauvegardé avec succès');
-        }
-
-        function createExpedition() {
-            if (!selectedClient || expeditionProducts.length === 0) {
-                alert('❌ Impossible de créer l\'expédition : données incomplètes');
-                return;
-            }
-            
-            // Vérifier les quotas
-            if (quotasData) {
-                const totalPoints = expeditionProducts.reduce((sum, p) => sum + p.points, 0);
-                const totalWithCurrent = quotasData.points_utilises + totalPoints;
-                
-                if (totalWithCurrent > quotasData.quota_max) {
-                    if (!confirm(`⚠️ ATTENTION : Cette expédition dépasse le quota journalier de ${quotasData.quota_max} points (total: ${totalWithCurrent.toFixed(1)} points).\n\nVoulez-vous continuer malgré tout ?`)) {
-                        return;
-                    }
-                }
-            }
-            
-            const confirmMsg = `🚀 Créer l'expédition ADR ?\n\n` +
-                `Client: ${selectedClient.nom}\n` +
-                `Produits: ${expeditionProducts.length} référence(s)\n` +
-                `Points ADR: ${expeditionProducts.reduce((sum, p) => sum + p.points, 0).toFixed(1)}\n` +
-                `Transporteur: ${document.getElementById('expedition-transporteur').options[document.getElementById('expedition-transporteur').selectedIndex].text}\n\n` +
-                `Cette action générera le document officiel pour le transporteur.`;
-            
-            if (confirm(confirmMsg)) {
-                // Simulation création - remplacer par appel API réel
-                alert('🎉 Expédition créée avec succès !\n\nN° d\'expédition: ADR-' + Date.now());
-                
-                // Redirection vers la liste
-                setTimeout(() => {
-                    window.location.href = 'list.php';
-                }, 2000);
-            }
-        }
-
-        function saveDraft() {
-            saveAsDraft();
-        }
-
-        function showHelp() {
-            const helpText = `🆘 AIDE - Création d'expédition ADR
-
-📋 ÉTAPES :
-1. Sélectionner ou créer un client destinataire
-2. Ajouter les produits dangereux ligne par ligne
-3. Valider et créer l'expédition
-
-⚠️ POINTS IMPORTANTS :
-• Les expéditions se font depuis Guldagil (68170 RIXHEIM) par défaut
-• Les FDS sont disponibles sur QuickFDS
-• Quota maximum : 1000 points ADR par jour et par transporteur
-• Document à conserver 5 ans minimum
-
-📞 SUPPORT :
-Logistique : achats@guldagil.com
-Technique : runser.jean.thomas@guldagil.com
-Standard : 03 89 63 42 42`;
-
-            alert(helpText);
-        }
-
-        // Initialisation de la recherche client
-        function initializeClientSearch() {
-            // Cacher les suggestions quand on clique ailleurs
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.client-search')) {
-                    hideClientSuggestions();
-                }
-            });
-        }
-
-        // ========== FONCTIONS UTILITAIRES ==========
-        
-        function loadDraftIfExists() {
-            const draft = localStorage.getItem('adr_expedition_draft');
-            if (draft && confirm('📂 Un brouillon d\'expédition a été trouvé. Voulez-vous le charger ?')) {
-                try {
-                    const data = JSON.parse(draft);
-                    
-                    // Restaurer le client
-                    if (data.client) {
-                        selectClient(data.client);
-                    }
-                    
-                    // Restaurer les produits
-                    if (data.products) {
-                        expeditionProducts = data.products;
-                        updateProductsTable();
-                    }
-                    
-                    // Restaurer transporteur et date
-                    if (data.transporteur) {
-                        document.getElementById('expedition-transporteur').value = data.transporteur;
-                    }
-                    if (data.date) {
-                        document.getElementById('expedition-date').value = data.date;
-                    }
-                    
-                    updateQuotas();
-                    updateProgressInfo();
-                    
-                    // Aller à l'étape appropriée
-                    if (data.client && data.products.length > 0) {
-                        showStep('validation');
-                    } else if (data.client) {
-                        showStep('products');
-                    }
-                    
-                } catch (error) {
-                    console.error('Erreur chargement brouillon:', error);
-                    localStorage.removeItem('adr_expedition_draft');
-                }
-            }
-        }
-
-        // Vérifier s'il y a un brouillon au chargement
-        setTimeout(loadDraftIfExists, 1000);
-
-        // Auto-sauvegarde toutes les 2 minutes si des données sont présentes
-        setInterval(() => {
-            if (selectedClient || expeditionProducts.length > 0) {
-                console.log('💾 Auto-sauvegarde brouillon...');
-                saveAsDraft();
-            }
-        }, 120000); // 2 minutes
-
-        // Prévenir la perte de données
-        window.addEventListener('beforeunload', function(e) {
-            if (selectedClient || expeditionProducts.length > 0) {
-                const message = 'Des données non sauvegardées seront perdues. Voulez-vous vraiment quitter ?';
-                e.returnValue = message;
-                return message;
-            }
-        });
-
-        console.log('✅ Interface de création d\'expédition ADR initialisée');
-    </script>
-</body>
-</html>
