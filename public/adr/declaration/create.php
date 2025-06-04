@@ -260,11 +260,89 @@ function getQuotasJour($db, $date, $transporteur) {
  * Traitement du formulaire d'expédition complète
  */
 function processExpeditionForm($db, $data) {
-    // TODO: Implémenter la création d'expédition complète
-    return [
-        'success' => false,
-        'errors' => ['Fonctionnalité en cours de développement']
-    ];
+    try {
+        // Validation des données
+        $clientId      = $data['client_id'] ?? null;
+        $transporteur  = $data['transporteur'] ?? '';
+        $dateExpedition = $data['date_expedition'] ?? '';
+        $products      = $data['products'] ?? [];
+
+        if (!$clientId || !$transporteur || !$dateExpedition || empty($products)) {
+            return [
+                'success' => false,
+                'errors'  => ['Données manquantes : client, transporteur, date ou produits']
+            ];
+        }
+
+        // Générer un numéro d'expédition unique
+        $numeroExpedition = 'ADR-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+
+        // Calculer le total des points
+        $totalPointsAdr = 0;
+        foreach ($products as $product) {
+            $totalPointsAdr += floatval($product['points_adr_calcules'] ?? 0);
+        }
+
+        $db->beginTransaction();
+
+        // Insérer l'expédition
+        $stmt = $db->prepare(
+            "INSERT INTO gul_adr_expeditions
+            (numero_expedition, client_id, transporteur, date_expedition, total_points_adr, observations, cree_par)
+            VALUES (?, ?, ?, ?, ?, ?, ?)"
+        );
+
+        $stmt->execute([
+            $numeroExpedition,
+            $clientId,
+            $transporteur,
+            $dateExpedition,
+            $totalPointsAdr,
+            $data['observations'] ?? '',
+            $_SESSION['adr_user']
+        ]);
+
+        $expeditionId = $db->lastInsertId();
+
+        // Insérer les lignes de produits
+        $stmt = $db->prepare(
+            "INSERT INTO gul_adr_expedition_lignes
+            (expedition_id, code_produit, quantite_declaree, unite_quantite, points_adr_calcules, ordre_ligne)
+            VALUES (?, ?, ?, ?, ?, ?)"
+        );
+
+        foreach ($products as $index => $product) {
+            $stmt->execute([
+                $expeditionId,
+                $product['code_produit'],
+                $product['quantite_declaree'],
+                $product['unite_quantite'] ?? 'kg',
+                $product['points_adr_calcules'],
+                $index + 1
+            ]);
+        }
+
+        $db->commit();
+
+        return [
+            'success' => true,
+            'message' => 'Expédition créée avec succès',
+            'data'    => [
+                'expedition_id'    => $expeditionId,
+                'numero_expedition' => $numeroExpedition,
+                'total_points'     => $totalPointsAdr
+            ]
+        ];
+
+    } catch (Exception $e) {
+        $db->rollBack();
+        error_log('Erreur création expédition ADR: ' . $e->getMessage());
+
+        return [
+            'success' => false,
+            'errors'  => ["Erreur lors de la création de l'expédition : " . $e->getMessage()]
+        ];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -1224,95 +1302,3 @@ function processExpeditionForm($db, $data) {
     </script>
 </body>
 </html>
-
-<?php
-/**
- * Modifications aussi nécessaires dans la fonction processExpeditionForm()
- * Voici une version de base :
- */
-
-function processExpeditionForm($db, $data) {
-    try {
-        // Validation des données
-        $clientId = $data['client_id'] ?? null;
-        $transporteur = $data['transporteur'] ?? '';
-        $dateExpedition = $data['date_expedition'] ?? '';
-        $products = $data['products'] ?? [];
-        
-        if (!$clientId || !$transporteur || !$dateExpedition || empty($products)) {
-            return [
-                'success' => false,
-                'errors' => ['Données manquantes : client, transporteur, date ou produits']
-            ];
-        }
-        
-        // Générer un numéro d'expédition unique
-        $numeroExpedition = 'ADR-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-        
-        // Calculer le total des points
-        $totalPointsAdr = 0;
-        foreach ($products as $product) {
-            $totalPointsAdr += floatval($product['points_adr_calcules'] ?? 0);
-        }
-        
-        $db->beginTransaction();
-        
-        // Insérer l'expédition
-        $stmt = $db->prepare("
-            INSERT INTO gul_adr_expeditions 
-            (numero_expedition, client_id, transporteur, date_expedition, total_points_adr, observations, cree_par)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ");
-        
-        $stmt->execute([
-            $numeroExpedition,
-            $clientId,
-            $transporteur,
-            $dateExpedition,
-            $totalPointsAdr,
-            $data['observations'] ?? '',
-            $_SESSION['adr_user']
-        ]);
-        
-        $expeditionId = $db->lastInsertId();
-        
-        // Insérer les lignes de produits
-        $stmt = $db->prepare("
-            INSERT INTO gul_adr_expedition_lignes 
-            (expedition_id, code_produit, quantite_declaree, unite_quantite, points_adr_calcules, ordre_ligne)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        
-        foreach ($products as $index => $product) {
-            $stmt->execute([
-                $expeditionId,
-                $product['code_produit'],
-                $product['quantite_declaree'],
-                $product['unite_quantite'] ?? 'kg',
-                $product['points_adr_calcules'],
-                $index + 1
-            ]);
-        }
-        
-        $db->commit();
-        
-        return [
-            'success' => true,
-            'message' => 'Expédition créée avec succès',
-            'data' => [
-                'expedition_id' => $expeditionId,
-                'numero_expedition' => $numeroExpedition,
-                'total_points' => $totalPointsAdr
-            ]
-        ];
-        
-    } catch (Exception $e) {
-        $db->rollBack();
-        error_log("Erreur création expédition ADR: " . $e->getMessage());
-        
-        return [
-            'success' => false,
-            'errors' => ['Erreur lors de la création de l\'expédition : ' . $e->getMessage()]
-        ];
-    }
-}
