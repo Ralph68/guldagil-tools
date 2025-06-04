@@ -1,4 +1,87 @@
-<?php
+/**
+ * Traitement du formulaire de déclaration
+ */
+function processDeclarationForm($db, $formData) {
+    $errors = [];
+    
+    // Validation des champs obligatoires
+    $requiredFields = [
+        'code_produit' => 'Code produit',
+        'transporteur' => 'Transporteur',
+        'quantite_declaree' => 'Quantité',
+        'unite_quantite' => 'Unité',
+        'date_expedition' => 'Date d\'expédition',
+        'expediteur_nom' => 'Nom expéditeur',
+        'destinataire_nom' => 'Nom destinataire',
+        'nombre_colis' => 'Nombre de colis',
+        'type_colisage' => 'Type de colisage'
+    ];
+    
+    foreach ($requiredFields as $field => $label) {
+        if (empty($formData[$field])) {
+            $errors[] = "Le champ '$label' est obligatoire";
+        }
+    }
+    
+    // Validation du code produit
+    if (!empty($formData['code_produit'])) {
+        $stmt = $db->prepare("SELECT * FROM gul_adr_products WHERE code_produit = ? AND actif = 1");
+        $stmt->execute([$formData['code_produit']]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$product) {
+            $errors[] = "Code produit non trouvé dans le catalogue";
+        } elseif ($product['corde_article_ferme'] === 'x') {
+            $errors[] = "Ce produit est fermé et ne peut plus être expédié";
+        }
+    }
+    
+    // Validation de la quantité
+    if (!empty($formData['quantite_declaree'])) {
+        $quantite = floatval($formData['quantite_declaree']);
+        if ($quantite <= 0) {
+            $errors[] = "La quantité doit être supérieure à 0";
+        } elseif ($quantite > 50000) {
+            $errors[] = "Quantité trop importante (max 50 000)";
+        }
+    }
+    
+    // Validation du nombre de colis
+    if (!empty($formData['nombre_colis'])) {
+        $nombreColis = intval($formData['nombre_colis']);
+        if ($nombreColis <= 0) {
+            $errors[] = "Le nombre de colis doit être supérieur à 0";
+        } elseif ($nombreColis > 1000) {
+            $errors[] = "Nombre de colis trop important (max 1000)";
+        }
+    }
+    
+    // Validation de la date
+    if (!empty($formData['date_expedition'])) {
+        $date = DateTime::createFromFormat('Y-m-d', $formData['date_expedition']);
+        if (!$date) {
+            $errors[] = "Format de date invalide";
+        } else {
+            $today = new DateTime();
+            $maxDate = (clone $today)->add(new DateInterval('P30D'));
+            
+            if ($date < $today->sub(new DateInterval('P7D'))) {
+                $errors[] = "La date d'expédition ne peut pas être antérieure à 7 jours";
+            } elseif ($date > $maxDate) {
+                $errors[] = "La date d'expédition ne peut pas dépasser 30 jours";
+            }
+        }
+    }
+    
+    // S'il y a des erreurs, arrêter ici
+    if (!empty($errors)) {
+        return ['success' => false, 'errors' => $errors];
+    }
+    
+    try {
+        // Insérer la déclaration avec tous les nouveaux champs
+        $stmt = $db->prepare("
+            <?php
 // public/adr/declaration/create.php - Création de déclarations ADR
 session_start();
 
@@ -118,8 +201,10 @@ function processDeclarationForm($db, $formData) {
         $stmt = $db->prepare("
             INSERT INTO gul_adr_declarations 
             (code_produit, transporteur, quantite_declaree, unite_quantite, 
-             date_expedition, numero_bordereau, observations, cree_par) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             date_expedition, numero_bordereau, numero_recepisse, observations, 
+             expediteur_nom, expediteur_adresse, destinataire_nom, destinataire_adresse,
+             nombre_colis, type_colisage, poids_total_palettes, cree_par) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $stmt->execute([
@@ -129,7 +214,15 @@ function processDeclarationForm($db, $formData) {
             $formData['unite_quantite'],
             $formData['date_expedition'],
             $formData['numero_bordereau'] ?? null,
+            $formData['numero_recepisse'] ?? null,
             $formData['observations'] ?? null,
+            $formData['expediteur_nom'],
+            $formData['expediteur_adresse'] ?? null,
+            $formData['destinataire_nom'],
+            $formData['destinataire_adresse'] ?? null,
+            $formData['nombre_colis'],
+            $formData['type_colisage'],
+            !empty($formData['poids_total_palettes']) ? $formData['poids_total_palettes'] : null,
             $_SESSION['adr_user']
         ]);
         
@@ -138,7 +231,8 @@ function processDeclarationForm($db, $formData) {
         // Récupérer la déclaration complète pour affichage
         $stmt = $db->prepare("
             SELECT d.*, p.nom_produit, p.numero_un, p.categorie_transport,
-                   p.danger_environnement, p.type_contenant
+                   p.danger_environnement, p.type_contenant, p.nom_description_un,
+                   p.groupe_emballage, p.numero_etiquette, p.code_tunnel
             FROM gul_adr_declarations d
             JOIN gul_adr_products p ON d.code_produit = p.code_produit
             WHERE d.id = ?
@@ -751,11 +845,15 @@ function processDeclarationForm($db, $formData) {
         codeProductInput.addEventListener('blur', hideSearchResults);
         codeProductInput.addEventListener('focus', handleSearchFocus);
 
-        // Event listeners pour les autres champs
+        // Event listeners pour les autres champs (ajout des nouveaux champs)
         document.getElementById('transporteur').addEventListener('change', updateRecap);
         document.getElementById('quantite_declaree').addEventListener('input', updateRecap);
         document.getElementById('unite_quantite').addEventListener('change', updateRecap);
         document.getElementById('date_expedition').addEventListener('change', updateRecap);
+        document.getElementById('nombre_colis').addEventListener('input', updateRecap);
+        document.getElementById('type_colisage').addEventListener('change', updateRecap);
+        document.getElementById('expediteur_nom').addEventListener('input', updateRecap);
+        document.getElementById('destinataire_nom').addEventListener('input', updateRecap);
 
         /**
          * Gestion de la saisie dans le champ recherche
@@ -1109,6 +1207,10 @@ function processDeclarationForm($db, $formData) {
             const quantite = document.getElementById('quantite_declaree').value;
             const unite = document.getElementById('unite_quantite').value;
             const dateExpedition = document.getElementById('date_expedition').value;
+            const nombreColis = document.getElementById('nombre_colis').value;
+            const typeColisage = document.getElementById('type_colisage').value;
+            const expediteurNom = document.getElementById('expediteur_nom').value;
+            const destinataireNom = document.getElementById('destinataire_nom').value;
 
             if (!selectedProduct || !transporteur || !quantite || !unite || !dateExpedition) {
                 recapContent.innerHTML = `
@@ -1134,45 +1236,70 @@ function processDeclarationForm($db, $formData) {
 
             const dateFr = new Date(dateExpedition).toLocaleDateString('fr-FR');
 
+            // Calcul de la désignation officielle ADR
+            let designationOfficielle = '';
+            if (selectedProduct.numero_un) {
+                const groupeEmballage = selectedProduct.groupe_emballage ? `,${selectedProduct.groupe_emballage}` : '';
+                const codeTunnel = selectedProduct.code_tunnel ? `,(${selectedProduct.code_tunnel})` : '';
+                designationOfficielle = `UN ${selectedProduct.numero_un}, ${selectedProduct.nom_description_un || selectedProduct.nom_produit},${selectedProduct.numero_etiquette || '8'}${groupeEmballage}${codeTunnel}`;
+            } else {
+                designationOfficielle = selectedProduct.nom_produit;
+            }
+
+            // Colisage complet
+            const colisageComplet = nombreColis && typeColisage ? `${nombreColis} ${typeColisage.toLowerCase()}` : '';
+
             recapContent.innerHTML = `
                 <div class="recap-item">
-                    <span class="recap-label">Produit</span>
-                    <span class="recap-value">${selectedProduct.nom_produit}</span>
+                    <span class="recap-label">Expéditeur</span>
+                    <span class="recap-value">${expediteurNom || 'Non renseigné'}</span>
                 </div>
                 <div class="recap-item">
-                    <span class="recap-label">Code article</span>
-                    <span class="recap-value">${selectedProduct.code_produit}</span>
+                    <span class="recap-label">Destinataire</span>
+                    <span class="recap-value">${destinataireNom || 'Non renseigné'}</span>
                 </div>
-                ${selectedProduct.numero_un ? `
-                <div class="recap-item">
-                    <span class="recap-label">Numéro UN</span>
-                    <span class="recap-value">UN ${selectedProduct.numero_un}</span>
-                </div>
-                ` : ''}
                 <div class="recap-item">
                     <span class="recap-label">Transporteur</span>
                     <span class="recap-value">${transporteurNames[transporteur]}</span>
                 </div>
                 <div class="recap-item">
-                    <span class="recap-label">Quantité</span>
-                    <span class="recap-value">${quantite} ${uniteNames[unite]}</span>
-                </div>
-                <div class="recap-item">
                     <span class="recap-label">Date expédition</span>
                     <span class="recap-value">${dateFr}</span>
                 </div>
+                <hr style="margin: 1rem 0; border: none; border-top: 1px solid #eee;">
+                <div class="recap-item">
+                    <span class="recap-label">Désignation officielle</span>
+                    <span class="recap-value" style="font-size: 0.9rem; line-height: 1.3;">${designationOfficielle}</span>
+                </div>
+                <div class="recap-item">
+                    <span class="recap-label">Quantité</span>
+                    <span class="recap-value">${quantite} ${uniteNames[unite]}</span>
+                </div>
+                ${colisageComplet ? `
+                <div class="recap-item">
+                    <span class="recap-label">Colisage</span>
+                    <span class="recap-value">${colisageComplet}</span>
+                </div>
+                ` : ''}
                 ${selectedProduct.categorie_transport ? `
                 <div class="recap-item">
                     <span class="recap-label">Catégorie transport</span>
                     <span class="recap-value">Catégorie ${selectedProduct.categorie_transport}</span>
                 </div>
                 ` : ''}
+                ${selectedProduct.danger_environnement === 'OUI' ? `
+                <div class="recap-item">
+                    <span class="recap-label">Environnement</span>
+                    <span class="recap-value" style="color: var(--adr-warning);">⚠️ Polluant marin</span>
+                </div>
+                ` : ''}
             `;
 
             recapContent.classList.add('show');
 
-            // Vérifier les limites de quantité
+            // Vérifier les limites de quantité et calculer les totaux par catégorie
             checkQuantityLimits(selectedProduct, parseFloat(quantite), unite);
+            calculateTransportCategories(selectedProduct, parseFloat(quantite));
         }
 
         /**
@@ -1214,7 +1341,52 @@ function processDeclarationForm($db, $formData) {
                 message: alert.querySelectorAll('span')[1].textContent
             }));
 
-            displayRegulatoryAlerts([...currentAlerts, ...alerts]);
+        /**
+         * Calcul des totaux par catégorie de transport (comme dans le document officiel)
+         */
+        function calculateTransportCategories(product, quantite) {
+            const categories = {
+                '0': 0,
+                '1': 0,
+                '2': 0,
+                '3': 0,
+                '4': 0
+            };
+
+            // Affecter la quantité à la bonne catégorie
+            if (product.categorie_transport && categories.hasOwnProperty(product.categorie_transport)) {
+                categories[product.categorie_transport] = quantite;
+            }
+
+            // Calculer la valeur totale pour le seuil de panneautage
+            const valeurPanneautage = Object.values(categories).reduce((total, val) => total + val, 0);
+
+            // Afficher les informations dans les alertes réglementaires
+            const existingAlerts = Array.from(regulatoryContent.querySelectorAll('.regulatory-alert')).map(alert => ({
+                type: alert.style.color.includes('var(--adr-danger)') ? 'error' : 'warning',
+                icon: alert.querySelector('span').textContent,
+                message: alert.querySelectorAll('span')[1].textContent
+            }));
+
+            // Ajouter les informations de catégorie si c'est ADR
+            if (product.numero_un && valeurPanneautage > 0) {
+                const categorieAlerts = [{
+                    type: 'info',
+                    icon: '📊',
+                    message: `Catégorie ${product.categorie_transport}: ${quantite} kg - Valeur panneautage: ${valeurPanneautage}`
+                }];
+
+                // Restrictions tunnel
+                if (product.code_tunnel === 'E' || valeurPanneautage >= 1000) {
+                    categorieAlerts.push({
+                        type: 'warning',
+                        icon: '🚇',
+                        message: 'Tunnel E interdit si véhicule panneauté - Tunnels B,C,D autorisés'
+                    });
+                }
+
+                displayRegulatoryAlerts([...existingAlerts, ...categorieAlerts]);
+            }
         }
 
         /**
@@ -1327,6 +1499,68 @@ function processDeclarationForm($db, $formData) {
                         </div>
                     </div>
 
+                    <!-- Informations expéditeur/destinataire -->
+                    <div class="form-group">
+                        <h3 style="color: var(--adr-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>🏢</span>
+                            Expédition
+                        </h3>
+                    </div>
+
+                    <!-- Expéditeur et Destinataire -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expediteur_nom">
+                                📤 Expéditeur <span class="required">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="expediteur_nom" 
+                                   name="expediteur_nom"
+                                   placeholder="Nom de l'expéditeur"
+                                   value="<?= htmlspecialchars($_POST['expediteur_nom'] ?? 'GULDAGIL AGENCE ILE DE France') ?>"
+                                   required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="destinataire_nom">
+                                📥 Destinataire <span class="required">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="destinataire_nom" 
+                                   name="destinataire_nom"
+                                   placeholder="Nom du destinataire"
+                                   value="<?= htmlspecialchars($_POST['destinataire_nom'] ?? '') ?>"
+                                   required>
+                        </div>
+                    </div>
+
+                    <!-- Adresses -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expediteur_adresse">
+                                📍 Adresse expéditeur
+                            </label>
+                            <textarea class="form-control" 
+                                      id="expediteur_adresse" 
+                                      name="expediteur_adresse"
+                                      rows="3"
+                                      placeholder="Adresse complète de l'expéditeur"><?= htmlspecialchars($_POST['expediteur_adresse'] ?? "93150\nLE BLANC MESNIL") ?></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="destinataire_adresse">
+                                📍 Adresse destinataire
+                            </label>
+                            <textarea class="form-control" 
+                                      id="destinataire_adresse" 
+                                      name="destinataire_adresse"
+                                      rows="3"
+                                      placeholder="Adresse complète du destinataire"><?= htmlspecialchars($_POST['destinataire_adresse'] ?? '') ?></textarea>
+                        </div>
+                    </div>
+
                     <!-- Transporteur et date -->
                     <div class="form-row">
                         <div class="form-group">
@@ -1358,7 +1592,34 @@ function processDeclarationForm($db, $formData) {
                         </div>
                     </div>
 
-                    <!-- Quantité et unité -->
+                    <!-- Numéros de récépissé et bordereau -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="numero_recepisse">
+                                📋 N° Récépissé
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="numero_recepisse" 
+                                   name="numero_recepisse"
+                                   placeholder="Ex: 170869"
+                                   value="<?= htmlspecialchars($_POST['numero_recepisse'] ?? '') ?>">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="numero_bordereau">
+                                📄 N° Bordereau (BL)
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="numero_bordereau" 
+                                   name="numero_bordereau"
+                                   placeholder="Ex: ARC 64411"
+                                   value="<?= htmlspecialchars($_POST['numero_bordereau'] ?? '') ?>">
+                        </div>
+                    </div>
+
+                    <!-- Quantité, unité et colisage -->
                     <div class="form-row three-cols">
                         <div class="form-group">
                             <label for="quantite_declaree">
@@ -1391,15 +1652,55 @@ function processDeclarationForm($db, $formData) {
                         </div>
 
                         <div class="form-group">
-                            <label for="numero_bordereau">
-                                📄 N° Bordereau
+                            <label for="nombre_colis">
+                                📦 Nb colis <span class="required">*</span>
                             </label>
-                            <input type="text" 
+                            <input type="number" 
                                    class="form-control" 
-                                   id="numero_bordereau" 
-                                   name="numero_bordereau"
-                                   placeholder="Optionnel"
-                                   value="<?= htmlspecialchars($_POST['numero_bordereau'] ?? '') ?>">
+                                   id="nombre_colis" 
+                                   name="nombre_colis"
+                                   placeholder="Ex: 4"
+                                   min="1"
+                                   max="1000"
+                                   value="<?= htmlspecialchars($_POST['nombre_colis'] ?? '1') ?>"
+                                   required>
+                        </div>
+                    </div>
+
+                    <!-- Type de colisage -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="type_colisage">
+                                📦 Type de colisage <span class="required">*</span>
+                            </label>
+                            <select class="form-control" id="type_colisage" name="type_colisage" required>
+                                <option value="">Sélectionner le type</option>
+                                <option value="Bidon" <?= ($_POST['type_colisage'] ?? '') === 'Bidon' ? 'selected' : '' ?>>Bidon</option>
+                                <option value="Fût" <?= ($_POST['type_colisage'] ?? '') === 'Fût' ? 'selected' : '' ?>>Fût</option>
+                                <option value="IBC" <?= ($_POST['type_colisage'] ?? '') === 'IBC' ? 'selected' : '' ?>>IBC</option>
+                                <option value="Palette" <?= ($_POST['type_colisage'] ?? '') === 'Palette' ? 'selected' : '' ?>>Palette</option>
+                                <option value="Caisse" <?= ($_POST['type_colisage'] ?? '') === 'Caisse' ? 'selected' : '' ?>>Caisse</option>
+                                <option value="Sac" <?= ($_POST['type_colisage'] ?? '') === 'Sac' ? 'selected' : '' ?>>Sac</option>
+                                <option value="Autre" <?= ($_POST['type_colisage'] ?? '') === 'Autre' ? 'selected' : '' ?>>Autre</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="poids_total_palettes">
+                                🏗️ Poids total palettes (kg)
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="poids_total_palettes" 
+                                   name="poids_total_palettes"
+                                   placeholder="Ex: 1600"
+                                   step="1"
+                                   min="0"
+                                   max="50000"
+                                   value="<?= htmlspecialchars($_POST['poids_total_palettes'] ?? '') ?>">
+                            <small style="color: #666; font-size: 0.8rem;">
+                                Optionnel - Indiqué sur la déclaration officielle
+                            </small>
                         </div>
                     </div>
 
