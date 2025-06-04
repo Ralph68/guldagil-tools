@@ -493,6 +493,8 @@ try {
             }
         }
     </style>
+    <!-- dans le <head> -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
     <!-- Header ADR -->
@@ -511,6 +513,13 @@ try {
                     <span>👤</span>
                     <span><?= htmlspecialchars($_SESSION['adr_user']) ?></span>
                 </div>
+               <div class="d-flex gap-2">
+                  <button class="btn btn-secondary" onclick="loadDevTools()">🛠️ Outils Dev</button>
+                  <button class="btn btn-warning" onclick="loadMaintenance()">🧰 Maintenance</button>
+                </div>
+
+
+
                 <a href="declaration/create.php" class="btn-header">
                     <span>➕</span>
                     Nouvelle déclaration
@@ -1059,5 +1068,69 @@ try {
     <!-- Outils internes en développement -->
     <?php include 'modals/dev-tools.php'; ?>
     <?php include 'modals/maintenance.php'; ?>
+<!-- Modal Maintenance -->
+<?php include_once __DIR__ . '/adr/modals/maintenance.php'; ?>
+<?php include_once __DIR__ . '/adr/modals/dev-tools.php'; ?>
+
+   <!-- Modal Dev Tools -->
+<div class="modal fade" id="devToolsModal" tabindex="-1" aria-labelledby="devToolsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="devToolsLabel">Outils de développement</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="devToolsContent">
+        Chargement…
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Maintenance -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1" aria-labelledby="maintenanceLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="maintenanceLabel">Maintenance</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="maintenanceContent">
+        Chargement…
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- avant </body> -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+<script>
+function loadDevTools() {
+  fetch('/adr/dev-tools.php')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('devToolsContent').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('devToolsModal')).show();
+    })
+    .catch(() => {
+      document.getElementById('devToolsContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
+    });
+}
+
+function loadMaintenance() {
+  fetch('/adr/modals/maintenance.php')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('maintenanceContent').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('maintenanceModal')).show();
+    })
+    .catch(() => {
+      document.getElementById('maintenanceContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
+    });
+}
+</script>
+
+    
 </body>
 </html>
