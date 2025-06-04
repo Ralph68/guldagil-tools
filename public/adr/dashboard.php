@@ -1060,12 +1060,13 @@ try {
 
         console.log('✅ Dashboard ADR initialisé');
         console.log('💡 Raccourcis: Ctrl+K (recherche), Flèches (navigation), Enter (sélection), Escape (fermer)');
-    </script>
+    
 
     
     <?php include 'modals/dev-tools.php'; ?>
-    <?php include 'modals/maintenance.php'; ?><script>
-function loadDevTools() {
+    <?php include 'modals/maintenance.php'; ?>
+
+    function loadDevTools() {
   fetch('/adr/dev-tools.php')
     .then(response => response.text())
     .then(html => {
