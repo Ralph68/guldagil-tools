@@ -1,5 +1,5 @@
 <?php
-// public/adr/search/api.php - API de recherche corrigée avec données de test
+// public/adr/search/api.php - API de recherche ADR complète et corrigée
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-cache, must-revalidate');
 
@@ -464,6 +464,9 @@ function getDemoProducts($query = '', $limit = 20) {
             'type_contenant' => 'Bidon plastique',
             'poids_contenant' => '25L',
             'corde_article_ferme' => '',
+            'groupe_emballage' => 'II',
+            'numero_etiquette' => '8',
+            'code_tunnel' => '',
             'actif' => 1
         ],
         [
@@ -477,6 +480,9 @@ function getDemoProducts($query = '', $limit = 20) {
             'type_contenant' => 'Jerrycan',
             'poids_contenant' => '20L',
             'corde_article_ferme' => '',
+            'groupe_emballage' => 'II',
+            'numero_etiquette' => '8',
+            'code_tunnel' => 'E',
             'actif' => 1
         ],
         [
@@ -490,6 +496,9 @@ function getDemoProducts($query = '', $limit = 20) {
             'type_contenant' => 'Sac étanche',
             'poids_contenant' => '25kg',
             'corde_article_ferme' => '',
+            'groupe_emballage' => 'II',
+            'numero_etiquette' => '8',
+            'code_tunnel' => '',
             'actif' => 1
         ],
         [
@@ -503,6 +512,9 @@ function getDemoProducts($query = '', $limit = 20) {
             'type_contenant' => 'Seau plastique',
             'poids_contenant' => '5kg',
             'corde_article_ferme' => '',
+            'groupe_emballage' => 'II',
+            'numero_etiquette' => '5.1',
+            'code_tunnel' => '',
             'actif' => 1
         ],
         [
@@ -516,6 +528,9 @@ function getDemoProducts($query = '', $limit = 20) {
             'type_contenant' => 'Bidon PEHD',
             'poids_contenant' => '20L',
             'corde_article_ferme' => '',
+            'groupe_emballage' => 'II',
+            'numero_etiquette' => '8',
+            'code_tunnel' => 'E',
             'actif' => 1
         ],
         [
@@ -529,6 +544,9 @@ function getDemoProducts($query = '', $limit = 20) {
             'type_contenant' => 'Sac papier',
             'poids_contenant' => '1kg',
             'corde_article_ferme' => '',
+            'groupe_emballage' => '',
+            'numero_etiquette' => '',
+            'code_tunnel' => '',
             'actif' => 1
         ],
         [
@@ -542,6 +560,9 @@ function getDemoProducts($query = '', $limit = 20) {
             'type_contenant' => 'Bidon',
             'poids_contenant' => '10L',
             'corde_article_ferme' => '',
+            'groupe_emballage' => '',
+            'numero_etiquette' => '',
+            'code_tunnel' => '',
             'actif' => 1
         ],
         [
@@ -555,6 +576,25 @@ function getDemoProducts($query = '', $limit = 20) {
             'type_contenant' => 'Sac plastique',
             'poids_contenant' => '5kg',
             'corde_article_ferme' => '',
+            'groupe_emballage' => '',
+            'numero_etiquette' => '',
+            'code_tunnel' => '',
+            'actif' => 1
+        ],
+        [
+            'code_produit' => 'GUL-009',
+            'nom_produit' => 'ANCIEN PRODUIT',
+            'nom_technique' => 'Produit fermé pour test',
+            'numero_un' => '1823',
+            'nom_description_un' => 'Hydroxyde de sodium solide',
+            'categorie_transport' => '2',
+            'danger_environnement' => 'NON',
+            'type_contenant' => 'Sac',
+            'poids_contenant' => '25kg',
+            'corde_article_ferme' => 'x',
+            'groupe_emballage' => 'II',
+            'numero_etiquette' => '8',
+            'code_tunnel' => '',
             'actif' => 1
         ]
     ];
