@@ -559,9 +559,4 @@ console.log('🛠️ Outils de développement ADR chargés');
 console.log('💡 Raccourci : Ctrl+D pour ouvrir les outils');
 </script>
             
-        case 'insert-data':
-            sql = `INSERT INTO gul_adr_expeditions 
-(numero_expedition, destinataire, transporteur, date_expedition, produits, cree_par) 
-VALUES 
-('ADR-20250115-001', 'SARL MARTIN - 67000 Strasbourg', 'heppner', '2025-01-15', 'GULTRAT pH+ : 25L', 'demo.user'),
-('ADR-20250115-002', 'ENTREPRISE SCHMIDT - 68100 Mulhouse', 'xpo', '2025-01-15', 'PERFORMAX : 200L', 'demo.user');`;
+        
