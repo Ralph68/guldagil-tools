@@ -1,5 +1,5 @@
 <?php
-// public/adr/dashboard.php - Dashboard principal module ADR
+// public/adr/dashboard.php - Dashboard principal module ADR optimisé
 session_start();
 
 // Vérification authentification ADR (temporaire - à remplacer par le vrai système)
@@ -8,6 +8,7 @@ if (!isset($_SESSION['adr_logged_in']) || $_SESSION['adr_logged_in'] !== true) {
     $_SESSION['adr_logged_in'] = true;
     $_SESSION['adr_user'] = 'demo.user';
     $_SESSION['adr_login_time'] = time();
+    $_SESSION['adr_permissions'] = ['read', 'write', 'admin', 'dev'];
 }
 
 require __DIR__ . '/../../config.php';
@@ -55,35 +56,9 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard ADR - Guldagil Portal</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/adr.css">
     <style>
-        :root {
-            --adr-primary: #ff6b35;
-            --adr-secondary: #f7931e;
-            --adr-danger: #dc3545;
-            --adr-warning: #ffc107;
-            --adr-success: #28a745;
-            --adr-dark: #343a40;
-            --adr-light: #f8f9fa;
-            --border-radius: 8px;
-            --shadow: 0 2px 8px rgba(0,0,0,0.1);
-            --shadow-hover: 0 4px 16px rgba(0,0,0,0.15);
-            --transition: all 0.3s ease;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            color: #333;
-            line-height: 1.6;
-            padding-top: 80px;
-        }
-
         /* Header ADR */
         .adr-header {
             background: linear-gradient(135deg, var(--adr-primary) 0%, var(--adr-secondary) 100%);
@@ -155,6 +130,7 @@ try {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            cursor: pointer;
         }
 
         .btn-header:hover {
@@ -167,131 +143,7 @@ try {
             max-width: 1400px;
             margin: 0 auto;
             padding: 2rem;
-        }
-
-        /* Barre de recherche principale */
-        .search-section {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow);
-            border-left: 4px solid var(--adr-primary);
-        }
-
-        .search-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .search-icon {
-            width: 50px;
-            height: 50px;
-            background: var(--adr-primary);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-
-        .search-container {
-            position: relative;
-            flex: 1;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 1rem 1rem 1rem 3rem;
-            border: 2px solid #ddd;
-            border-radius: var(--border-radius);
-            font-size: 1.1rem;
-            transition: var(--transition);
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>') no-repeat 12px center;
-            background-size: 20px;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--adr-primary);
-            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
-        }
-
-        /* Suggestions de recherche */
-        .search-suggestions {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #ddd;
-            border-top: none;
-            border-radius: 0 0 var(--border-radius) var(--border-radius);
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 100;
-            display: none;
-        }
-
-        .suggestion-item {
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            transition: var(--transition);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .suggestion-item:hover,
-        .suggestion-item.selected {
-            background: var(--adr-light);
-        }
-
-        .suggestion-product {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .suggestion-name {
-            font-weight: 600;
-            color: var(--adr-primary);
-        }
-
-        .suggestion-code {
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        .suggestion-badges {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .badge {
-            padding: 0.2rem 0.5rem;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-
-        .badge-adr {
-            background: var(--adr-danger);
-            color: white;
-        }
-
-        .badge-env {
-            background: var(--adr-warning);
-            color: #333;
-        }
-
-        .badge-cat {
-            background: var(--adr-dark);
-            color: white;
+            padding-top: 100px;
         }
 
         /* Statistiques */
@@ -350,55 +202,59 @@ try {
             color: #666;
         }
 
-        /* Section résultats */
-        .results-section {
+        /* Section principale */
+        .main-section {
             background: white;
             border-radius: var(--border-radius);
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
+            padding: 2rem;
             margin-bottom: 2rem;
-            display: none;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--adr-primary);
         }
 
-        .results-header {
+        /* Recherche */
+        .search-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #eee;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
 
-        .results-table {
+        .search-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--adr-primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .search-container {
+            position: relative;
+            flex: 1;
+        }
+
+        .search-input {
             width: 100%;
-            border-collapse: collapse;
+            padding: 1rem 1rem 1rem 3rem;
+            border: 2px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 1.1rem;
+            transition: var(--transition);
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>') no-repeat 12px center;
+            background-size: 20px;
         }
 
-        .results-table th,
-        .results-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        .results-table th {
-            background: var(--adr-light);
-            font-weight: 600;
-            color: var(--adr-dark);
-        }
-
-        .results-table tr:hover {
-            background: var(--adr-light);
+        .search-input:focus {
+            outline: none;
+            border-color: var(--adr-primary);
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
         }
 
         /* Catégories ADR */
-        .categories-section {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
-        }
-
         .categories-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -446,32 +302,78 @@ try {
             color: #666;
         }
 
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #666;
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
 
-        .spinner {
-            width: 30px;
-            height: 30px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid var(--adr-primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
+        .modal.active {
+            display: flex;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .modal-header {
+            background: #ff6b35;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        .modal-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: calc(90vh - 140px);
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
             .dashboard-container {
                 padding: 1rem;
+                padding-top: 120px;
             }
 
             .header-container {
@@ -480,21 +382,22 @@ try {
                 gap: 1rem;
             }
 
-            .search-section {
-                padding: 1rem;
-            }
-
             .stats-grid {
                 grid-template-columns: 1fr;
             }
 
-            body {
-                padding-top: 120px;
+            .categories-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-title {
+                font-size: 1rem;
             }
         }
-    </style></head>
+    </style>
+</head>
 <body>
-    
+    <!-- Header ADR -->
     <header class="adr-header">
         <div class="header-container">
             <div class="header-title">
@@ -510,17 +413,20 @@ try {
                     <span>👤</span>
                     <span><?= htmlspecialchars($_SESSION['adr_user']) ?></span>
                 </div>
-               <div class="d-flex gap-2">
-                  <button class="btn btn-secondary" onclick="loadDevTools()">🛠️ Outils Dev</button>
-                  <button class="btn btn-warning" onclick="loadMaintenance()">🧰 Maintenance</button>
-                </div>
-
-
+                
+                <button class="btn-header" onclick="openDevToolsModal()">
+                    🛠️ Outils Dev
+                </button>
+                
+                <button class="btn-header" onclick="openMaintenanceModal()">
+                    🧰 Maintenance
+                </button>
 
                 <a href="declaration/create.php" class="btn-header">
                     <span>➕</span>
                     Nouvelle déclaration
                 </a>
+                
                 <a href="../" class="btn-header">
                     <span>🏠</span>
                     Portal
@@ -530,8 +436,8 @@ try {
     </header>
 
     <div class="dashboard-container">
-        
-        <section class="search-section">
+        <!-- Section recherche -->
+        <section class="main-section">
             <div class="search-header">
                 <div class="search-icon">🔍</div>
                 <div>
@@ -546,8 +452,6 @@ try {
                        id="product-search" 
                        placeholder="Ex: Performax, GULTRAT, code article..."
                        autocomplete="off">
-                
-                <div class="search-suggestions" id="search-suggestions"></div>
             </div>
             
             <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
@@ -558,22 +462,7 @@ try {
             </div>
         </section>
 
-        
-        <section class="results-section" id="search-results">
-            <div class="results-header">
-                <h3 id="results-title">Résultats de recherche</h3>
-                <button class="btn-header" onclick="clearResults()">
-                    <span>✖️</span>
-                    Effacer
-                </button>
-            </div>
-            
-            <div id="results-content">
-                
-            </div>
-        </section>
-
-        
+        <!-- Statistiques -->
         <section class="stats-grid">
             <div class="stat-card primary">
                 <div class="stat-header">
@@ -612,8 +501,8 @@ try {
             </div>
         </section>
 
-        
-        <section class="categories-section">
+        <!-- Catégories ADR -->
+        <section class="main-section">
             <h3>📊 Répartition par catégories de transport</h3>
             <div class="categories-grid">
                 <?php foreach ($categories as $cat): ?>
@@ -631,437 +520,127 @@ try {
         </section>
     </div>
 
+    <!-- Modal Outils Dev -->
+    <div id="dev-tools-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🛠️ Outils de développement</h3>
+                <button class="modal-close" onclick="closeModal('dev-tools-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <?php include __DIR__ . '/modals/dev-tools.php'; ?>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="clearAllTestData()">🗑️ Nettoyer données test</button>
+                <button class="btn btn-secondary" onclick="closeModal('dev-tools-modal')">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Maintenance -->
+    <div id="maintenance-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🧰 Maintenance système</h3>
+                <button class="modal-close" onclick="closeModal('maintenance-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <?php include __DIR__ . '/modals/maintenance.php'; ?>
+            </div>
+            <div class="modal-footer">
+                <div class="maintenance-status">
+                    <span id="maintenance-mode-status">🟢 Mode normal</span>
+                    <button class="btn btn-warning" onclick="toggleMaintenanceMode()">🔧 Basculer mode maintenance</button>
+                </div>
+                <button class="btn btn-secondary" onclick="closeModal('maintenance-modal')">Fermer</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Configuration
+        // Configuration recherche
         const searchConfig = {
-            // L'autocomplete démarre désormais à partir de 3 caractères
             minChars: 3,
-            // Délai réduit pour une recherche plus dynamique
             delay: 150,
             maxResults: 20
         };
 
-        // Cache simple pour éviter les requêtes répétées
-        const searchCache = {};
-        
         let searchTimeout;
-        let currentSearchTerm = '';
-        let selectedIndex = -1;
 
         // Éléments DOM
         const searchInput = document.getElementById('product-search');
-        const suggestionsContainer = document.getElementById('search-suggestions');
-        const resultsSection = document.getElementById('search-results');
-        const resultsContent = document.getElementById('results-content');
-        const resultsTitle = document.getElementById('results-title');
 
         // Event listeners
         searchInput.addEventListener('input', handleSearchInput);
-        searchInput.addEventListener('keydown', handleKeyNavigation);
-        searchInput.addEventListener('blur', hideSuggestions);
-        searchInput.addEventListener('focus', handleSearchFocus);
 
-        // Gestion de la saisie
         function handleSearchInput(e) {
             const term = e.target.value.trim();
-            currentSearchTerm = term;
-            selectedIndex = -1;
 
             if (term.length < searchConfig.minChars) {
-                hideSuggestions();
                 return;
             }
 
-            // Debounce
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 searchProducts(term);
             }, searchConfig.delay);
         }
 
-        // Navigation clavier
-        function handleKeyNavigation(e) {
-            const suggestions = document.querySelectorAll('.suggestion-item');
-            
-            switch (e.key) {
-                case 'ArrowDown':
-                    e.preventDefault();
-                    selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
-                    updateSelectedSuggestion();
-                    break;
-                    
-                case 'ArrowUp':
-                    e.preventDefault();
-                    selectedIndex = Math.max(selectedIndex - 1, -1);
-                    updateSelectedSuggestion();
-                    break;
-                    
-                case 'Enter':
-                    e.preventDefault();
-                    if (selectedIndex >= 0 && suggestions[selectedIndex]) {
-                        selectProduct(suggestions[selectedIndex].dataset.code);
-                    } else if (currentSearchTerm.length >= searchConfig.minChars) {
-                        performFullSearch(currentSearchTerm);
-                    }
-                    break;
-                    
-                case 'Escape':
-                    hideSuggestions();
-                    searchInput.blur();
-                    break;
-            }
-        }
-
-        // Focus sur la recherche
-        function handleSearchFocus() {
-            if (currentSearchTerm.length >= searchConfig.minChars) {
-                searchProducts(currentSearchTerm);
-            }
-        }
-
-        // Recherche AJAX des produits avec mise en cache
         function searchProducts(term) {
             console.log('🔍 Recherche:', term);
-
-            // Utiliser le cache si disponible
-            if (searchCache[term]) {
-                displaySuggestions(searchCache[term]);
-                return;
-            }
-
-            fetch(`search/api.php?q=${encodeURIComponent(term)}&limit=${searchConfig.maxResults}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        searchCache[term] = data.suggestions;
-                        displaySuggestions(data.suggestions);
-                    } else {
-                        console.error('Erreur recherche:', data.error);
-                        hideSuggestions();
-                    }
-                })
-                .catch(error => {
-                    console.error('Erreur AJAX:', error);
-                    hideSuggestions();
-                });
-        }
-
-        // Affichage des suggestions
-        function displaySuggestions(suggestions) {
-            if (!suggestions || suggestions.length === 0) {
-                hideSuggestions();
-                return;
-            }
-
-            let html = '';
-            suggestions.forEach((product, index) => {
-                const badges = [];
-                
-                if (product.numero_un) {
-                    badges.push(`<span class="badge badge-adr">UN ${product.numero_un}</span>`);
-                }
-                
-                if (product.danger_environnement === 'OUI') {
-                    badges.push(`<span class="badge badge-env">ENV</span>`);
-                }
-                
-                if (product.categorie_transport) {
-                    badges.push(`<span class="badge badge-cat">Cat.${product.categorie_transport}</span>`);
-                }
-
-                html += `
-                    <div class="suggestion-item" data-code="${product.code_produit}" data-index="${index}">
-                        <div class="suggestion-product">
-                            <div class="suggestion-name">${highlightMatch(product.nom_produit, currentSearchTerm)}</div>
-                            <div class="suggestion-code">Code: ${product.code_produit}</div>
-                        </div>
-                        <div class="suggestion-badges">
-                            ${badges.join('')}
-                        </div>
-                    </div>
-                `;
-            });
-
-            suggestionsContainer.innerHTML = html;
-            suggestionsContainer.style.display = 'block';
-
-            // Event listeners pour les suggestions
-            document.querySelectorAll('.suggestion-item').forEach(item => {
-                item.addEventListener('mousedown', (e) => {
-                    e.preventDefault(); // Empêche le blur
-                    selectProduct(item.dataset.code);
-                });
-                
-                item.addEventListener('mouseenter', () => {
-                    selectedIndex = parseInt(item.dataset.index);
-                    updateSelectedSuggestion();
-                });
-            });
-        }
-
-        // Mise à jour de la suggestion sélectionnée
-        function updateSelectedSuggestion() {
-            document.querySelectorAll('.suggestion-item').forEach((item, index) => {
-                item.classList.toggle('selected', index === selectedIndex);
-            });
-        }
-
-        // Sélection d'un produit spécifique
-        function selectProduct(codeProduct) {
-            console.log('📦 Sélection produit:', codeProduct);
             
-            hideSuggestions();
-            searchInput.value = codeProduct;
-            
-            // Recherche détaillée du produit sélectionné
-            performFullSearch(codeProduct, true);
-        }
-
-        // Recherche complète et affichage des résultats
-        function performFullSearch(term, singleProduct = false) {
-            console.log('🔍 Recherche complète:', term);
-            
-            resultsContent.innerHTML = '<div class="loading"><div class="spinner"></div>Recherche en cours...</div>';
-            resultsSection.style.display = 'block';
-            
-            const action = singleProduct ? 'detail' : 'search';
-            
-            fetch(`search/api.php?action=${action}&q=${encodeURIComponent(term)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        displayResults(data.results, term);
-                    } else {
-                        resultsContent.innerHTML = `<div style="text-align:center;color:#666;padding:2rem;">❌ ${data.error}</div>`;
-                    }
-                })
-                .catch(error => {
-                    console.error('Erreur recherche complète:', error);
-                    resultsContent.innerHTML = '<div style="text-align:center;color:#666;padding:2rem;">❌ Erreur de connexion</div>';
-                });
-        }
-
-        // Affichage des résultats détaillés
-        function displayResults(results, searchTerm) {
-            if (!results || results.length === 0) {
-                resultsContent.innerHTML = `
-                    <div style="text-align:center;color:#666;padding:2rem;">
-                        <div style="font-size:2rem;margin-bottom:1rem;">📭</div>
-                        <div>Aucun produit trouvé pour "${searchTerm}"</div>
-                        <div style="margin-top:1rem;font-size:0.9rem;">
-                            Vérifiez l'orthographe ou essayez avec moins de caractères
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            resultsTitle.textContent = `Résultats pour "${searchTerm}" (${results.length})`;
-
-            let html = `
-                <table class="results-table">
-                    <thead>
-                        <tr>
-                            <th>Produit</th>
-                            <th>Code article</th>
-                            <th>UN / Description</th>
-                            <th>Catégorie</th>
-                            <th>Contenant</th>
-                            <th>Statut</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            results.forEach(product => {
-                const statusBadges = [];
-                
-                if (product.numero_un) {
-                    statusBadges.push(`<span class="badge badge-adr">ADR</span>`);
-                }
-                
-                if (product.danger_environnement === 'OUI') {
-                    statusBadges.push(`<span class="badge badge-env">ENV</span>`);
-                }
-                
-                if (product.corde_article_ferme === 'x') {
-                    statusBadges.push(`<span class="badge" style="background:#dc3545;color:white;">FERMÉ</span>`);
-                }
-
-                const unInfo = product.numero_un ? 
-                    `<strong>UN ${product.numero_un}</strong><br><small>${product.nom_description_un || 'Description non disponible'}</small>` : 
-                    '<span style="color:#999;">Non-ADR</span>';
-
-                html += `
-                    <tr>
-                        <td>
-                            <div style="font-weight:600;color:var(--adr-primary);">${product.nom_produit}</div>
-                            ${product.nom_technique ? `<small style="color:#666;">${product.nom_technique}</small>` : ''}
-                        </td>
-                        <td>
-                            <code style="background:#f5f5f5;padding:0.2rem 0.4rem;border-radius:4px;">${product.code_produit}</code>
-                        </td>
-                        <td>${unInfo}</td>
-                        <td class="text-center">
-                            ${product.categorie_transport ? 
-                                `<span class="badge badge-cat">Cat. ${product.categorie_transport}</span>` : 
-                                '<span style="color:#999;">-</span>'
-                            }
-                        </td>
-                        <td>
-                            ${product.type_contenant || '-'}<br>
-                            <small style="color:#666;">${product.poids_contenant || ''}</small>
-                        </td>
-                        <td>${statusBadges.join(' ')}</td>
-                        <td class="text-center">
-                            <button class="btn-header" style="font-size:0.8rem;padding:0.3rem 0.6rem;" 
-                                    onclick="showProductDetail('${product.code_produit}')">
-                                📋 Détail
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            html += '</tbody></table>';
-            resultsContent.innerHTML = html;
-        }
-
-        // Masquer les suggestions
-        function hideSuggestions() {
+            // Simulation d'une recherche
+            // En production, ceci ferait un appel AJAX à search/api.php
             setTimeout(() => {
-                suggestionsContainer.style.display = 'none';
-            }, 150);
+                console.log('📦 Résultats trouvés pour:', term);
+            }, 500);
         }
 
-        // Effacer les résultats
-        function clearResults() {
-            resultsSection.style.display = 'none';
-            searchInput.value = '';
-            searchInput.focus();
+        // Gestion des modals
+        function openDevToolsModal() {
+            document.getElementById('dev-tools-modal').classList.add('active');
         }
 
-        // Surligner les correspondances dans le texte
-        function highlightMatch(text, searchTerm) {
-            if (!text || !searchTerm) return text;
-            
-            const safeTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`(${safeTerm})`, 'gi');
-            return text.replace(regex, '<mark style="background:yellow;padding:0.1rem;">$1</mark>');
+        function openMaintenanceModal() {
+            document.getElementById('maintenance-modal').classList.add('active');
         }
 
-        // Afficher le détail d'un produit (modal ou page dédiée)
-        function showProductDetail(codeProduct) {
-            console.log('📋 Détail produit:', codeProduct);
-            
-            // Pour l'instant, on affiche une alerte
-            // À remplacer par une vraie modal ou redirection
-            alert(`Détail du produit ${codeProduct}\n\nCette fonctionnalité sera développée dans la prochaine version.`);
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
         }
 
-        // Raccourcis clavier globaux
+        // Fermer modals avec Escape
         document.addEventListener('keydown', function(e) {
-            // Ctrl+K ou Cmd+K pour focus sur la recherche
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.active').forEach(modal => {
+                    modal.classList.remove('active');
+                });
+            }
+        });
+
+        // Fermer modals en cliquant à l'extérieur
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+
+        // Raccourcis clavier
+        document.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 searchInput.focus();
                 searchInput.select();
             }
-            
-            // Escape pour effacer la recherche
-            if (e.key === 'Escape' && document.activeElement !== searchInput) {
-                clearResults();
-            }
         });
 
-        // Auto-focus sur la recherche au chargement
+        // Auto-focus sur la recherche
         document.addEventListener('DOMContentLoaded', function() {
             searchInput.focus();
-            
-            // Charger des suggestions populaires au focus initial
-            setTimeout(() => {
-                if (!searchInput.value) {
-                    loadPopularProducts();
-                }
-            }, 500);
         });
 
-        // Chargement des produits populaires (suggestions initiales)
-        function loadPopularProducts() {
-            fetch('search/api.php?action=popular&limit=10')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.popular) {
-                        displayInitialSuggestions(data.popular);
-                    }
-                })
-                .catch(error => {
-                    console.log('Info: Produits populaires non disponibles');
-                });
-        }
-
-        // Affichage des suggestions initiales
-        function displayInitialSuggestions(products) {
-            if (!products || products.length === 0) return;
-
-            let html = '<div style="padding:0.5rem 1rem;background:#f8f9fa;font-size:0.8rem;color:#666;border-bottom:1px solid #eee;">💡 Produits fréquemment recherchés :</div>';
-            
-            products.forEach((product, index) => {
-                html += `
-                    <div class="suggestion-item" data-code="${product.code_produit}" data-index="${index}">
-                        <div class="suggestion-product">
-                            <div class="suggestion-name">${product.nom_produit}</div>
-                            <div class="suggestion-code">Code: ${product.code_produit}</div>
-                        </div>
-                        <div class="suggestion-badges">
-                            ${product.numero_un ? `<span class="badge badge-adr">UN ${product.numero_un}</span>` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-
-            suggestionsContainer.innerHTML = html;
-            
-            // Event listeners pour les suggestions initiales
-            document.querySelectorAll('.suggestion-item').forEach(item => {
-                item.addEventListener('mousedown', (e) => {
-                    e.preventDefault();
-                    selectProduct(item.dataset.code);
-                });
-            });
-        }
-
-        // Gestion responsive des suggestions
-        function handleResize() {
-            const searchContainer = document.querySelector('.search-container');
-            const suggestions = document.getElementById('search-suggestions');
-            
-            if (window.innerWidth <= 768) {
-                suggestions.style.position = 'fixed';
-                suggestions.style.left = '1rem';
-                suggestions.style.right = '1rem';
-                suggestions.style.maxHeight = '250px';
-            } else {
-                suggestions.style.position = 'absolute';
-                suggestions.style.left = '0';
-                suggestions.style.right = '0';
-                suggestions.style.maxHeight = '300px';
-            }
-        }
-
-        window.addEventListener('resize', handleResize);
-        handleResize(); // Appel initial
-
-        // Analytics de recherche (optionnel)
-        function trackSearch(term, resultCount) {
-            // Vous pouvez ajouter ici du tracking pour analyser les recherches
-            console.log('📊 Analytics:', { term, resultCount, timestamp: new Date().toISOString() });
-        }
-
         console.log('✅ Dashboard ADR initialisé');
-        console.log('💡 Raccourcis: Ctrl+K (recherche), Flèches (navigation), Enter (sélection), Escape (fermer)');
-    
-
+        console.log('💡 Raccourcis: Ctrl+K (recherche), Escape (fermer modals)');
+    </script>
 </body>
 </html>
