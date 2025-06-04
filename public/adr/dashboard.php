@@ -492,12 +492,9 @@ try {
                 padding-top: 120px;
             }
         }
-    </style>
-    <!-- dans le <head> -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+    </style></head>
 <body>
-    <!-- Header ADR -->
+    
     <header class="adr-header">
         <div class="header-container">
             <div class="header-title">
@@ -533,7 +530,7 @@ try {
     </header>
 
     <div class="dashboard-container">
-        <!-- Section recherche intelligente -->
+        
         <section class="search-section">
             <div class="search-header">
                 <div class="search-icon">🔍</div>
@@ -561,7 +558,7 @@ try {
             </div>
         </section>
 
-        <!-- Section résultats de recherche -->
+        
         <section class="results-section" id="search-results">
             <div class="results-header">
                 <h3 id="results-title">Résultats de recherche</h3>
@@ -572,11 +569,11 @@ try {
             </div>
             
             <div id="results-content">
-                <!-- Les résultats seront affichés ici -->
+                
             </div>
         </section>
 
-        <!-- Statistiques du catalogue -->
+        
         <section class="stats-grid">
             <div class="stat-card primary">
                 <div class="stat-header">
@@ -615,7 +612,7 @@ try {
             </div>
         </section>
 
-        <!-- Répartition par catégories ADR -->
+        
         <section class="categories-section">
             <h3>📊 Répartition par catégories de transport</h3>
             <div class="categories-grid">
@@ -1065,12 +1062,9 @@ try {
         console.log('💡 Raccourcis: Ctrl+K (recherche), Flèches (navigation), Enter (sélection), Escape (fermer)');
     </script>
 
-    <!-- Outils internes en développement -->
-    <?php include 'modals/dev-tools.php'; ?>
-    <?php include 'modals/maintenance.php'; ?>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
-<script>
+    <?php include 'modals/dev-tools.php'; ?>
+    <?php include 'modals/maintenance.php'; ?><script>
 function loadDevTools() {
   fetch('/adr/dev-tools.php')
     .then(response => response.text())
