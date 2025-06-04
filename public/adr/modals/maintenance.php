@@ -6,14 +6,6 @@
 ?>
 
 
-<div id="maintenance-modal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 1200px;">
-        <div class="modal-header">
-            <h3>🔧 Maintenance ADR</h3>
-            <button class="modal-close" onclick="closeMaintenanceModal()">&times;</button>
-        </div>
-        
-        <div class="modal-body">
             <div class="maintenance-tabs">
                 <button class="tab-btn active" onclick="showMaintenanceTab('database')">🗄️ Base de données</button>
                 <button class="tab-btn" onclick="showMaintenanceTab('cleanup')">🧹 Nettoyage</button>
@@ -353,21 +345,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="modal-footer">
-            <div class="maintenance-status">
-                <span id="maintenance-mode-status">🟢 Mode normal</span>
-                <button class="btn btn-warning" onclick="toggleMaintenanceMode()">
-                    🔧 Basculer mode maintenance
-                </button>
-            </div>
-            <button class="btn btn-secondary" onclick="closeMaintenanceModal()">
-                Fermer
-            </button>
-        </div>
-    </div>
-</div>
 
 <style>
 /* Styles spécifiques pour la maintenance */
@@ -1333,35 +1310,5 @@ function toggleMaintenanceMode() {
     }
 }
 
-function closeMaintenanceModal() {
-    // Arrêter le stream de logs si actif
-    if (logStreamActive) {
-        stopLogStream();
-    }
-    
-    document.getElementById('maintenance-modal').style.display = 'none';
-}
 
-// Initialisation au chargement
-document.addEventListener('DOMContentLoaded', function() {
-    // Mettre à jour les données de monitoring toutes les 30 secondes
-    setInterval(updateMonitoringData, 30000);
-    
-    console.log('🔧 Module de maintenance ADR initialisé');
-});
-
-// Fonction pour ouvrir le modal depuis l'extérieur
-function openMaintenanceModal() {
-    document.getElementById('maintenance-modal').style.display = 'flex';
-    
-    // Charger les données initiales
-    updateMonitoringData();
-    
-    // Activer le premier onglet
-    showMaintenanceTab('database');
-}
-
-// Exposer la fonction globalement
-window.openMaintenanceModal = openMaintenanceModal;
-window.closeMaintenanceModal = closeMaintenanceModal;
 </script>

@@ -733,7 +733,7 @@ try {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                         console.error('Erreur AJAX:', error);
+                        searchCache[term] = data.suggestions;
                         displaySuggestions(data.suggestions);
                     } else {
                         console.error('Erreur recherche:', data.error);
@@ -946,7 +946,8 @@ try {
         function highlightMatch(text, searchTerm) {
             if (!text || !searchTerm) return text;
             
-            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\                const un')})`, 'gi');
+            const safeTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${safeTerm})`, 'gi');
             return text.replace(regex, '<mark style="background:yellow;padding:0.1rem;">$1</mark>');
         }
 
@@ -1060,33 +1061,6 @@ try {
 
         console.log('✅ Dashboard ADR initialisé');
         console.log('💡 Raccourcis: Ctrl+K (recherche), Flèches (navigation), Enter (sélection), Escape (fermer)');
-    
-
-    function loadDevTools() {
-  fetch('/adr/modals/dev-tools.php')
-    .then(response => response.text())
-    .then(html => {
-      document.getElementById('devToolsContent').innerHTML = html;
-      new bootstrap.Modal(document.getElementById('devToolsModal')).show();
-    })
-    .catch(() => {
-      document.getElementById('devToolsContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
-    });
-}
-
-function loadMaintenance() {
-  fetch('/adr/modals/maintenance.php')
-    .then(response => response.text())
-    .then(html => {
-      document.getElementById('maintenanceContent').innerHTML = html;
-      new bootstrap.Modal(document.getElementById('maintenanceModal')).show();
-    })
-    .catch(() => {
-      document.getElementById('maintenanceContent').innerHTML = "<p class='text-danger'>Erreur de chargement.</p>";
-    });
-}
-</script>
-
     
 
 </body>

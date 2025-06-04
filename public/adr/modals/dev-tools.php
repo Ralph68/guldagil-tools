@@ -6,14 +6,6 @@
 ?>
 
 
-<div id="dev-modal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 1000px;">
-        <div class="modal-header">
-            <h3>🛠️ Outils de développement ADR</h3>
-            <button class="modal-close" onclick="closeDevModal()">&times;</button>
-        </div>
-        
-        <div class="modal-body">
             <div class="dev-tabs">
                 <button class="tab-btn active" onclick="showDevTab('test-data')">📊 Données test</button>
                 <button class="tab-btn" onclick="showDevTab('api-test')">🔌 Test API</button>
@@ -127,19 +119,6 @@
                     </button>
                     <textarea id="form-output" rows="8" readonly></textarea>
                 </div>
-            </div>
-        </div>
-        
-        <div class="modal-footer">
-            <button class="btn btn-danger" onclick="clearAllTestData()">
-                🗑️ Nettoyer données test
-            </button>
-            <button class="btn btn-secondary" onclick="closeDevModal()">
-                Fermer
-            </button>
-        </div>
-    </div>
-</div>
 
 <style>
 .modal {
@@ -533,30 +512,7 @@ function clearAllTestData() {
     }
 }
 
-// Gestion de la modal
-function closeDevModal() {
-    document.getElementById('dev-modal').style.display = 'none';
-}
-
-function showDevModal() {
-    document.getElementById('dev-modal').style.display = 'flex';
-}
-
-// Raccourcis clavier
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeDevModal();
-    }
-    
-    // Ctrl+D pour ouvrir les outils dev
-    if (e.ctrlKey && e.key === 'd') {
-        e.preventDefault();
-        showDevModal();
-    }
-});
 
 console.log('🛠️ Outils de développement ADR chargés');
 console.log('💡 Raccourci : Ctrl+D pour ouvrir les outils');
 </script>
-            
-        
