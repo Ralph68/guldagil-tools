@@ -5,7 +5,7 @@
 //}
 ?>
 
-<!-- Modal Outils de développement -->
+
 <div id="dev-modal" class="modal" style="display: none;">
     <div class="modal-content" style="max-width: 1000px;">
         <div class="modal-header">
@@ -21,7 +21,7 @@
                 <button class="tab-btn" onclick="showDevTab('generators')">⚙️ Générateurs</button>
             </div>
             
-            <!-- Onglet Données test -->
+            
             <div id="dev-tab-test-data" class="dev-tab-content active">
                 <h4>📊 Génération de données de test</h4>
                 
@@ -51,7 +51,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Test API -->
+            
             <div id="dev-tab-api-test" class="dev-tab-content">
                 <h4>🔌 Tests API</h4>
                 
@@ -74,7 +74,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Debug -->
+            
             <div id="dev-tab-debug" class="dev-tab-content">
                 <h4>🐛 Informations de debug</h4>
                 
@@ -102,7 +102,7 @@
                 </div>
             </div>
             
-            <!-- Onglet Générateurs -->
+            
             <div id="dev-tab-generators" class="dev-tab-content">
                 <h4>⚙️ Générateurs de code</h4>
                 
