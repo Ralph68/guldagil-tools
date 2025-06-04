@@ -1062,12 +1062,8 @@ try {
         console.log('💡 Raccourcis: Ctrl+K (recherche), Flèches (navigation), Enter (sélection), Escape (fermer)');
     
 
-    
-    <?php include 'modals/dev-tools.php'; ?>
-    <?php include 'modals/maintenance.php'; ?>
-
     function loadDevTools() {
-  fetch('/adr/dev-tools.php')
+  fetch('/adr/modals/dev-tools.php')
     .then(response => response.text())
     .then(html => {
       document.getElementById('devToolsContent').innerHTML = html;
