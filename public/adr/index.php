@@ -25,7 +25,8 @@ if ($authEnabled) {
         $_SESSION['adr_logged_in'] = true;
         $_SESSION['adr_user'] = 'dev.user';
         $_SESSION['adr_login_time'] = time();
-        $_SESSION['adr_permissions'] = ['read', 'write', 'admin'];
+        // Donner aussi la permission "dev" pour accéder aux outils internes
+        $_SESSION['adr_permissions'] = ['read', 'write', 'admin', 'dev'];
         
         header('Location: dashboard.php');
         exit;

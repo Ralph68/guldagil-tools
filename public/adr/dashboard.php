@@ -1043,5 +1043,9 @@ try {
         console.log('✅ Dashboard ADR initialisé');
         console.log('💡 Raccourcis: Ctrl+K (recherche), Flèches (navigation), Enter (sélection), Escape (fermer)');
     </script>
+
+    <!-- Outils internes en développement -->
+    <?php include 'modals/dev-tools.php'; ?>
+    <?php include 'modals/maintenance.php'; ?>
 </body>
 </html>
