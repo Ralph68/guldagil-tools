@@ -122,9 +122,9 @@ function searchClients(query) {
 function displayClientSuggestions(clients) {
     const container = document.getElementById('client-suggestions');
     if (!container) return;
-    
+
     let html = '';
-    
+
     if (clients.length === 0) {
         html = `
             <div class="client-suggestion" onclick="showNewClientForm()">
@@ -132,6 +132,8 @@ function displayClientSuggestions(clients) {
                 <div class="client-details">Aucun client trouvé - Cliquez pour créer</div>
             </div>
         `;
+        // Afficher directement le formulaire de création si aucune suggestion
+        showNewClientForm();
     } else {
         clients.forEach(client => {
             html += `
