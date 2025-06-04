@@ -15,7 +15,7 @@ require __DIR__ . '/../../../config.php';
 
 // Configuration de la recherche
 const SEARCH_CONFIG = [
-    'min_chars' => 2,
+    'min_chars' => 3,
     'max_suggestions' => 20,
     'max_results' => 100,
     'fuzzy_threshold' => 0.3  // Seuil pour la recherche floue
