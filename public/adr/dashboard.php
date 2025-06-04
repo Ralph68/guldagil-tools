@@ -1073,7 +1073,8 @@ try {
     
 <script>
 function loadDevTools() {
-  fetch('/adr/dev-tools.php')
+  // Charger le contenu du modal depuis le dossier modals
+  fetch('/adr/modals/dev-tools.php')
     .then(response => response.text())
     .then(html => {
       document.getElementById('devToolsContent').innerHTML = html;
