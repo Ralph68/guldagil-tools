@@ -1100,12 +1100,22 @@ try {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
 <script>
+function insertHtmlWithScripts(targetId, html) {
+  const container = document.getElementById(targetId);
+  container.innerHTML = html;
+  container.querySelectorAll('script').forEach(old => {
+    const s = document.createElement('script');
+    if (old.src) s.src = old.src; else s.textContent = old.textContent;
+    old.remove();
+    container.appendChild(s);
+  });
+}
+
 function loadDevTools() {
-  // Charger le contenu du modal depuis le dossier modals
   fetch('/adr/modals/dev-tools.php')
-    .then(response => response.text())
+    .then(r => r.text())
     .then(html => {
-      document.getElementById('devToolsContent').innerHTML = html;
+      insertHtmlWithScripts('devToolsContent', html);
       new bootstrap.Modal(document.getElementById('devToolsModal')).show();
     })
     .catch(() => {
@@ -1115,9 +1125,12 @@ function loadDevTools() {
 
 function loadMaintenance() {
   fetch('/adr/modals/maintenance.php')
-    .then(response => response.text())
+    .then(r => r.text())
     .then(html => {
-      document.getElementById('maintenanceContent').innerHTML = html;
+      insertHtmlWithScripts('maintenanceContent', html);
+      if (typeof updateMonitoringData === 'function') {
+        updateMonitoringData();
+      }
       new bootstrap.Modal(document.getElementById('maintenanceModal')).show();
     })
     .catch(() => {
