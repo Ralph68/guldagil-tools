@@ -1,8 +1,8 @@
 <?php
 // public/adr/modals/dev-tools.php - Outils de développement
-if (!isset($_SESSION['adr_logged_in']) || !in_array('dev', $_SESSION['adr_permissions'] ?? [])) {
-    die('Accès non autorisé');
-}
+//if (!isset($_SESSION['adr_logged_in']) || !in_array('dev', $_SESSION['adr_permissions'] ?? [])) {
+//    die('Accès non autorisé');
+//}
 ?>
 
 <!-- Modal Outils de développement -->
