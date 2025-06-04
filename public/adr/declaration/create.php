@@ -1128,439 +1128,191 @@ function processExpeditionForm($db, $data) {
         </button>
     </div>
 
+      <!-- Scripts JavaScript -->
+    <script src="../../assets/js/adr-create-expedition.js"></script>
+    
+    <!-- Configuration JavaScript spécifique -->
     <script>
-        // Variables globales
-        let currentStep = 'destinataire';
-        let selectedClient = null;
-        let expeditionProducts = [];
-        let quotasData = null;
-        let availableProducts = [];
+        // Configuration passée du PHP vers JS
+        window.ADR_CONFIG = {
+            transporteurs: <?= json_encode($transporteurs) ?>,
+            expediteur: <?= json_encode(GULDAGIL_EXPEDITEUR) ?>,
+            quota_max_default: <?= QUOTA_MAX_POINTS_JOUR ?>,
+            base_url: '<?= basename($_SERVER['PHP_SELF']) ?>',
+            debug: <?= json_encode(!$isProduction ?? true) ?>
+        };
         
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚚 Initialisation création expédition ADR');
-            initializeForm();
-        });
-
-        function initializeForm() {
-            // Event listeners
-            setupEventListeners();
-            
-            // Charger les produits disponibles
-            loadAvailableProducts();
-            
-            // Initialiser la recherche client
-            initializeClientSearch();
+        // Fonctions d'aide spécifiques à cette page
+        function showHelp() {
+            showNotification('💡 Guide d\'utilisation :\n\n1. Sélectionnez un client\n2. Choisissez transporteur et date\n3. Ajoutez vos produits ADR\n4. Validez l\'expédition', 'info');
         }
-
-        function setupEventListeners() {
-            // Recherche client
-            document.getElementById('search-client').addEventListener('input', handleClientSearch);
-            
-            // Changement transporteur/date
-            document.getElementById('expedition-transporteur').addEventListener('change', updateQuotas);
-            document.getElementById('expedition-date').addEventListener('change', updateQuotas);
-            
-            // Auto-complétion produits
-            document.getElementById('produit-code').addEventListener('input', handleProductSearch);
-            document.getElementById('produit-code').addEventListener('change', loadProductInfo);
-            
-            // Validation quantité
-            document.getElementById('produit-quantite').addEventListener('input', updatePointsCalculation);
-        }
-
-        // ========== GESTION CLIENTS ==========
         
-        function handleClientSearch() {
-            const query = document.getElementById('search-client').value;
-            
-            if (query.length < 2) {
-                hideClientSuggestions();
-                return;
-            }
-            
-            // Recherche avec délai
-            clearTimeout(window.searchTimeout);
-            window.searchTimeout = setTimeout(() => {
-                searchClients(query);
-            }, 300);
-        }
-
-        function searchClients(query) {
-            const formData = new FormData();
-            formData.append('action', 'search_clients');
-            formData.append('query', query);
-            
-            fetch('', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    displayClientSuggestions(data.clients);
-                } else {
-                    console.error('Erreur recherche clients:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-            });
-        }
-
-        function displayClientSuggestions(clients) {
-            const container = document.getElementById('client-suggestions');
-            
-            if (clients.length === 0) {
-                container.innerHTML = `
-                    <div class="client-suggestion" onclick="showNewClientForm()">
-                        <div class="client-name">➕ Créer un nouveau client</div>
-                        <div class="client-details">Aucun client trouvé - Cliquez pour créer</div>
-                    </div>
-                `;
+        function saveDraft() {
+            if (selectedClient && expeditionProducts.length > 0) {
+                // Sauvegarder dans localStorage en attendant l'implémentation serveur
+                const draftData = {
+                    client: selectedClient,
+                    products: expeditionProducts,
+                    transporteur: getInputValue('expedition-transporteur'),
+                    date: getInputValue('expedition-date'),
+                    timestamp: Date.now()
+                };
+                
+                localStorage.setItem('adr_draft_expedition', JSON.stringify(draftData));
+                showNotification('💾 Brouillon sauvegardé localement', 'success');
             } else {
-                let html = '';
-                clients.forEach(client => {
-                    html += `
-                        <div class="client-suggestion" onclick="selectClient(${JSON.stringify(client).replace(/"/g, '&quot;')})">
-                            <div class="client-name">${client.nom}</div>
-                            <div class="client-details">${client.adresse_complete || ''} - ${client.code_postal} ${client.ville}</div>
-                        </div>
-                    `;
-                });
-                
-                html += `
-                    <div class="client-suggestion" onclick="showNewClientForm()" style="border-top: 2px solid var(--adr-primary);">
-                        <div class="client-name">➕ Créer un nouveau client</div>
-                        <div class="client-details">Créer un client qui n'existe pas</div>
-                    </div>
-                `;
-                
-                container.innerHTML = html;
+                showNotification('❌ Rien à sauvegarder', 'warning');
             }
-            
-            container.style.display = 'block';
         }
-
-        function hideClientSuggestions() {
-            document.getElementById('client-suggestions').style.display = 'none';
-        }
-
-        function selectClient(client) {
-            selectedClient = client;
-            
-            document.getElementById('search-client').value = client.nom;
-            hideClientSuggestions();
-            
-            // Afficher les infos client sélectionné
-            document.getElementById('selected-client-info').innerHTML = `
-                <div><strong>${client.nom}</strong></div>
-                <div>${client.adresse_complete || 'Adresse non renseignée'}</div>
-                <div><strong>${client.code_postal} ${client.ville}</strong> (${client.pays || 'France'})</div>
-                ${client.telephone ? `<div>Tél: ${client.telephone}</div>` : ''}
-                ${client.email ? `<div>Email: ${client.email}</div>` : ''}
-            `;
-            
-            document.getElementById('selected-client').style.display = 'block';
-            document.getElementById('new-client-form').style.display = 'none';
-            document.getElementById('btn-next-to-products').disabled = false;
-            
-            updateProgressInfo();
-        }
-
-        function showNewClientForm() {
-            hideClientSuggestions();
-            document.getElementById('new-client-form').style.display = 'block';
-            document.getElementById('selected-client').style.display = 'none';
-            document.getElementById('client-nom').focus();
-        }
-
-        function saveNewClient() {
-            const formData = new FormData();
-            formData.append('action', 'save_client');
-            formData.append('nom', document.getElementById('client-nom').value);
-            formData.append('adresse_complete', document.getElementById('client-adresse').value);
-            formData.append('code_postal', document.getElementById('client-codepostal').value);
-            formData.append('ville', document.getElementById('client-ville').value);
-            formData.append('pays', document.getElementById('client-pays').value);
-            formData.append('telephone', document.getElementById('client-telephone').value);
-            formData.append('email', document.getElementById('client-email').value);
-            
-            fetch('', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    selectClient(data.client);
-                    alert('✅ Client créé avec succès');
-                } else {
-                    alert('❌ Erreur: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-                alert('❌ Erreur lors de la création du client');
-            });
-        }
-
-        function cancelNewClient() {
-            document.getElementById('new-client-form').style.display = 'none';
-            document.getElementById('search-client').value = '';
-            document.getElementById('search-client').focus();
-        }
-
-        function changeClient() {
-            selectedClient = null;
-            document.getElementById('selected-client').style.display = 'none';
-            document.getElementById('search-client').value = '';
-            document.getElementById('search-client').focus();
-            document.getElementById('btn-next-to-products').disabled = true;
-            updateProgressInfo();
-        }
-
-        // ========== GESTION PRODUITS ==========
         
-        function loadAvailableProducts() {
-            // Charger depuis l'API
-            const formData = new FormData();
-            formData.append('action', 'search_products');
-            formData.append('query', ''); // Tous les produits
-            
-            fetch('', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    availableProducts = data.products;
-                    populateProductsList();
-                } else {
-                    console.error('Erreur chargement produits:', data.error);
-                    // Fallback avec des produits de démo
-                    loadDemoProducts();
-                }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-                loadDemoProducts();
-            });
-        }
-
-        function loadDemoProducts() {
-            // Produits de démonstration en cas d'erreur API
-            availableProducts = [
-                { code_produit: 'GUL-001', designation: 'Acide chlorhydrique 33%', numero_onu: 'UN1789', points_adr_par_unite: 1 },
-                { code_produit: 'GUL-002', designation: 'Hydroxyde de sodium 25%', numero_onu: 'UN1824', points_adr_par_unite: 1 },
-                { code_produit: 'GUL-003', designation: 'Peroxyde d\'hydrogène 35%', numero_onu: 'UN2014', points_adr_par_unite: 3 }
-            ];
-            populateProductsList();
-        }
-
-        function populateProductsList() {
-            const datalist = document.getElementById('produits-list');
-            datalist.innerHTML = '';
-            
-            availableProducts.forEach(product => {
-                const option = document.createElement('option');
-                option.value = product.code_produit;
-                option.textContent = `${product.code_produit} - ${product.designation}`;
-                datalist.appendChild(option);
-            });
-        }
-
-        function handleProductSearch() {
-            const code = document.getElementById('produit-code').value;
-            if (code.length >= 3) {
-                loadProductInfo();
-            }
-        }
-
-        function loadProductInfo() {
-            const code = document.getElementById('produit-code').value;
-            
-            // Rechercher dans les produits chargés
-            const product = availableProducts.find(p => p.code_produit === code);
-            
-            if (product) {
-                document.getElementById('produit-designation').value = product.designation;
-                document.getElementById('produit-numero-onu').value = product.numero_onu;
-                window.currentProductPoints = parseFloat(product.points_adr_par_unite) || 1;
-            } else {
-                // Appel API pour un produit spécifique
-                const formData = new FormData();
-                formData.append('action', 'get_product_info');
-                formData.append('code', code);
-                
-                fetch('', {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const product = data.product;
-                        document.getElementById('produit-designation').value = product.designation;
-                        document.getElementById('produit-numero-onu').value = product.numero_onu;
-                        window.currentProductPoints = parseFloat(product.points_adr_par_unite) || 1;
-                    } else {
-                        // Produit non trouvé
-                        document.getElementById('produit-designation').value = '';
-                        document.getElementById('produit-numero-onu').value = '';
-                        window.currentProductPoints = 0;
+        // Charger un brouillon s'il existe
+        function loadDraft() {
+            const draft = localStorage.getItem('adr_draft_expedition');
+            if (draft) {
+                try {
+                    const data = JSON.parse(draft);
+                    if (confirm('📋 Un brouillon existe.\n\nVoulez-vous le charger ?')) {
+                        // Charger le client
+                        if (data.client) {
+                            selectClient(data.client);
+                        }
+                        
+                        // Charger transporteur et date
+                        if (data.transporteur) {
+                            setInputValue('expedition-transporteur', data.transporteur);
+                        }
+                        if (data.date) {
+                            setInputValue('expedition-date', data.date);
+                        }
+                        
+                        // Charger les produits
+                        if (data.products && data.products.length > 0) {
+                            expeditionProducts = data.products;
+                            updateProductsTable();
+                            showStep('products');
+                        }
+                        
+                        updateQuotas();
+                        updateProgressInfo();
+                        
+                        showNotification('📋 Brouillon chargé', 'success');
                     }
-                    updatePointsCalculation();
-                })
-                .catch(error => {
-                    console.error('Erreur:', error);
-                });
-            }
-            
-            updatePointsCalculation();
-        }
-
-        function updatePointsCalculation() {
-            const quantite = parseFloat(document.getElementById('produit-quantite').value) || 0;
-            const points = quantite * (window.currentProductPoints || 0);
-            
-            // Afficher les points calculés dans un élément (optionnel)
-            console.log(`Quantité: ${quantite}L/Kg, Points: ${points}`);
-        }
-
-        function addProductToExpedition() {
-            const code = document.getElementById('produit-code').value;
-            const designation = document.getElementById('produit-designation').value;
-            const numeroOnu = document.getElementById('produit-numero-onu').value;
-            const quantite = parseFloat(document.getElementById('produit-quantite').value);
-            
-            if (!code || !quantite || quantite <= 0) {
-                alert('❌ Veuillez remplir tous les champs requis');
-                return;
-            }
-            
-            if (!designation || !numeroOnu) {
-                alert('❌ Produit non reconnu. Vérifiez le code produit.');
-                return;
-            }
-            
-            const points = quantite * (window.currentProductPoints || 0);
-            
-            const product = {
-                id: Date.now(), // ID temporaire
-                code,
-                designation,
-                numero_onu: numeroOnu,
-                quantite,
-                points,
-                points_par_unite: window.currentProductPoints || 0
-            };
-            
-            expeditionProducts.push(product);
-            updateProductsTable();
-            clearProductForm();
-            updateProgressInfo();
-            updateQuotasWithCurrentProducts();
-        }
-
-        function updateProductsTable() {
-            const empty = document.getElementById('products-empty');
-            const table = document.getElementById('products-table-container');
-            const tbody = document.getElementById('products-table-body');
-            
-            if (expeditionProducts.length === 0) {
-                empty.style.display = 'block';
-                table.style.display = 'none';
-                document.getElementById('btn-next-to-validation').disabled = true;
-                return;
-            }
-            
-            empty.style.display = 'none';
-            table.style.display = 'block';
-            document.getElementById('btn-next-to-validation').disabled = false;
-            
-            let html = '';
-            let totalPoints = 0;
-            
-            expeditionProducts.forEach(product => {
-                totalPoints += product.points;
-                html += `
-                    <tr>
-                        <td>
-                            <input type="text" class="inline-edit" value="${product.code}" 
-                                   onchange="updateProduct(${product.id}, 'code', this.value)">
-                        </td>
-                        <td>
-                            <input type="text" class="inline-edit" value="${product.designation}" 
-                                   onchange="updateProduct(${product.id}, 'designation', this.value)">
-                        </td>
-                        <td>${product.numero_onu}</td>
-                        <td>
-                            <input type="number" class="inline-edit" value="${product.quantite}" step="0.1" min="0.1"
-                                   onchange="updateProductQuantite(${product.id}, this.value)">
-                        </td>
-                        <td><strong>${product.points.toFixed(1)}</strong></td>
-                        <td>
-                            <button class="btn btn-danger btn-sm" onclick="removeProduct(${product.id})" 
-                                    title="Supprimer">
-                                🗑️
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            tbody.innerHTML = html;
-            document.getElementById('total-points-adr').textContent = `${totalPoints.toFixed(1)} points`;
-        }
-
-        function updateProduct(id, field, value) {
-            const product = expeditionProducts.find(p => p.id === id);
-            if (product) {
-                product[field] = value;
-                updateProgressInfo();
+                } catch (e) {
+                    console.error('Erreur chargement brouillon:', e);
+                    localStorage.removeItem('adr_draft_expedition');
+                }
             }
         }
-
-        function updateProductQuantite(id, quantite) {
-            const product = expeditionProducts.find(p => p.id === id);
-            if (product) {
-                product.quantite = parseFloat(quantite) || 0;
-                product.points = product.quantite * (product.points_par_unite || 1);
-                updateProductsTable();
-                updateProgressInfo();
-                updateQuotasWithCurrentProducts();
-            }
-        }
-
-        function removeProduct(id) {
-            if (confirm('❌ Supprimer ce produit de l\'expédition ?')) {
-                expeditionProducts = expeditionProducts.filter(p => p.id !== id);
-                updateProductsTable();
-                updateProgressInfo();
-                updateQuotasWithCurrentProducts();
-            }
-        }
-
-        function clearProductForm() {
-            document.getElementById('produit-code').value = '';
-            document.getElementById('produit-designation').value = '';
-            document.getElementById('produit-numero-onu').value = '';
-            document.getElementById('produit-quantite').value = '';
-            window.currentProductPoints = 0;
-        }
-
-        // ========== GESTION QUOTAS ==========
         
-        function updateQuotas() {
-            const transporteur = document.getElementById('expedition-transporteur').value;
-            const date = document.getElementById('expedition-date').value;
-            
-            if (!transporteur || !date) {
-                document.getElementById('quota-info').style.display = 'none';
-                document.getElementById('quota-placeholder').style.display = 'block';
+        // Vérifier s'il y a un brouillon au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(loadDraft, 1000);
+        });
+        
+        // Nettoyage brouillon après création réussie
+        window.addEventListener('beforeunload', function() {
+            // Ne pas nettoyer si on est en cours de création
+            if (currentStep === 'validation' && expeditionProducts.length > 0) {
+                // Garder le brouillon
+            } else {
+                // localStorage.removeItem('adr_draft_expedition');
+            }
+        });
+        
+        console.log('✅ Configuration ADR initialisée');
+        console.log('🎯 Brouillons disponibles via localStorage');
+    </script>
+</body>
+</html>
+
+<?php
+/**
+ * Modifications aussi nécessaires dans la fonction processExpeditionForm()
+ * Voici une version de base :
+ */
+
+function processExpeditionForm($db, $data) {
+    try {
+        // Validation des données
+        $clientId = $data['client_id'] ?? null;
+        $transporteur = $data['transporteur'] ?? '';
+        $dateExpedition = $data['date_expedition'] ?? '';
+        $products = $data['products'] ?? [];
+        
+        if (!$clientId || !$transporteur || !$dateExpedition || empty($products)) {
+            return [
+                'success' => false,
+                'errors' => ['Données manquantes : client, transporteur, date ou produits']
+            ];
+        }
+        
+        // Générer un numéro d'expédition unique
+        $numeroExpedition = 'ADR-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        
+        // Calculer le total des points
+        $totalPointsAdr = 0;
+        foreach ($products as $product) {
+            $totalPointsAdr += floatval($product['points_adr_calcules'] ?? 0);
+        }
+        
+        $db->beginTransaction();
+        
+        // Insérer l'expédition
+        $stmt = $db->prepare("
+            INSERT INTO gul_adr_expeditions 
+            (numero_expedition, client_id, transporteur, date_expedition, total_points_adr, observations, cree_par)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        
+        $stmt->execute([
+            $numeroExpedition,
+            $clientId,
+            $transporteur,
+            $dateExpedition,
+            $totalPointsAdr,
+            $data['observations'] ?? '',
+            $_SESSION['adr_user']
+        ]);
+        
+        $expeditionId = $db->lastInsertId();
+        
+        // Insérer les lignes de produits
+        $stmt = $db->prepare("
+            INSERT INTO gul_adr_expedition_lignes 
+            (expedition_id, code_produit, quantite_declaree, unite_quantite, points_adr_calcules, ordre_ligne)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        
+        foreach ($products as $index => $product) {
+            $stmt->execute([
+                $expeditionId,
+                $product['code_produit'],
+                $product['quantite_declaree'],
+                $product['unite_quantite'] ?? 'kg',
+                $product['points_adr_calcules'],
+                $index + 1
+            ]);
+        }
+        
+        $db->commit();
+        
+        return [
+            'success' => true,
+            'message' => 'Expédition créée avec succès',
+            'data' => [
+                'expedition_id' => $expeditionId,
+                'numero_expedition' => $numeroExpedition,
+                'total_points' => $totalPointsAdr
+            ]
+        ];
+        
+    } catch (Exception $e) {
+        $db->rollBack();
+        error_log("Erreur création expédition ADR: " . $e->getMessage());
+        
+        return [
+            'success' => false,
+            'errors' => ['Erreur lors de la création de l\'expédition : ' . $e->getMessage()]
+        ];
+    }
+}
