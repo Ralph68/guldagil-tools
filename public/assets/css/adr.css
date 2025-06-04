@@ -1,1 +1,82 @@
+/* public/assets/css/adr.css - Styles spécifiques module ADR */
 
+:root {
+    /* Couleurs ADR spécifiques */
+    --adr-primary: #ff6b35;
+    --adr-secondary: #f7931e;
+    --adr-danger: #dc3545;
+    --adr-warning: #ffc107;
+    --adr-success: #28a745;
+    --adr-info: #17a2b8;
+    --adr-dark: #343a40;
+    --adr-light: #f8f9fa;
+    
+    /* Variables communes */
+    --border-radius: 8px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --shadow-hover: 0 4px 16px rgba(0,0,0,0.15);
+    --transition: all 0.3s ease;
+}
+
+/* ========== LAYOUT EXPÉDITION ========== */
+
+.expedition-layout {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 2rem;
+    align-items: start;
+}
+
+.main-content {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    min-height: 600px;
+}
+
+.process-steps {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    height: fit-content;
+    position: sticky;
+    top: 100px;
+}
+
+/* ========== ÉTAPES DE PROCESSUS ========== */
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 0.5rem;
+    transition: var(--transition);
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.step:hover:not(.disabled) {
+    background: rgba(255, 107, 53, 0.1);
+    transform: translateX(4px);
+}
+
+.step.active {
+    background: var(--adr-primary);
+    color: white;
+    box-shadow: var(--shadow);
+}
+
+.step.completed {
+    background: var(--adr-success);
+    color: white;
+    border-color: rgba(40, 167, 69, 0.3);
+}
+
+.step.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
