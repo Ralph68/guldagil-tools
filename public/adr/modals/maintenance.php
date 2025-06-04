@@ -1,8 +1,8 @@
 <?php
 // public/adr/modals/maintenance.php - Outils de maintenance (PARTIE COMPLETE)
-if (!isset($_SESSION['adr_logged_in']) || !in_array('admin', $_SESSION['adr_permissions'] ?? [])) {
-    die('Accès non autorisé');
-}
+//if (!isset($_SESSION['adr_logged_in']) || !in_array('admin', $_SESSION['adr_permissions'] ?? [])) {
+//    die('Accès non autorisé');
+//}
 ?>
 
 <!-- Modal Maintenance ADR -->
