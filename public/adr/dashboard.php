@@ -1142,7 +1142,9 @@ try {
 
 <script>
 function loadDevTools() {
-  fetch('/adr/dev-tools.php')
+  fetch('/adr/modals/dev-tools.php')
+
+
     .then(response => response.text())
     .then(html => {
       document.getElementById('devToolsContent').innerHTML = html;
