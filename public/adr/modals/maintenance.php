@@ -1364,3 +1364,4 @@ function openMaintenanceModal() {
 // Exposer la fonction globalement
 window.openMaintenanceModal = openMaintenanceModal;
 window.closeMaintenanceModal = closeMaintenanceModal;
+</script>
