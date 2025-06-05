@@ -1,10 +1,9 @@
 <?php
-// public/adr/dashboard.php - Version corrigée avec boutons fonctionnels
+// public/adr/dashboard.php - Version COMPLÈTE avec recherche dynamique et onglets
 session_start();
 
-// Vérification authentification ADR (temporaire - à remplacer par le vrai système)
+// Vérification authentification ADR
 if (!isset($_SESSION['adr_logged_in']) || $_SESSION['adr_logged_in'] !== true) {
-    // Pour le développement, on simule une session active
     $_SESSION['adr_logged_in'] = true;
     $_SESSION['adr_user'] = 'demo.user';
     $_SESSION['adr_login_time'] = time();
@@ -12,9 +11,8 @@ if (!isset($_SESSION['adr_logged_in']) || $_SESSION['adr_logged_in'] !== true) {
 
 require __DIR__ . '/../../config.php';
 
-// Statistiques rapides pour le dashboard
+// Statistiques pour le dashboard
 try {
-    // Compter les produits ADR
     $stmt = $db->query("SELECT 
         COUNT(*) as total_produits,
         COUNT(CASE WHEN numero_un IS NOT NULL AND numero_un != '' THEN 1 END) as produits_adr,
@@ -23,7 +21,6 @@ try {
         FROM gul_adr_products WHERE actif = 1");
     $stats = $stmt->fetch();
     
-    // Répartition par catégorie
     $stmt = $db->query("SELECT 
         categorie_transport, 
         COUNT(*) as nombre,
@@ -34,7 +31,6 @@ try {
         ORDER BY categorie_transport");
     $categories = $stmt->fetchAll();
     
-    // Dernières déclarations (si la table existe et contient des données)
     try {
         $stmt = $db->query("SELECT COUNT(*) as total_declarations FROM gul_adr_declarations");
         $declarations_count = $stmt->fetch()['total_declarations'];
@@ -156,6 +152,7 @@ try {
             align-items: center;
             gap: 0.5rem;
             cursor: pointer;
+            font-size: 0.9rem;
         }
 
         .btn-header:hover {
@@ -170,7 +167,52 @@ try {
             padding: 2rem;
         }
 
-        /* Barre de recherche principale */
+        /* Onglets de navigation */
+        .dashboard-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-button {
+            background: white;
+            border: none;
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+            box-shadow: var(--shadow);
+            color: var(--adr-dark);
+            min-width: 150px;
+            justify-content: center;
+        }
+
+        .tab-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .tab-button.active {
+            background: var(--adr-primary);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Section recherche produits */
         .search-section {
             background: white;
             border-radius: var(--border-radius);
@@ -235,6 +277,7 @@ try {
             overflow-y: auto;
             z-index: 100;
             display: none;
+            box-shadow: var(--shadow-hover);
         }
 
         .suggestion-item {
@@ -250,6 +293,7 @@ try {
         .suggestion-item:hover,
         .suggestion-item.selected {
             background: var(--adr-light);
+            transform: translateX(4px);
         }
 
         .suggestion-product {
@@ -293,6 +337,47 @@ try {
         .badge-cat {
             background: var(--adr-dark);
             color: white;
+        }
+
+        /* Section résultats */
+        .results-section {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .results-table th {
+            background: var(--adr-light);
+            font-weight: 600;
+            color: var(--adr-dark);
+        }
+
+        .results-table tr:hover {
+            background: var(--adr-light);
         }
 
         /* Statistiques */
@@ -351,47 +436,6 @@ try {
             color: #666;
         }
 
-        /* Section résultats */
-        .results-section {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
-            margin-bottom: 2rem;
-            display: none;
-        }
-
-        .results-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #eee;
-        }
-
-        .results-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .results-table th,
-        .results-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        .results-table th {
-            background: var(--adr-light);
-            font-weight: 600;
-            color: var(--adr-dark);
-        }
-
-        .results-table tr:hover {
-            background: var(--adr-light);
-        }
-
         /* Catégories ADR */
         .categories-section {
             background: white;
@@ -447,6 +491,19 @@ try {
             color: #666;
         }
 
+        /* États vides */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
         /* Loading */
         .loading {
             text-align: center;
@@ -489,6 +546,14 @@ try {
                 grid-template-columns: 1fr;
             }
 
+            .dashboard-tabs {
+                flex-direction: column;
+            }
+
+            .tab-button {
+                min-width: auto;
+            }
+
             body {
                 padding-top: 120px;
             }
@@ -512,19 +577,12 @@ try {
                     <span>👤</span>
                     <span><?= htmlspecialchars($_SESSION['adr_user']) ?></span>
                 </div>
-                
-                <button class="btn-header" onclick="loadDevTools()">
-                    🛠️ Outils Dev
-                </button>
-                
-                <button class="btn-header" onclick="loadMaintenance()">
-                    🧰 Maintenance
-                </button>
 
                 <a href="declaration/create.php" class="btn-header">
                     <span>➕</span>
                     Nouvelle déclaration
                 </a>
+                
                 <a href="../" class="btn-header">
                     <span>🏠</span>
                     Portal
@@ -534,120 +592,206 @@ try {
     </header>
 
     <div class="dashboard-container">
-        
-        <section class="search-section">
-            <div class="search-header">
-                <div class="search-icon">🔍</div>
-                <div>
-                    <h2>Recherche produits ADR</h2>
-                    <p>Tapez un code article ou nom de produit pour obtenir toutes les informations réglementaires</p>
-                </div>
-            </div>
-            
-            <div class="search-container">
-                <input type="text" 
-                       class="search-input" 
-                       id="product-search" 
-                       placeholder="Ex: Performax, GULTRAT, code article..."
-                       autocomplete="off">
-                
-                <div class="search-suggestions" id="search-suggestions"></div>
-            </div>
-            
-            <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
-                <strong>💡 Astuces :</strong> 
-                • Recherche partielle acceptée (ex: "Perf" trouvera "Performax")
-                • Recherche par code UN (ex: "3412")
-                • Filtrage automatique par catégorie de danger
-            </div>
-        </section>
+        <!-- Onglets de navigation -->
+        <div class="dashboard-tabs">
+            <button class="tab-button active" onclick="showTab('recherche')" data-tab="recherche">
+                <span>🔍</span>
+                Recherche produits
+            </button>
+            <button class="tab-button" onclick="showTab('expeditions')" data-tab="expeditions">
+                <span>➕</span>
+                Nouvelle expédition
+            </button>
+            <button class="tab-button" onclick="showTab('mes-expeditions')" data-tab="mes-expeditions">
+                <span>📋</span>
+                Mes expéditions
+            </button>
+            <button class="tab-button" onclick="showTab('recapitulatifs')" data-tab="recapitulatifs">
+                <span>📊</span>
+                Récapitulatifs
+            </button>
+            <button class="tab-button" onclick="showTab('statistiques')" data-tab="statistiques">
+                <span>📈</span>
+                Statistiques
+            </button>
+        </div>
 
-        
-        <section class="results-section" id="search-results">
-            <div class="results-header">
-                <h3 id="results-title">Résultats de recherche</h3>
-                <button class="btn-header" onclick="clearResults()">
-                    <span>✖️</span>
-                    Effacer
-                </button>
-            </div>
-            
-            <div id="results-content">
-                
-            </div>
-        </section>
-
-        
-        <section class="stats-grid">
-            <div class="stat-card primary">
-                <div class="stat-header">
-                    <div class="stat-title">Total produits</div>
-                    <div class="stat-icon">📦</div>
-                </div>
-                <div class="stat-value"><?= number_format($stats['total_produits']) ?></div>
-                <div class="stat-detail">Produits dans le catalogue</div>
-            </div>
-
-            <div class="stat-card danger">
-                <div class="stat-header">
-                    <div class="stat-title">Produits ADR</div>
-                    <div class="stat-icon">⚠️</div>
-                </div>
-                <div class="stat-value"><?= number_format($stats['produits_adr']) ?></div>
-                <div class="stat-detail">Nécessitent déclaration ADR</div>
-            </div>
-
-            <div class="stat-card warning">
-                <div class="stat-header">
-                    <div class="stat-title">Danger environnement</div>
-                    <div class="stat-icon">🌍</div>
-                </div>
-                <div class="stat-value"><?= number_format($stats['produits_env_dangereux']) ?></div>
-                <div class="stat-detail">Produits polluants marins</div>
-            </div>
-
-            <div class="stat-card success">
-                <div class="stat-header">
-                    <div class="stat-title">Déclarations</div>
-                    <div class="stat-icon">📋</div>
-                </div>
-                <div class="stat-value"><?= number_format($declarations_count) ?></div>
-                <div class="stat-detail">Total expéditions déclarées</div>
-            </div>
-        </section>
-
-        
-        <section class="categories-section">
-            <h3>📊 Répartition par catégories de transport</h3>
-            <div class="categories-grid">
-                <?php foreach ($categories as $cat): ?>
-                <div class="category-card">
-                    <div class="category-header">
-                        <div class="category-number">Cat. <?= htmlspecialchars($cat['categorie_transport']) ?></div>
-                        <div class="category-count"><?= $cat['nombre'] ?></div>
-                    </div>
-                    <div class="category-contenants">
-                        <?= htmlspecialchars(substr($cat['contenants'], 0, 50)) ?><?= strlen($cat['contenants']) > 50 ? '...' : '' ?>
+        <!-- Contenu onglet Recherche produits -->
+        <div id="tab-recherche" class="tab-content active">
+            <section class="search-section">
+                <div class="search-header">
+                    <div class="search-icon">🔍</div>
+                    <div>
+                        <h2>Recherche produits ADR</h2>
+                        <p>Tapez un code article ou nom de produit pour obtenir toutes les informations réglementaires</p>
                     </div>
                 </div>
-                <?php endforeach; ?>
+                
+                <div class="search-container">
+                    <input type="text" 
+                           class="search-input" 
+                           id="product-search" 
+                           placeholder="Ex: Performax, GULTRAT, code article..."
+                           autocomplete="off">
+                    
+                    <div class="search-suggestions" id="search-suggestions"></div>
+                </div>
+                
+                <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                    <strong>💡 Astuces :</strong> 
+                    • Recherche partielle acceptée (ex: "Perf" trouvera "Performax")
+                    • Recherche par code UN (ex: "3412")
+                    • Filtrage automatique par catégorie de danger
+                </div>
+            </section>
+
+            <section class="results-section" id="search-results">
+                <div class="results-header">
+                    <h3 id="results-title">Résultats de recherche</h3>
+                    <button class="btn-header" onclick="clearResults()">
+                        <span>✖️</span>
+                        Effacer
+                    </button>
+                </div>
+                
+                <div id="results-content"></div>
+            </section>
+        </div>
+
+        <!-- Contenu onglet Nouvelle expédition -->
+        <div id="tab-expeditions" class="tab-content">
+            <div class="empty-state">
+                <div class="empty-state-icon">➕</div>
+                <h3>Nouvelle expédition ADR</h3>
+                <p>Créez une nouvelle déclaration d'expédition de marchandises dangereuses</p>
+                <br>
+                <a href="declaration/create.php" class="btn-header" style="background: var(--adr-primary); color: white; padding: 1rem 2rem;">
+                    Commencer une déclaration
+                </a>
             </div>
-        </section>
+        </div>
+
+        <!-- Contenu onglet Mes expéditions -->
+        <div id="tab-mes-expeditions" class="tab-content">
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <h3>Mes expéditions</h3>
+                <p>Consultez l'historique de vos déclarations ADR</p>
+                <br>
+                <a href="declaration/list.php" class="btn-header" style="background: var(--adr-primary); color: white; padding: 1rem 2rem;">
+                    Voir la liste
+                </a>
+            </div>
+        </div>
+
+        <!-- Contenu onglet Récapitulatifs -->
+        <div id="tab-recapitulatifs" class="tab-content">
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <h3>Récapitulatifs quotidiens</h3>
+                <p>Générez les récapitulatifs par transporteur pour les expéditions du jour</p>
+                <br>
+                <a href="recap/daily.php" class="btn-header" style="background: var(--adr-primary); color: white; padding: 1rem 2rem;">
+                    Accéder aux récapitulatifs
+                </a>
+            </div>
+        </div>
+
+        <!-- Contenu onglet Statistiques -->
+        <div id="tab-statistiques" class="tab-content">
+            <section class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-header">
+                        <div class="stat-title">Total produits</div>
+                        <div class="stat-icon">📦</div>
+                    </div>
+                    <div class="stat-value"><?= number_format($stats['total_produits']) ?></div>
+                    <div class="stat-detail">Produits dans le catalogue</div>
+                </div>
+
+                <div class="stat-card danger">
+                    <div class="stat-header">
+                        <div class="stat-title">Produits ADR</div>
+                        <div class="stat-icon">⚠️</div>
+                    </div>
+                    <div class="stat-value"><?= number_format($stats['produits_adr']) ?></div>
+                    <div class="stat-detail">Nécessitent déclaration ADR</div>
+                </div>
+
+                <div class="stat-card warning">
+                    <div class="stat-header">
+                        <div class="stat-title">Danger environnement</div>
+                        <div class="stat-icon">🌍</div>
+                    </div>
+                    <div class="stat-value"><?= number_format($stats['produits_env_dangereux']) ?></div>
+                    <div class="stat-detail">Produits polluants marins</div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-header">
+                        <div class="stat-title">Déclarations</div>
+                        <div class="stat-icon">📋</div>
+                    </div>
+                    <div class="stat-value"><?= number_format($declarations_count) ?></div>
+                    <div class="stat-detail">Total expéditions déclarées</div>
+                </div>
+            </section>
+
+            <section class="categories-section">
+                <h3>📊 Répartition par catégories de transport</h3>
+                <div class="categories-grid">
+                    <?php foreach ($categories as $cat): ?>
+                    <div class="category-card">
+                        <div class="category-header">
+                            <div class="category-number">Cat. <?= htmlspecialchars($cat['categorie_transport']) ?></div>
+                            <div class="category-count"><?= $cat['nombre'] ?></div>
+                        </div>
+                        <div class="category-contenants">
+                            <?= htmlspecialchars(substr($cat['contenants'], 0, 50)) ?><?= strlen($cat['contenants']) > 50 ? '...' : '' ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        </div>
     </div>
 
     <script>
-        // Configuration
+        // ========== GESTION DES ONGLETS ==========
+        function showTab(tabName) {
+            console.log('🔄 Changement onglet:', tabName);
+            
+            // Masquer tous les contenus
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Désactiver tous les boutons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Activer l'onglet sélectionné
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Focus sur la recherche si onglet recherche
+            if (tabName === 'recherche') {
+                setTimeout(() => {
+                    const searchInput = document.getElementById('product-search');
+                    if (searchInput) searchInput.focus();
+                }, 100);
+            }
+        }
+
+        // ========== RECHERCHE DYNAMIQUE ==========
         const searchConfig = {
-            // L'autocomplete démarre désormais à partir de 3 caractères
             minChars: 3,
-            // Délai réduit pour une recherche plus dynamique
             delay: 150,
             maxResults: 20
         };
 
-        // Cache simple pour éviter les requêtes répétées
         const searchCache = {};
-        
         let searchTimeout;
         let currentSearchTerm = '';
         let selectedIndex = -1;
@@ -659,13 +803,14 @@ try {
         const resultsContent = document.getElementById('results-content');
         const resultsTitle = document.getElementById('results-title');
 
-        // Event listeners
-        searchInput.addEventListener('input', handleSearchInput);
-        searchInput.addEventListener('keydown', handleKeyNavigation);
-        searchInput.addEventListener('blur', hideSuggestions);
-        searchInput.addEventListener('focus', handleSearchFocus);
+        // Event listeners pour la recherche
+        if (searchInput) {
+            searchInput.addEventListener('input', handleSearchInput);
+            searchInput.addEventListener('keydown', handleKeyNavigation);
+            searchInput.addEventListener('blur', hideSuggestions);
+            searchInput.addEventListener('focus', handleSearchFocus);
+        }
 
-        // Gestion de la saisie
         function handleSearchInput(e) {
             const term = e.target.value.trim();
             currentSearchTerm = term;
@@ -676,14 +821,12 @@ try {
                 return;
             }
 
-            // Debounce
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 searchProducts(term);
             }, searchConfig.delay);
         }
 
-        // Navigation clavier
         function handleKeyNavigation(e) {
             const suggestions = document.querySelectorAll('.suggestion-item');
             
@@ -716,14 +859,12 @@ try {
             }
         }
 
-        // Focus sur la recherche
         function handleSearchFocus() {
             if (currentSearchTerm.length >= searchConfig.minChars) {
                 searchProducts(currentSearchTerm);
             }
         }
 
-        // Recherche AJAX des produits avec mise en cache
         function searchProducts(term) {
             console.log('🔍 Recherche:', term);
 
@@ -733,6 +874,7 @@ try {
                 return;
             }
 
+            // Recherche via API
             fetch(`search/api.php?q=${encodeURIComponent(term)}&limit=${searchConfig.maxResults}`)
                 .then(response => response.json())
                 .then(data => {
@@ -750,7 +892,6 @@ try {
                 });
         }
 
-        // Affichage des suggestions
         function displaySuggestions(suggestions) {
             if (!suggestions || suggestions.length === 0) {
                 hideSuggestions();
@@ -803,25 +944,20 @@ try {
             });
         }
 
-        // Mise à jour de la suggestion sélectionnée
         function updateSelectedSuggestion() {
             document.querySelectorAll('.suggestion-item').forEach((item, index) => {
                 item.classList.toggle('selected', index === selectedIndex);
             });
         }
 
-        // Sélection d'un produit spécifique
         function selectProduct(codeProduct) {
             console.log('📦 Sélection produit:', codeProduct);
             
             hideSuggestions();
             searchInput.value = codeProduct;
-            
-            // Recherche détaillée du produit sélectionné
             performFullSearch(codeProduct, true);
         }
 
-        // Recherche complète et affichage des résultats
         function performFullSearch(term, singleProduct = false) {
             console.log('🔍 Recherche complète:', term);
             
@@ -845,7 +981,6 @@ try {
                 });
         }
 
-        // Affichage des résultats détaillés
         function displayResults(results, searchTerm) {
             if (!results || results.length === 0) {
                 resultsContent.innerHTML = `
@@ -872,7 +1007,6 @@ try {
                             <th>Catégorie</th>
                             <th>Contenant</th>
                             <th>Statut</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -918,12 +1052,6 @@ try {
                             <small style="color:#666;">${product.poids_contenant || ''}</small>
                         </td>
                         <td>${statusBadges.join(' ')}</td>
-                        <td class="text-center">
-                            <button class="btn-header" style="font-size:0.8rem;padding:0.3rem 0.6rem;" 
-                                    onclick="showProductDetail('${product.code_produit}')">
-                                📋 Détail
-                            </button>
-                        </td>
                     </tr>
                 `;
             });
@@ -932,63 +1060,80 @@ try {
             resultsContent.innerHTML = html;
         }
 
-        // Masquer les suggestions
         function hideSuggestions() {
             setTimeout(() => {
-                suggestionsContainer.style.display = 'none';
+                if (suggestionsContainer) {
+                    suggestionsContainer.style.display = 'none';
+                }
             }, 150);
         }
 
-        // Effacer les résultats
         function clearResults() {
-            resultsSection.style.display = 'none';
-            searchInput.value = '';
-            searchInput.focus();
+            if (resultsSection) resultsSection.style.display = 'none';
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+            }
         }
 
-        // Surligner les correspondances dans le texte
         function highlightMatch(text, searchTerm) {
             if (!text || !searchTerm) return text;
             
-            const safeTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\        .category-count {
-            background: var(--adr-primary);
-            color: white;
-            padding: 0.2rem 0.');
+            const safeTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\            // Recherche via API
+            fetch(`search/api.php?q=${encodeURIComponent(term)}&limit=${searchConfig.maxResults}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        searchCache[term] = data.suggestions;
+                        displaySugg');
             const regex = new RegExp(`(${safeTerm})`, 'gi');
             return text.replace(regex, '<mark style="background:yellow;padding:0.1rem;">$1</mark>');
         }
 
-        // Afficher le détail d'un produit (modal ou page dédiée)
-        function showProductDetail(codeProduct) {
-            console.log('📋 Détail produit:', codeProduct);
-            
-            // Pour l'instant, on affiche une alerte
-            // À remplacer par une vraie modal ou redirection
-            alert(`Détail du produit ${codeProduct}\n\nCette fonctionnalité sera développée dans la prochaine version.`);
-        }
-
-        // Raccourcis clavier globaux
+        // ========== RACCOURCIS CLAVIER ==========
         document.addEventListener('keydown', function(e) {
             // Ctrl+K ou Cmd+K pour focus sur la recherche
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
-                searchInput.focus();
-                searchInput.select();
+                showTab('recherche');
+                setTimeout(() => {
+                    if (searchInput) {
+                        searchInput.focus();
+                        searchInput.select();
+                    }
+                }, 100);
             }
             
             // Escape pour effacer la recherche
             if (e.key === 'Escape' && document.activeElement !== searchInput) {
                 clearResults();
             }
+
+            // Chiffres 1-5 pour naviguer entre onglets
+            const numberKeys = ['1', '2', '3', '4', '5'];
+            const tabNames = ['recherche', 'expeditions', 'mes-expeditions', 'recapitulatifs', 'statistiques'];
+            
+            if (e.ctrlKey && numberKeys.includes(e.key)) {
+                e.preventDefault();
+                const tabIndex = parseInt(e.key) - 1;
+                if (tabNames[tabIndex]) {
+                    showTab(tabNames[tabIndex]);
+                }
+            }
         });
 
-        // Auto-focus sur la recherche au chargement
+        // ========== INITIALISATION ==========
         document.addEventListener('DOMContentLoaded', function() {
-            searchInput.focus();
+            console.log('✅ Dashboard ADR chargé - Version complète avec onglets');
             
-            // Charger des suggestions populaires au focus initial
+            // Auto-focus sur la recherche
+            if (searchInput) {
+                searchInput.focus();
+            }
+            
+            // Charger des suggestions populaires au focus initial (optionnel)
             setTimeout(() => {
-                if (!searchInput.value) {
+                if (searchInput && !searchInput.value) {
                     loadPopularProducts();
                 }
             }, 500);
@@ -996,7 +1141,7 @@ try {
 
         // Chargement des produits populaires (suggestions initiales)
         function loadPopularProducts() {
-            fetch('search/api.php?action=popular&limit=10')
+            fetch('search/api.php?action=popular&limit=8')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.popular) {
@@ -1028,32 +1173,35 @@ try {
                 `;
             });
 
-            suggestionsContainer.innerHTML = html;
-            
-            // Event listeners pour les suggestions initiales
-            document.querySelectorAll('.suggestion-item').forEach(item => {
-                item.addEventListener('mousedown', (e) => {
-                    e.preventDefault();
-                    selectProduct(item.dataset.code);
+            if (suggestionsContainer) {
+                suggestionsContainer.innerHTML = html;
+                
+                // Event listeners pour les suggestions initiales
+                document.querySelectorAll('.suggestion-item').forEach(item => {
+                    item.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        selectProduct(item.dataset.code);
+                    });
                 });
-            });
+            }
         }
 
         // Gestion responsive des suggestions
         function handleResize() {
-            const searchContainer = document.querySelector('.search-container');
             const suggestions = document.getElementById('search-suggestions');
             
-            if (window.innerWidth <= 768) {
-                suggestions.style.position = 'fixed';
-                suggestions.style.left = '1rem';
-                suggestions.style.right = '1rem';
-                suggestions.style.maxHeight = '250px';
-            } else {
-                suggestions.style.position = 'absolute';
-                suggestions.style.left = '0';
-                suggestions.style.right = '0';
-                suggestions.style.maxHeight = '300px';
+            if (suggestions) {
+                if (window.innerWidth <= 768) {
+                    suggestions.style.position = 'fixed';
+                    suggestions.style.left = '1rem';
+                    suggestions.style.right = '1rem';
+                    suggestions.style.maxHeight = '250px';
+                } else {
+                    suggestions.style.position = 'absolute';
+                    suggestions.style.left = '0';
+                    suggestions.style.right = '0';
+                    suggestions.style.maxHeight = '300px';
+                }
             }
         }
 
@@ -1062,224 +1210,15 @@ try {
 
         // Analytics de recherche (optionnel)
         function trackSearch(term, resultCount) {
-            // Vous pouvez ajouter ici du tracking pour analyser les recherches
             console.log('📊 Analytics:', { term, resultCount, timestamp: new Date().toISOString() });
         }
 
-        console.log('✅ Dashboard ADR initialisé');
-        console.log('💡 Raccourcis: Ctrl+K (recherche), Flèches (navigation), Enter (sélection), Escape (fermer)');
-        
-        // ========== FONCTIONS MODALES (AJOUT PRINCIPAL) ==========
-
-        function loadDevTools() {
-            console.log('🛠️ Chargement outils de développement...');
-            loadModal('dev-tools', 'Outils de développement', 'modals/dev-tools.php');
-        }
-
-        function loadMaintenance() {
-            console.log('🧰 Chargement outils de maintenance...');
-            loadModal('maintenance', 'Maintenance système', 'modals/maintenance.php');
-        }
-
-        function loadModal(modalId, title, contentUrl) {
-            // Créer le modal s'il n'existe pas
-            let modal = document.getElementById(`modal-${modalId}`);
-            if (!modal) {
-                modal = createModal(modalId, title);
-                document.body.appendChild(modal);
-            }
-            
-            // Afficher le modal
-            modal.style.display = 'flex';
-            
-            // Charger le contenu
-            const modalBody = modal.querySelector('.modal-body');
-            modalBody.innerHTML = '<div class="loading"><div class="spinner"></div>Chargement...</div>';
-            
-            // Fetch du contenu
-            fetch(contentUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    return response.text();
-                })
-                .then(html => {
-                    modalBody.innerHTML = html;
-                    
-                    // Exécuter les scripts contenus dans le HTML
-                    const scripts = modalBody.querySelectorAll('script');
-                    scripts.forEach(script => {
-                        const newScript = document.createElement('script');
-                        newScript.textContent = script.textContent;
-                        document.head.appendChild(newScript);
-                        
-                        // Nettoyer le script original
-                        setTimeout(() => {
-                            if (newScript.parentNode) {
-                                newScript.parentNode.removeChild(newScript);
-                            }
-                        }, 100);
-                    });
-                    
-                    console.log(`✅ Modal ${modalId} chargé`);
-                })
-                .catch(error => {
-                    console.error(`Erreur chargement modal ${modalId}:`, error);
-                    modalBody.innerHTML = `
-                        <div style="text-align: center; color: #dc3545; padding: 2rem;">
-                            <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
-                            <h4>Erreur de chargement</h4>
-                            <p>Impossible de charger le contenu : ${error.message}</p>
-                            <button class="btn-header" onclick="closeModal('${modalId}')">Fermer</button>
-                        </div>
-                    `;
-                });
-        }
-
-        function createModal(modalId, title) {
-            const modal = document.createElement('div');
-            modal.id = `modal-${modalId}`;
-            modal.className = 'modal-overlay';
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.7);
-                z-index: 10000;
-                display: none;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-                backdrop-filter: blur(4px);
-            `;
-            
-            modal.innerHTML = `
-                <div class="modal-content" style="
-                    background: white;
-                    border-radius: 8px;
-                    max-width: 1200px;
-                    width: 95vw;
-                    max-height: 90vh;
-                    overflow: hidden;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-                    animation: modalSlideIn 0.3s ease;
-                ">
-                    <div class="modal-header" style="
-                        background: #ff6b35;
-                        color: white;
-                        padding: 20px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    ">
-                        <h3 style="margin: 0; font-size: 1.25rem;">${title}</h3>
-                        <button class="modal-close" onclick="closeModal('${modalId}')" style="
-                            background: none;
-                            border: none;
-                            color: white;
-                            font-size: 24px;
-                            cursor: pointer;
-                            padding: 5px 10px;
-                            border-radius: 4px;
-                            transition: background 0.2s;
-                        ">&times;</button>
-                    </div>
-                    <div class="modal-body" style="
-                        padding: 20px;
-                        max-height: calc(90vh - 140px);
-                        overflow-y: auto;
-                    ">
-                        <!-- Contenu chargé dynamiquement -->
-                    </div>
-                    <div class="modal-footer" style="
-                        background: #f8f9fa;
-                        padding: 15px 20px;
-                        border-top: 1px solid #ddd;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    ">
-                        <div></div>
-                        <button class="btn-header" onclick="closeModal('${modalId}')">Fermer</button>
-                    </div>
-                </div>
-            `;
-            
-            // Fermer en cliquant à l'extérieur
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    closeModal(modalId);
-                }
-            });
-            
-            return modal;
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(`modal-${modalId}`);
-            if (modal) {
-                modal.style.display = 'none';
-                console.log(`🗑️ Modal ${modalId} fermé`);
-            }
-        }
-
-        // Raccourcis clavier pour les développeurs
-        document.addEventListener('keydown', function(e) {
-            // Ctrl+Alt+D pour les outils de dev
-            if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
-                e.preventDefault();
-                loadDevTools();
-            }
-            
-            // Ctrl+Alt+M pour la maintenance
-            if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'm') {
-                e.preventDefault();
-                loadMaintenance();
-            }
-            
-            // Escape pour fermer les modaux
-            if (e.key === 'Escape') {
-                const openModals = document.querySelectorAll('.modal-overlay[style*="flex"]');
-                openModals.forEach(modal => {
-                    modal.style.display = 'none';
-                });
-            }
-        });
-
-        // Ajouter les animations CSS
-        if (!document.getElementById('modal-animations')) {
-            const animationStyles = document.createElement('style');
-            animationStyles.id = 'modal-animations';
-            animationStyles.textContent = `
-                @keyframes modalSlideIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-20px) scale(0.95);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                    }
-                }
-                
-                .modal-close:hover {
-                    background: rgba(255, 255, 255, 0.2) !important;
-                }
-            `;
-            document.head.appendChild(animationStyles);
-        }
-
-        // Exposer les fonctions globalement
-        window.loadDevTools = loadDevTools;
-        window.loadMaintenance = loadMaintenance;
-        window.closeModal = closeModal;
-
-        console.log('🎯 Fonctions modales disponibles: loadDevTools(), loadMaintenance()');
-        console.log('⌨️ Raccourcis: Ctrl+Alt+D (dev), Ctrl+Alt+M (maintenance)');
-
+        console.log('💡 Raccourcis disponibles:');
+        console.log('  • Ctrl+K : Focus recherche');
+        console.log('  • Ctrl+1-5 : Navigation onglets');
+        console.log('  • Flèches : Navigation suggestions');
+        console.log('  • Enter : Sélection');
+        console.log('  • Escape : Fermer');
     </script>
 </body>
 </html>
