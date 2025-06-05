@@ -663,32 +663,33 @@ function createExpedition($db, $data) {
                 </div>
             </div>
             
-            <!-- Quotas du jour -->
+            <!-- Quotas par transporteur -->
             <div class="quotas-section">
-                <h4>📊 Quotas du jour</h4>
+                <h4>📊 Quotas ADR du jour</h4>
                 
-                <div id="quota-placeholder">
-                    <p>Sélectionnez un transporteur et une date pour voir les quotas</p>
-                </div>
-                
-                <div id="quota-info" style="display: none;">
-                    <div class="quota-header">
-                        <strong id="quota-transporteur-name">-</strong>
-                        <span id="quota-date">-</span>
+                <!-- Quotas pour chaque transporteur -->
+                <div class="transporteurs-quotas">
+                    <?php foreach ($transporteurs as $code => $nom): ?>
+                    <div class="quota-transporteur" data-transporteur="<?= $code ?>">
+                        <div class="quota-header">
+                            <strong><?= htmlspecialchars($nom) ?></strong>
+                            <span class="quota-date"><?= date('d/m') ?></span>
+                        </div>
+                        
+                        <div class="quota-bar">
+                            <div class="quota-fill" data-transporteur="<?= $code ?>"></div>
+                        </div>
+                        
+                        <div class="quota-info">
+                            <div>Utilisé: <span class="quota-utilise" data-transporteur="<?= $code ?>">-</span></div>
+                            <div>Restant: <span class="quota-restant" data-transporteur="<?= $code ?>">-</span></div>
+                        </div>
+                        
+                        <div class="quota-alert" data-transporteur="<?= $code ?>" style="display: none;">
+                            ⚠️ Quota bientôt atteint !
+                        </div>
                     </div>
-                    
-                    <div class="quota-bar">
-                        <div id="quota-fill" class="quota-fill"></div>
-                    </div>
-                    
-                    <div class="quota-info">
-                        <div>Utilisé: <span id="quota-utilise">-</span></div>
-                        <div>Restant: <span id="quota-restant">-</span></div>
-                    </div>
-                    
-                    <div id="quota-alert" class="alert alert-warning" style="display: none;">
-                        ⚠️ Quota bientôt dépassé !
-                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
             
