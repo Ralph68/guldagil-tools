@@ -291,7 +291,7 @@ function showSelectedDestinataire(dest) {
     }
     
     if (selectedDiv) selectedDiv.style.display = 'block';
-    if (newForm) newForm.style.display = 'none';
+    // Ne plus masquer le formulaire - il reste visible pour modification
 }
 
 function incrementDestinataireUsage(destId) {
@@ -555,38 +555,33 @@ function selectVille(cp, ville) {
 // ========== CRÉATION DESTINATAIRE ==========
 
 function showCreateDestinataireForm() {
-    console.log('➕ Affichage formulaire nouveau destinataire');
+    console.log('➕ Le formulaire destinataire est déjà visible');
     
     hideDestinatairesSuggestions();
     
     const searchInput = document.getElementById('search-destinataire');
     const nomInput = document.getElementById('destinataire-nom');
-    const newForm = document.getElementById('new-destinataire-form');
-    const selectedDiv = document.getElementById('selected-destinataire');
     
     const nomValue = searchInput ? searchInput.value.trim() : '';
     
-    if (!nomValue) {
-        showNotification('❌ Saisissez d\'abord un nom pour le destinataire', 'warning');
-        if (searchInput) searchInput.focus();
-        return;
-    }
-    
-    // Pré-remplir le nom
-    if (nomInput) {
+    // Pré-remplir le nom si une recherche a été effectuée
+    if (nomValue && nomInput && !nomInput.value.trim()) {
         nomInput.value = nomValue;
     }
     
-    if (newForm) newForm.style.display = 'block';
-    if (selectedDiv) selectedDiv.style.display = 'none';
-    
     // Focus sur le premier champ vide
     const cpInput = document.getElementById('destinataire-cp');
-    if (cpInput && !cpInput.value.trim()) {
+    const villeInput = document.getElementById('destinataire-ville');
+    
+    if (nomInput && !nomInput.value.trim()) {
+        nomInput.focus();
+    } else if (cpInput && !cpInput.value.trim()) {
         cpInput.focus();
+    } else if (villeInput && !villeInput.value.trim()) {
+        villeInput.focus();
     }
     
-    showNotification('📝 Complétez le formulaire pour enregistrer ce destinataire', 'info');
+    showNotification('📝 Remplissez les informations du destinataire', 'info');
 }
 
 function saveNewDestinataire() {
@@ -1002,4 +997,238 @@ function createNotification(message, type) {
         ${getNotificationIcon(type)}
         <span style="flex: 1; white-space: pre-line;">${message}</span>
         <button onclick="this.parentElement.remove()" 
-                style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; padding: 0.
+                style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; padding: 0.25rem;">
+            ×
+        </button>
+    `;
+    
+    container.appendChild(notification);
+    
+    // Auto-suppression
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, type === 'error' ? 6000 : 4000);
+}
+
+function getNotificationColor(type) {
+    const colors = {
+        'success': '#28a745',
+        'error': '#dc3545',
+        'warning': '#ffc107',
+        'info': '#17a2b8'
+    };
+    return colors[type] || colors.info;
+}
+
+function getNotificationIcon(type) {
+    const icons = {
+        'success': '✅',
+        'error': '❌',
+        'warning': '⚠️',
+        'info': 'ℹ️'
+    };
+    return icons[type] || icons.info;
+}
+
+// ========== API PUBLIQUE ==========
+
+// Exposer les fonctions nécessaires globalement
+window.selectDestinataire = selectDestinataire;
+window.showCreateDestinataireForm = showCreateDestinataireForm;
+window.saveNewDestinataire = saveNewDestinataire;
+window.cancelNewDestinataire = cancelNewDestinataire;
+window.changeDestinataire = changeDestinataire;
+window.selectVille = selectVille;
+
+// Fonction pour récupérer l'état du destinataire (pour les autres modules)
+window.getDestinataireData = function() {
+    updateCurrentDestinataire();
+    return {
+        isValid: validateDestinataire(false),
+        data: currentDestinataire
+    };
+};
+
+// Fonction pour nettoyer le formulaire
+window.clearDestinataireForm = clearDestinataireForm;
+
+// Fonction pour valider manuellement
+window.validateDestinataire = validateDestinataireRealTime;
+
+// Ajouter les styles CSS si nécessaire
+if (!document.getElementById('destinataire-styles')) {
+    const style = document.createElement('style');
+    style.id = 'destinataire-styles';
+    style.textContent = `
+        /* Styles spécifiques destinataire */
+        .suggestion-item.highlighted,
+        .ville-suggestion.highlighted {
+            background: var(--adr-primary) !important;
+            color: white !important;
+            transform: translateX(4px);
+        }
+        
+        .suggestion-item.highlighted .suggestion-title,
+        .suggestion-item.highlighted .suggestion-details {
+            color: white !important;
+        }
+        
+        .form-control.valid {
+            border-color: var(--adr-success);
+            box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.1);
+        }
+        
+        .form-control.invalid {
+            border-color: var(--adr-danger);
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1);
+        }
+        
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff40;
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        .status-success {
+            color: var(--adr-success);
+            font-weight: 600;
+        }
+        
+        .status-pending {
+            color: var(--adr-warning);
+            font-weight: 600;
+        }
+        
+        .status-error {
+            color: var(--adr-danger);
+            font-weight: 600;
+        }
+        
+        /* Amélioration mobile */
+        @media (max-width: 768px) {
+            .suggestions-container {
+                max-height: 250px;
+            }
+            
+            .suggestion-item {
+                padding: 0.75rem;
+            }
+            
+            .ville-suggestion {
+                padding: 0.5rem 0.75rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+            
+            .ville-cp {
+                min-width: auto;
+            }
+        }
+        
+        /* Mode sombre */
+        @media (prefers-color-scheme: dark) {
+            .suggestions-container {
+                background: #2d3748;
+                border-color: #4a5568;
+            }
+            
+            .suggestion-item,
+            .ville-suggestion {
+                border-bottom-color: #4a5568;
+                color: #f7fafc;
+            }
+            
+            .suggestion-item:hover,
+            .ville-suggestion:hover {
+                background: #4a5568;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Debug et analytics
+console.log('✅ Module destinataire ADR chargé avec succès');
+console.log('🎯 Fonctionnalités: recherche, autocomplétion, validation, cache');
+
+// Statistiques de session
+window.addEventListener('beforeunload', function() {
+    if (destinatairesCache.size > 0 || villesCache.size > 0) {
+        console.log('📊 Stats cache destinataire:', {
+            destinataires_cached: destinatairesCache.size,
+            villes_cached: villesCache.size,
+            current_destinataire: currentDestinataire,
+            session_duration: Date.now() - window.adrStartTime
+        });
+    }
+});
+
+// Marquer le début de la session
+window.adrStartTime = Date.now();
+
+// Gestion des erreurs globales pour le module
+window.addEventListener('error', function(e) {
+    if (e.filename && e.filename.includes('adr-destinataire')) {
+        console.error('🚨 Erreur module destinataire:', e.error);
+        showNotification('❌ Erreur technique dans le module destinataire', 'error');
+    }
+});
+
+// Auto-nettoyage du cache
+setInterval(() => {
+    const now = Date.now();
+    
+    // Nettoyer cache destinataires
+    for (const [key, value] of destinatairesCache) {
+        if (now - value.timestamp > CONFIG.cacheTimeout) {
+            destinatairesCache.delete(key);
+        }
+    }
+    
+    // Nettoyer cache villes
+    for (const [key, value] of villesCache) {
+        if (now - value.timestamp > CONFIG.cacheTimeout) {
+            villesCache.delete(key);
+        }
+    }
+}, CONFIG.cacheTimeout);
+
+// Export des fonctions pour tests
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        validateDestinataire,
+        updateCurrentDestinataire,
+        searchDestinataires,
+        searchVillesByCP,
+        isValidEmail,
+        escapeHtml,
+        escapeJs
+    };
+}
