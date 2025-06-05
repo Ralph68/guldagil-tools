@@ -5,7 +5,7 @@ require __DIR__ . '/../lib/Transport.php';
 
 // Authentification simple (désactivée en dev)
 $auth_required = false; // Passer à true en production
-$auth_password = 'GulPot';
+$auth_password = 'GulPort';
 
 if ($auth_required) {
     session_start();
