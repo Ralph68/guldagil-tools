@@ -1,13 +1,13 @@
 <?php
-// public/adr/dashboard.php - Dashboard refactorisé avec modules
+// public/adr/dashboard.php - Version corrigée avec boutons fonctionnels
 session_start();
 
-// Vérification authentification ADR (temporaire)
+// Vérification authentification ADR (temporaire - à remplacer par le vrai système)
 if (!isset($_SESSION['adr_logged_in']) || $_SESSION['adr_logged_in'] !== true) {
+    // Pour le développement, on simule une session active
     $_SESSION['adr_logged_in'] = true;
     $_SESSION['adr_user'] = 'demo.user';
     $_SESSION['adr_login_time'] = time();
-    $_SESSION['adr_permissions'] = ['read', 'write', 'admin', 'dev'];
 }
 
 require __DIR__ . '/../../config.php';
@@ -34,7 +34,7 @@ try {
         ORDER BY categorie_transport");
     $categories = $stmt->fetchAll();
     
-    // Dernières déclarations (si la table existe)
+    // Dernières déclarations (si la table existe et contient des données)
     try {
         $stmt = $db->query("SELECT COUNT(*) as total_declarations FROM gul_adr_declarations");
         $declarations_count = $stmt->fetch()['total_declarations'];
@@ -55,11 +55,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard ADR - Guldagil Portal</title>
-    
-    <!-- Styles CSS -->
-    <link rel="stylesheet" href="../assets/css/adr.css">
     <style>
-        /* Styles globaux pour le dashboard */
         :root {
             --adr-primary: #ff6b35;
             --adr-secondary: #f7931e;
@@ -174,44 +170,7 @@ try {
             padding: 2rem;
         }
 
-        /* Navigation du dashboard */
-        .dashboard-nav {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 1rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow);
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .nav-item {
-            padding: 0.75rem 1.5rem;
-            background: var(--adr-light);
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            text-decoration: none;
-            color: var(--adr-dark);
-            font-weight: 500;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .nav-item:hover {
-            background: var(--adr-primary);
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        .nav-item.active {
-            background: var(--adr-primary);
-            color: white;
-        }
-
-        /* Section recherche principale */
+        /* Barre de recherche principale */
         .search-section {
             background: white;
             border-radius: var(--border-radius);
@@ -262,7 +221,81 @@ try {
             box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
         }
 
-        /* Statistiques dashboard */
+        /* Suggestions de recherche */
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: var(--transition);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .suggestion-item:hover,
+        .suggestion-item.selected {
+            background: var(--adr-light);
+        }
+
+        .suggestion-product {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .suggestion-name {
+            font-weight: 600;
+            color: var(--adr-primary);
+        }
+
+        .suggestion-code {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .suggestion-badges {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .badge-adr {
+            background: var(--adr-danger);
+            color: white;
+        }
+
+        .badge-env {
+            background: var(--adr-warning);
+            color: #333;
+        }
+
+        .badge-cat {
+            background: var(--adr-dark);
+            color: white;
+        }
+
+        /* Statistiques */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -318,911 +351,14 @@ try {
             color: #666;
         }
 
-        /* Modals */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 10000;
-            backdrop-filter: blur(4px);
-        }
-
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: var(--border-radius);
-            max-width: 1200px;
-            width: 100%;
-            max-height: 90vh;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        .modal-header {
-            background: var(--adr-primary);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-header h3 {
-            margin: 0;
-            font-size: 1.25rem;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 4px;
-            transition: var(--transition);
-        }
-
-        .modal-close:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
-        .modal-body {
-            padding: 20px;
-            max-height: calc(90vh - 140px);
-            overflow-y: auto;
-        }
-
-        .modal-footer {
-            background: var(--adr-light);
-            padding: 15px 20px;
-            border-top: 1px solid #ddd;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* Styles pour les boutons */
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: var(--transition);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-primary { background: var(--adr-primary); color: white; }
-        .btn-secondary { background: #6c757d; color: white; }
-        .btn-warning { background: var(--adr-warning); color: #333; }
-        .btn-danger { background: var(--adr-danger); color: white; }
-        .btn-success { background: var(--adr-success); color: white; }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 1rem;
-            }
-
-            .header-container {
-                padding: 0 1rem;
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .search-section {
-                padding: 1rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            body {
-                padding-top: 120px;
-            }
-
-            .dashboard-nav {
-                flex-direction: column;
-            }
-        }
-    </style>
-</head>
-<body>
-    
-    <header class="adr-header">
-        <div class="header-container">
-            <div class="header-title">
-                <div class="adr-logo">⚠️</div>
-                <div>
-                    <h1>Dashboard ADR</h1>
-                    <div style="font-size: 0.9rem; opacity: 0.9;">Gestion des marchandises dangereuses</div>
-                </div>
-            </div>
-            
-            <div class="header-actions">
-                <div class="user-info">
-                    <span>👤</span>
-                    <span><?= htmlspecialchars($_SESSION['adr_user']) ?></span>
-                </div>
-                
-                <button class="btn-header" onclick="loadDevTools()">
-                    🛠️ Outils Dev
-                </button>
-                
-                <button class="btn-header" onclick="loadMaintenance()">
-                    🧰 Maintenance
-                </button>
-
-                <a href="declaration/create.php" class="btn-header">
-                    <span>➕</span>
-                    Nouvelle déclaration
-                </a>
-                
-                <a href="../" class="btn-header">
-                    <span>🏠</span>
-                    Portal
-                </a>
-            </div>
-        </div>
-    </header>
-
-    <div class="dashboard-container">
-        
-        <!-- Navigation du dashboard -->
-        <nav class="dashboard-nav">
-            <a href="#recherche" class="nav-item active">
-                <span>🔍</span>
-                Recherche produits
-            </a>
-            <a href="declaration/create.php" class="nav-item">
-                <span>➕</span>
-                Nouvelle expédition
-            </a>
-            <a href="declaration/list.php" class="nav-item">
-                <span>📋</span>
-                Mes expéditions
-            </a>
-            <a href="recap/daily.php" class="nav-item">
-                <span>📊</span>
-                Récapitulatifs
-            </a>
-            <a href="#" class="nav-item" onclick="showQuickStats()">
-                <span>📈</span>
-                Statistiques
-            </a>
-        </nav>
-        
-        <!-- Section recherche principale -->
-        <section class="search-section" id="recherche">
-            <div class="search-header">
-                <div class="search-icon">🔍</div>
-                <div>
-                    <h2>Recherche produits ADR</h2>
-                    <p>Tapez un code article ou nom de produit pour obtenir toutes les informations réglementaires</p>
-                </div>
-            </div>
-            
-            <div class="search-container">
-                <input type="text" 
-                       class="search-input" 
-                       id="product-search" 
-                       placeholder="Ex: Performax, GULTRAT, code article..."
-                       autocomplete="off">
-                
-                <div class="search-suggestions" id="search-suggestions"></div>
-            </div>
-            
-            <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
-                <strong>💡 Astuces :</strong> 
-                • Recherche partielle acceptée (ex: "Perf" trouvera "Performax")
-                • Recherche par code UN (ex: "3412")
-                • Filtrage automatique par catégorie de danger
-            </div>
-        </section>
-
-        <!-- Section résultats -->
-        <section class="results-section" id="search-results" style="display: none;">
-            <div class="results-header">
-                <h3 id="results-title">Résultats de recherche</h3>
-                <button class="btn-header" onclick="clearResults()">
-                    <span>✖️</span>
-                    Effacer
-                </button>
-            </div>
-            
-            <div id="results-content"></div>
-        </section>
-
-        <!-- Statistiques du dashboard -->
-        <section class="stats-grid">
-            <div class="stat-card primary">
-                <div class="stat-header">
-                    <div class="stat-title">Total produits</div>
-                    <div class="stat-icon">📦</div>
-                </div>
-                <div class="stat-value"><?= number_format($stats['total_produits']) ?></div>
-                <div class="stat-detail">Produits dans le catalogue</div>
-            </div>
-
-            <div class="stat-card danger">
-                <div class="stat-header">
-                    <div class="stat-title">Produits ADR</div>
-                    <div class="stat-icon">⚠️</div>
-                </div>
-                <div class="stat-value"><?= number_format($stats['produits_adr']) ?></div>
-                <div class="stat-detail">Nécessitent déclaration ADR</div>
-            </div>
-
-            <div class="stat-card warning">
-                <div class="stat-header">
-                    <div class="stat-title">Danger environnement</div>
-                    <div class="stat-icon">🌍</div>
-                </div>
-                <div class="stat-value"><?= number_format($stats['produits_env_dangereux']) ?></div>
-                <div class="stat-detail">Produits polluants marins</div>
-            </div>
-
-            <div class="stat-card success">
-                <div class="stat-header">
-                    <div class="stat-title">Déclarations</div>
-                    <div class="stat-icon">📋</div>
-                </div>
-                <div class="stat-value"><?= number_format($declarations_count) ?></div>
-                <div class="stat-detail">Total expéditions déclarées</div>
-            </div>
-        </section>
-
-        <!-- Section catégories -->
-        <section class="categories-section">
-            <h3>📊 Répartition par catégories de transport</h3>
-            <div class="categories-grid">
-                <?php foreach ($categories as $cat): ?>
-                <div class="category-card">
-                    <div class="category-header">
-                        <div class="category-number">Cat. <?= htmlspecialchars($cat['categorie_transport']) ?></div>
-                        <div class="category-count"><?= $cat['nombre'] ?></div>
-                    </div>
-                    <div class="category-contenants">
-                        <?= htmlspecialchars(substr($cat['contenants'], 0, 50)) ?><?= strlen($cat['contenants']) > 50 ? '...' : '' ?>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </section>
-    </div>
-
-    <!-- Modal Outils développement -->
-    <div id="dev-tools-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>🛠️ Outils de développement</h3>
-                <button class="modal-close" onclick="closeModal('dev-tools-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <?php include 'modals/dev-tools.php'; ?>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('dev-tools-modal')">Fermer</button>
-                <button class="btn btn-danger" onclick="clearAllTestData()">🗑️ Nettoyer données test</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Maintenance -->
-    <div id="maintenance-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>🧰 Maintenance système</h3>
-                <button class="modal-close" onclick="closeModal('maintenance-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <!-- Contenu dynamique des onglets de maintenance -->
-                <div class="maintenance-tabs">
-                    <button class="tab-btn active" onclick="loadMaintenanceTab('database')">🗄️ Base de données</button>
-                    <button class="tab-btn" onclick="loadMaintenanceTab('cleanup')">🧹 Nettoyage</button>
-                    <button class="tab-btn" onclick="loadMaintenanceTab('backup')">💾 Sauvegarde</button>
-                    <button class="tab-btn" onclick="loadMaintenanceTab('monitoring')">📊 Monitoring</button>
-                    <button class="tab-btn" onclick="loadMaintenanceTab('logs')">📝 Logs</button>
-                </div>
-                
-                <div id="maintenance-content">
-                    <!-- Le contenu sera chargé dynamiquement -->
-                    <div class="loading-placeholder">
-                        <div class="spinner"></div>
-                        <p>Chargement de l'onglet...</p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <div class="maintenance-status">
-                    <span id="maintenance-mode-status">🟢 Mode normal</span>
-                </div>
-                <div>
-                    <button class="btn btn-warning" onclick="toggleMaintenanceMode()">🔧 Basculer mode maintenance</button>
-                    <button class="btn btn-secondary" onclick="closeModal('maintenance-modal')">Fermer</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Chargement des scripts -->
-    <script src="../assets/js/adr.js"></script>
-    
-    <script>
-        // Configuration du dashboard
-        const dashboardConfig = {
-            searchMinChars: 3,
-            searchDelay: 150,
-            maxResults: 20,
-            cacheTimeout: 5 * 60 * 1000 // 5 minutes
-        };
-
-        // Cache pour optimiser les recherches
-        const searchCache = {};
-        let searchTimeout;
-        let currentSearchTerm = '';
-        let selectedIndex = -1;
-
-        // Éléments DOM
-        const searchInput = document.getElementById('product-search');
-        const suggestionsContainer = document.getElementById('search-suggestions');
-        const resultsSection = document.getElementById('search-results');
-        const resultsContent = document.getElementById('results-content');
-        const resultsTitle = document.getElementById('results-title');
-
-        // Initialisation du dashboard
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ Dashboard ADR initialisé');
-            initializeSearch();
-            loadQuickStats();
-        });
-
-        // ========== FONCTIONS DE RECHERCHE ==========
-
-        function initializeSearch() {
-            if (!searchInput) return;
-
-            searchInput.addEventListener('input', handleSearchInput);
-            searchInput.addEventListener('keydown', handleKeyNavigation);
-            searchInput.addEventListener('blur', hideSuggestions);
-            searchInput.addEventListener('focus', handleSearchFocus);
-            searchInput.focus();
-        }
-
-        function handleSearchInput(e) {
-            const term = e.target.value.trim();
-            currentSearchTerm = term;
-            selectedIndex = -1;
-
-            if (term.length < dashboardConfig.searchMinChars) {
-                hideSuggestions();
-                return;
-            }
-
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchProducts(term);
-            }, dashboardConfig.searchDelay);
-        }
-
-        function handleKeyNavigation(e) {
-            const suggestions = document.querySelectorAll('.suggestion-item');
-            
-            switch (e.key) {
-                case 'ArrowDown':
-                    e.preventDefault();
-                    selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
-                    updateSelectedSuggestion();
-                    break;
-                    
-                case 'ArrowUp':
-                    e.preventDefault();
-                    selectedIndex = Math.max(selectedIndex - 1, -1);
-                    updateSelectedSuggestion();
-                    break;
-                    
-                case 'Enter':
-                    e.preventDefault();
-                    if (selectedIndex >= 0 && suggestions[selectedIndex]) {
-                        selectProduct(suggestions[selectedIndex].dataset.code);
-                    } else if (currentSearchTerm.length >= dashboardConfig.searchMinChars) {
-                        performFullSearch(currentSearchTerm);
-                    }
-                    break;
-                    
-                case 'Escape':
-                    hideSuggestions();
-                    searchInput.blur();
-                    break;
-            }
-        }
-
-        function handleSearchFocus() {
-            if (currentSearchTerm.length >= dashboardConfig.searchMinChars) {
-                searchProducts(currentSearchTerm);
-            }
-        }
-
-        function searchProducts(term) {
-            console.log('🔍 Recherche:', term);
-
-            // Vérifier le cache
-            if (searchCache[term]) {
-                displaySuggestions(searchCache[term]);
-                return;
-            }
-
-            // Simuler un appel API (remplacer par le vrai endpoint)
-            fetch(`search/api.php?q=${encodeURIComponent(term)}&limit=${dashboardConfig.maxResults}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        searchCache[term] = data.suggestions;
-                        displaySuggestions(data.suggestions);
-                    } else {
-                        console.error('Erreur recherche:', data.error);
-                        hideSuggestions();
-                    }
-                })
-                .catch(error => {
-                    console.error('Erreur AJAX:', error);
-                    // Données de démonstration en cas d'erreur
-                    displayDemoSuggestions(term);
-                });
-        }
-
-        function displayDemoSuggestions(term) {
-            const demoData = [
-                { code_produit: 'GUL-001', nom_produit: 'GULTRAT pH+', numero_un: '1823', categorie_transport: '8' },
-                { code_produit: 'GUL-002', nom_produit: 'PERFORMAX', numero_un: '3265', categorie_transport: '3' },
-                { code_produit: 'GUL-003', nom_produit: 'ALKADOSE', numero_un: '1824', categorie_transport: '8' }
-            ].filter(p => p.nom_produit.toLowerCase().includes(term.toLowerCase()));
-            
-            displaySuggestions(demoData);
-        }
-
-        function displaySuggestions(suggestions) {
-            if (!suggestions || suggestions.length === 0) {
-                hideSuggestions();
-                return;
-            }
-
-            let html = '';
-            suggestions.forEach((product, index) => {
-                const badges = [];
-                
-                if (product.numero_un) {
-                    badges.push(`<span class="badge badge-adr">UN ${product.numero_un}</span>`);
-                }
-                
-                if (product.danger_environnement === 'OUI') {
-                    badges.push(`<span class="badge badge-env">ENV</span>`);
-                }
-                
-                if (product.categorie_transport) {
-                    badges.push(`<span class="badge badge-cat">Cat.${product.categorie_transport}</span>`);
-                }
-
-                html += `
-                    <div class="suggestion-item" data-code="${product.code_produit}" data-index="${index}">
-                        <div class="suggestion-product">
-                            <div class="suggestion-name">${highlightMatch(product.nom_produit, currentSearchTerm)}</div>
-                            <div class="suggestion-code">Code: ${product.code_produit}</div>
-                        </div>
-                        <div class="suggestion-badges">
-                            ${badges.join('')}
-                        </div>
-                    </div>
-                `;
-            });
-
-            suggestionsContainer.innerHTML = html;
-            suggestionsContainer.style.display = 'block';
-
-            // Event listeners pour les suggestions
-            document.querySelectorAll('.suggestion-item').forEach(item => {
-                item.addEventListener('mousedown', (e) => {
-                    e.preventDefault();
-                    selectProduct(item.dataset.code);
-                });
-                
-                item.addEventListener('mouseenter', () => {
-                    selectedIndex = parseInt(item.dataset.index);
-                    updateSelectedSuggestion();
-                });
-            });
-        }
-
-        function updateSelectedSuggestion() {
-            document.querySelectorAll('.suggestion-item').forEach((item, index) => {
-                item.classList.toggle('selected', index === selectedIndex);
-            });
-        }
-
-        function selectProduct(codeProduct) {
-            console.log('📦 Sélection produit:', codeProduct);
-            
-            hideSuggestions();
-            searchInput.value = codeProduct;
-            performFullSearch(codeProduct, true);
-        }
-
-        function performFullSearch(term, singleProduct = false) {
-            console.log('🔍 Recherche complète:', term);
-            
-            resultsContent.innerHTML = '<div class="loading"><div class="spinner"></div>Recherche en cours...</div>';
-            resultsSection.style.display = 'block';
-            
-            // Simuler une recherche complète
-            setTimeout(() => {
-                displayMockResults(term);
-            }, 800);
-        }
-
-        function displayMockResults(searchTerm) {
-            const mockResults = [
-                {
-                    code_produit: 'GUL-001',
-                    nom_produit: 'GULTRAT pH+',
-                    numero_un: '1823',
-                    nom_description_un: 'Hydroxyde de sodium en solution',
-                    categorie_transport: '8',
-                    type_contenant: 'Bidon 25L',
-                    danger_environnement: 'NON',
-                    corde_article_ferme: ''
-                }
-            ];
-
-            resultsTitle.textContent = `Résultats pour "${searchTerm}" (${mockResults.length})`;
-
-            let html = `
-                <table class="results-table">
-                    <thead>
-                        <tr>
-                            <th>Produit</th>
-                            <th>Code article</th>
-                            <th>UN / Description</th>
-                            <th>Catégorie</th>
-                            <th>Contenant</th>
-                            <th>Statut</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            mockResults.forEach(product => {
-                html += `
-                    <tr>
-                        <td>
-                            <div style="font-weight:600;color:var(--adr-primary);">${product.nom_produit}</div>
-                        </td>
-                        <td>
-                            <code style="background:#f5f5f5;padding:0.2rem 0.4rem;border-radius:4px;">${product.code_produit}</code>
-                        </td>
-                        <td>
-                            <strong>UN ${product.numero_un}</strong><br>
-                            <small>${product.nom_description_un}</small>
-                        </td>
-                        <td class="text-center">
-                            <span class="badge badge-cat">Cat. ${product.categorie_transport}</span>
-                        </td>
-                        <td>${product.type_contenant}</td>
-                        <td><span class="badge badge-adr">ADR</span></td>
-                        <td class="text-center">
-                            <button class="btn btn-sm btn-primary" onclick="showProductDetail('${product.code_produit}')">
-                                📋 Détail
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            html += '</tbody></table>';
-            resultsContent.innerHTML = html;
-        }
-
-        function hideSuggestions() {
-            setTimeout(() => {
-                if (suggestionsContainer) {
-                    suggestionsContainer.style.display = 'none';
-                }
-            }, 150);
-        }
-
-        function clearResults() {
-            resultsSection.style.display = 'none';
-            searchInput.value = '';
-            searchInput.focus();
-        }
-
-        function highlightMatch(text, searchTerm) {
-            if (!text || !searchTerm) return text;
-            
-            const safeTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\    <!-- Modal Outils développement -->');
-            const regex = new RegExp(`(${safeTerm})`, 'gi');
-            return text.replace(regex, '<mark style="background:yellow;padding:0.1rem;">$1</mark>');
-        }
-
-        function showProductDetail(codeProduct) {
-            alert(`Détail du produit ${codeProduct}\n\nCette fonctionnalité sera développée prochainement.`);
-        }
-
-        // ========== FONCTIONS MODALS ==========
-
-        function loadDevTools() {
-            document.getElementById('dev-tools-modal').classList.add('active');
-        }
-
-        function loadMaintenance() {
-            document.getElementById('maintenance-modal').classList.add('active');
-            loadMaintenanceTab('database'); // Charger l'onglet par défaut
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-        }
-
-        function loadMaintenanceTab(tabName) {
-            console.log('📋 Chargement onglet maintenance:', tabName);
-            
-            // Mettre à jour les boutons d'onglets
-            document.querySelectorAll('.maintenance-tabs .tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            // Charger le contenu de l'onglet
-            const maintenanceContent = document.getElementById('maintenance-content');
-            maintenanceContent.innerHTML = '<div class="loading-placeholder"><div class="spinner"></div><p>Chargement...</p></div>';
-            
-            // Simuler le chargement du contenu
-            setTimeout(() => {
-                loadMaintenanceTabContent(tabName);
-            }, 500);
-        }
-
-        function loadMaintenanceTabContent(tabName) {
-            const maintenanceContent = document.getElementById('maintenance-content');
-            
-            // Pour la démo, charger le contenu correspondant
-            // En production, ceci ferait un appel AJAX pour charger le contenu
-            switch(tabName) {
-                case 'database':
-                    // Inclure le contenu de database-tab.php
-                    fetch('modals/tabs/database-tab.php')
-                        .then(response => response.text())
-                        .then(html => {
-                            maintenanceContent.innerHTML = html;
-                        })
-                        .catch(() => {
-                            maintenanceContent.innerHTML = getDatabaseTabDemo();
-                        });
-                    break;
-                    
-                case 'cleanup':
-                    fetch('modals/tabs/cleanup-tab.php')
-                        .then(response => response.text())
-                        .then(html => {
-                            maintenanceContent.innerHTML = html;
-                        })
-                        .catch(() => {
-                            maintenanceContent.innerHTML = getCleanupTabDemo();
-                        });
-                    break;
-                    
-                case 'monitoring':
-                    fetch('modals/tabs/monitoring-tab.php')
-                        .then(response => response.text())
-                        .then(html => {
-                            maintenanceContent.innerHTML = html;
-                        })
-                        .catch(() => {
-                            maintenanceContent.innerHTML = getMonitoringTabDemo();
-                        });
-                    break;
-                    
-                default:
-                    maintenanceContent.innerHTML = `
-                        <div style="text-align: center; padding: 3rem;">
-                            <h4>🚧 Onglet ${tabName}</h4>
-                            <p>Contenu en développement...</p>
-                        </div>
-                    `;
-            }
-        }
-
-        // Fonctions de démonstration pour les onglets
-        function getDatabaseTabDemo() {
-            return `
-                <div style="padding: 20px;">
-                    <h4>🗄️ Gestion base de données</h4>
-                    <p>Onglet de gestion de la base de données en cours de chargement...</p>
-                    <button class="btn btn-primary" onclick="alert('Fonction de démonstration')">🩺 Vérifier santé BDD</button>
-                </div>
-            `;
-        }
-
-        function getCleanupTabDemo() {
-            return `
-                <div style="padding: 20px;">
-                    <h4>🧹 Nettoyage système</h4>
-                    <p>Onglet de nettoyage système en cours de chargement...</p>
-                    <button class="btn btn-warning" onclick="alert('Fonction de démonstration')">🗑️ Nettoyer sessions</button>
-                </div>
-            `;
-        }
-
-        function getMonitoringTabDemo() {
-            return `
-                <div style="padding: 20px;">
-                    <h4>📊 Monitoring système</h4>
-                    <p>Onglet de monitoring en cours de chargement...</p>
-                    <button class="btn btn-info" onclick="alert('Fonction de démonstration')">📈 Voir métriques</button>
-                </div>
-            `;
-        }
-
-        // ========== AUTRES FONCTIONS ==========
-
-        function showQuickStats() {
-            alert('📊 Statistiques rapides ADR\n\nCette fonctionnalité ouvrira un dashboard détaillé avec:\n• Évolution des expéditions\n• Top produits ADR\n• Performance quotas\n• Tendances transporteurs');
-        }
-
-        function loadQuickStats() {
-            // Charger des statistiques rapides en arrière-plan
-            console.log('📊 Chargement statistiques rapides...');
-        }
-
-        function toggleMaintenanceMode() {
-            const statusElement = document.getElementById('maintenance-mode-status');
-            const currentMode = statusElement.textContent.includes('normal');
-            
-            if (currentMode) {
-                statusElement.innerHTML = '🔴 Mode maintenance actif';
-                statusElement.style.color = '#dc3545';
-                event.target.textContent = '🟢 Désactiver maintenance';
-                event.target.className = 'btn btn-success';
-            } else {
-                statusElement.innerHTML = '🟢 Mode normal';
-                statusElement.style.color = '#28a745';
-                event.target.textContent = '🔧 Basculer mode maintenance';
-                event.target.className = 'btn btn-warning';
-            }
-        }
-
-        // Fermer les modals en cliquant à l'extérieur
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal')) {
-                e.target.classList.remove('active');
-            }
-        });
-
-        // Raccourcis clavier
-        document.addEventListener('keydown', function(e) {
-            // Ctrl+K pour focus recherche
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                searchInput.focus();
-                searchInput.select();
-            }
-            
-            // Escape pour fermer modals
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal.active').forEach(modal => {
-                    modal.classList.remove('active');
-                });
-            }
-        });
-
-        console.log('✅ Dashboard ADR avec onglets modulaires chargé');
-        console.log('💡 Raccourcis: Ctrl+K (recherche), Escape (fermer modals)');
-    </script>
-
-    <!-- Styles pour les éléments dynamiques -->
-    <style>
-        /* Styles pour les suggestions de recherche */
-        .search-suggestions {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #ddd;
-            border-top: none;
-            border-radius: 0 0 var(--border-radius) var(--border-radius);
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 100;
-            display: none;
-            box-shadow: var(--shadow-hover);
-        }
-
-        .suggestion-item {
-            padding: 1rem;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            transition: var(--transition);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .suggestion-item:hover,
-        .suggestion-item.selected {
-            background: var(--adr-light);
-            transform: translateX(4px);
-        }
-
-        .suggestion-item:last-child {
-            border-bottom: none;
-        }
-
-        .suggestion-name {
-            font-weight: 600;
-            color: var(--adr-primary);
-            margin-bottom: 0.25rem;
-        }
-
-        .suggestion-code {
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        .suggestion-badges {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .badge {
-            padding: 0.2rem 0.5rem;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-
-        .badge-adr {
-            background: var(--adr-danger);
-            color: white;
-        }
-
-        .badge-env {
-            background: var(--adr-warning);
-            color: #333;
-        }
-
-        .badge-cat {
-            background: var(--adr-dark);
-            color: white;
-        }
-
-        /* Styles pour les résultats */
+        /* Section résultats */
         .results-section {
             background: white;
             border-radius: var(--border-radius);
             padding: 1.5rem;
             box-shadow: var(--shadow);
             margin-bottom: 2rem;
+            display: none;
         }
 
         .results-header {
@@ -1253,10 +389,10 @@ try {
         }
 
         .results-table tr:hover {
-            background: rgba(255, 107, 53, 0.05);
+            background: var(--adr-light);
         }
 
-        /* Categories */
+        /* Catégories ADR */
         .categories-section {
             background: white;
             border-radius: var(--border-radius);
@@ -1311,16 +447,10 @@ try {
             color: #666;
         }
 
-        /* Loading et spinner */
+        /* Loading */
         .loading {
             text-align: center;
             padding: 2rem;
-            color: #666;
-        }
-
-        .loading-placeholder {
-            text-align: center;
-            padding: 3rem;
             color: #666;
         }
 
@@ -1339,34 +469,817 @@ try {
             100% { transform: rotate(360deg); }
         }
 
-        /* Onglets de maintenance */
-        .maintenance-tabs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ddd;
-            flex-wrap: wrap;
-        }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 1rem;
+            }
 
-        .tab-btn {
-            padding: 10px 15px;
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-            border-radius: 6px 6px 0 0;
-        }
+            .header-container {
+                padding: 0 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
 
-        .tab-btn:hover {
-            background: #e9ecef;
-        }
+            .search-section {
+                padding: 1rem;
+            }
 
-        .tab-btn.active {
-            background: var(--adr-primary);
-            color: white;
-            border-color: var(--adr-primary);
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            body {
+                padding-top: 120px;
+            }
         }
     </style>
+</head>
+<body>
+    
+    <header class="adr-header">
+        <div class="header-container">
+            <div class="header-title">
+                <div class="adr-logo">⚠️</div>
+                <div>
+                    <h1>Dashboard ADR</h1>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">Gestion des marchandises dangereuses</div>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <div class="user-info">
+                    <span>👤</span>
+                    <span><?= htmlspecialchars($_SESSION['adr_user']) ?></span>
+                </div>
+                
+                <button class="btn-header" onclick="loadDevTools()">
+                    🛠️ Outils Dev
+                </button>
+                
+                <button class="btn-header" onclick="loadMaintenance()">
+                    🧰 Maintenance
+                </button>
+
+                <a href="declaration/create.php" class="btn-header">
+                    <span>➕</span>
+                    Nouvelle déclaration
+                </a>
+                <a href="../" class="btn-header">
+                    <span>🏠</span>
+                    Portal
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        
+        <section class="search-section">
+            <div class="search-header">
+                <div class="search-icon">🔍</div>
+                <div>
+                    <h2>Recherche produits ADR</h2>
+                    <p>Tapez un code article ou nom de produit pour obtenir toutes les informations réglementaires</p>
+                </div>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" 
+                       class="search-input" 
+                       id="product-search" 
+                       placeholder="Ex: Performax, GULTRAT, code article..."
+                       autocomplete="off">
+                
+                <div class="search-suggestions" id="search-suggestions"></div>
+            </div>
+            
+            <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                <strong>💡 Astuces :</strong> 
+                • Recherche partielle acceptée (ex: "Perf" trouvera "Performax")
+                • Recherche par code UN (ex: "3412")
+                • Filtrage automatique par catégorie de danger
+            </div>
+        </section>
+
+        
+        <section class="results-section" id="search-results">
+            <div class="results-header">
+                <h3 id="results-title">Résultats de recherche</h3>
+                <button class="btn-header" onclick="clearResults()">
+                    <span>✖️</span>
+                    Effacer
+                </button>
+            </div>
+            
+            <div id="results-content">
+                
+            </div>
+        </section>
+
+        
+        <section class="stats-grid">
+            <div class="stat-card primary">
+                <div class="stat-header">
+                    <div class="stat-title">Total produits</div>
+                    <div class="stat-icon">📦</div>
+                </div>
+                <div class="stat-value"><?= number_format($stats['total_produits']) ?></div>
+                <div class="stat-detail">Produits dans le catalogue</div>
+            </div>
+
+            <div class="stat-card danger">
+                <div class="stat-header">
+                    <div class="stat-title">Produits ADR</div>
+                    <div class="stat-icon">⚠️</div>
+                </div>
+                <div class="stat-value"><?= number_format($stats['produits_adr']) ?></div>
+                <div class="stat-detail">Nécessitent déclaration ADR</div>
+            </div>
+
+            <div class="stat-card warning">
+                <div class="stat-header">
+                    <div class="stat-title">Danger environnement</div>
+                    <div class="stat-icon">🌍</div>
+                </div>
+                <div class="stat-value"><?= number_format($stats['produits_env_dangereux']) ?></div>
+                <div class="stat-detail">Produits polluants marins</div>
+            </div>
+
+            <div class="stat-card success">
+                <div class="stat-header">
+                    <div class="stat-title">Déclarations</div>
+                    <div class="stat-icon">📋</div>
+                </div>
+                <div class="stat-value"><?= number_format($declarations_count) ?></div>
+                <div class="stat-detail">Total expéditions déclarées</div>
+            </div>
+        </section>
+
+        
+        <section class="categories-section">
+            <h3>📊 Répartition par catégories de transport</h3>
+            <div class="categories-grid">
+                <?php foreach ($categories as $cat): ?>
+                <div class="category-card">
+                    <div class="category-header">
+                        <div class="category-number">Cat. <?= htmlspecialchars($cat['categorie_transport']) ?></div>
+                        <div class="category-count"><?= $cat['nombre'] ?></div>
+                    </div>
+                    <div class="category-contenants">
+                        <?= htmlspecialchars(substr($cat['contenants'], 0, 50)) ?><?= strlen($cat['contenants']) > 50 ? '...' : '' ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Configuration
+        const searchConfig = {
+            // L'autocomplete démarre désormais à partir de 3 caractères
+            minChars: 3,
+            // Délai réduit pour une recherche plus dynamique
+            delay: 150,
+            maxResults: 20
+        };
+
+        // Cache simple pour éviter les requêtes répétées
+        const searchCache = {};
+        
+        let searchTimeout;
+        let currentSearchTerm = '';
+        let selectedIndex = -1;
+
+        // Éléments DOM
+        const searchInput = document.getElementById('product-search');
+        const suggestionsContainer = document.getElementById('search-suggestions');
+        const resultsSection = document.getElementById('search-results');
+        const resultsContent = document.getElementById('results-content');
+        const resultsTitle = document.getElementById('results-title');
+
+        // Event listeners
+        searchInput.addEventListener('input', handleSearchInput);
+        searchInput.addEventListener('keydown', handleKeyNavigation);
+        searchInput.addEventListener('blur', hideSuggestions);
+        searchInput.addEventListener('focus', handleSearchFocus);
+
+        // Gestion de la saisie
+        function handleSearchInput(e) {
+            const term = e.target.value.trim();
+            currentSearchTerm = term;
+            selectedIndex = -1;
+
+            if (term.length < searchConfig.minChars) {
+                hideSuggestions();
+                return;
+            }
+
+            // Debounce
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchProducts(term);
+            }, searchConfig.delay);
+        }
+
+        // Navigation clavier
+        function handleKeyNavigation(e) {
+            const suggestions = document.querySelectorAll('.suggestion-item');
+            
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+                    updateSelectedSuggestion();
+                    break;
+                    
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    updateSelectedSuggestion();
+                    break;
+                    
+                case 'Enter':
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+                        selectProduct(suggestions[selectedIndex].dataset.code);
+                    } else if (currentSearchTerm.length >= searchConfig.minChars) {
+                        performFullSearch(currentSearchTerm);
+                    }
+                    break;
+                    
+                case 'Escape':
+                    hideSuggestions();
+                    searchInput.blur();
+                    break;
+            }
+        }
+
+        // Focus sur la recherche
+        function handleSearchFocus() {
+            if (currentSearchTerm.length >= searchConfig.minChars) {
+                searchProducts(currentSearchTerm);
+            }
+        }
+
+        // Recherche AJAX des produits avec mise en cache
+        function searchProducts(term) {
+            console.log('🔍 Recherche:', term);
+
+            // Utiliser le cache si disponible
+            if (searchCache[term]) {
+                displaySuggestions(searchCache[term]);
+                return;
+            }
+
+            fetch(`search/api.php?q=${encodeURIComponent(term)}&limit=${searchConfig.maxResults}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        searchCache[term] = data.suggestions;
+                        displaySuggestions(data.suggestions);
+                    } else {
+                        console.error('Erreur recherche:', data.error);
+                        hideSuggestions();
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur AJAX:', error);
+                    hideSuggestions();
+                });
+        }
+
+        // Affichage des suggestions
+        function displaySuggestions(suggestions) {
+            if (!suggestions || suggestions.length === 0) {
+                hideSuggestions();
+                return;
+            }
+
+            let html = '';
+            suggestions.forEach((product, index) => {
+                const badges = [];
+                
+                if (product.numero_un) {
+                    badges.push(`<span class="badge badge-adr">UN ${product.numero_un}</span>`);
+                }
+                
+                if (product.danger_environnement === 'OUI') {
+                    badges.push(`<span class="badge badge-env">ENV</span>`);
+                }
+                
+                if (product.categorie_transport) {
+                    badges.push(`<span class="badge badge-cat">Cat.${product.categorie_transport}</span>`);
+                }
+
+                html += `
+                    <div class="suggestion-item" data-code="${product.code_produit}" data-index="${index}">
+                        <div class="suggestion-product">
+                            <div class="suggestion-name">${highlightMatch(product.nom_produit, currentSearchTerm)}</div>
+                            <div class="suggestion-code">Code: ${product.code_produit}</div>
+                        </div>
+                        <div class="suggestion-badges">
+                            ${badges.join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            suggestionsContainer.innerHTML = html;
+            suggestionsContainer.style.display = 'block';
+
+            // Event listeners pour les suggestions
+            document.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); // Empêche le blur
+                    selectProduct(item.dataset.code);
+                });
+                
+                item.addEventListener('mouseenter', () => {
+                    selectedIndex = parseInt(item.dataset.index);
+                    updateSelectedSuggestion();
+                });
+            });
+        }
+
+        // Mise à jour de la suggestion sélectionnée
+        function updateSelectedSuggestion() {
+            document.querySelectorAll('.suggestion-item').forEach((item, index) => {
+                item.classList.toggle('selected', index === selectedIndex);
+            });
+        }
+
+        // Sélection d'un produit spécifique
+        function selectProduct(codeProduct) {
+            console.log('📦 Sélection produit:', codeProduct);
+            
+            hideSuggestions();
+            searchInput.value = codeProduct;
+            
+            // Recherche détaillée du produit sélectionné
+            performFullSearch(codeProduct, true);
+        }
+
+        // Recherche complète et affichage des résultats
+        function performFullSearch(term, singleProduct = false) {
+            console.log('🔍 Recherche complète:', term);
+            
+            resultsContent.innerHTML = '<div class="loading"><div class="spinner"></div>Recherche en cours...</div>';
+            resultsSection.style.display = 'block';
+            
+            const action = singleProduct ? 'detail' : 'search';
+            
+            fetch(`search/api.php?action=${action}&q=${encodeURIComponent(term)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayResults(data.results, term);
+                    } else {
+                        resultsContent.innerHTML = `<div style="text-align:center;color:#666;padding:2rem;">❌ ${data.error}</div>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur recherche complète:', error);
+                    resultsContent.innerHTML = '<div style="text-align:center;color:#666;padding:2rem;">❌ Erreur de connexion</div>';
+                });
+        }
+
+        // Affichage des résultats détaillés
+        function displayResults(results, searchTerm) {
+            if (!results || results.length === 0) {
+                resultsContent.innerHTML = `
+                    <div style="text-align:center;color:#666;padding:2rem;">
+                        <div style="font-size:2rem;margin-bottom:1rem;">📭</div>
+                        <div>Aucun produit trouvé pour "${searchTerm}"</div>
+                        <div style="margin-top:1rem;font-size:0.9rem;">
+                            Vérifiez l'orthographe ou essayez avec moins de caractères
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsTitle.textContent = `Résultats pour "${searchTerm}" (${results.length})`;
+
+            let html = `
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Code article</th>
+                            <th>UN / Description</th>
+                            <th>Catégorie</th>
+                            <th>Contenant</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            results.forEach(product => {
+                const statusBadges = [];
+                
+                if (product.numero_un) {
+                    statusBadges.push(`<span class="badge badge-adr">ADR</span>`);
+                }
+                
+                if (product.danger_environnement === 'OUI') {
+                    statusBadges.push(`<span class="badge badge-env">ENV</span>`);
+                }
+                
+                if (product.corde_article_ferme === 'x') {
+                    statusBadges.push(`<span class="badge" style="background:#dc3545;color:white;">FERMÉ</span>`);
+                }
+
+                const unInfo = product.numero_un ? 
+                    `<strong>UN ${product.numero_un}</strong><br><small>${product.nom_description_un || 'Description non disponible'}</small>` : 
+                    '<span style="color:#999;">Non-ADR</span>';
+
+                html += `
+                    <tr>
+                        <td>
+                            <div style="font-weight:600;color:var(--adr-primary);">${product.nom_produit}</div>
+                            ${product.nom_technique ? `<small style="color:#666;">${product.nom_technique}</small>` : ''}
+                        </td>
+                        <td>
+                            <code style="background:#f5f5f5;padding:0.2rem 0.4rem;border-radius:4px;">${product.code_produit}</code>
+                        </td>
+                        <td>${unInfo}</td>
+                        <td class="text-center">
+                            ${product.categorie_transport ? 
+                                `<span class="badge badge-cat">Cat. ${product.categorie_transport}</span>` : 
+                                '<span style="color:#999;">-</span>'
+                            }
+                        </td>
+                        <td>
+                            ${product.type_contenant || '-'}<br>
+                            <small style="color:#666;">${product.poids_contenant || ''}</small>
+                        </td>
+                        <td>${statusBadges.join(' ')}</td>
+                        <td class="text-center">
+                            <button class="btn-header" style="font-size:0.8rem;padding:0.3rem 0.6rem;" 
+                                    onclick="showProductDetail('${product.code_produit}')">
+                                📋 Détail
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            resultsContent.innerHTML = html;
+        }
+
+        // Masquer les suggestions
+        function hideSuggestions() {
+            setTimeout(() => {
+                suggestionsContainer.style.display = 'none';
+            }, 150);
+        }
+
+        // Effacer les résultats
+        function clearResults() {
+            resultsSection.style.display = 'none';
+            searchInput.value = '';
+            searchInput.focus();
+        }
+
+        // Surligner les correspondances dans le texte
+        function highlightMatch(text, searchTerm) {
+            if (!text || !searchTerm) return text;
+            
+            const safeTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\        .category-count {
+            background: var(--adr-primary);
+            color: white;
+            padding: 0.2rem 0.');
+            const regex = new RegExp(`(${safeTerm})`, 'gi');
+            return text.replace(regex, '<mark style="background:yellow;padding:0.1rem;">$1</mark>');
+        }
+
+        // Afficher le détail d'un produit (modal ou page dédiée)
+        function showProductDetail(codeProduct) {
+            console.log('📋 Détail produit:', codeProduct);
+            
+            // Pour l'instant, on affiche une alerte
+            // À remplacer par une vraie modal ou redirection
+            alert(`Détail du produit ${codeProduct}\n\nCette fonctionnalité sera développée dans la prochaine version.`);
+        }
+
+        // Raccourcis clavier globaux
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+K ou Cmd+K pour focus sur la recherche
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+            
+            // Escape pour effacer la recherche
+            if (e.key === 'Escape' && document.activeElement !== searchInput) {
+                clearResults();
+            }
+        });
+
+        // Auto-focus sur la recherche au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            searchInput.focus();
+            
+            // Charger des suggestions populaires au focus initial
+            setTimeout(() => {
+                if (!searchInput.value) {
+                    loadPopularProducts();
+                }
+            }, 500);
+        });
+
+        // Chargement des produits populaires (suggestions initiales)
+        function loadPopularProducts() {
+            fetch('search/api.php?action=popular&limit=10')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.popular) {
+                        displayInitialSuggestions(data.popular);
+                    }
+                })
+                .catch(error => {
+                    console.log('Info: Produits populaires non disponibles');
+                });
+        }
+
+        // Affichage des suggestions initiales
+        function displayInitialSuggestions(products) {
+            if (!products || products.length === 0) return;
+
+            let html = '<div style="padding:0.5rem 1rem;background:#f8f9fa;font-size:0.8rem;color:#666;border-bottom:1px solid #eee;">💡 Produits fréquemment recherchés :</div>';
+            
+            products.forEach((product, index) => {
+                html += `
+                    <div class="suggestion-item" data-code="${product.code_produit}" data-index="${index}">
+                        <div class="suggestion-product">
+                            <div class="suggestion-name">${product.nom_produit}</div>
+                            <div class="suggestion-code">Code: ${product.code_produit}</div>
+                        </div>
+                        <div class="suggestion-badges">
+                            ${product.numero_un ? `<span class="badge badge-adr">UN ${product.numero_un}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            suggestionsContainer.innerHTML = html;
+            
+            // Event listeners pour les suggestions initiales
+            document.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    selectProduct(item.dataset.code);
+                });
+            });
+        }
+
+        // Gestion responsive des suggestions
+        function handleResize() {
+            const searchContainer = document.querySelector('.search-container');
+            const suggestions = document.getElementById('search-suggestions');
+            
+            if (window.innerWidth <= 768) {
+                suggestions.style.position = 'fixed';
+                suggestions.style.left = '1rem';
+                suggestions.style.right = '1rem';
+                suggestions.style.maxHeight = '250px';
+            } else {
+                suggestions.style.position = 'absolute';
+                suggestions.style.left = '0';
+                suggestions.style.right = '0';
+                suggestions.style.maxHeight = '300px';
+            }
+        }
+
+        window.addEventListener('resize', handleResize);
+        handleResize(); // Appel initial
+
+        // Analytics de recherche (optionnel)
+        function trackSearch(term, resultCount) {
+            // Vous pouvez ajouter ici du tracking pour analyser les recherches
+            console.log('📊 Analytics:', { term, resultCount, timestamp: new Date().toISOString() });
+        }
+
+        console.log('✅ Dashboard ADR initialisé');
+        console.log('💡 Raccourcis: Ctrl+K (recherche), Flèches (navigation), Enter (sélection), Escape (fermer)');
+        
+        // ========== FONCTIONS MODALES (AJOUT PRINCIPAL) ==========
+
+        function loadDevTools() {
+            console.log('🛠️ Chargement outils de développement...');
+            loadModal('dev-tools', 'Outils de développement', 'modals/dev-tools.php');
+        }
+
+        function loadMaintenance() {
+            console.log('🧰 Chargement outils de maintenance...');
+            loadModal('maintenance', 'Maintenance système', 'modals/maintenance.php');
+        }
+
+        function loadModal(modalId, title, contentUrl) {
+            // Créer le modal s'il n'existe pas
+            let modal = document.getElementById(`modal-${modalId}`);
+            if (!modal) {
+                modal = createModal(modalId, title);
+                document.body.appendChild(modal);
+            }
+            
+            // Afficher le modal
+            modal.style.display = 'flex';
+            
+            // Charger le contenu
+            const modalBody = modal.querySelector('.modal-body');
+            modalBody.innerHTML = '<div class="loading"><div class="spinner"></div>Chargement...</div>';
+            
+            // Fetch du contenu
+            fetch(contentUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    modalBody.innerHTML = html;
+                    
+                    // Exécuter les scripts contenus dans le HTML
+                    const scripts = modalBody.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        const newScript = document.createElement('script');
+                        newScript.textContent = script.textContent;
+                        document.head.appendChild(newScript);
+                        
+                        // Nettoyer le script original
+                        setTimeout(() => {
+                            if (newScript.parentNode) {
+                                newScript.parentNode.removeChild(newScript);
+                            }
+                        }, 100);
+                    });
+                    
+                    console.log(`✅ Modal ${modalId} chargé`);
+                })
+                .catch(error => {
+                    console.error(`Erreur chargement modal ${modalId}:`, error);
+                    modalBody.innerHTML = `
+                        <div style="text-align: center; color: #dc3545; padding: 2rem;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
+                            <h4>Erreur de chargement</h4>
+                            <p>Impossible de charger le contenu : ${error.message}</p>
+                            <button class="btn-header" onclick="closeModal('${modalId}')">Fermer</button>
+                        </div>
+                    `;
+                });
+        }
+
+        function createModal(modalId, title) {
+            const modal = document.createElement('div');
+            modal.id = `modal-${modalId}`;
+            modal.className = 'modal-overlay';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                z-index: 10000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                backdrop-filter: blur(4px);
+            `;
+            
+            modal.innerHTML = `
+                <div class="modal-content" style="
+                    background: white;
+                    border-radius: 8px;
+                    max-width: 1200px;
+                    width: 95vw;
+                    max-height: 90vh;
+                    overflow: hidden;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: modalSlideIn 0.3s ease;
+                ">
+                    <div class="modal-header" style="
+                        background: #ff6b35;
+                        color: white;
+                        padding: 20px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    ">
+                        <h3 style="margin: 0; font-size: 1.25rem;">${title}</h3>
+                        <button class="modal-close" onclick="closeModal('${modalId}')" style="
+                            background: none;
+                            border: none;
+                            color: white;
+                            font-size: 24px;
+                            cursor: pointer;
+                            padding: 5px 10px;
+                            border-radius: 4px;
+                            transition: background 0.2s;
+                        ">&times;</button>
+                    </div>
+                    <div class="modal-body" style="
+                        padding: 20px;
+                        max-height: calc(90vh - 140px);
+                        overflow-y: auto;
+                    ">
+                        <!-- Contenu chargé dynamiquement -->
+                    </div>
+                    <div class="modal-footer" style="
+                        background: #f8f9fa;
+                        padding: 15px 20px;
+                        border-top: 1px solid #ddd;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    ">
+                        <div></div>
+                        <button class="btn-header" onclick="closeModal('${modalId}')">Fermer</button>
+                    </div>
+                </div>
+            `;
+            
+            // Fermer en cliquant à l'extérieur
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeModal(modalId);
+                }
+            });
+            
+            return modal;
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(`modal-${modalId}`);
+            if (modal) {
+                modal.style.display = 'none';
+                console.log(`🗑️ Modal ${modalId} fermé`);
+            }
+        }
+
+        // Raccourcis clavier pour les développeurs
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Alt+D pour les outils de dev
+            if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
+                e.preventDefault();
+                loadDevTools();
+            }
+            
+            // Ctrl+Alt+M pour la maintenance
+            if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'm') {
+                e.preventDefault();
+                loadMaintenance();
+            }
+            
+            // Escape pour fermer les modaux
+            if (e.key === 'Escape') {
+                const openModals = document.querySelectorAll('.modal-overlay[style*="flex"]');
+                openModals.forEach(modal => {
+                    modal.style.display = 'none';
+                });
+            }
+        });
+
+        // Ajouter les animations CSS
+        if (!document.getElementById('modal-animations')) {
+            const animationStyles = document.createElement('style');
+            animationStyles.id = 'modal-animations';
+            animationStyles.textContent = `
+                @keyframes modalSlideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-20px) scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+                
+                .modal-close:hover {
+                    background: rgba(255, 255, 255, 0.2) !important;
+                }
+            `;
+            document.head.appendChild(animationStyles);
+        }
+
+        // Exposer les fonctions globalement
+        window.loadDevTools = loadDevTools;
+        window.loadMaintenance = loadMaintenance;
+        window.closeModal = closeModal;
+
+        console.log('🎯 Fonctions modales disponibles: loadDevTools(), loadMaintenance()');
+        console.log('⌨️ Raccourcis: Ctrl+Alt+D (dev), Ctrl+Alt+M (maintenance)');
+
+    </script>
 </body>
 </html>
