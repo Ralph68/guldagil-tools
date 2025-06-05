@@ -680,6 +680,7 @@ function clearProductForm() {
 function handleTransporteurChange() {
     updateQuotas();
     updateProgressInfo();
+    highlightSelectedTransporteur();
     autoSave();
 }
 
@@ -695,22 +696,23 @@ function handleDateChange() {
         showNotification('⚠️ Attention: date d\'expédition dans le passé', 'warning');
     }
     
-    updateQuotas();
+    updateAllQuotas();
     updateProgressInfo();
     autoSave();
 }
 
-function updateQuotas() {
-    const transporteur = getInputValue('expedition-transporteur');
-    const date = getInputValue('expedition-date');
+function updateAllQuotas() {
+    const date = getInputValue('expedition-date') || new Date().toISOString().split('T')[0];
     
-    if (!transporteur || !date) {
-        hideQuotaInfo();
-        return;
-    }
+    // Charger les quotas pour tous les transporteurs
+    const transporteurs = ['heppner', 'xpo', 'kn'];
     
-    console.log('📊 Mise à jour quotas:', { transporteur, date });
-    
+    transporteurs.forEach(transporteur => {
+        loadQuotaForTransporteur(transporteur, date);
+    });
+}
+
+function loadQuotaForTransporteur(transporteur, date) {
     const formData = new FormData();
     formData.append('action', 'get_quotas_jour');
     formData.append('transporteur', transporteur);
@@ -724,19 +726,105 @@ function updateQuotas() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            quotasData = data;
-            displayQuotaInfo(data, transporteur, date);
-            updateQuotasWithCurrentProducts();
+            displayQuotaForTransporteur(transporteur, data);
         } else {
-            console.error('Erreur quotas:', data.error);
-            hideQuotaInfo();
+            console.error(`Erreur quotas ${transporteur}:`, data.error);
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
-        hideQuotaInfo();
+        console.error(`Erreur ${transporteur}:`, error);
     });
 }
+
+function displayQuotaForTransporteur(transporteur, data) {
+    const quotaFill = document.querySelector(`[data-transporteur="${transporteur}"].quota-fill`);
+    const quotaUtilise = document.querySelector(`[data-transporteur="${transporteur}"].quota-utilise`);
+    const quotaRestant = document.querySelector(`[data-transporteur="${transporteur}"].quota-restant`);
+    const quotaAlert = document.querySelector(`[data-transporteur="${transporteur}"].quota-alert`);
+    
+    if (quotaFill) {
+        const percentage = Math.min(100, Math.max(0, data.pourcentage_utilise || 0));
+        quotaFill.style.width = percentage + '%';
+        
+        // Couleur selon le pourcentage
+        if (percentage >= 90) {
+            quotaFill.style.background = 'var(--adr-danger)';
+        } else if (percentage >= 70) {
+            quotaFill.style.background = 'var(--adr-warning)';
+        } else {
+            quotaFill.style.background = 'var(--adr-success)';
+        }
+    }
+    
+    if (quotaUtilise) {
+        quotaUtilise.textContent = `${(data.points_utilises || 0).toFixed(1)}`;
+    }
+    
+    if (quotaRestant) {
+        const restant = data.points_restants || 0;
+        quotaRestant.textContent = `${restant.toFixed(1)}`;
+        quotaRestant.style.color = restant < 100 ? 'var(--adr-danger)' : '';
+    }
+    
+    if (quotaAlert) {
+        if (data.alerte_depassement || data.points_restants < 50) {
+            quotaAlert.style.display = 'block';
+            quotaAlert.textContent = data.points_restants < 0 ? 
+                '🚨 Quota dépassé !' : 
+                '⚠️ Bientôt dépassé !';
+        } else {
+            quotaAlert.style.display = 'none';
+        }
+    }
+    
+    // Sauvegarder les données de quota pour ce transporteur
+    if (!window.allQuotasData) {
+        window.allQuotasData = {};
+    }
+    window.allQuotasData[transporteur] = data;
+    
+    // Mettre à jour le transporteur sélectionné si c'est le cas
+    const selectedTransporteur = getInputValue('expedition-transporteur');
+    if (selectedTransporteur === transporteur) {
+        quotasData = data;
+    }
+}
+
+function highlightSelectedTransporteur() {
+    const selectedTransporteur = getInputValue('expedition-transporteur');
+    
+    // Retirer la sélection de tous
+    document.querySelectorAll('.quota-transporteur').forEach(quota => {
+        quota.classList.remove('selected');
+    });
+    
+    // Mettre en évidence le transporteur sélectionné
+    if (selectedTransporteur) {
+        const selectedQuota = document.querySelector(`[data-transporteur="${selectedTransporteur}"].quota-transporteur`);
+        if (selectedQuota) {
+            selectedQuota.classList.add('selected');
+        }
+        
+        // Mettre à jour quotasData pour les calculs
+        if (window.allQuotasData && window.allQuotasData[selectedTransporteur]) {
+            quotasData = window.allQuotasData[selectedTransporteur];
+        }
+    }
+}
+
+function updateQuotas() {
+    // Cette fonction est maintenant simplifiée car on charge tout en permanence
+    highlightSelectedTransporteur();
+    updateQuotasWithCurrentProducts();
+}
+
+// Initialiser les quotas au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    // Charger les quotas pour tous les transporteurs dès le début
+    setTimeout(() => {
+        updateAllQuotas();
+    }, 500);
+});
 
 function displayQuotaInfo(data, transporteur, date) {
     const quotaInfo = document.getElementById('quota-info');
@@ -820,27 +908,33 @@ function hideQuotaInfo() {
 }
 
 function updateQuotasWithCurrentProducts() {
-    if (!quotasData) return;
+    if (!window.allQuotasData) return;
     
     const currentExpeditionPoints = expeditionProducts.reduce((sum, p) => sum + p.points, 0);
-    const newPointsUtilises = quotasData.points_utilises + currentExpeditionPoints;
-    const newPointsRestants = quotasData.quota_max - newPointsUtilises;
-    const newPourcentage = (newPointsUtilises / quotasData.quota_max) * 100;
+    const selectedTransporteur = getInputValue('expedition-transporteur');
     
-    const updatedData = {
-        ...quotasData,
-        points_utilises: newPointsUtilises,
-        points_restants: newPointsRestants,
-        pourcentage_utilise: newPourcentage,
-        alerte_depassement: newPointsRestants < 0
-    };
-    
-    const transporteur = getInputValue('expedition-transporteur');
-    const date = getInputValue('expedition-date');
-    
-    if (transporteur && date) {
-        displayQuotaInfo(updatedData, transporteur, date);
-    }
+    // Mettre à jour tous les transporteurs avec les points de l'expédition actuelle
+    Object.keys(window.allQuotasData).forEach(transporteur => {
+        const data = window.allQuotasData[transporteur];
+        const newPointsUtilises = data.points_utilises + currentExpeditionPoints;
+        const newPointsRestants = data.quota_max - newPointsUtilises;
+        const newPourcentage = (newPointsUtilises / data.quota_max) * 100;
+        
+        const updatedData = {
+            ...data,
+            points_utilises: newPointsUtilises,
+            points_restants: newPointsRestants,
+            pourcentage_utilise: newPourcentage,
+            alerte_depassement: newPointsRestants < 0
+        };
+        
+        displayQuotaForTransporteur(transporteur, updatedData);
+        
+        // Mettre à jour quotasData si c'est le transporteur sélectionné
+        if (selectedTransporteur === transporteur) {
+            quotasData = updatedData;
+        }
+    });
 }
 
 // ========== VALIDATION ET CRÉATION ==========
