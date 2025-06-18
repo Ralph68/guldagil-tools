@@ -84,15 +84,15 @@ if (isset($_GET['logout']) && $auth_required) {
             </div>
             
             <nav class="header-nav">
-                <a href="calculateur/" class="nav-link calculateur">
+                <a href="calculateur/" class="nav-link calculateur" style="padding: 0.75rem 1rem; text-decoration: none; color: var(--text-secondary); font-weight: 500; border-radius: var(--radius-md); transition: var(--transition-normal); display: flex; align-items: center; gap: var(--space-sm); border: 1px solid transparent; font-size: 0.9rem;">
                     <span>🚚</span>
                     Calculateur
                 </a>
-                <a href="adr/" class="nav-link adr">
+                <a href="adr/" class="nav-link adr" style="padding: 0.75rem 1rem; text-decoration: none; color: var(--text-secondary); font-weight: 500; border-radius: var(--radius-md); transition: var(--transition-normal); display: flex; align-items: center; gap: var(--space-sm); border: 1px solid transparent; font-size: 0.9rem;">
                     <span>⚠️</span>
                     ADR
                 </a>
-                <a href="admin/" class="nav-link admin">
+                <a href="admin/" class="nav-link admin" style="padding: 0.75rem 1rem; text-decoration: none; color: var(--text-secondary); font-weight: 500; border-radius: var(--radius-md); transition: var(--transition-normal); display: flex; align-items: center; gap: var(--space-sm); border: 1px solid transparent; font-size: 0.9rem;">
                     <span>⚙️</span>
                     Admin
                 </a>
@@ -101,12 +101,12 @@ if (isset($_GET['logout']) && $auth_required) {
             <div class="header-actions">
                 <!-- Le bouton de thème sera ajouté automatiquement par theme-switcher.js -->
                 <div class="header-account">
-                    <div class="account-info">
+                    <div class="account-info" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: var(--bg-tertiary); border-radius: var(--radius-md); font-size: 0.9rem; color: var(--text-primary);">
                         <span class="account-icon">👨‍💻</span>
-                        <span class="account-text">Dev</span>
+                        <span class="account-text" style="color: var(--text-primary);">Dev</span>
                     </div>
                     <?php if ($auth_required): ?>
-                    <a href="?logout=1" class="logout-btn" onclick="return confirm('Se déconnecter ?')">
+                    <a href="?logout=1" class="logout-btn" onclick="return confirm('Se déconnecter ?')" style="padding: var(--space-sm); background: var(--error-border); color: var(--text-inverse); border-radius: var(--radius-md); text-decoration: none; transition: var(--transition-normal); display: flex; align-items: center; gap: var(--space-xs); font-size: 0.9rem;">
                         <span>🚪</span>
                         Déconnexion
                     </a>
@@ -137,89 +137,87 @@ if (isset($_GET['logout']) && $auth_required) {
             </div>
         </section>
 
-        <!-- Grille des applications -->
-        <section class="apps-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: var(--space-xl); margin-bottom: var(--space-3xl);">
+        <!-- Grille des applications - Version simplifiée -->
+        <section class="apps-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: var(--space-xl); margin-bottom: var(--space-3xl);">
             <!-- Calculateur de frais -->
-            <div class="app-card calculateur" style="background: var(--bg-primary); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; transition: var(--transition-normal); border: 1px solid var(--border-light); display: flex; flex-direction: column; min-height: 320px;">
+            <div class="app-card calculateur" style="background: var(--bg-primary); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; transition: var(--transition-normal); border: 1px solid var(--border-light); display: flex; flex-direction: column; min-height: 400px; cursor: pointer;" onclick="window.location.href='calculateur/'">
                 <div class="app-header" style="padding: var(--space-xl); display: flex; align-items: center; gap: var(--space-md); border-bottom: 1px solid var(--border-light);">
-                    <div class="app-icon" style="width: 3rem; height: 3rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; background: var(--gul-blue-bg); color: var(--gul-blue-primary);">🚚</div>
+                    <div class="app-icon" style="width: 4rem; height: 4rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 2rem; flex-shrink: 0; background: var(--gul-blue-bg); color: var(--gul-blue-primary);">🚚</div>
                     <div class="app-info" style="flex: 1;">
-                        <h3 class="app-title" style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-xs) 0;">Calculateur de frais</h3>
-                        <p class="app-description" style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">Comparez les tarifs de transport instantanément</p>
+                        <h3 class="app-title" style="font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-sm) 0;">Calculateur de frais</h3>
+                        <p class="app-description" style="font-size: 1rem; color: var(--text-secondary); margin: 0; line-height: 1.5;">Comparez instantanément les tarifs des transporteurs selon vos critères</p>
                     </div>
                 </div>
                 
-                <div class="app-features" style="padding: 0 var(--space-xl) var(--space-lg) var(--space-xl); display: flex; flex-wrap: wrap; gap: var(--space-sm);">
-                    <span class="feature-tag" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;">Comparaison transporteurs</span>
-                    <span class="feature-tag" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;">Calculs instantanés</span>
-                    <span class="feature-tag" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;">Export résultats</span>
-                </div>
-                
-                <div class="app-actions" style="padding: var(--space-xl); border-top: 1px solid var(--border-light); background: var(--bg-tertiary); display: flex; gap: var(--space-sm); margin-top: auto;">
-                    <a href="calculateur/" class="btn btn-primary" style="flex: 1; text-align: center;">
-                        <span>🚀</span>
-                        Lancer le calculateur
-                    </a>
-                    <button class="btn btn-outline" onclick="showCalculatorPreview()" style="flex: 1;">
-                        <span>👁️</span>
-                        Aperçu
-                    </button>
+                <div class="app-content" style="padding: var(--space-xl); flex: 1; display: flex; flex-direction: column;">
+                    <div class="app-features" style="margin-bottom: var(--space-lg);">
+                        <ul style="list-style: none; margin: 0; padding: 0; color: var(--text-secondary);">
+                            <li style="padding: var(--space-sm) 0; display: flex; align-items: center; gap: var(--space-sm);">
+                                <span style="color: var(--gul-blue-primary); font-weight: bold;">✓</span>
+                                Saisie guidée : poids, dimensions, destination
+                            </li>
+                            <li style="padding: var(--space-sm) 0; display: flex; align-items: center; gap: var(--space-sm);">
+                                <span style="color: var(--gul-blue-primary); font-weight: bold;">✓</span>
+                                Comparaison automatique des 3 transporteurs
+                            </li>
+                            <li style="padding: var(--space-sm) 0; display: flex; align-items: center; gap: var(--space-sm);">
+                                <span style="color: var(--gul-blue-primary); font-weight: bold;">✓</span>
+                                Export PDF et sauvegarde des calculs
+                            </li>
+                            <li style="padding: var(--space-sm) 0; display: flex; align-items: center; gap: var(--space-sm);">
+                                <span style="color: var(--gul-blue-primary); font-weight: bold;">✓</span>
+                                Interface mobile responsive
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="app-action" style="margin-top: auto;">
+                        <div class="btn btn-primary" style="background: var(--gul-blue-primary); color: var(--text-inverse); border: 1px solid var(--gul-blue-primary); width: 100%; text-align: center; font-size: 1rem; padding: var(--space-lg); display: flex; align-items: center; justify-content: center; gap: var(--space-sm);">
+                            <span>🚀</span>
+                            Lancer le calculateur
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Module ADR -->
-            <div class="app-card adr" style="background: var(--bg-primary); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; transition: var(--transition-normal); border: 1px solid var(--border-light); display: flex; flex-direction: column; min-height: 320px;">
+            <div class="app-card adr" style="background: var(--bg-primary); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; transition: var(--transition-normal); border: 1px solid var(--border-light); display: flex; flex-direction: column; min-height: 400px; cursor: pointer;" onclick="window.location.href='adr/'">
                 <div class="app-header" style="padding: var(--space-xl); display: flex; align-items: center; gap: var(--space-md); border-bottom: 1px solid var(--border-light);">
-                    <div class="app-icon" style="width: 3rem; height: 3rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; background: var(--gul-orange-bg); color: var(--gul-orange);">⚠️</div>
+                    <div class="app-icon" style="width: 4rem; height: 4rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 2rem; flex-shrink: 0; background: var(--gul-orange-bg); color: var(--gul-orange);">⚠️</div>
                     <div class="app-info" style="flex: 1;">
-                        <h3 class="app-title" style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-xs) 0;">Gestion ADR</h3>
-                        <p class="app-description" style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">Déclarations et suivi des marchandises dangereuses</p>
+                        <h3 class="app-title" style="font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-sm) 0;">Gestion ADR</h3>
+                        <p class="app-description" style="font-size: 1rem; color: var(--text-secondary); margin: 0; line-height: 1.5;">Déclarations et suivi des marchandises dangereuses</p>
                     </div>
                 </div>
                 
-                <div class="app-features" style="padding: 0 var(--space-xl) var(--space-lg) var(--space-xl); display: flex; flex-wrap: wrap; gap: var(--space-sm);">
-                    <span class="feature-tag" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;">Déclarations ADR</span>
-                    <span class="feature-tag" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;">Base produits</span>
-                    <span class="feature-tag" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;">Conformité réglementaire</span>
-                </div>
-                
-                <div class="app-actions" style="padding: var(--space-xl); border-top: 1px solid var(--border-light); background: var(--bg-tertiary); display: flex; gap: var(--space-sm); margin-top: auto;">
-                    <a href="adr/" class="btn btn-warning">
-                        <span>⚠️</span>
-                        Accéder à ADR
-                    </a>
-                    <button class="btn btn-outline" onclick="showADRPreview()">
-                        <span>📋</span>
-                        Déclarations
-                    </button>
-                </div>
-            </div>
-
-            <!-- Administration -->
-            <div class="app-card admin" style="background: var(--bg-primary); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; transition: var(--transition-normal); border: 1px solid var(--border-light); display: flex; flex-direction: column; min-height: 320px;">
-                <div class="app-header" style="padding: var(--space-xl); display: flex; align-items: center; gap: var(--space-md); border-bottom: 1px solid var(--border-light);">
-                    <div class="app-icon" style="width: 3rem; height: 3rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; background: var(--bg-tertiary); color: var(--text-muted);">⚙️</div>
-                    <div class="app-info" style="flex: 1;">
-                        <h3 class="app-title" style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-xs) 0;">Administration</h3>
-                        <p class="app-description" style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">Configuration et gestion du système</p>
+                <div class="app-content" style="padding: var(--space-xl); flex: 1; display: flex; flex-direction: column;">
+                    <div class="app-features" style="margin-bottom: var(--space-lg);">
+                        <ul style="list-style: none; margin: 0; padding: 0; color: var(--text-secondary);">
+                            <li style="padding: var(--space-sm) 0; display: flex; align-items: center; gap: var(--space-sm);">
+                                <span style="color: var(--gul-orange); font-weight: bold;">✓</span>
+                                Formulaires de déclaration pré-remplis
+                            </li>
+                            <li style="padding: var(--space-sm) 0; display: flex; align-items: center; gap: var(--space-sm);">
+                                <span style="color: var(--gul-orange); font-weight: bold;">✓</span>
+                                Base de données 250+ produits dangereux
+                            </li>
+                            <li style="padding: var(--space-sm) 0; display: flex; align-items: center; gap: var(--space-sm);">
+                                <span style="color: var(--gul-orange); font-weight: bold;">✓</span>
+                                Validation automatique codes transport
+                            </li>
+                            <li style="padding: var(--space-sm) 0; display: flex; align-items: center; gap: var(--space-sm);">
+                                <span style="color: var(--gul-orange); font-weight: bold;">✓</span>
+                                Export conforme réglementation
+                            </li>
+                        </ul>
                     </div>
-                </div>
-                
-                <div class="app-features" style="padding: 0 var(--space-xl) var(--space-lg) var(--space-xl); display: flex; flex-wrap: wrap; gap: var(--space-sm);">
-                    <span class="feature-tag" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;">Gestion tarifs</span>
-                    <span class="feature-tag" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;">Maintenance</span>
-                    <span class="feature-tag" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500;">Statistiques</span>
-                </div>
-                
-                <div class="app-actions" style="padding: var(--space-xl); border-top: 1px solid var(--border-light); background: var(--bg-tertiary); display: flex; gap: var(--space-sm); margin-top: auto;">
-                    <a href="admin/" class="btn btn-secondary">
-                        <span>⚙️</span>
-                        Administrer
-                    </a>
-                    <button class="btn btn-outline" onclick="showAdminStats()">
-                        <span>📊</span>
-                        Statistiques
-                    </button>
+                    
+                    <div class="app-action" style="margin-top: auto;">
+                        <div class="btn btn-warning" style="background: var(--gul-orange); color: var(--text-inverse); border: 1px solid var(--gul-orange); width: 100%; text-align: center; font-size: 1rem; padding: var(--space-lg); display: flex; align-items: center; justify-content: center; gap: var(--space-sm);">
+                            <span>⚠️</span>
+                            Accéder au module ADR
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -273,8 +271,8 @@ if (isset($_GET['logout']) && $auth_required) {
             </div>
             
             <div class="footer-info" style="color: var(--text-muted); font-size: 0.8rem;">
-                <p style="margin: var(--space-xs) 0;">&copy; 2025 Guldagil - Portail logistique v2.0</p>
-                <p style="margin: var(--space-xs) 0;">Dernière mise à jour : <?= date('d/m/Y H:i') ?></p>
+                <p style="margin: var(--space-xs) 0;">&copy; 2025 Guldagil - Portail logistique beta 0.5</p>
+                <p style="margin: var(--space-xs) 0;">Dernière mise à jour : <?= date('d/m/Y H:i', filemtime(__FILE__)) ?></p>
             </div>
         </div>
     </footer>
@@ -297,19 +295,7 @@ if (isset($_GET['logout']) && $auth_required) {
             }
         });
 
-        // Fonctions d'aperçu (placeholder)
-        function showCalculatorPreview() {
-            showNotification('Aperçu calculateur - Fonctionnalité à venir', 'info');
-        }
-
-        function showADRPreview() {
-            showNotification('Aperçu ADR - Fonctionnalité à venir', 'info');
-        }
-
-        function showAdminStats() {
-            showNotification('Statistiques admin - Fonctionnalité à venir', 'info');
-        }
-
+        // Fonctions d'aperçu (supprimées pour simplifier)
         function showHelp() {
             showNotification('Documentation en cours de rédaction', 'info');
         }
@@ -319,7 +305,7 @@ if (isset($_GET['logout']) && $auth_required) {
         }
 
         function showVersion() {
-            showNotification('Portail Guldagil v2.0 - Build ' + new Date().getFullYear(), 'info');
+            showNotification('Portail Guldagil beta 0.5 - Build ' + new Date().getFullYear(), 'info');
         }
     </script>
 </body>
