@@ -1,4 +1,5 @@
-<?php
+<div class="info-card">
+                    <div class="info-icon">🛢<?php
 // public/index.php - Accueil Portail Guldagil beta 0.5 - VERSION PROPRE
 require __DIR__ . '/../config.php';
 
@@ -148,7 +149,7 @@ if (isset($_GET['logout']) && $auth_required) {
             <!-- Module ADR -->
             <article class="app-card adr" onclick="window.location.href='adr/'">
                 <div class="app-header">
-                    <div class="app-icon">🧪</div>
+                    <div class="app-icon">🛢️</div>
                     <div class="app-info">
                         <h3 class="app-title">Gestion ADR</h3>
                         <p class="app-description">Déclarations et suivi des marchandises dangereuses</p>
@@ -165,7 +166,7 @@ if (isset($_GET['logout']) && $auth_required) {
                     
                     <div class="app-action">
                         <div class="btn btn-warning btn-full">
-                            <span class="btn-icon">🧪</span>
+                            <span class="btn-icon">🛢️</span>
                             <span class="btn-text">Accéder au module ADR</span>
                         </div>
                     </div>
@@ -193,7 +194,7 @@ if (isset($_GET['logout']) && $auth_required) {
                 </div>
                 
                 <div class="info-card">
-                    <div class="info-icon">🧪</div>
+                    <div class="info-icon">🛢️</div>
                     <div class="info-content">
                         <h4 class="info-title">Produits ADR</h4>
                         <p class="info-text">250+ références actives</p>
