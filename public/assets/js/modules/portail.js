@@ -1,9 +1,423 @@
-// public/assets/js/modules/portail.js - Module JavaScript portail uniquement
+// public/assets/js/modules/portail.js - Module JavaScript portail consolidé
 
-console.log('🏠 Chargement Module Portail v2.0...');
+console.log('🏠 Chargement Module Portail beta 0.5...');
+
+// ========== CONFIGURATION MODULE ==========
+const PORTAIL// public/assets/js/modules/portail.js - Module JavaScript portail consolidé
+
+console.log('🏠 Chargement Module Portail beta 0.5...');
 
 // ========== CONFIGURATION MODULE ==========
 const PORTAIL_CONFIG = {
+    name: 'Portail Guldagil',
+    version: 'beta 0.5',
+    modules: {
+        calculateur: {
+            name: 'Calculateur de frais',
+            url: 'calculateur/',
+            icon: '🚚'
+        },
+        adr: {
+            name: 'Gestion ADR',
+            url: 'adr/',
+            icon: '⚠️'
+        },
+        admin: {
+            name: 'Administration',
+            url: 'admin/',
+            icon: '⚙️'
+        }
+    }
+};
+
+// ========== ÉTAT DU PORTAIL ==========
+let portailState = {
+    currentTheme: localStorage.getItem('theme') || 'light',
+    lastActivity: Date.now(),
+    events: []
+};
+
+// ========== INITIALISATION ==========
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ Module Portail initialisé');
+    initializePortail();
+});
+
+function initializePortail() {
+    setupCardInteractions();
+    setupNavigationEffects();
+    setupFooterActions();
+    setupKeyboardShortcuts();
+    setupThemeToggle();
+    setupNotificationSystem();
+    
+    console.log(`🎯 ${PORTAIL_CONFIG.name} ${PORTAIL_CONFIG.version} prêt`);
+}
+
+// ========== INTERACTIONS CARTES ==========
+function setupCardInteractions() {
+    const appCards = document.querySelectorAll('.app-card');
+    
+    appCards.forEach(card => {
+        // Effet hover amélioré
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-6px)';
+            this.style.boxShadow = 'var(--shadow-xl)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'var(--shadow-md)';
+        });
+        
+        // Améliorer l'accessibilité
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
+        
+        const title = card.querySelector('.app-title').textContent;
+        card.setAttribute('aria-label', `Accéder au module ${title}`);
+        
+        // Support clavier
+        card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+        
+        // Gestion focus
+        card.addEventListener('focus', function() {
+            this.style.outline = '2px solid var(--gul-blue-primary)';
+            this.style.outlineOffset = '2px';
+        });
+        
+        card.addEventListener('blur', function() {
+            this.style.outline = 'none';
+        });
+    });
+}
+
+// ========== NAVIGATION ==========
+function setupNavigationEffects() {
+    const navLinks = document.querySelectorAll('.nav-link');
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            // Effet visuel au clic
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1)';
+            }, 100);
+            
+            trackEvent('nav_click', this.href);
+        });
+    });
+}
+
+// ========== ACTIONS FOOTER ==========
+function setupFooterActions() {
+    const footerLinks = document.querySelectorAll('.footer-link[data-action]');
+    
+    footerLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const action = this.getAttribute('data-action');
+            handleFooterAction(action);
+        });
+    });
+}
+
+function handleFooterAction(action) {
+    switch(action) {
+        case 'help':
+            showHelp();
+            break;
+        case 'contact':
+            showContact();
+            break;
+        case 'version':
+            showVersion();
+            break;
+        default:
+            showNotification('Action non disponible', 'info');
+    }
+    trackEvent('footer_action', action);
+}
+
+function showHelp() {
+    showNotification('📚 Documentation: Ctrl+1 (Calculateur), Ctrl+2 (ADR), Ctrl+D (Mode sombre)', 'info');
+}
+
+function showContact() {
+    showNotification('📧 Support technique: dev@guldagil.com', 'info');
+}
+
+function showVersion() {
+    showNotification(`ℹ️ ${PORTAIL_CONFIG.name} ${PORTAIL_CONFIG.version} - Structure modulaire`, 'info');
+}
+
+// ========== RACCOURCIS CLAVIER ==========
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+                case '1':
+                    e.preventDefault();
+                    window.location.href = 'calculateur/';
+                    trackEvent('keyboard_shortcut', 'calculateur');
+                    break;
+                case '2':
+                    e.preventDefault();
+                    window.location.href = 'adr/';
+                    trackEvent('keyboard_shortcut', 'adr');
+                    break;
+                case '3':
+                    e.preventDefault();
+                    window.location.href = 'admin/';
+                    trackEvent('keyboard_shortcut', 'admin');
+                    break;
+                case 'd':
+                    e.preventDefault();
+                    toggleTheme();
+                    trackEvent('keyboard_shortcut', 'theme_toggle');
+                    break;
+            }
+        }
+    });
+}
+
+// ========== SYSTÈME DE THÈME ==========
+function setupThemeToggle() {
+    // Appliquer le thème sauvegardé
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    // Créer le bouton de thème s'il n'existe pas
+    if (!document.querySelector('.theme-toggle')) {
+        createThemeButton();
+    }
+}
+
+function createThemeButton() {
+    const themeButton = document.createElement('button');
+    themeButton.className = 'theme-toggle';
+    themeButton.innerHTML = localStorage.getItem('theme') === 'dark' ? '☀️' : '🌙';
+    themeButton.title = 'Basculer le mode sombre (Ctrl+D)';
+    themeButton.setAttribute('aria-label', 'Basculer le mode sombre');
+    
+    // Styles du bouton
+    themeButton.style.cssText = `
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        width: 2.5rem;
+        height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 1.2rem;
+        transition: var(--transition-fast);
+        margin-right: var(--space-sm);
+    `;
+    
+    themeButton.addEventListener('click', toggleTheme);
+    
+    // Ajouter le bouton dans header-actions
+    const headerActions = document.querySelector('.header-actions');
+    if (headerActions) {
+        headerActions.insertBefore(themeButton, headerActions.firstChild);
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    
+    const themeButton = document.querySelector('.theme-toggle');
+    if (themeButton) {
+        themeButton.innerHTML = newTheme === 'dark' ? '☀️' : '🌙';
+    }
+    
+    // Événement pour autres modules
+    document.dispatchEvent(new CustomEvent('themeChanged', {
+        detail: { theme: newTheme }
+    }));
+    
+    portailState.currentTheme = newTheme;
+    showNotification(`Mode ${newTheme === 'dark' ? 'sombre' : 'clair'} activé`, 'success');
+}
+
+// ========== SYSTÈME DE NOTIFICATIONS ==========
+function setupNotificationSystem() {
+    // Ajouter les styles CSS si pas déjà fait
+    if (!document.querySelector('#notification-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'notification-styles';
+        styles.textContent = `
+            @keyframes slideInNotification {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            
+            @keyframes slideOutNotification {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+            
+            .notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--bg-primary);
+                border: 1px solid var(--border-light);
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow-lg);
+                z-index: var(--z-toast);
+                min-width: 300px;
+                max-width: 400px;
+                animation: slideInNotification 0.3s ease;
+            }
+            
+            .notification-content {
+                padding: var(--space-md);
+                display: flex;
+                align-items: flex-start;
+                gap: var(--space-sm);
+            }
+            
+            .notification-icon {
+                font-size: 1.2rem;
+                flex-shrink: 0;
+                margin-top: 0.1rem;
+            }
+            
+            .notification-message {
+                flex: 1;
+                color: var(--text-primary);
+                font-size: 0.9rem;
+                line-height: 1.4;
+            }
+            
+            .notification-close {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                cursor: pointer;
+                color: var(--text-secondary);
+                padding: 0;
+                width: 1.5rem;
+                height: 1.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: var(--radius-sm);
+                transition: var(--transition-fast);
+                flex-shrink: 0;
+            }
+            
+            .notification-close:hover {
+                background: var(--bg-tertiary);
+                color: var(--text-primary);
+            }
+            
+            .notification-success { border-left: 4px solid var(--success-border); }
+            .notification-error { border-left: 4px solid var(--error-border); }
+            .notification-warning { border-left: 4px solid var(--warning-border); }
+            .notification-info { border-left: 4px solid var(--info-border); }
+        `;
+        document.head.appendChild(styles);
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Créer la notification
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <span class="notification-icon">
+                ${type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️'}
+            </span>
+            <span class="notification-message">${message}</span>
+            <button class="notification-close" onclick="this.parentElement.parentElement.remove()" aria-label="Fermer">×</button>
+        </div>
+    `;
+    
+    // Ajouter au DOM
+    document.body.appendChild(notification);
+    
+    // Supprimer automatiquement après 5 secondes
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOutNotification 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 5000);
+    
+    trackEvent('notification_shown', type);
+}
+
+// ========== ANALYTICS SIMPLES ==========
+function trackEvent(action, category) {
+    const event = {
+        timestamp: Date.now(),
+        action: action,
+        category: category,
+        url: window.location.href
+    };
+    
+    // Stocker localement (limité à 50 événements)
+    portailState.events.push(event);
+    if (portailState.events.length > 50) {
+        portailState.events = portailState.events.slice(-50);
+    }
+    
+    // Log pour développement
+    console.log(`📊 Event: ${action} | ${category}`);
+}
+
+// ========== GESTION D'ERREURS ==========
+window.addEventListener('error', function(e) {
+    console.warn('Erreur JS interceptée:', e.message);
+    // En mode développement uniquement
+    if (window.location.hostname === 'localhost') {
+        showNotification(`Erreur JS: ${e.message}`, 'error');
+    }
+});
+
+// ========== API PUBLIQUE ==========
+window.PortailModule = {
+    config: PORTAIL_CONFIG,
+    state: portailState,
+    showNotification: showNotification,
+    toggleTheme: toggleTheme,
+    trackEvent: trackEvent
+};
+
+// ========== MISE À JOUR ACTIVITÉ ==========
+function updateLastActivity() {
+    portailState.lastActivity = Date.now();
+}
+
+// Tracker l'activité utilisateur
+['click', 'keydown', 'scroll'].forEach(event => {
+    document.addEventListener(event, updateLastActivity, { passive: true });
+});
+
+// Tracker les changements de thème
+document.addEventListener('themeChanged', function(e) {
+    portailState.currentTheme = e.detail.theme;
+});
+
+console.log('✅ Module Portail beta 0.5 chargé avec succès');_CONFIG = {
     name: 'Portail Guldagil',
     version: '2.0',
     modules: {
