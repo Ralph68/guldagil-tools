@@ -15,7 +15,7 @@ const PORTAIL_CONFIG = {
         adr: {
             name: 'Gestion ADR',
             url: 'adr/',
-            icon: '⚠️'
+            icon: '🧪' // Éprouvette chimique plus évocatrice
         },
         admin: {
             name: 'Administration',
@@ -167,10 +167,23 @@ function setupThemeToggle() {
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     
-    // Créer le bouton de thème s'il n'existe pas
-    if (!document.querySelector('.theme-toggle')) {
-        createThemeButton();
-    }
+    // Vérifier si un bouton de thème existe déjà (créé par theme-switcher.js)
+    setTimeout(() => {
+        const existingButton = document.querySelector('.theme-toggle');
+        if (!existingButton) {
+            createThemeButton();
+        } else {
+            // Utiliser le bouton existant et ajouter notre logique
+            existingButton.addEventListener('click', function() {
+                // Attendre que theme-switcher.js fasse son travail
+                setTimeout(() => {
+                    const newTheme = localStorage.getItem('theme');
+                    portailState.currentTheme = newTheme;
+                    showNotification(`Mode ${newTheme === 'dark' ? 'sombre' : 'clair'} activé`, 'success');
+                }, 100);
+            });
+        }
+    }, 500);
 }
 
 function createThemeButton() {
