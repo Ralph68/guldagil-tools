@@ -6,6 +6,7 @@ console.log('🏠 Chargement Module Portail beta 0.5...');
 const PORTAIL_CONFIG = {
     name: 'Portail Guldagil',
     version: 'beta 0.5',
+    build: '20250619.0004', // Numéro de build basé sur date/heure
     modules: {
         calculateur: {
             name: 'Calculateur de frais',
@@ -59,7 +60,7 @@ function initializePortail() {
     // NE PAS créer de bouton de thème - laisser theme-switcher.js s'en occuper
     listenToThemeChanges();
     
-    console.log(`🎯 ${PORTAIL_CONFIG.name} ${PORTAIL_CONFIG.version} prêt`);
+    console.log(`🎯 ${PORTAIL_CONFIG.name} ${PORTAIL_CONFIG.version} build ${PORTAIL_CONFIG.build} prêt`);
 }
 
 // ========== ÉCOUTER LES CHANGEMENTS DE THÈME ==========
@@ -69,11 +70,49 @@ function listenToThemeChanges() {
         portailState.currentTheme = e.detail.theme;
         showNotification(`Mode ${e.detail.theme === 'dark' ? 'sombre' : 'clair'} activé`, 'success');
         trackEvent('theme_change', 'ui', e.detail.theme);
+        
+        // Forcer l'application du thème sur tous les éléments
+        applyThemeToElements(e.detail.theme);
     });
     
     // Synchroniser avec le thème actuel
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 
+                        localStorage.getItem('guldagil-theme') || 
+                        localStorage.getItem('theme') || 'light';
     portailState.currentTheme = currentTheme;
+    
+    // Appliquer le thème au chargement
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    applyThemeToElements(currentTheme);
+}
+
+// Fonction pour forcer l'application du thème
+function applyThemeToElements(theme) {
+    // Forcer la classe sur le body pour le CSS
+    document.body.className = theme === 'dark' ? 'dark-theme' : 'light-theme';
+    
+    // Forcer les variables CSS directement
+    if (theme === 'dark') {
+        document.documentElement.style.setProperty('--text-primary', '#f8fafc');
+        document.documentElement.style.setProperty('--text-secondary', '#e2e8f0');
+        document.documentElement.style.setProperty('--text-muted', '#94a3b8');
+        document.documentElement.style.setProperty('--bg-primary', '#1e293b');
+        document.documentElement.style.setProperty('--bg-secondary', '#334155');
+        document.documentElement.style.setProperty('--bg-tertiary', '#475569');
+        document.documentElement.style.setProperty('--border-light', '#475569');
+    } else {
+        document.documentElement.style.setProperty('--text-primary', '#0f172a');
+        document.documentElement.style.setProperty('--text-secondary', '#64748b');
+        document.documentElement.style.setProperty('--text-muted', '#94a3b8');
+        document.documentElement.style.setProperty('--bg-primary', '#ffffff');
+        document.documentElement.style.setProperty('--bg-secondary', '#f8fafc');
+        document.documentElement.style.setProperty('--bg-tertiary', '#f1f5f9');
+        document.documentElement.style.setProperty('--border-light', '#e2e8f0');
+    }
+    
+    // Synchroniser localStorage avec les deux clés possibles
+    localStorage.setItem('guldagil-theme', theme);
+    localStorage.setItem('theme', theme);
 }
 
 // ========== INTERACTIONS CARTES D'APPLICATIONS ==========
@@ -285,7 +324,7 @@ function showVersion() {
     const content = `
         <h3>ℹ️ Version Système</h3>
         <div style="text-align: left; margin-top: 1rem;">
-            <p><strong>Portail Guldagil</strong> ${PORTAIL_CONFIG.version}</p>
+            <p><strong>Portail Guldagil</strong> ${PORTAIL_CONFIG.version} build ${PORTAIL_CONFIG.build}</p>
             <p><strong>Build:</strong> ${buildDate}</p>
             <p><strong>Modules actifs:</strong> ${Object.keys(PORTAIL_CONFIG.modules).length}</p>
             
@@ -328,9 +367,15 @@ function setupKeyboardShortcuts() {
                 case 'd':
                     e.preventDefault();
                     // Déclencher le basculement de thème via theme-switcher.js
-                    const themeButton = document.querySelector('#theme-toggle, .theme-toggle-btn');
+                    const themeButton = document.querySelector('#theme-toggle, .theme-toggle-btn, .theme-toggle');
                     if (themeButton) {
                         themeButton.click();
+                    } else {
+                        // Fallback manuel si aucun bouton trouvé
+                        const currentTheme = portailState.currentTheme === 'dark' ? 'light' : 'dark';
+                        applyThemeToElements(currentTheme);
+                        portailState.currentTheme = currentTheme;
+                        showNotification(`Mode ${currentTheme === 'dark' ? 'sombre' : 'clair'} activé`, 'success');
                     }
                     trackEvent('keyboard_shortcut', 'theme_toggle');
                     break;
@@ -697,4 +742,4 @@ if (!document.querySelector('#portail-animations')) {
     document.head.appendChild(style);
 }
 
-console.log('✅ Module Portail beta 0.5 chargé avec succès - 900+ lignes');
+console.log('✅ Module Portail beta 0.5 build 20250619.0004 chargé avec succès - 900+ lignes');
