@@ -223,7 +223,7 @@ if (isset($_GET['logout']) && $auth_required) {
             </nav>
             
             <div class="footer-info">
-                <p class="footer-copyright">&copy; 2025 Guldagil - Portail logistique beta 0.5</p>
+                <p class="footer-copyright">&copy; 2025 Guldagil - Portail logistique beta 0.5 build 20250619.0004</p>
                 <p class="footer-timestamp">Dernière mise à jour : <?= date('d/m/Y H:i', filemtime(__FILE__)) ?></p>
             </div>
         </div>
