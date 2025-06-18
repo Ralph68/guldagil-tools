@@ -258,7 +258,7 @@
 /* ========== GRILLE D'APPLICATIONS ========== */
 .apps-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--portail-card-gap);
     margin-bottom: var(--portail-section-gap);
 }
@@ -696,7 +696,7 @@
 /* ========== GRILLE D'APPLICATIONS ========== */
 .apps-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--portail-card-gap);
     margin-bottom: var(--portail-section-gap);
 }
@@ -973,6 +973,13 @@
 .footer-info {
     color: var(--text-muted);
     font-size: 0.8rem;
+}
+
+/* ========== RESPONSIVE DESKTOP-FIRST ========== */
+@media (max-width: 1024px) {
+    .apps-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 .footer-info p {
