@@ -1,5 +1,4 @@
-<div class="info-card">
-                    <div class="info-icon">🛢<?php
+<?php
 // public/index.php - Accueil Portail Guldagil beta 0.5 - VERSION PROPRE
 require __DIR__ . '/../config.php';
 
