@@ -411,4 +411,373 @@ Guldagil.api = {
         return this.request(fullUrl);
     },
     
-    post(url, data)
+    post(url, data) {
+        return this.request(url, {
+            method: 'POST',
+            data: data
+        });
+    },
+    
+    put(url, data) {
+        return this.request(url, {
+            method: 'PUT',
+            data: data
+        });
+    },
+    
+    delete(url) {
+        return this.request(url, {
+            method: 'DELETE'
+        });
+    }
+};
+
+/**
+ * Gestionnaire de formulaires
+ */
+Guldagil.forms = {
+    validate(form) {
+        const errors = {};
+        const fields = form.querySelectorAll('[data-validate]');
+        
+        fields.forEach(field => {
+            const rules = field.dataset.validate.split('|');
+            const value = field.value;
+            const name = field.name || field.id;
+            
+            rules.forEach(rule => {
+                const [ruleName, ruleValue] = rule.split(':');
+                
+                switch (ruleName) {
+                    case 'required':
+                        if (!Guldagil.validation.required(value)) {
+                            errors[name] = errors[name] || [];
+                            errors[name].push('Ce champ est requis');
+                        }
+                        break;
+                    case 'email':
+                        if (value && !Guldagil.validation.email(value)) {
+                            errors[name] = errors[name] || [];
+                            errors[name].push('Format email invalide');
+                        }
+                        break;
+                    case 'min':
+                        if (!Guldagil.validation.minLength(value, parseInt(ruleValue))) {
+                            errors[name] = errors[name] || [];
+                            errors[name].push(`Minimum ${ruleValue} caractères`);
+                        }
+                        break;
+                    case 'numeric':
+                        if (value && !Guldagil.validation.numeric(value)) {
+                            errors[name] = errors[name] || [];
+                            errors[name].push('Valeur numérique requise');
+                        }
+                        break;
+                }
+            });
+        });
+        
+        return {
+            isValid: Object.keys(errors).length === 0,
+            errors: errors
+        };
+    },
+    
+    showErrors(form, errors) {
+        // Nettoyer les erreurs précédentes
+        form.querySelectorAll('.form-error').forEach(error => error.remove());
+        form.querySelectorAll('.form-field.error').forEach(field => {
+            field.classList.remove('error');
+        });
+        
+        // Afficher les nouvelles erreurs
+        Object.keys(errors).forEach(fieldName => {
+            const field = form.querySelector(`[name="${fieldName}"], #${fieldName}`);
+            if (field) {
+                const formField = field.closest('.form-field');
+                if (formField) {
+                    formField.classList.add('error');
+                    
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'form-error';
+                    errorDiv.textContent = errors[fieldName][0]; // Première erreur
+                    formField.appendChild(errorDiv);
+                }
+            }
+        });
+    },
+    
+    serialize(form) {
+        const formData = new FormData(form);
+        const data = {};
+        
+        for (let [key, value] of formData.entries()) {
+            if (data[key]) {
+                if (Array.isArray(data[key])) {
+                    data[key].push(value);
+                } else {
+                    data[key] = [data[key], value];
+                }
+            } else {
+                data[key] = value;
+            }
+        }
+        
+        return data;
+    }
+};
+
+/**
+ * Utilitaires de stockage local (avec fallback)
+ */
+Guldagil.storage = {
+    set(key, value) {
+        try {
+            localStorage.setItem(`guldagil_${key}`, JSON.stringify(value));
+            return true;
+        } catch (e) {
+            console.warn('LocalStorage non disponible, utilisation mémoire');
+            this._memoryStorage = this._memoryStorage || {};
+            this._memoryStorage[key] = value;
+            return false;
+        }
+    },
+    
+    get(key, defaultValue = null) {
+        try {
+            const item = localStorage.getItem(`guldagil_${key}`);
+            return item ? JSON.parse(item) : defaultValue;
+        } catch (e) {
+            return (this._memoryStorage && this._memoryStorage[key]) || defaultValue;
+        }
+    },
+    
+    remove(key) {
+        try {
+            localStorage.removeItem(`guldagil_${key}`);
+        } catch (e) {
+            if (this._memoryStorage) {
+                delete this._memoryStorage[key];
+            }
+        }
+    },
+    
+    clear() {
+        try {
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('guldagil_')) {
+                    localStorage.removeItem(key);
+                }
+            });
+        } catch (e) {
+            this._memoryStorage = {};
+        }
+    }
+};
+
+/**
+ * Utilitaires de débounce/throttle
+ */
+Guldagil.utils.debounce = function(func, wait, immediate = false) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            timeout = null;
+            if (!immediate) func(...args);
+        };
+        const callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func(...args);
+    };
+};
+
+Guldagil.utils.throttle = function(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+};
+
+/**
+ * Gestionnaire d'événements globaux
+ */
+Guldagil.events = {
+    listeners: {},
+    
+    on(event, callback) {
+        if (!this.listeners[event]) {
+            this.listeners[event] = [];
+        }
+        this.listeners[event].push(callback);
+    },
+    
+    off(event, callback) {
+        if (this.listeners[event]) {
+            this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+        }
+    },
+    
+    emit(event, data) {
+        if (this.listeners[event]) {
+            this.listeners[event].forEach(callback => {
+                try {
+                    callback(data);
+                } catch (error) {
+                    console.error(`Erreur dans listener ${event}:`, error);
+                }
+            });
+        }
+    }
+};
+
+/**
+ * Gestionnaire de loading states
+ */
+Guldagil.loading = {
+    show(target, message = 'Chargement...') {
+        const element = typeof target === 'string' ? document.getElementById(target) : target;
+        if (!element) return;
+        
+        const existing = element.querySelector('.loading-overlay');
+        if (existing) return;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+            <div class="loading-content">
+                <div class="loader loader-lg"></div>
+                <div class="loading-text">${message}</div>
+            </div>
+        `;
+        
+        element.style.position = 'relative';
+        element.appendChild(overlay);
+        
+        // Styles inline pour éviter les dépendances
+        overlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            backdrop-filter: blur(2px);
+        `;
+        
+        overlay.querySelector('.loading-content').style.cssText = `
+            text-align: center;
+            color: var(--text-secondary);
+        `;
+        
+        overlay.querySelector('.loading-text').style.cssText = `
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        `;
+    },
+    
+    hide(target) {
+        const element = typeof target === 'string' ? document.getElementById(target) : target;
+        if (!element) return;
+        
+        const overlay = element.querySelector('.loading-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+};
+
+/**
+ * Utilitaires de navigation
+ */
+Guldagil.navigation = {
+    goTo(url, newTab = false) {
+        if (newTab) {
+            window.open(url, '_blank');
+        } else {
+            window.location.href = url;
+        }
+    },
+    
+    reload() {
+        window.location.reload();
+    },
+    
+    back() {
+        window.history.back();
+    },
+    
+    confirm(message, callback) {
+        if (window.confirm(message)) {
+            callback();
+        }
+    }
+};
+
+/**
+ * Initialisation globale
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser les sous-systèmes
+    Guldagil.modals.init();
+    
+    // Logger le chargement
+    if (Guldagil.debug) {
+        console.log('🚀 Guldagil Global Utils chargés', {
+            version: Guldagil.version,
+            modules: Object.keys(Guldagil.modules),
+            timestamp: new Date().toISOString()
+        });
+    }
+    
+    // Gestion globale des erreurs JavaScript
+    window.addEventListener('error', function(e) {
+        if (Guldagil.debug) {
+            console.error('Erreur JavaScript globale:', e.error);
+        }
+    });
+    
+    // Event global pour les changements de thème
+    window.addEventListener('themeChanged', function(e) {
+        if (Guldagil.debug) {
+            console.log('🎨 Thème changé:', e.detail.theme);
+        }
+    });
+    
+    // Raccourcis clavier globaux
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + K : Recherche rapide (si implémentée)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            Guldagil.events.emit('searchShortcut');
+        }
+        
+        // Ctrl/Cmd + D : Toggle mode sombre
+        if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+            e.preventDefault();
+            if (window.ThemeSwitcher) {
+                window.ThemeSwitcher.toggleTheme();
+            }
+        }
+    });
+});
+
+// Exposer les utilitaires globalement pour compatibilité
+window.showAlert = (type, message, title) => Guldagil.notifications.show(type, message, title);
+window.showSuccess = (message) => Guldagil.notifications.success(message);
+window.showError = (message) => Guldagil.notifications.error(message);
+window.showWarning = (message) => Guldagil.notifications.warning(message);
+window.showInfo = (message) => Guldagil.notifications.info(message);
+
+// Export pour usage modulaire
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Guldagil;
+}
