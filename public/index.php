@@ -1,5 +1,5 @@
 <?php
-// public/index.php - Accueil épuré Portail Guldagil V2
+// public/index.php - Accueil épuré Portail Guldagil V2 - VERSION MODULAIRE
 require __DIR__ . '/../config.php';
 
 // Authentification simple (désactivée en dev)
@@ -35,7 +35,19 @@ if (isset($_GET['logout']) && $auth_required) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portail Guldagil - Outils logistiques</title>
-    <link rel="stylesheet" href="assets/css/portail-accueil.css">
+    
+    <!-- Nouvelle structure CSS modulaire -->
+    <link rel="stylesheet" href="assets/css/globals.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/modules/portail.css">
+    
+    <!-- Preconnect pour optimiser les performances -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <meta name="description" content="Portail logistique Guldagil - Calculateur de frais, gestion ADR et administration">
+    <meta name="robots" content="noindex, nofollow">
 </head>
 <body>
     <!-- Header avec navigation et compte -->
@@ -61,156 +73,166 @@ if (isset($_GET['logout']) && $auth_required) {
                 </a>
             </nav>
             
-            <div class="header-account">
-                <div class="account-info">
-                    <span class="account-icon">👨‍💻</span>
-                    <span class="account-text">Dev</span>
+            <div class="header-actions">
+                <!-- Le bouton de thème sera ajouté automatiquement par theme-switcher.js -->
+                <div class="header-account">
+                    <div class="account-info">
+                        <span class="account-icon">👨‍💻</span>
+                        <span class="account-text">Dev</span>
+                    </div>
+                    <?php if ($auth_required): ?>
+                    <a href="?logout=1" class="logout-btn" onclick="return confirm('Se déconnecter ?')">
+                        <span>🚪</span>
+                        Déconnexion
+                    </a>
+                    <?php endif; ?>
                 </div>
-                <?php if ($auth_required): ?>
-                <a href="?logout=1" class="logout-btn" onclick="return confirm('Se déconnecter ?')" title="Déconnexion">
-                    <span>🚪</span>
-                </a>
-                <?php endif; ?>
             </div>
         </div>
     </header>
 
-    <!-- Hero section -->
-    <section class="hero">
-        <div class="hero-container">
-            <h1>Vos outils logistiques</h1>
-            <p class="hero-subtitle">
-                Accédez rapidement à vos interfaces de travail spécialisées
-            </p>
-        </div>
-    </section>
+    <!-- Zone d'état d'authentification -->
+    <?php if (!$auth_required): ?>
+    <div class="auth-status">
+        <strong>🔓 Mode développement actif</strong>
+        <p>L'authentification est désactivée pour faciliter le développement. En production, activez <code>$auth_required = true</code>.</p>
+    </div>
+    <?php endif; ?>
 
-    <!-- Cartes outils principales -->
+    <!-- Container principal -->
     <main class="main-container">
-        <div class="tools-grid">
+        <!-- Section héro -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <h2 class="hero-title">Outils logistiques intégrés</h2>
+                <p class="hero-subtitle">
+                    Calculez vos frais de transport, gérez vos marchandises dangereuses 
+                    et administrez votre système en toute simplicité.
+                </p>
+            </div>
+        </section>
+
+        <!-- Grille des applications -->
+        <section class="apps-grid">
             <!-- Calculateur de frais -->
-            <div class="tool-card calculateur-card" onclick="location.href='calculateur/'">
-                <div class="tool-header">
-                    <div class="tool-icon">🚚</div>
-                    <div class="tool-info">
-                        <h2>Calculateur de frais</h2>
-                        <p class="tool-status">Interface complète</p>
+            <div class="app-card calculateur">
+                <div class="app-header">
+                    <div class="app-icon">🚚</div>
+                    <div class="app-info">
+                        <h3 class="app-title">Calculateur de frais</h3>
+                        <p class="app-description">Comparez les tarifs de transport instantanément</p>
                     </div>
-                    <div class="tool-arrow">→</div>
                 </div>
                 
-                <div class="tool-content">
-                    <p class="tool-description">
-                        Comparez les tarifs Heppner, XPO et Kuehne+Nagel avec toutes les options avancées
-                    </p>
-                    
-                    <ul class="tool-features">
-                        <li>Calculs en temps réel</li>
-                        <li>Alertes "payant pour"</li>
-                        <li>Options premium et enlèvement</li>
-                        <li>Historique des calculs</li>
-                        <li>Comparaison détaillée</li>
-                    </ul>
+                <div class="app-features">
+                    <span class="feature-tag">Comparaison transporteurs</span>
+                    <span class="feature-tag">Calculs instantanés</span>
+                    <span class="feature-tag">Export résultats</span>
                 </div>
                 
-                <div class="tool-footer">
-                    <span class="tool-cta">Accéder à l'interface →</span>
+                <div class="app-actions">
+                    <a href="calculateur/" class="btn btn-primary">
+                        <span>🚀</span>
+                        Lancer le calculateur
+                    </a>
+                    <button class="btn btn-outline" onclick="showCalculatorPreview()">
+                        <span>👁️</span>
+                        Aperçu
+                    </button>
                 </div>
             </div>
 
             <!-- Module ADR -->
-            <div class="tool-card adr-card" onclick="location.href='adr/'">
-                <div class="tool-header">
-                    <div class="tool-icon">⚠️</div>
-                    <div class="tool-info">
-                        <h2>Module ADR</h2>
-                        <p class="tool-status">Accès sécurisé</p>
+            <div class="app-card adr">
+                <div class="app-header">
+                    <div class="app-icon">⚠️</div>
+                    <div class="app-info">
+                        <h3 class="app-title">Gestion ADR</h3>
+                        <p class="app-description">Déclarations et suivi des marchandises dangereuses</p>
                     </div>
-                    <div class="tool-arrow">→</div>
                 </div>
                 
-                <div class="tool-content">
-                    <p class="tool-description">
-                        Gestion complète des déclarations de marchandises dangereuses
-                    </p>
-                    
-                    <ul class="tool-features">
-                        <li>Déclarations individuelles</li>
-                        <li>Récapitulatifs quotidiens</li>
-                        <li>Export PDF réglementaire</li>
-                        <li>Gestion des quotas</li>
-                        <li>Base produits ADR</li>
-                    </ul>
+                <div class="app-features">
+                    <span class="feature-tag">Déclarations ADR</span>
+                    <span class="feature-tag">Base produits</span>
+                    <span class="feature-tag">Conformité réglementaire</span>
                 </div>
                 
-                <div class="tool-footer">
-                    <span class="tool-cta">🔐 Accéder au module →</span>
+                <div class="app-actions">
+                    <a href="adr/" class="btn btn-warning">
+                        <span>⚠️</span>
+                        Accéder à ADR
+                    </a>
+                    <button class="btn btn-outline" onclick="showADRPreview()">
+                        <span>📋</span>
+                        Déclarations
+                    </button>
                 </div>
             </div>
 
             <!-- Administration -->
-            <div class="tool-card admin-card" onclick="location.href='admin/'">
-                <div class="tool-header">
-                    <div class="tool-icon">⚙️</div>
-                    <div class="tool-info">
-                        <h2>Administration</h2>
-                        <p class="tool-status">Administrateurs</p>
+            <div class="app-card admin">
+                <div class="app-header">
+                    <div class="app-icon">⚙️</div>
+                    <div class="app-info">
+                        <h3 class="app-title">Administration</h3>
+                        <p class="app-description">Configuration et gestion du système</p>
                     </div>
-                    <div class="tool-arrow">→</div>
                 </div>
                 
-                <div class="tool-content">
-                    <p class="tool-description">
-                        Configuration système et gestion des données
-                    </p>
-                    
-                    <ul class="tool-features">
-                        <li>Gestion des tarifs</li>
-                        <li>Options supplémentaires</li>
-                        <li>Taxes et majorations</li>
-                        <li>Export / Import</li>
-                        <li>Maintenance système</li>
-                    </ul>
+                <div class="app-features">
+                    <span class="feature-tag">Gestion tarifs</span>
+                    <span class="feature-tag">Maintenance</span>
+                    <span class="feature-tag">Statistiques</span>
                 </div>
                 
-                <div class="tool-footer">
-                    <span class="tool-cta">🔧 Interface admin →</span>
+                <div class="app-actions">
+                    <a href="admin/" class="btn btn-secondary">
+                        <span>⚙️</span>
+                        Administrer
+                    </a>
+                    <button class="btn btn-outline" onclick="showAdminStats()">
+                        <span>📊</span>
+                        Statistiques
+                    </button>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Liens rapides transporteurs -->
-        <section class="quick-access">
-            <h3>🔗 Suivi des expéditions</h3>
-            <p class="quick-access-desc">Accès direct aux portails transporteurs</p>
-            
-            <div class="transporteur-links">
-                <a href="https://myportal.heppner-group.com/home" target="_blank" class="transporteur-link heppner">
-                    <span class="transporteur-icon">🚛</span>
-                    <div class="transporteur-info">
-                        <strong>Portal Heppner</strong>
-                        <small>Suivi colis et palettes</small>
+        <!-- Section informations rapides -->
+        <section class="quick-info">
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-icon">🚛</div>
+                    <div class="info-content">
+                        <h4>Transporteurs</h4>
+                        <p>3 transporteurs configurés</p>
                     </div>
-                    <span class="external-icon">↗</span>
-                </a>
+                </div>
                 
-                <a href="https://xpoconnecteu.xpo.com/customer/orders/list" target="_blank" class="transporteur-link xpo">
-                    <span class="transporteur-icon">📦</span>
-                    <div class="transporteur-info">
-                        <strong>XPO Connect</strong>
-                        <small>Gestion des commandes</small>
+                <div class="info-card">
+                    <div class="info-icon">📍</div>
+                    <div class="info-content">
+                        <h4>Couverture</h4>
+                        <p>95 départements français</p>
                     </div>
-                    <span class="external-icon">↗</span>
-                </a>
+                </div>
                 
-                <a href="#" target="_blank" class="transporteur-link kn">
-                    <span class="transporteur-icon">🌐</span>
-                    <div class="transporteur-info">
-                        <strong>Kuehne+Nagel</strong>
-                        <small>Portal client</small>
+                <div class="info-card">
+                    <div class="info-icon">⚠️</div>
+                    <div class="info-content">
+                        <h4>Produits ADR</h4>
+                        <p>250+ références actives</p>
                     </div>
-                    <span class="external-icon">↗</span>
-                </a>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">📈</div>
+                    <div class="info-content">
+                        <h4>Système</h4>
+                        <p>Opérationnel 24h/24</p>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -218,29 +240,62 @@ if (isset($_GET['logout']) && $auth_required) {
     <!-- Footer -->
     <footer class="main-footer">
         <div class="footer-container">
-            <div class="footer-section">
-                <h4>Contact & Support</h4>
-                <p><strong>Logistique :</strong> achats@guldagil.com</p>
-                <p><strong>Support technique :</strong> runser.jean.thomas@guldagil.com</p>
-                <p><strong>Standard :</strong> 03 89 63 42 42</p>
+            <div class="footer-links">
+                <a href="#" class="footer-link" onclick="showHelp()">Documentation</a>
+                <a href="admin/export.php?type=all&format=csv" class="footer-link">Export données</a>
+                <a href="#" class="footer-link" onclick="showContact()">Support technique</a>
+                <a href="#" class="footer-link" onclick="showVersion()">Version système</a>
             </div>
             
-            <div class="footer-section">
-                <h4>Outils disponibles</h4>
-                <p><a href="calculateur/">Calculateur de frais</a></p>
-                <p><a href="adr/">Module ADR</a></p>
-                <p><a href="admin/">Administration</a></p>
-            </div>
-            
-            <div class="footer-section">
-                <h4>Informations</h4>
-                <p>© 2025 Guldagil</p>
-                <p>Portail v2.0 - Usage interne</p>
-                <p>Développé par l'équipe technique</p>
+            <div class="footer-info">
+                <p>&copy; 2025 Guldagil - Portail logistique v2.0</p>
+                <p>Dernière mise à jour : <?= date('d/m/Y H:i') ?></p>
             </div>
         </div>
     </footer>
 
-    <script src="assets/js/portail-accueil.js"></script>
+    <!-- Scripts modulaires (nouvelle structure) -->
+    <script src="assets/js/globals.js"></script>
+    <script src="assets/js/theme-switcher.js"></script>
+    <script src="assets/js/modules/portail.js"></script>
+    
+    <!-- Scripts d'initialisation -->
+    <script>
+        // Initialisation du portail
+        document.addEventListener('DOMContentLoaded', function() {
+            // Le theme-switcher s'initialise automatiquement
+            console.log('🚀 Portail Guldagil v2.0 - Mode modulaire actif');
+            
+            // Ajouter le bouton de thème si absent
+            if (!document.querySelector('.theme-toggle')) {
+                initializeThemeToggle();
+            }
+        });
+
+        // Fonctions d'aperçu (placeholder)
+        function showCalculatorPreview() {
+            showNotification('Aperçu calculateur - Fonctionnalité à venir', 'info');
+        }
+
+        function showADRPreview() {
+            showNotification('Aperçu ADR - Fonctionnalité à venir', 'info');
+        }
+
+        function showAdminStats() {
+            showNotification('Statistiques admin - Fonctionnalité à venir', 'info');
+        }
+
+        function showHelp() {
+            showNotification('Documentation en cours de rédaction', 'info');
+        }
+
+        function showContact() {
+            showNotification('Support: dev@guldagil.com', 'info');
+        }
+
+        function showVersion() {
+            showNotification('Portail Guldagil v2.0 - Build ' + new Date().getFullYear(), 'info');
+        }
+    </script>
 </body>
 </html>
