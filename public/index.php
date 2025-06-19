@@ -1,236 +1,338 @@
 <?php
-// public/index.php - Accueil Portail Guldagil beta 0.5 - VERSION PROPRE
+// public/index.php - VERSION CORRIGÉE
 require __DIR__ . '/../config.php';
 
-// Authentification simple (désactivée en dev)
-$auth_required = false; // Passer à true en production
-$auth_password = 'GulPort';
+// Configuration de la page
+$pageTitle = 'Calculateur de Frais de Port';
+$currentPage = 'calculator';
 
-if ($auth_required) {
-    session_start();
-    
-    if (!isset($_SESSION['authenticated'])) {
-        if ($_POST['password'] ?? '' === $auth_password) {
-            $_SESSION['authenticated'] = true;
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit;
-        }
-        
-        // Afficher la page de connexion
-        include 'auth-login.php';
-        exit;
-    }
+// Chargement des options depuis la base de données
+try {
+    $stmt = $db->query("
+        SELECT DISTINCT transporteur, code_option, libelle, montant, unite 
+        FROM gul_options_supplementaires 
+        WHERE actif = 1 
+        ORDER BY transporteur, montant
+    ");
+    $options = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $options = [];
+    error_log("Erreur chargement options: " . $e->getMessage());
 }
 
-// Gestion de la déconnexion
-if (isset($_GET['logout']) && $auth_required) {
-    session_destroy();
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
-}
+// Version et build
+require __DIR__ . '/../config/version.php';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portail Guldagil - Outils logistiques</title>
+    <title><?= htmlspecialchars($pageTitle) ?> - Guldagil</title>
     
-    <!-- Structure CSS modulaire -->
-    <link rel="stylesheet" href="assets/css/globals.css">
-    <link rel="stylesheet" href="assets/css/components.css">
-    <link rel="stylesheet" href="assets/css/modules/portail.css">
+    <!-- Meta tags -->
+    <meta name="description" content="Calculateur et comparateur de frais de port Guldagil pour transporteurs XPO, Heppner et Kuehne+Nagel">
+    <meta name="author" content="Guldagil">
+    <meta name="robots" content="noindex, nofollow"> <!-- En développement -->
     
-    <!-- Optimisation performances -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- CSS -->
+    <link rel="stylesheet" href="/assets/css/calculator.css">
     
-    <meta name="description" content="Portail logistique Guldagil beta 0.5 - Calculateur de frais, gestion ADR et administration">
-    <meta name="robots" content="noindex, nofollow">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+    
+    <!-- Preload des ressources critiques -->
+    <link rel="preload" href="/assets/js/calculator.js" as="script">
 </head>
 <body>
-    <!-- Header avec navigation -->
-    <header class="main-header">
-        <div class="header-container">
-            <div class="header-brand">
-                <img src="assets/img/logo_guldagil.png" alt="Logo Guldagil" class="header-logo">
-                <h1 class="header-title">Portail Guldagil</h1>
-            </div>
-            
-            <nav class="header-nav">
-                <a href="calculateur/" class="nav-link calculateur">
-                    <span class="nav-icon">🚚</span>
-                    <span class="nav-text">Calculateur</span>
-                </a>
-                <a href="adr/" class="nav-link adr">
-                    <span class="nav-icon">⚠️</span>
-                    <span class="nav-text">ADR</span>
-                </a>
-                <a href="admin/" class="nav-link admin">
-                    <span class="nav-icon">⚙️</span>
-                    <span class="nav-text">Admin</span>
-                </a>
-            </nav>
-            
-            <div class="header-actions">
-                <div class="header-account">
-                    <div class="account-info">
-                        <span class="account-icon">👨‍💻</span>
-                        <span class="account-text">Dev</span>
-                    </div>
-                    <?php if ($auth_required): ?>
-                    <a href="?logout=1" class="logout-btn" onclick="return confirm('Se déconnecter ?')">
-                        <span class="logout-icon">🚪</span>
-                        <span class="logout-text">Déconnexion</span>
-                    </a>
-                    <?php endif; ?>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="/assets/img/logo_guldagil.png" alt="Guldagil" height="40">
+                    <span class="logo-text">Port Calculator</span>
                 </div>
+                
+                <nav class="nav">
+                    <a href="/" class="nav-link active">
+                        📊 Calculateur
+                    </a>
+                    <a href="/admin" class="nav-link">
+                        ⚙️ Administration
+                    </a>
+                </nav>
             </div>
         </div>
     </header>
 
-    <!-- Zone d'état développement -->
-    <?php if (!$auth_required): ?>
-    <div class="dev-notice">
-        <div class="dev-notice-content">
-            <span class="dev-notice-icon">🔓</span>
-            <div class="dev-notice-text">
-                <strong>Mode développement actif</strong>
-                <p>L'authentification est désactivée. En production, activez <code>$auth_required = true</code>.</p>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
-
-    <!-- Container principal -->
-    <main class="main-container">
-        <!-- Section héro -->
-        <section class="hero-section">
-            <div class="hero-content">
-                <h2 class="hero-title">Outils logistiques intégrés</h2>
-                <p class="hero-subtitle">
-                    Calculez vos frais de transport, gérez vos marchandises dangereuses 
-                    et administrez votre système en toute simplicité.
+    <!-- Main Content -->
+    <main class="main">
+        <div class="calculator-container">
+            
+            <!-- En-tête de page -->
+            <div class="page-header">
+                <h1>🚛 Calculateur de Frais de Port</h1>
+                <p class="page-description">
+                    Comparez instantanément les tarifs XPO, Heppner et Kuehne+Nagel selon vos critères d'envoi
                 </p>
             </div>
-        </section>
 
-        <!-- Grille des applications principales -->
-        <section class="apps-grid">
-            <!-- Calculateur de frais -->
-            <article class="app-card calculateur" onclick="window.location.href='calculateur/'">
-                <div class="app-header">
-                    <div class="app-icon">🚚</div>
-                    <div class="app-info">
-                        <h3 class="app-title">Calculateur de frais</h3>
-                        <p class="app-description">Comparez instantanément les tarifs des transporteurs selon vos critères</p>
-                    </div>
-                </div>
+            <!-- Formulaire de calcul -->
+            <form id="calculator-form" class="calculator-form" novalidate>
                 
-                <div class="app-content">
-                    <ul class="app-features">
-                        <li>Saisie guidée : poids, dimensions, destination</li>
-                        <li>Comparaison automatique des 3 transporteurs</li>
-                        <li>Export PDF et sauvegarde des calculs</li>
-                        <li>Interface mobile responsive</li>
-                    </ul>
+                <div class="form-grid">
                     
-                    <div class="app-action">
-                        <div class="btn btn-primary btn-full">
-                            <span class="btn-icon">🚀</span>
-                            <span class="btn-text">Lancer le calculateur</span>
-                        </div>
+                    <!-- Département -->
+                    <div class="form-group">
+                        <label for="departement" class="form-label required">
+                            📍 Département de livraison
+                        </label>
+                        <input 
+                            type="text" 
+                            id="departement" 
+                            name="departement" 
+                            class="form-control" 
+                            placeholder="ex: 67, 75, 13..."
+                            pattern="[0-9]{1,2}"
+                            maxlength="2"
+                            required
+                        >
+                        <div class="field-feedback"></div>
                     </div>
-                </div>
-            </article>
 
-            <!-- Module ADR -->
-            <article class="app-card adr" onclick="window.location.href='adr/'">
-                <div class="app-header">
-                    <div class="app-icon">🛢️</div>
-                    <div class="app-info">
-                        <h3 class="app-title">Gestion ADR</h3>
-                        <p class="app-description">Déclarations et suivi des marchandises dangereuses</p>
+                    <!-- Poids -->
+                    <div class="form-group">
+                        <label for="poids" class="form-label required">
+                            ⚖️ Poids total (kg)
+                        </label>
+                        <input 
+                            type="number" 
+                            id="poids" 
+                            name="poids" 
+                            class="form-control" 
+                            placeholder="ex: 150"
+                            min="1"
+                            max="10000"
+                            step="0.1"
+                            required
+                        >
+                        <div class="field-feedback"></div>
                     </div>
-                </div>
-                
-                <div class="app-content">
-                    <ul class="app-features">
-                        <li>Formulaires de déclaration pré-remplis</li>
-                        <li>Base de données 250+ produits dangereux</li>
-                        <li>Validation automatique codes transport</li>
-                        <li>Export conforme réglementation</li>
-                    </ul>
-                    
-                    <div class="app-action">
-                        <div class="btn btn-warning btn-full">
-                            <span class="btn-icon">🛢️</span>
-                            <span class="btn-text">Accéder au module ADR</span>
-                        </div>
-                    </div>
-                </div>
-            </article>
-        </section>
 
-        <!-- Informations système -->
-        <section class="system-info">
-            <div class="info-grid">
-                <div class="info-card">
-                    <div class="info-icon">🚛</div>
-                    <div class="info-content">
-                        <h4 class="info-title">Transporteurs</h4>
-                        <p class="info-text">3 transporteurs configurés</p>
+                    <!-- Type d'envoi -->
+                    <div class="form-group">
+                        <label for="type" class="form-label required">
+                            📦 Type d'envoi
+                        </label>
+                        <select id="type" name="type" class="form-control" required>
+                            <option value="">Sélectionner...</option>
+                            <option value="colis">Colis</option>
+                            <option value="palette">Palette</option>
+                        </select>
+                        <div class="field-feedback"></div>
+                    </div>
+
+                    <!-- Options de service -->
+                    <div class="form-group">
+                        <label for="option_sup" class="form-label">
+                            ⭐ Options de service
+                        </label>
+                        <select id="option_sup" name="option_sup" class="form-control">
+                            <option value="standard">Standard (24-48h)</option>
+                            <optgroup label="Services Premium">
+                                <option value="rdv">Prise de RDV</option>
+                                <option value="star18">Star avant 18h</option>
+                                <option value="star13">Star avant 13h</option>
+                                <option value="premium18">Premium avant 18h (XPO)</option>
+                                <option value="premium13">Premium avant 13h (XPO)</option>
+                                <option value="datefixe18">Date fixe avant 18h</option>
+                                <option value="datefixe13">Date fixe avant 13h</option>
+                            </optgroup>
+                        </select>
+                        <div class="field-feedback"></div>
+                    </div>
+
+                </div>
+
+                <!-- Palettes EUR (affiché conditionnellement) -->
+                <div class="form-group palettes-group">
+                    <label for="palettes" class="form-label">
+                        🏭 Nombre de palettes EUR
+                    </label>
+                    <input 
+                        type="number" 
+                        id="palettes" 
+                        name="palettes" 
+                        class="form-control" 
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                        value="0"
+                    >
+                    <small class="text-muted">
+                        Coût supplémentaire : XPO 1,80€/pal • K+N 6,50€/pal • Heppner gratuit
+                    </small>
+                </div>
+
+                <!-- Cases à cocher -->
+                <div class="form-grid">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="adr" name="adr" value="oui">
+                        <label for="adr">
+                            ☣️ Matières dangereuses (ADR)
+                        </label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enlevement" name="enlevement" value="oui">
+                        <label for="enlevement">
+                            🚚 Enlèvement (+25€ XPO/K+N, gratuit Heppner)
+                        </label>
                     </div>
                 </div>
-                
-                <div class="info-card">
-                    <div class="info-icon">📍</div>
-                    <div class="info-content">
-                        <h4 class="info-title">Couverture</h4>
-                        <p class="info-text">95 départements français</p>
-                    </div>
+
+                <!-- Actions -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="calculate-btn">
+                        <span>🔍</span>
+                        Calculer et Comparer
+                    </button>
                 </div>
-                
-                <div class="info-card">
-                    <div class="info-icon">🛢️</div>
-                    <div class="info-content">
-                        <h4 class="info-title">Produits ADR</h4>
-                        <p class="info-text">250+ références actives</p>
-                    </div>
-                </div>
-                
-                <div class="info-card">
-                    <div class="info-icon">📈</div>
-                    <div class="info-content">
-                        <h4 class="info-title">Système</h4>
-                        <p class="info-text">Opérationnel 24h/24</p>
-                    </div>
-                </div>
+
+            </form>
+
+            <!-- Zone de résultats -->
+            <div id="results-container" class="results-container" style="display: none;">
+                <!-- Les résultats seront injectés ici par JavaScript -->
             </div>
-        </section>
+
+        </div>
     </main>
 
     <!-- Footer -->
-    <footer class="main-footer">
-        <div class="footer-container">
-            <nav class="footer-links">
-                <a href="#" class="footer-link" data-action="help">Documentation</a>
-                <a href="admin/export.php?type=all&format=csv" class="footer-link">Export données</a>
-                <a href="#" class="footer-link" data-action="contact">Support technique</a>
-                <a href="#" class="footer-link" data-action="version">Version système</a>
-            </nav>
-            
-            <div class="footer-info">
-                <p class="footer-copyright">&copy; 2025 Guldagil - Portail logistique beta 0.5 build 20250619.0004</p>
-                <p class="footer-timestamp">Dernière mise à jour : <?= date('d/m/Y H:i', filemtime(__FILE__)) ?></p>
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <p>&copy; <?= date('Y') ?> Guldagil - Tous droits réservés</p>
+                </div>
+                
+                <div class="footer-version">
+                    <span class="version">v<?= defined('APP_VERSION') ? APP_VERSION : '2.0.0' ?></span>
+                    <span class="build">Build #<?= defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd') ?>001</span>
+                    <span class="date"><?= defined('BUILD_DATE') ? date('d/m/Y H:i', strtotime(BUILD_DATE)) : date('d/m/Y H:i') ?></span>
+                </div>
             </div>
         </div>
     </footer>
 
-    <!-- Scripts modulaires -->
-    <script src="assets/js/globals.js"></script>
-    <script src="assets/js/theme-switcher.js"></script>
-    <script src="assets/js/modules/portail.js"></script>
+    <!-- JavaScript -->
+    <script src="/assets/js/calculator.js"></script>
+    
+    <!-- Analytics & Debug -->
+    <?php if (defined('DEBUG') && DEBUG): ?>
+    <script>
+        console.log('🐛 Mode debug activé');
+        console.log('📊 Options chargées:', <?= json_encode($options) ?>);
+    </script>
+    <?php endif; ?>
+
+    <!-- Service Worker pour mise en cache (production) -->
+    <?php if (!defined('DEBUG') || !DEBUG): ?>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(error => console.log('SW registration failed'));
+            });
+        }
+    </script>
+    <?php endif; ?>
+
 </body>
 </html>
+
+<style>
+/* Styles inline pour des améliorations spécifiques */
+.header {
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    color: white;
+    padding: 1rem 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.logo-text {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.nav {
+    display: flex;
+    gap: 1rem;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.page-header h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 1rem;
+}
+
+.page-description {
+    font-size: 1.125rem;
+    color: #6b7280;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .page-header h1 {
+        font-size: 2rem;
+    }
+    
+    .page-description {
+        font-size: 1rem;
+    }
+}
+</style>
