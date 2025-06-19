@@ -1,6 +1,6 @@
 <?php
 /**
- * config/config.php - Configuration principale
+ * config/config.php - Configuration principale COMPLÈTE
  */
 
 // Protection directe
@@ -45,64 +45,6 @@ $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : '
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $scriptPath = dirname($_SERVER['SCRIPT_NAME']);
 define('BASE_URL', $protocol . '://' . $host . ($scriptPath !== '/' ? $scriptPath : ''));
-
-// Inclusion des fichiers de configuration
-require_once CONFIG_PATH . '/database.php';
-require_once CONFIG_PATH . '/modules.php';
-
-// Autoloader simple
-spl_autoload_register(function ($class) {
-    $file = INCLUDES_PATH . '/classes/' . $class . '.php';
-    if (file_exists($file)) {
-        require_once $file;
-    }
-});
-
-/**
- * Fonctions utilitaires globales
- */
-
-function isModuleEnabled($module) {
-    return MODULES[$module]['enabled'] ?? false;
-}
-
-function isModulePublic($module) {
-    return MODULES[$module]['public'] ?? false;
-}
-
-function getModulePath($module) {
-    return MODULES[$module]['path'] ?? '/';
-}
-
-function dd($var) {
-    if (DEBUG) {
-        echo "<pre style='background:#000;color:#0f0;padding:15px;margin:10px;border-radius:5px;'>";
-        var_dump($var);
-        echo "</pre>";
-        die();
-    }
-}
-
-function logError($message, $context = []) {
-    $timestamp = date('Y-m-d H:i:s');
-    $logMessage = "[$timestamp] ERROR: $message";
-    if (!empty($context)) {
-        $logMessage .= " | Context: " . json_encode($context);
-    }
-    $logMessage .= PHP_EOL;
-    
-    $logFile = STORAGE_PATH . '/logs/error.log';
-    if (!is_dir(dirname($logFile))) {
-        mkdir(dirname($logFile), 0755, true);
-    }
-    file_put_contents($logFile, $logMessage, FILE_APPEND | LOCK_EX);
-}
-
-// ===================================================
-
-/**
- * config/database.php - Configuration base de données
- */
 
 // Chargement des variables d'environnement
 $envFile = ROOT_PATH . '/.env';
@@ -164,12 +106,6 @@ try {
     die('<div style="padding:20px;background:#ffebee;border:1px solid #f44336;border-radius:5px;color:#c62828;font-family:monospace;">' . 
         '<strong>Erreur de connexion:</strong><br>' . htmlspecialchars($errorMessage) . '</div>');
 }
-
-// ===================================================
-
-/**
- * config/modules.php - Configuration des modules
- */
 
 // Modules disponibles
 define('MODULES', [
@@ -264,18 +200,6 @@ define('SECURITY_CONFIG', [
     'require_https' => !DEBUG
 ]);
 
-// ===================================================
-
-/**
- * config/constants.php - Constantes globales
- */
-
-// Versions et informations système
-define('SYSTEM_NAME', 'Guldagil Portal');
-define('SYSTEM_DESCRIPTION', 'Solution complète de gestion des expéditions et calcul des frais de transport');
-define('COMPANY_NAME', 'Guldagil');
-define('SUPPORT_EMAIL', 'support@guldagil.fr');
-
 // Configuration cache
 define('CACHE_CONFIG', [
     'enabled' => !DEBUG,
@@ -346,11 +270,53 @@ define('LOG_CONFIG', [
     ]
 ]);
 
-// ===================================================
+// Autoloader simple
+spl_autoload_register(function ($class) {
+    $file = INCLUDES_PATH . '/classes/' . $class . '.php';
+    if (file_exists($file)) {
+        require_once $file;
+    }
+});
 
 /**
- * includes/functions/helpers.php - Fonctions utilitaires
+ * Fonctions utilitaires globales
  */
+
+function isModuleEnabled($module) {
+    return MODULES[$module]['enabled'] ?? false;
+}
+
+function isModulePublic($module) {
+    return MODULES[$module]['public'] ?? false;
+}
+
+function getModulePath($module) {
+    return MODULES[$module]['path'] ?? '/';
+}
+
+function dd($var) {
+    if (DEBUG) {
+        echo "<pre style='background:#000;color:#0f0;padding:15px;margin:10px;border-radius:5px;'>";
+        var_dump($var);
+        echo "</pre>";
+        die();
+    }
+}
+
+function logError($message, $context = []) {
+    $timestamp = date('Y-m-d H:i:s');
+    $logMessage = "[$timestamp] ERROR: $message";
+    if (!empty($context)) {
+        $logMessage .= " | Context: " . json_encode($context);
+    }
+    $logMessage .= PHP_EOL;
+    
+    $logFile = STORAGE_PATH . '/logs/error.log';
+    if (!is_dir(dirname($logFile))) {
+        mkdir(dirname($logFile), 0755, true);
+    }
+    file_put_contents($logFile, $logMessage, FILE_APPEND | LOCK_EX);
+}
 
 /**
  * Génère un token CSRF
@@ -571,3 +537,15 @@ function putInCache($key, $value, $ttl = null) {
     
     return file_put_contents($cacheFile, serialize($data), LOCK_EX) !== false;
 }
+
+function getPageTitle($route) {
+    $titles = [
+        '/' => 'Calculateur de frais',
+        '/calculateur' => 'Calculateur de frais',
+        '/adr' => 'Gestion ADR',
+        '/admin' => 'Administration'
+    ];
+    
+    return $titles[$route] ?? 'Guldagil Portal';
+}
+?>
