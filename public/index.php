@@ -1,338 +1,354 @@
 <?php
-// public/index.php - VERSION CORRIGÉE
-require __DIR__ . '/../config.php';
+/**
+ * GULDAGIL PORTAL - Point d'entrée principal
+ * 
+ * Application modulaire pour le calcul des frais de port
+ * et la gestion des expéditions ADR
+ * 
+ * @version 2.0.0
+ * @author Guldagil
+ */
 
-// Configuration de la page
-$pageTitle = 'Calculateur de Frais de Port';
-$currentPage = 'calculator';
+// Gestion des erreurs et configuration initiale
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Chargement des options depuis la base de données
-try {
-    $stmt = $db->query("
-        SELECT DISTINCT transporteur, code_option, libelle, montant, unite 
-        FROM gul_options_supplementaires 
-        WHERE actif = 1 
-        ORDER BY transporteur, montant
-    ");
-    $options = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {
-    $options = [];
-    error_log("Erreur chargement options: " . $e->getMessage());
+// Démarrage de session sécurisé
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-// Version et build
-require __DIR__ . '/../config/version.php';
+// Inclusion de la configuration
+try {
+    require_once __DIR__ . '/../config/config.php';
+    require_once __DIR__ . '/../includes/functions/helpers.php';
+} catch (Exception $e) {
+    die('Erreur de configuration : ' . htmlspecialchars($e->getMessage()));
+}
+
+// Constantes de version et build
+define('APP_VERSION', '2.0.0');
+define('BUILD_NUMBER', date('Ymd') . '001');
+define('BUILD_DATE', date('Y-m-d H:i:s'));
+define('COPYRIGHT_YEAR', date('Y'));
+
+// Détection du mode (développement/production)
+$isDevMode = !empty($_GET['debug']) || (defined('DEBUG') && DEBUG);
+
+// Routage simple basé sur l'URL
+$request = $_SERVER['REQUEST_URI'] ?? '/';
+$request = strtok($request, '?'); // Supprimer les paramètres GET
+
+// Nettoyage de l'URL
+$request = rtrim($request, '/');
+if (empty($request)) {
+    $request = '/';
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($pageTitle) ?> - Guldagil</title>
-    
-    <!-- Meta tags -->
-    <meta name="description" content="Calculateur et comparateur de frais de port Guldagil pour transporteurs XPO, Heppner et Kuehne+Nagel">
+    <meta name="description" content="Calculateur de frais de port Guldagil - Comparaison XPO, Heppner, Kuehne+Nagel">
+    <meta name="keywords" content="transport, frais de port, logistique, Guldagil">
     <meta name="author" content="Guldagil">
-    <meta name="robots" content="noindex, nofollow"> <!-- En développement -->
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+    <link rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="/assets/css/calculator.css">
+    <link rel="stylesheet" href="/assets/css/style.css?v=<?= APP_VERSION ?>">
+    <link rel="stylesheet" href="/assets/css/components.css?v=<?= APP_VERSION ?>">
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Preload des ressources critiques -->
-    <link rel="preload" href="/assets/js/calculator.js" as="script">
+    <title><?= getPageTitle($request) ?> - Guldagil Portal</title>
 </head>
-<body>
+<body class="<?= $isDevMode ? 'debug-mode' : '' ?>">
     
-    <!-- Header -->
-    <header class="header">
+    <!-- Mode développement - Barre de debug -->
+    <?php if ($isDevMode): ?>
+    <div class="debug-bar">
+        <span>🐛 MODE DEBUG</span>
+        <span>Version: <?= APP_VERSION ?></span>
+        <span>Build: <?= BUILD_NUMBER ?></span>
+        <span>Route: <?= htmlspecialchars($request) ?></span>
+        <span>PHP: <?= PHP_VERSION ?></span>
+    </div>
+    <?php endif; ?>
+    
+    <!-- Header principal -->
+    <header class="main-header">
         <div class="container">
             <div class="header-content">
-                <div class="logo">
-                    <img src="/assets/img/logo_guldagil.png" alt="Guldagil" height="40">
-                    <span class="logo-text">Port Calculator</span>
+                <!-- Logo et titre -->
+                <div class="logo-section">
+                    <img src="/assets/images/logo_guldagil.png" alt="Guldagil" class="logo-img">
+                    <div class="logo-text">
+                        <h1>Guldagil Portal</h1>
+                        <span class="subtitle">Solutions de transport</span>
+                    </div>
                 </div>
                 
-                <nav class="nav">
-                    <a href="/" class="nav-link active">
-                        📊 Calculateur
+                <!-- Navigation principale -->
+                <nav class="main-nav">
+                    <a href="/" class="nav-link <?= ($request === '/') ? 'active' : '' ?>">
+                        🧮 Calculateur
                     </a>
-                    <a href="/admin" class="nav-link">
-                        ⚙️ Administration
+                    <?php if (isModuleEnabled('adr')): ?>
+                    <a href="/adr/" class="nav-link <?= (strpos($request, '/adr') === 0) ? 'active' : '' ?>">
+                        ⚠️ ADR
                     </a>
+                    <?php endif; ?>
+                    <a href="#suivi" class="nav-link" onclick="showTrackingModal()">
+                        📦 Suivi
+                    </a>
+                    <?php if (isModuleEnabled('admin')): ?>
+                    <a href="/admin/" class="nav-link <?= (strpos($request, '/admin') === 0) ? 'active' : '' ?>">
+                        ⚙️ Admin
+                    </a>
+                    <?php endif; ?>
                 </nav>
+                
+                <!-- Actions utilisateur -->
+                <div class="user-actions">
+                    <?php if ($isDevMode): ?>
+                    <button onclick="toggleDevTools()" class="btn btn-dev" title="Outils développeur">
+                        🛠️
+                    </button>
+                    <?php endif; ?>
+                    <button onclick="showHelpModal()" class="btn btn-help" title="Aide">
+                        ❓
+                    </button>
+                </div>
             </div>
         </div>
     </header>
-
-    <!-- Main Content -->
-    <main class="main">
-        <div class="calculator-container">
-            
-            <!-- En-tête de page -->
-            <div class="page-header">
-                <h1>🚛 Calculateur de Frais de Port</h1>
-                <p class="page-description">
-                    Comparez instantanément les tarifs XPO, Heppner et Kuehne+Nagel selon vos critères d'envoi
-                </p>
-            </div>
-
-            <!-- Formulaire de calcul -->
-            <form id="calculator-form" class="calculator-form" novalidate>
-                
-                <div class="form-grid">
+    
+    <!-- Contenu principal -->
+    <main class="main-content">
+        <div class="container">
+            <?php
+            // Routage et inclusion du contenu approprié
+            switch ($request) {
+                case '/':
+                case '/calculateur':
+                    include __DIR__ . '/modules/calculator.php';
+                    break;
                     
-                    <!-- Département -->
-                    <div class="form-group">
-                        <label for="departement" class="form-label required">
-                            📍 Département de livraison
-                        </label>
-                        <input 
-                            type="text" 
-                            id="departement" 
-                            name="departement" 
-                            class="form-control" 
-                            placeholder="ex: 67, 75, 13..."
-                            pattern="[0-9]{1,2}"
-                            maxlength="2"
-                            required
-                        >
-                        <div class="field-feedback"></div>
-                    </div>
-
-                    <!-- Poids -->
-                    <div class="form-group">
-                        <label for="poids" class="form-label required">
-                            ⚖️ Poids total (kg)
-                        </label>
-                        <input 
-                            type="number" 
-                            id="poids" 
-                            name="poids" 
-                            class="form-control" 
-                            placeholder="ex: 150"
-                            min="1"
-                            max="10000"
-                            step="0.1"
-                            required
-                        >
-                        <div class="field-feedback"></div>
-                    </div>
-
-                    <!-- Type d'envoi -->
-                    <div class="form-group">
-                        <label for="type" class="form-label required">
-                            📦 Type d'envoi
-                        </label>
-                        <select id="type" name="type" class="form-control" required>
-                            <option value="">Sélectionner...</option>
-                            <option value="colis">Colis</option>
-                            <option value="palette">Palette</option>
-                        </select>
-                        <div class="field-feedback"></div>
-                    </div>
-
-                    <!-- Options de service -->
-                    <div class="form-group">
-                        <label for="option_sup" class="form-label">
-                            ⭐ Options de service
-                        </label>
-                        <select id="option_sup" name="option_sup" class="form-control">
-                            <option value="standard">Standard (24-48h)</option>
-                            <optgroup label="Services Premium">
-                                <option value="rdv">Prise de RDV</option>
-                                <option value="star18">Star avant 18h</option>
-                                <option value="star13">Star avant 13h</option>
-                                <option value="premium18">Premium avant 18h (XPO)</option>
-                                <option value="premium13">Premium avant 13h (XPO)</option>
-                                <option value="datefixe18">Date fixe avant 18h</option>
-                                <option value="datefixe13">Date fixe avant 13h</option>
-                            </optgroup>
-                        </select>
-                        <div class="field-feedback"></div>
-                    </div>
-
-                </div>
-
-                <!-- Palettes EUR (affiché conditionnellement) -->
-                <div class="form-group palettes-group">
-                    <label for="palettes" class="form-label">
-                        🏭 Nombre de palettes EUR
-                    </label>
-                    <input 
-                        type="number" 
-                        id="palettes" 
-                        name="palettes" 
-                        class="form-control" 
-                        placeholder="0"
-                        min="0"
-                        max="100"
-                        value="0"
-                    >
-                    <small class="text-muted">
-                        Coût supplémentaire : XPO 1,80€/pal • K+N 6,50€/pal • Heppner gratuit
-                    </small>
-                </div>
-
-                <!-- Cases à cocher -->
-                <div class="form-grid">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="adr" name="adr" value="oui">
-                        <label for="adr">
-                            ☣️ Matières dangereuses (ADR)
-                        </label>
-                    </div>
-
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="enlevement" name="enlevement" value="oui">
-                        <label for="enlevement">
-                            🚚 Enlèvement (+25€ XPO/K+N, gratuit Heppner)
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Actions -->
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary" id="calculate-btn">
-                        <span>🔍</span>
-                        Calculer et Comparer
-                    </button>
-                </div>
-
-            </form>
-
-            <!-- Zone de résultats -->
-            <div id="results-container" class="results-container" style="display: none;">
-                <!-- Les résultats seront injectés ici par JavaScript -->
-            </div>
-
+                case '/adr':
+                case '/adr/':
+                    if (isModuleEnabled('adr')) {
+                        include __DIR__ . '/adr/index.php';
+                    } else {
+                        showErrorPage(404, 'Module ADR non disponible');
+                    }
+                    break;
+                    
+                case '/admin':
+                case '/admin/':
+                    if (isModuleEnabled('admin')) {
+                        include __DIR__ . '/admin/index.php';
+                    } else {
+                        showErrorPage(403, 'Accès administrateur requis');
+                    }
+                    break;
+                    
+                default:
+                    // Gestion des sous-modules ou erreur 404
+                    if (strpos($request, '/adr/') === 0 && isModuleEnabled('adr')) {
+                        include __DIR__ . '/adr/index.php';
+                    } elseif (strpos($request, '/admin/') === 0 && isModuleEnabled('admin')) {
+                        include __DIR__ . '/admin/index.php';
+                    } else {
+                        showErrorPage(404, 'Page non trouvée');
+                    }
+                    break;
+            }
+            ?>
         </div>
     </main>
-
+    
+    <!-- Modales communes -->
+    <div id="tracking-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📦 Suivi des expéditions</h3>
+                <button onclick="closeModal('tracking-modal')" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tracking-links">
+                    <?php foreach (TRACKING_LINKS as $code => $link): ?>
+                    <a href="<?= htmlspecialchars($link['url']) ?>" 
+                       target="_blank" 
+                       class="tracking-link">
+                        <img src="<?= htmlspecialchars($link['logo']) ?>" 
+                             alt="<?= htmlspecialchars($link['name']) ?>" 
+                             class="tracking-logo">
+                        <span><?= htmlspecialchars($link['name']) ?></span>
+                        <span class="external-icon">🔗</span>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="help-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>❓ Aide et support</h3>
+                <button onclick="closeModal('help-modal')" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="help-content">
+                    <h4>📖 Guide d'utilisation</h4>
+                    <ul>
+                        <li><strong>Calculateur :</strong> Sélectionnez département, poids et options pour comparer les tarifs</li>
+                        <li><strong>ADR :</strong> Module spécialisé pour les matières dangereuses</li>
+                        <li><strong>Suivi :</strong> Liens directs vers les portails transporteurs</li>
+                    </ul>
+                    
+                    <h4>🆘 Support technique</h4>
+                    <p>Pour toute assistance technique, contactez l'équipe Guldagil.</p>
+                    
+                    <h4>🔧 Version système</h4>
+                    <div class="version-info">
+                        <code>
+                            Application: <?= APP_VERSION ?><br>
+                            Build: <?= BUILD_NUMBER ?><br>
+                            Date: <?= BUILD_DATE ?>
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="main-footer">
         <div class="container">
             <div class="footer-content">
-                <div class="footer-info">
-                    <p>&copy; <?= date('Y') ?> Guldagil - Tous droits réservés</p>
+                <div class="footer-section">
+                    <h4>Guldagil Portal</h4>
+                    <p>Solution complète de gestion des expéditions et calcul des frais de transport.</p>
                 </div>
                 
-                <div class="footer-version">
-                    <span class="version">v<?= defined('APP_VERSION') ? APP_VERSION : '2.0.0' ?></span>
-                    <span class="build">Build #<?= defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd') ?>001</span>
-                    <span class="date"><?= defined('BUILD_DATE') ? date('d/m/Y H:i', strtotime(BUILD_DATE)) : date('d/m/Y H:i') ?></span>
+                <div class="footer-section">
+                    <h4>Modules</h4>
+                    <ul>
+                        <li><a href="/">Calculateur de frais</a></li>
+                        <?php if (isModuleEnabled('adr')): ?>
+                        <li><a href="/adr/">Gestion ADR</a></li>
+                        <?php endif; ?>
+                        <li><a href="#suivi" onclick="showTrackingModal()">Suivi expéditions</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Liens transporteurs</h4>
+                    <ul>
+                        <?php foreach (TRACKING_LINKS as $link): ?>
+                        <li><a href="<?= htmlspecialchars($link['url']) ?>" target="_blank">
+                            <?= htmlspecialchars($link['name']) ?> 🔗
+                        </a></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Informations système</h4>
+                    <div class="system-info">
+                        <span class="version">v<?= APP_VERSION ?></span>
+                        <span class="build">Build #<?= BUILD_NUMBER ?></span>
+                        <span class="date"><?= date('d/m/Y H:i', strtotime(BUILD_DATE)) ?></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="copyright">
+                    © <?= COPYRIGHT_YEAR ?> Guldagil. Tous droits réservés.
+                </div>
+                <div class="footer-links">
+                    <a href="#" onclick="showHelpModal()">Aide</a>
+                    <?php if ($isDevMode): ?>
+                    <a href="#" onclick="toggleDevTools()">Debug</a>
+                    <?php endif; ?>
+                    <a href="/admin/" <?= !isModuleEnabled('admin') ? 'style="display:none"' : '' ?>>Admin</a>
                 </div>
             </div>
         </div>
     </footer>
-
-    <!-- JavaScript -->
-    <script src="/assets/js/calculator.js"></script>
     
-    <!-- Analytics & Debug -->
-    <?php if (defined('DEBUG') && DEBUG): ?>
+    <!-- Scripts -->
+    <script src="/assets/js/app.js?v=<?= APP_VERSION ?>"></script>
+    <script src="/assets/js/calculator.js?v=<?= APP_VERSION ?>"></script>
+    
+    <?php if ($isDevMode): ?>
+    <!-- Scripts de développement -->
+    <script src="/assets/js/dev-tools.js?v=<?= APP_VERSION ?>"></script>
     <script>
         console.log('🐛 Mode debug activé');
-        console.log('📊 Options chargées:', <?= json_encode($options) ?>);
+        console.log('📊 Configuration:', <?= json_encode([
+            'version' => APP_VERSION,
+            'build' => BUILD_NUMBER,
+            'modules' => array_keys(array_filter(MODULES, fn($m) => $m['enabled'])),
+            'route' => $request
+        ]) ?>);
     </script>
     <?php endif; ?>
-
-    <!-- Service Worker pour mise en cache (production) -->
-    <?php if (!defined('DEBUG') || !DEBUG): ?>
+    
+    <!-- Service Worker pour mise en cache (production uniquement) -->
+    <?php if (!$isDevMode): ?>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
-                    .then(registration => console.log('SW registered'))
-                    .catch(error => console.log('SW registration failed'));
+                    .then(registration => console.log('✅ Service Worker enregistré'))
+                    .catch(error => console.log('❌ Erreur Service Worker:', error));
             });
         }
     </script>
     <?php endif; ?>
-
+    
 </body>
 </html>
 
-<style>
-/* Styles inline pour des améliorations spécifiques */
-.header {
-    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-    color: white;
-    padding: 1rem 0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
+<?php
+/**
+ * Fonctions utilitaires pour le point d'entrée
+ */
 
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.logo-text {
-    font-size: 1.25rem;
-    font-weight: 700;
-}
-
-.nav {
-    display: flex;
-    gap: 1rem;
-}
-
-.nav-link {
-    color: rgba(255, 255, 255, 0.9);
-    text-decoration: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-
-.nav-link:hover,
-.nav-link.active {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-}
-
-.page-header {
-    text-align: center;
-    margin-bottom: 3rem;
-}
-
-.page-header h1 {
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: #1f2937;
-    margin-bottom: 1rem;
-}
-
-.page-description {
-    font-size: 1.125rem;
-    color: #6b7280;
-    max-width: 600px;
-    margin: 0 auto;
-    line-height: 1.6;
-}
-
-@media (max-width: 768px) {
-    .header-content {
-        flex-direction: column;
-        gap: 1rem;
-    }
+/**
+ * Génère le titre de la page selon la route
+ */
+function getPageTitle($route) {
+    $titles = [
+        '/' => 'Calculateur de frais',
+        '/calculateur' => 'Calculateur de frais',
+        '/adr' => 'Gestion ADR',
+        '/admin' => 'Administration'
+    ];
     
-    .page-header h1 {
-        font-size: 2rem;
-    }
-    
-    .page-description {
-        font-size: 1rem;
-    }
+    return $titles[$route] ?? 'Guldagil Portal';
 }
-</style>
+
+/**
+ * Affiche une page d'erreur
+ */
+function showErrorPage($code, $message) {
+    http_response_code($code);
+    echo "<div class='error-page'>";
+    echo "<h2>Erreur $code</h2>";
+    echo "<p>" . htmlspecialchars($message) . "</p>";
+    echo "<a href='/' class='btn btn-primary'>Retour à l'accueil</a>";
+    echo "</div>";
+}
+?>
