@@ -59,7 +59,7 @@ $demo_mode = isset($_GET['demo']) && $_GET['demo'] === '1';
     
     <!-- CSS -->
     <link rel="stylesheet" href="../assets/css/app.min.css">
-    <link rel="stylesheet" href="../assets/css/calculateur-stepwise.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/calculateur-stepwise.css">
 </head>
 <body class="calculator-page">
 
