@@ -55,7 +55,7 @@ error_reporting(E_ALL);
     // Test 3: Chemins fichiers
     $paths = [
         'Config' => __DIR__ . '/../config/config.php',
-        'Transport' => __DIR__ . '/../src/modules/calculateur/services/TransportCalculator.php',
+        'Transport' => __DIR__ . '/../src/modules/calculateur/services/transportcalculateur.php',
         'Storage' => __DIR__ . '/../storage',
         'Logs' => __DIR__ . '/../storage/logs'
     ];
@@ -147,7 +147,7 @@ error_reporting(E_ALL);
     // Test 7: Classe Transport
     if ($configTest) {
         try {
-            $transportPath = __DIR__ . '/../src/modules/calculateur/services/TransportCalculator.php';
+            $transportPath = __DIR__ . '/../src/modules/calculateur/services/transportcalculateur.php';
             if (file_exists($transportPath)) {
                 require_once $transportPath;
                 if (class_exists('Transport')) {
