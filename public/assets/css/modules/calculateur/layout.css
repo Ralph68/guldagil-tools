@@ -401,7 +401,7 @@
     flex-shrink: 0;
 }
 
-/* ===== RESPONSIVE ===== */
+/* ===== RESPONSIVE MOBILE-FRIENDLY ===== */
 @media (max-width: 768px) {
     .calculator-layout {
         grid-template-columns: 1fr;
@@ -437,11 +437,45 @@
     
     .btn {
         justify-content: center;
+        width: 100%;
+        margin-bottom: 0.5rem;
     }
     
     .radio-group,
     .checkbox-group {
         flex-direction: column;
+    }
+    
+    .radio-item,
+    .checkbox-item {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Header responsive */
+    .module-header {
+        padding: 1rem 0;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .header-actions {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    /* Tables responsive */
+    .comparison-table {
+        font-size: 0.875rem;
+    }
+    
+    .comparison-table th,
+    .comparison-table td {
+        padding: 0.75rem 0.5rem;
     }
 }
 
@@ -449,6 +483,10 @@
     :root {
         --layout-padding: 0.5rem;
         --layout-gap-mobile: 0.5rem;
+    }
+    
+    .calculateur-container {
+        padding: 0.5rem;
     }
     
     .form-content,
@@ -473,6 +511,180 @@
     .comparison-table td {
         padding: 0.75rem 0.5rem;
         font-size: 0.875rem;
+    }
+    
+    /* Amélioration tactile mobile */
+    .btn {
+        min-height: 44px; /* Apple touch guidelines */
+        font-size: 1rem;
+    }
+    
+    .form-control {
+        min-height: 44px;
+        font-size: 16px; /* Évite le zoom iOS */
+    }
+    
+    .radio-item,
+    .checkbox-item {
+        min-height: 44px;
+        font-size: 0.95rem;
+    }
+    
+    /* Optimisation scroll horizontal tables */
+    .comparison-table {
+        min-width: 100%;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* ===== RESPONSIVE DESKTOP AMÉLIORÉ ===== */
+@media (min-width: 1200px) {
+    .calculator-layout {
+        gap: 3rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+    
+    .best-result {
+        padding: 2.5rem;
+    }
+    
+    .best-price {
+        font-size: 3rem;
+    }
+}
+
+/* ===== RESPONSIVE TABLET ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .calculator-layout {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .calc-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* ===== ORIENTATION LANDSCAPE MOBILE ===== */
+@media (max-height: 500px) and (orientation: landscape) {
+    .calculator-layout {
+        margin: 1rem auto;
+    }
+    
+    .form-content,
+    .results-content {
+        padding: 1rem;
+    }
+    
+    .best-result {
+        padding: 1rem 2rem;
+    }
+    
+    .best-price {
+        font-size: 1.5rem;
+    }
+}
+
+/* ===== AMÉLIORATIONS TACTILES ===== */
+@media (hover: none) and (pointer: coarse) {
+    /* Styles pour appareils tactiles */
+    .btn {
+        min-height: 48px;
+        padding: 0.875rem 1.75rem;
+    }
+    
+    .form-control {
+        min-height: 48px;
+        padding: 0.875rem;
+    }
+    
+    .radio-item,
+    .checkbox-item {
+        min-height: 48px;
+        padding: 1rem;
+    }
+    
+    /* Amélioration des zones de clic */
+    .radio-item:active,
+    .checkbox-item:active,
+    .btn:active {
+        transform: scale(0.98);
+        transition: transform 0.1s;
+    }
+}
+
+/* ===== ACCESSIBILITÉ ===== */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .loading-spinner {
+        animation: none;
+    }
+}
+
+@media (prefers-contrast: high) {
+    :root {
+        --calculateur-primary: #000080;
+        --calculateur-secondary: #000060;
+    }
+    
+    .form-control {
+        border-width: 2px;
+    }
+    
+    .btn {
+        border: 2px solid currentColor;
+    }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+    .header-actions,
+    .form-actions,
+    .btn,
+    .loading-zone {
+        display: none !important;
+    }
+    
+    .calculator-layout {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-section,
+    .results-section {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        break-inside: avoid;
+    }
+    
+    .best-result {
+        background: #f0f0f0 !important;
+        color: #000 !important;
+    }
+    
+    .comparison-table {
+        border-collapse: collapse;
+    }
+    
+    .comparison-table th,
+    .comparison-table td {
+        border: 1px solid #ccc;
     }
 }
 
