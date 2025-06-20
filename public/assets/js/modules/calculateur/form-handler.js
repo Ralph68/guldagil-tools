@@ -1,14 +1,14 @@
 /**
- * Titre: Gestionnaire de formulaire - Module calculateur
+ * Titre: Gestionnaire de formulaire pas-à-pas - Module calculateur
  * Chemin: /public/assets/js/modules/calculateur/form-handler.js
  * Version: 0.5 beta + build
  * 
- * Gestion du formulaire, validation et événements
+ * Gestion du formulaire pas-à-pas avec validation en temps réel
  * Dépendance: calculateur.js (chargé en premier)
  */
 
 // ========================================
-// MODULE GESTION FORMULAIRE
+// MODULE GESTION FORMULAIRE PAS-À-PAS
 // ========================================
 
 window.Calculateur = window.Calculateur || {};
@@ -19,254 +19,53 @@ Calculateur.Form = {
      * Initialisation du gestionnaire de formulaire
      */
     init() {
-        this.setupEventListeners();
+        this.setupFormStateManagement();
         this.loadFormState();
-        this.updateButtonState();
         
         if (Calculateur.Config.DEBUG) {
-            console.log('📝 Module Form initialisé');
+            console.log('📝 Module Form pas-à-pas initialisé');
         }
     },
     
     /**
-     * Configuration des événements
+     * Gestion de l'état du formulaire
      */
-    setupEventListeners() {
+    setupFormStateManagement() {
+        // Sauvegarde automatique de l'état
         const elements = Calculateur.Elements;
         
-        // Département avec auto-progression
-        if (elements.departement) {
-            elements.departement.addEventListener('input', this.handleDepartementInput.bind(this));
-            elements.departement.addEventListener('focus', () => elements.departement.select());
-        }
-        
-        // Poids avec validation
-        if (elements.poids) {
-            elements.poids.addEventListener('input', this.handlePoidsInput.bind(this));
-        }
-        
-        // Types d'envoi
-        elements.typeInputs.forEach(input => {
-            input.addEventListener('change', this.handleTypeChange.bind(this));
-        });
-        
-        // ADR
-        elements.adrInputs.forEach(input => {
-            input.addEventListener('change', this.handleAdrChange.bind(this));
-        });
-        
-        // Options supplémentaires
-        if (elements.optionSup) {
-            elements.optionSup.addEventListener('change', this.handleOptionChange.bind(this));
-        }
-        
-        // Palettes
-        if (elements.palettes) {
-            elements.palettes.addEventListener('input', this.handlePalettesChange.bind(this));
-        }
-        
-        // Validation en temps réel sur tous les champs
-        this.setupRealtimeValidation();
-    },
-    
-    /**
-     * Validation en temps réel
-     */
-    setupRealtimeValidation() {
-        const fields = [
-            Calculateur.Elements.departement,
-            Calculateur.Elements.poids
-        ].filter(Boolean);
-        
-        fields.forEach(field => {
-            field.addEventListener('input', () => {
-                this.validateField(field);
-                Calculateur.State.updateFormData();
-                this.updateButtonState();
-                
-                // Déclencher calcul auto si formulaire valide
-                if (Calculateur.Core.triggerAutoCalculation) {
-                    Calculateur.Core.triggerAutoCalculation();
-                }
-            });
-        });
-    },
-    
-    /**
-     * Gestion saisie département
-     */
-    handleDepartementInput() {
-        const value = Calculateur.Elements.departement.value.trim();
-        
-        // Auto-progression si département valide
-        if (value.length === 2 && /^\d{2}$/.test(value)) {
-            const deptNum = parseInt(value);
-            if (deptNum >= 1 && deptNum <= 95) {
-                setTimeout(() => {
-                    if (Calculateur.Elements.poids) {
-                        Calculateur.Elements.poids.focus();
-                        Calculateur.Elements.poids.select();
-                    }
-                }, 200);
-            }
-        }
-    },
-    
-    /**
-     * Gestion saisie poids
-     */
-    handlePoidsInput() {
-        const poids = parseFloat(Calculateur.Elements.poids.value) || 0;
-        
-        // Suggestion auto palette si poids > seuil
-        if (poids >= Calculateur.Config.PALETTE_THRESHOLD) {
-            this.showPaletteOptions();
-            this.suggestPaletteType();
-        } else {
-            this.hidePaletteOptions();
-        }
-        
-        // Vérification limites
-        if (poids > Calculateur.Config.MAX_POIDS) {
-            this.showWarning(`Poids élevé (${poids}kg). Vérifiez les conditions de transport.`);
-        }
-    },
-    
-    /**
-     * Gestion changement type
-     */
-    handleTypeChange() {
-        const selectedType = this.getSelectedValue('type');
-        
-        if (selectedType === 'palette') {
-            this.showPaletteOptions();
-        } else {
-            this.hidePaletteOptions();
-        }
-        
-        // Adaptation des options selon le type
-        this.updateOptionsAvailability();
-    },
-    
-    /**
-     * Gestion changement ADR
-     */
-    handleAdrChange() {
-        const isAdr = this.getSelectedValue('adr') === 'oui';
-        
-        // Désactiver certaines options si ADR
-        if (isAdr) {
-            this.disableIncompatibleOptions();
-        } else {
-            this.enableAllOptions();
-        }
-    },
-    
-    /**
-     * Gestion changement options
-     */
-    handleOptionChange() {
-        // Mise à jour immédiate des données
-        Calculateur.State.updateFormData();
-        this.updateButtonState();
-    },
-    
-    /**
-     * Gestion changement palettes
-     */
-    handlePalettesChange() {
-        this.updatePaletteButtons();
-    },
-    
-    /**
-     * Afficher options palette
-     */
-    showPaletteOptions() {
-        if (Calculateur.Elements.paletteOptions) {
-            Calculateur.Elements.paletteOptions.style.display = 'block';
-            Calculateur.Elements.paletteOptions.classList.add('fade-in');
-        }
-    },
-    
-    /**
-     * Masquer options palette
-     */
-    hidePaletteOptions() {
-        if (Calculateur.Elements.paletteOptions) {
-            Calculateur.Elements.paletteOptions.style.display = 'none';
-            if (Calculateur.Elements.palettes) {
-                Calculateur.Elements.palettes.value = '0';
-            }
-        }
-    },
-    
-    /**
-     * Suggestion type palette selon poids
-     */
-    suggestPaletteType() {
-        const poids = parseFloat(Calculateur.Elements.poids.value) || 0;
-        
-        // Auto-sélection du type palette
-        const typeRadio = document.querySelector('input[name="type"][value="palette"]');
-        if (typeRadio && poids >= Calculateur.Config.PALETTE_THRESHOLD) {
-            typeRadio.checked = true;
-            this.handleTypeChange();
-        }
-    },
-    
-    /**
-     * Mise à jour boutons palette
-     */
-    updatePaletteButtons() {
-        const currentValue = Calculateur.Elements.palettes.value;
-        document.querySelectorAll('.palette-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.value === currentValue) {
-                btn.classList.add('active');
+        [elements.departement, elements.poids, elements.serviceLivraison].forEach(element => {
+            if (element) {
+                element.addEventListener('input', () => this.saveFormState());
+                element.addEventListener('change', () => this.saveFormState());
             }
         });
-    },
-    
-    /**
-     * Désactiver options incompatibles avec ADR
-     */
-    disableIncompatibleOptions() {
-        if (Calculateur.Elements.optionSup) {
-            const options = Calculateur.Elements.optionSup.querySelectorAll('option');
-            options.forEach(option => {
-                if (option.dataset.adrIncompatible === 'true') {
-                    option.disabled = true;
-                    option.textContent = option.textContent.replace(' (⚠️ Non disponible avec ADR)', '') + ' (⚠️ Non disponible avec ADR)';
-                }
-            });
-        }
-    },
-    
-    /**
-     * Réactiver toutes les options
-     */
-    enableAllOptions() {
-        if (Calculateur.Elements.optionSup) {
-            const options = Calculateur.Elements.optionSup.querySelectorAll('option');
-            options.forEach(option => {
-                option.disabled = false;
-                option.textContent = option.textContent.replace(' (⚠️ Non disponible avec ADR)', '');
-            });
-        }
-    },
-    
-    /**
-     * Mise à jour disponibilité options
-     */
-    updateOptionsAvailability() {
-        const selectedType = this.getSelectedValue('type');
-        const isAdr = this.getSelectedValue('adr') === 'oui';
         
-        if (isAdr) {
-            this.disableIncompatibleOptions();
-        } else {
-            this.enableAllOptions();
+        // Sauvegarde pour les radios et checkbox
+        [...elements.typeRadios, ...elements.adrRadios].forEach(radio => {
+            radio.addEventListener('change', () => this.saveFormState());
+        });
+        
+        if (elements.enlevement) {
+            elements.enlevement.addEventListener('change', () => this.saveFormState());
         }
+    },
+    
+    /**
+     * Récupération des données du formulaire
+     */
+    getFormData() {
+        const elements = Calculateur.Elements;
+        
+        return {
+            departement: elements.departement?.value?.trim() || '',
+            poids: parseFloat(elements.poids?.value) || 0,
+            type: this.getSelectedValue('type') || 'colis',
+            adr: this.getSelectedValue('adr') || 'non',
+            service_livraison: elements.serviceLivraison?.value || 'standard',
+            enlevement: elements.enlevement?.checked ? '1' : '0',
+            palettes: parseInt(elements.palettes?.value) || 0
+        };
     },
     
     /**
@@ -278,48 +77,32 @@ Calculateur.Form = {
     },
     
     /**
-     * Récupération des données du formulaire
-     */
-    getFormData() {
-        return {
-            departement: Calculateur.Elements.departement?.value?.trim() || '',
-            poids: parseFloat(Calculateur.Elements.poids?.value) || 0,
-            type: this.getSelectedValue('type') || 'colis',
-            adr: this.getSelectedValue('adr') || 'non',
-            option_sup: Calculateur.Elements.optionSup?.value || 'standard',
-            enlevement: Calculateur.Elements.enlevement?.checked ? '1' : '0',
-            palettes: Calculateur.Elements.palettes?.value || '0'
-        };
-    },
-    
-    /**
      * Validation complète du formulaire
      */
     validateForm() {
         const data = this.getFormData();
         const errors = [];
         
-        // Département
-        if (!data.departement || !/^\d{2}$/.test(data.departement)) {
-            errors.push('Département invalide (2 chiffres requis)');
-        } else {
-            const dept = parseInt(data.departement);
-            if (dept < 1 || dept > 95) {
-                errors.push('Département hors limites (01-95)');
-            }
+        // Validation département
+        const deptValidation = this.validateDepartement(data.departement);
+        if (!deptValidation.isValid) {
+            errors.push(deptValidation.message);
         }
         
-        // Poids
-        if (!data.poids || data.poids < Calculateur.Config.MIN_POIDS) {
-            errors.push(`Poids minimum: ${Calculateur.Config.MIN_POIDS}kg`);
-        }
-        if (data.poids > Calculateur.Config.MAX_POIDS) {
-            errors.push(`Poids maximum: ${Calculateur.Config.MAX_POIDS}kg`);
+        // Validation poids
+        const poidsValidation = this.validatePoids(data.poids);
+        if (!poidsValidation.isValid) {
+            errors.push(poidsValidation.message);
         }
         
-        // Type
+        // Validation type
         if (!['colis', 'palette'].includes(data.type)) {
             errors.push('Type d\'envoi invalide');
+        }
+        
+        // Validation ADR
+        if (!['oui', 'non'].includes(data.adr)) {
+            errors.push('Option ADR invalide');
         }
         
         return {
@@ -330,43 +113,138 @@ Calculateur.Form = {
     },
     
     /**
-     * Validation d'un champ spécifique
+     * Validation spécifique département
      */
-    validateField(field) {
-        if (!field) return;
-        
-        field.classList.remove('error', 'valid');
-        
-        let isValid = true;
-        const value = field.value.trim();
-        
-        if (field === Calculateur.Elements.departement) {
-            isValid = /^\d{2}$/.test(value) && parseInt(value) >= 1 && parseInt(value) <= 95;
-        } else if (field === Calculateur.Elements.poids) {
-            const poids = parseFloat(value);
-            isValid = poids >= Calculateur.Config.MIN_POIDS && poids <= Calculateur.Config.MAX_POIDS;
+    validateDepartement(departement) {
+        if (!departement || departement.length === 0) {
+            return { isValid: false, message: 'Département requis' };
         }
         
-        field.classList.add(isValid ? 'valid' : 'error');
-        return isValid;
+        if (!/^\d{1,2}$/.test(departement)) {
+            return { isValid: false, message: 'Format invalide (chiffres uniquement)' };
+        }
+        
+        const deptNum = parseInt(departement);
+        if (deptNum < 1 || deptNum > 95) {
+            return { isValid: false, message: 'Département hors limites (01-95)' };
+        }
+        
+        // Formatage automatique (ajout du 0 si nécessaire)
+        if (departement.length === 1) {
+            const element = Calculateur.Elements.departement;
+            if (element) {
+                element.value = '0' + departement;
+            }
+        }
+        
+        return { 
+            isValid: true, 
+            message: this.getDepartementName(departement.padStart(2, '0'))
+        };
     },
     
     /**
-     * Mise à jour état du bouton de calcul
+     * Validation spécifique poids
      */
-    updateButtonState() {
-        if (!Calculateur.Elements.btnCalculate) return;
-        
-        const isValid = this.validateForm().isValid;
-        const isCalculating = Calculateur.State.isCalculating;
-        
-        Calculateur.Elements.btnCalculate.disabled = !isValid || isCalculating;
-        
-        if (!isValid) {
-            Calculateur.Elements.btnCalculate.innerHTML = '<span>📝</span> Complétez le formulaire';
-        } else if (!isCalculating) {
-            Calculateur.Elements.btnCalculate.innerHTML = '<span>🚀</span> Calculer les tarifs';
+    validatePoids(poids) {
+        if (!poids || poids <= 0) {
+            return { isValid: false, message: 'Poids requis' };
         }
+        
+        if (poids < Calculateur.Config.MIN_POIDS) {
+            return { isValid: false, message: `Minimum ${Calculateur.Config.MIN_POIDS}kg` };
+        }
+        
+        if (poids > Calculateur.Config.MAX_POIDS) {
+            return { isValid: false, message: `Maximum ${Calculateur.Config.MAX_POIDS}kg` };
+        }
+        
+        // Suggestions selon le poids
+        let suggestion = '';
+        if (poids >= Calculateur.Config.PALETTE_THRESHOLD && this.getSelectedValue('type') === 'colis') {
+            suggestion = ' (Palette recommandée)';
+        }
+        
+        return { 
+            isValid: true, 
+            message: `✓ ${poids}kg${suggestion}`
+        };
+    },
+    
+    /**
+     * Obtenir le nom du département
+     */
+    getDepartementName(dept) {
+        const departements = {
+            '01': 'Ain', '02': 'Aisne', '03': 'Allier', '04': 'Alpes-de-Haute-Provence',
+            '05': 'Hautes-Alpes', '06': 'Alpes-Maritimes', '07': 'Ardèche', '08': 'Ardennes',
+            '09': 'Ariège', '10': 'Aube', '11': 'Aude', '12': 'Aveyron',
+            '13': 'Bouches-du-Rhône', '14': 'Calvados', '15': 'Cantal', '16': 'Charente',
+            '17': 'Charente-Maritime', '18': 'Cher', '19': 'Corrèze', '21': 'Côte-d\'Or',
+            '22': 'Côtes-d\'Armor', '23': 'Creuse', '24': 'Dordogne', '25': 'Doubs',
+            '26': 'Drôme', '27': 'Eure', '28': 'Eure-et-Loir', '29': 'Finistère',
+            '30': 'Gard', '31': 'Haute-Garonne', '32': 'Gers', '33': 'Gironde',
+            '34': 'Hérault', '35': 'Ille-et-Vilaine', '36': 'Indre', '37': 'Indre-et-Loire',
+            '38': 'Isère', '39': 'Jura', '40': 'Landes', '41': 'Loir-et-Cher',
+            '42': 'Loire', '43': 'Haute-Loire', '44': 'Loire-Atlantique', '45': 'Loiret',
+            '46': 'Lot', '47': 'Lot-et-Garonne', '48': 'Lozère', '49': 'Maine-et-Loire',
+            '50': 'Manche', '51': 'Marne', '52': 'Haute-Marne', '53': 'Mayenne',
+            '54': 'Meurthe-et-Moselle', '55': 'Meuse', '56': 'Morbihan', '57': 'Moselle',
+            '58': 'Nièvre', '59': 'Nord', '60': 'Oise', '61': 'Orne',
+            '62': 'Pas-de-Calais', '63': 'Puy-de-Dôme', '64': 'Pyrénées-Atlantiques',
+            '65': 'Hautes-Pyrénées', '66': 'Pyrénées-Orientales', '67': 'Bas-Rhin',
+            '68': 'Haut-Rhin', '69': 'Rhône', '70': 'Haute-Saône', '71': 'Saône-et-Loire',
+            '72': 'Sarthe', '73': 'Savoie', '74': 'Haute-Savoie', '75': 'Paris',
+            '76': 'Seine-Maritime', '77': 'Seine-et-Marne', '78': 'Yvelines', '79': 'Deux-Sèvres',
+            '80': 'Somme', '81': 'Tarn', '82': 'Tarn-et-Garonne', '83': 'Var',
+            '84': 'Vaucluse', '85': 'Vendée', '86': 'Vienne', '87': 'Haute-Vienne',
+            '88': 'Vosges', '89': 'Yonne', '90': 'Territoire de Belfort', '91': 'Essonne',
+            '92': 'Hauts-de-Seine', '93': 'Seine-Saint-Denis', '94': 'Val-de-Marne', '95': 'Val-d\'Oise'
+        };
+        
+        return departements[dept] ? `✓ ${dept} - ${departements[dept]}` : `✓ ${dept}`;
+    },
+    
+    /**
+     * Remplissage du formulaire avec données
+     */
+    populateForm(data) {
+        const elements = Calculateur.Elements;
+        
+        Object.entries(data).forEach(([key, value]) => {
+            if (key === 'departement' && elements.departement) {
+                elements.departement.value = value;
+            } else if (key === 'poids' && elements.poids) {
+                elements.poids.value = value;
+            } else if (key === 'type') {
+                const radio = document.querySelector(`input[name="type"][value="${value}"]`);
+                if (radio) radio.checked = true;
+            } else if (key === 'adr') {
+                const radio = document.querySelector(`input[name="adr"][value="${value}"]`);
+                if (radio) radio.checked = true;
+            } else if (key === 'service_livraison' && elements.serviceLivraison) {
+                elements.serviceLivraison.value = value;
+            } else if (key === 'enlevement' && elements.enlevement) {
+                elements.enlevement.checked = Boolean(value);
+            } else if (key === 'palettes' && elements.palettes) {
+                elements.palettes.value = value;
+            }
+        });
+        
+        // Déclencher les événements pour mise à jour UI
+        setTimeout(() => {
+            [elements.departement, elements.poids].forEach(element => {
+                if (element && element.value) {
+                    element.dispatchEvent(new Event('input'));
+                }
+            });
+            
+            [...elements.typeRadios, ...elements.adrRadios].forEach(radio => {
+                if (radio.checked) {
+                    radio.dispatchEvent(new Event('change'));
+                }
+            });
+        }, 100);
     },
     
     /**
@@ -389,7 +267,72 @@ Calculateur.Form = {
             const saved = sessionStorage.getItem('calculateur_form_state');
             if (saved) {
                 const data = JSON.parse(saved);
-                this.populateForm(data);
+                // Ne charger que si les données semblent valides
+                if (data.departement && data.poids) {
+                    this.populateForm(data);
+                }
+            }
+        } catch (e) {
+            // Ignore les erreurs de stockage
+        }
+    },
+    
+    /**
+     * Sauvegarde dans l'historique
+     */
+    saveToHistory(formData, result) {
+        try {
+            let history = JSON.parse(localStorage.getItem('calculateur_history') || '[]');
+            
+            const entry = {
+                timestamp: Date.now(),
+                params: formData,
+                best: result.best,
+                bestCarrier: result.bestCarrier,
+                id: Date.now().toString()
+            };
+            
+            history.unshift(entry);
+            history = history.slice(0, 20); // Garder 20 dernières
+            
+            localStorage.setItem('calculateur_history', JSON.stringify(history));
+        } catch (e) {
+            // Ignore les erreurs de stockage
+        }
+    },
+    
+    /**
+     * Récupération de l'historique
+     */
+    getHistory() {
+        try {
+            return JSON.parse(localStorage.getItem('calculateur_history') || '[]');
+        } catch (e) {
+            return [];
+        }
+    },
+    
+    /**
+     * Reset du formulaire
+     */
+    reset() {
+        const elements = Calculateur.Elements;
+        
+        if (elements.form) {
+            elements.form.reset();
+        }
+        
+        // Reset classes de validation
+        [elements.departement, elements.poids].forEach(field => {
+            if (field) {
+                field.classList.remove('valid', 'invalid');
+            }
+        });
+        
+        // Sauvegarder état vide
+        this.saveFormState();
+    }
+};
             }
         } catch (e) {
             // Ignore les erreurs de stockage
