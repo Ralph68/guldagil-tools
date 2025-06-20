@@ -450,4 +450,105 @@
 .comparison-item {
     display: flex;
     justify-content: space-between;
-    align-items: ce
+    align-items: center;
+    padding: var(--calc-space-3);
+    background: var(--calc-gray-50);
+    border-radius: var(--calc-radius);
+    font-size: 13px;
+}
+
+.comparison-item.best {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.comparison-carrier {
+    font-weight: 500;
+}
+
+.comparison-price {
+    font-weight: 600;
+    color: var(--calc-primary);
+}
+
+/* ========================================
+   ÉTATS D'ERREUR
+======================================== */
+
+.results-error {
+    text-align: center;
+    padding: var(--calc-space-6);
+    color: var(--calc-error);
+}
+
+.results-error .error-icon {
+    font-size: 24px;
+    margin-bottom: var(--calc-space-3);
+}
+
+.results-error h4 {
+    font-size: 14px;
+    margin: 0 0 var(--calc-space-2);
+    font-weight: 600;
+}
+
+.results-error p {
+    margin: 0;
+    font-size: 13px;
+}
+
+/* ========================================
+   RESPONSIVE COMPOSANTS
+======================================== */
+
+@media (max-width: 768px) {
+    .field-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .options-buttons {
+        grid-template-columns: 1fr;
+        gap: var(--calc-space-2);
+    }
+    
+    .type-buttons,
+    .adr-buttons {
+        flex-direction: column;
+        gap: var(--calc-space-2);
+    }
+    
+    .result-price {
+        font-size: 24px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    .btn-icon {
+        font-size: 16px;
+    }
+    
+    .step-number {
+        width: 18px;
+        height: 18px;
+        font-size: 10px;
+    }
+    
+    .step-title {
+        font-size: 13px;
+    }
+    
+    .type-btn .btn-content,
+    .adr-btn .btn-content {
+        min-height: 70px;
+        padding: var(--calc-space-3);
+    }
+    
+    .option-btn .btn-content {
+        min-height: 50px;
+        padding: var(--calc-space-2);
+    }
+}
