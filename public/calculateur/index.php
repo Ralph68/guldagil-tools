@@ -83,7 +83,7 @@ $meta_keywords = 'calculateur, frais de port, transport, XPO, Heppner, Kuehne+Na
     
     <!-- CSS -->
     <link rel="stylesheet" href="../assets/css/app.min.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur.css">
+    <link rel="stylesheet" href="../assets/css/calculateur.css">
     
     <!-- Preconnect pour optimisation -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
