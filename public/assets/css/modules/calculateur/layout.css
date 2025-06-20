@@ -27,73 +27,339 @@
     min-height: calc(100vh - 160px);
 }
 
-/* ===== LAYOUT GRID PRINCIPAL ===== */
+/* ===== LAYOUT GRID PRINCIPAL (comme dans les images) ===== */
 .calculator-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--layout-gap);
-    margin: var(--layout-gap) auto;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 0 1rem;
     align-items: start;
 }
 
-/* ===== SECTIONS PRINCIPALES ===== */
-.form-section,
-.results-section {
-    background: white;
+/* ===== SECTION PARAMÈTRES (Bleu - Gauche) ===== */
+.parameters-section {
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    color: white;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    min-height: 500px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* ===== HEADERS DES SECTIONS ===== */
-.form-header,
-.results-header {
-    background: #f8fafc;
-    padding: 1.5rem;
-    border-bottom: 1px solid #e2e8f0;
-    position: relative;
+.parameters-header {
+    padding: 2rem;
+    text-align: center;
 }
 
-.form-header h2,
-.results-header h2 {
+.parameters-header h2 {
     margin: 0 0 0.5rem;
-    color: var(--calculateur-primary);
-    font-size: 1.25rem;
+    font-size: 1.5rem;
+    font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
+    gap: 0.75rem;
 }
 
-.form-header p,
-.results-header p {
+.parameters-header p {
     margin: 0;
-    color: #64748b;
-    font-size: 0.9rem;
+    opacity: 0.9;
+    font-size: 1rem;
 }
 
-/* ===== CONTENU DES SECTIONS ===== */
-.form-content,
-.results-content {
+/* ===== FORMULAIRE STEP-BY-STEP ===== */
+.form-steps {
+    background: white;
+    color: #1f2937;
     padding: 2rem;
 }
 
-/* ===== GRILLE FORMULAIRE ===== */
-.form-grid {
+.form-step {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.form-step:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.step-number {
+    width: 28px;
+    height: 28px;
+    background: #3b82f6;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.step-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+/* ===== SECTION TARIF (Vert - Droite) ===== */
+.results-section {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    color: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 2rem;
+    min-height: 400px;
+}
+
+.results-header {
+    padding: 2rem;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.results-header h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.results-status {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1rem;
+}
+
+/* ===== ZONE D'ATTENTE CALCUL ===== */
+.calculation-waiting {
+    padding: 3rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+.waiting-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    animation: float 2s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.waiting-text {
+    font-size: 1.125rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.waiting-subtext {
+    opacity: 0.8;
+    font-size: 0.9rem;
+}
+
+/* ===== GRILLE CHAMPS (2 colonnes dans chaque step) ===== */
+.step-fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
-    margin-bottom: 2rem;
 }
 
-.form-group {
+.step-fields.single-column {
+    grid-template-columns: 1fr;
+}
+
+.form-field {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
-.form-group.full-width {
+.form-field.full-width {
     grid-column: 1 / -1;
+}
+
+/* ===== CHAMPS DE SAISIE ===== */
+.form-input {
+    padding: 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-input::placeholder {
+    color: #9ca3af;
+}
+
+.field-hint {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+/* ===== BOUTONS TYPE/ADR (Style des images) ===== */
+.option-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    grid-column: 1 / -1;
+}
+
+.option-button {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.option-button:hover {
+    border-color: #3b82f6;
+    background: #f8fafc;
+}
+
+.option-button.selected {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.option-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.option-content h4 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.option-content p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+/* ===== SELECT DROPDOWN ===== */
+.form-select {
+    padding: 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* ===== CHECKBOX STYLE ===== */
+.checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.checkbox-field:hover {
+    border-color: #3b82f6;
+    background: #f8fafc;
+}
+
+.checkbox-field.checked {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.checkbox-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.checkbox-content h4 {
+    margin: 0 0 0.25rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.checkbox-content p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+/* ===== ACTIONS BOUTONS ===== */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding-top: 2rem;
+    margin-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn-reset {
+    background: #6b7280;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-reset:hover {
+    background: #4b5563;
 }
 
 /* ===== ÉLÉMENTS DE FORMULAIRE ===== */
@@ -401,162 +667,128 @@
     flex-shrink: 0;
 }
 
-/* ===== RESPONSIVE MOBILE-FRIENDLY ===== */
+/* ===== RESPONSIVE MOBILE-FRIENDLY (Interface step-by-step) ===== */
 @media (max-width: 768px) {
     .calculator-layout {
         grid-template-columns: 1fr;
-        gap: var(--layout-gap-mobile);
-        margin: var(--layout-gap-mobile) auto;
+        gap: 1.5rem;
+        margin: 1rem auto;
     }
     
-    .form-grid {
+    /* Section paramètres mobile */
+    .parameters-header {
+        padding: 1.5rem;
+    }
+    
+    .parameters-header h2 {
+        font-size: 1.25rem;
+    }
+    
+    .form-steps {
+        padding: 1.5rem;
+    }
+    
+    /* Steps responsive */
+    .step-fields {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
     
-    .form-content,
-    .results-content {
+    .option-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .option-button {
+        padding: 1rem;
+    }
+    
+    /* Section résultats mobile */
+    .results-section {
+        position: static;
+        order: -1; /* Mettre les résultats en haut sur mobile */
+    }
+    
+    .results-header {
         padding: 1.5rem;
     }
     
-    .best-result {
-        padding: 1.5rem;
+    .calculation-waiting {
+        padding: 2rem;
+        min-height: 150px;
     }
     
-    .best-price {
+    .waiting-icon {
         font-size: 2rem;
     }
     
-    .calc-stats {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
+    /* Actions mobile */
     .form-actions {
         flex-direction: column;
     }
     
-    .btn {
+    .btn-reset {
+        width: 100%;
         justify-content: center;
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-    
-    .radio-group,
-    .checkbox-group {
-        flex-direction: column;
-    }
-    
-    .radio-item,
-    .checkbox-item {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-    
-    /* Header responsive */
-    .module-header {
-        padding: 1rem 0;
-    }
-    
-    .header-content {
-        flex-direction: column;
-        text-align: center;
-        gap: 1rem;
-    }
-    
-    .header-actions {
-        justify-content: center;
-        width: 100%;
-    }
-    
-    /* Tables responsive */
-    .comparison-table {
-        font-size: 0.875rem;
-    }
-    
-    .comparison-table th,
-    .comparison-table td {
-        padding: 0.75rem 0.5rem;
     }
 }
 
 @media (max-width: 480px) {
-    :root {
-        --layout-padding: 0.5rem;
-        --layout-gap-mobile: 0.5rem;
+    .calculator-layout {
+        margin: 0.5rem auto;
+        gap: 1rem;
     }
     
-    .calculateur-container {
-        padding: 0.5rem;
-    }
-    
-    .form-content,
-    .results-content {
+    .parameters-header,
+    .results-header {
         padding: 1rem;
     }
     
-    .best-result {
+    .form-steps {
         padding: 1rem;
     }
     
-    .best-price {
-        font-size: 1.75rem;
+    .form-step {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
     }
     
-    .calc-stats {
-        grid-template-columns: 1fr;
+    .step-header {
         gap: 0.75rem;
+        margin-bottom: 1rem;
     }
     
-    .comparison-table th,
-    .comparison-table td {
-        padding: 0.75rem 0.5rem;
-        font-size: 0.875rem;
+    .step-number {
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
     }
     
-    /* Amélioration tactile mobile */
-    .btn {
-        min-height: 44px; /* Apple touch guidelines */
+    .step-title {
         font-size: 1rem;
     }
     
-    .form-control {
-        min-height: 44px;
+    .form-input,
+    .form-select {
         font-size: 16px; /* Évite le zoom iOS */
-    }
-    
-    .radio-item,
-    .checkbox-item {
         min-height: 44px;
-        font-size: 0.95rem;
     }
     
-    /* Optimisation scroll horizontal tables */
-    .comparison-table {
-        min-width: 100%;
+    .option-button,
+    .checkbox-field {
+        min-height: 44px;
+        padding: 0.875rem;
     }
     
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-}
-
-/* ===== RESPONSIVE DESKTOP AMÉLIORÉ ===== */
-@media (min-width: 1200px) {
-    .calculator-layout {
-        gap: 3rem;
+    .calculation-waiting {
+        padding: 1.5rem;
     }
     
-    .form-grid {
-        grid-template-columns: 1fr 1fr 1fr;
+    .waiting-text {
+        font-size: 1rem;
     }
     
-    .best-result {
-        padding: 2.5rem;
-    }
-    
-    .best-price {
-        font-size: 3rem;
+    .waiting-subtext {
+        font-size: 0.875rem;
     }
 }
 
@@ -567,60 +799,75 @@
         gap: 2rem;
     }
     
-    .form-grid {
+    .results-section {
+        order: -1; /* Résultats en haut sur tablette aussi */
+        position: static;
+    }
+    
+    .step-fields {
         grid-template-columns: 1fr 1fr;
     }
     
-    .calc-stats {
-        grid-template-columns: repeat(3, 1fr);
+    .option-buttons {
+        grid-template-columns: 1fr 1fr;
     }
 }
 
-/* ===== ORIENTATION LANDSCAPE MOBILE ===== */
-@media (max-height: 500px) and (orientation: landscape) {
+/* ===== RESPONSIVE DESKTOP LARGE ===== */
+@media (min-width: 1200px) {
     .calculator-layout {
-        margin: 1rem auto;
+        max-width: 1600px;
+        gap: 3rem;
     }
     
-    .form-content,
-    .results-content {
-        padding: 1rem;
+    .parameters-header,
+    .results-header {
+        padding: 2.5rem;
     }
     
-    .best-result {
-        padding: 1rem 2rem;
+    .form-steps {
+        padding: 2.5rem;
     }
     
-    .best-price {
-        font-size: 1.5rem;
+    .step-fields {
+        gap: 2rem;
     }
 }
 
-/* ===== AMÉLIORATIONS TACTILES ===== */
+/* ===== AMÉLIORATIONS TACTILES MOBILES ===== */
 @media (hover: none) and (pointer: coarse) {
-    /* Styles pour appareils tactiles */
-    .btn {
+    .option-button,
+    .checkbox-field,
+    .btn-reset {
         min-height: 48px;
-        padding: 0.875rem 1.75rem;
     }
     
-    .form-control {
-        min-height: 48px;
-        padding: 0.875rem;
-    }
-    
-    .radio-item,
-    .checkbox-item {
+    .form-input,
+    .form-select {
         min-height: 48px;
         padding: 1rem;
     }
     
-    /* Amélioration des zones de clic */
-    .radio-item:active,
-    .checkbox-item:active,
-    .btn:active {
+    .option-button:active,
+    .checkbox-field:active {
         transform: scale(0.98);
         transition: transform 0.1s;
+    }
+}
+
+/* ===== STATES D'ANIMATION ===== */
+.form-step {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
