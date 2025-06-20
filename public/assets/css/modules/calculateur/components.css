@@ -1,0 +1,453 @@
+/**
+ * Titre: Composants interface - Module Calculateur
+ * Chemin: /public/assets/css/modules/calculateur/components.css
+ * Version: 0.5 beta + build
+ * 
+ * Composants d'interface pour formulaire pas-à-pas avec boutons compacts
+ */
+
+/* ========================================
+   ÉTAPES FORMULAIRE
+======================================== */
+
+.form-step {
+    margin-bottom: var(--calc-space-6);
+    padding-bottom: var(--calc-space-6);
+    border-bottom: 1px solid var(--calc-gray-200);
+    transition: var(--calc-transition);
+}
+
+.form-step:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.form-step.hidden {
+    display: none;
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-3);
+    margin-bottom: var(--calc-space-4);
+}
+
+.step-number {
+    width: 20px;
+    height: 20px;
+    background: var(--calc-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.step-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--calc-gray-800);
+    margin: 0;
+}
+
+/* ========================================
+   CHAMPS DE FORMULAIRE
+======================================== */
+
+.field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--calc-space-4);
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--calc-gray-700);
+    margin-bottom: var(--calc-space-2);
+}
+
+.form-input {
+    padding: var(--calc-space-3);
+    border: 1px solid var(--calc-gray-300);
+    border-radius: var(--calc-radius);
+    font-size: 13px;
+    transition: var(--calc-transition);
+    background: white;
+    height: 38px; /* Hauteur fixe pour cohérence */
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--calc-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.field-hint {
+    font-size: 11px;
+    color: var(--calc-gray-500);
+    margin-top: var(--calc-space-1);
+}
+
+/* ========================================
+   BOUTONS TYPE/ADR (COMPACTS)
+======================================== */
+
+.type-buttons,
+.adr-buttons {
+    display: flex;
+    gap: var(--calc-space-3);
+}
+
+.type-btn,
+.adr-btn {
+    flex: 1;
+    cursor: pointer;
+}
+
+.type-btn input[type="radio"],
+.adr-btn input[type="radio"] {
+    display: none;
+}
+
+.type-btn .btn-content,
+.adr-btn .btn-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--calc-space-2);
+    padding: var(--calc-space-4);
+    border: 1px solid var(--calc-gray-300);
+    border-radius: var(--calc-radius);
+    background: white;
+    transition: var(--calc-transition);
+    min-height: 80px;
+    justify-content: center;
+}
+
+.type-btn:hover .btn-content,
+.adr-btn:hover .btn-content {
+    border-color: var(--calc-primary);
+    box-shadow: var(--calc-shadow);
+}
+
+.type-btn input:checked + .btn-content,
+.adr-btn input:checked + .btn-content {
+    border-color: var(--calc-primary);
+    background: rgba(59, 130, 246, 0.05);
+    color: var(--calc-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.type-btn.grayed-out .btn-content,
+.adr-btn.grayed-out .btn-content {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn-icon {
+    font-size: 20px;
+}
+
+.btn-text {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ========================================
+   BOUTONS OPTIONS (EN LIGNE, COMPACTS)
+======================================== */
+
+.options-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--calc-space-2);
+}
+
+.option-btn {
+    cursor: pointer;
+}
+
+.option-btn input[type="radio"] {
+    display: none;
+}
+
+.option-btn .btn-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--calc-space-1);
+    padding: var(--calc-space-3);
+    border: 1px solid var(--calc-gray-300);
+    border-radius: var(--calc-radius);
+    background: white;
+    transition: var(--calc-transition);
+    min-height: 60px;
+    justify-content: center;
+    text-align: center;
+}
+
+.option-btn:hover .btn-content {
+    border-color: var(--calc-gray-400);
+}
+
+.option-btn input:checked + .btn-content,
+.option-btn.active .btn-content {
+    border-color: var(--calc-primary);
+    background: rgba(59, 130, 246, 0.05);
+    color: var(--calc-primary);
+}
+
+.option-btn.disabled .btn-content {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.option-btn .btn-text {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.option-btn .btn-price {
+    font-size: 11px;
+    color: var(--calc-gray-500);
+    font-weight: 400;
+}
+
+.option-btn input:checked + .btn-content .btn-price,
+.option-btn.active .btn-content .btn-price {
+    color: var(--calc-primary);
+}
+
+/* ========================================
+   INPUT PALETTE
+======================================== */
+
+.palette-input {
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-2);
+}
+
+.palette-input .form-input {
+    max-width: 120px;
+}
+
+.input-suffix {
+    font-size: 13px;
+    color: var(--calc-gray-500);
+    font-weight: 500;
+}
+
+/* ========================================
+   ENLÈVEMENT (SÉPARÉ)
+======================================== */
+
+.step-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--calc-gray-300);
+    margin: var(--calc-space-6) 0;
+}
+
+.enlevement-option {
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-3);
+    padding: var(--calc-space-4);
+    border: 1px solid var(--calc-gray-300);
+    border-radius: var(--calc-radius);
+    cursor: pointer;
+    transition: var(--calc-transition);
+    background: white;
+}
+
+.enlevement-option:hover {
+    border-color: var(--calc-primary);
+    background: rgba(59, 130, 246, 0.02);
+}
+
+.enlevement-option input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--calc-primary);
+}
+
+.checkbox-content {
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-3);
+    flex: 1;
+}
+
+.checkbox-icon {
+    font-size: 18px;
+}
+
+.checkbox-text {
+    flex: 1;
+}
+
+.checkbox-title {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--calc-gray-800);
+}
+
+.checkbox-desc {
+    font-size: 11px;
+    color: var(--calc-gray-500);
+}
+
+/* ========================================
+   ACTIONS FORMULAIRE
+======================================== */
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--calc-space-3);
+    padding-top: var(--calc-space-4);
+    border-top: 1px solid var(--calc-gray-200);
+    margin-top: var(--calc-space-6);
+}
+
+.btn {
+    padding: var(--calc-space-3) var(--calc-space-6);
+    border: none;
+    border-radius: var(--calc-radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--calc-transition);
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-2);
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background: var(--calc-gray-100);
+    color: var(--calc-gray-700);
+    border: 1px solid var(--calc-gray-300);
+}
+
+.btn-secondary:hover {
+    background: var(--calc-gray-200);
+    border-color: var(--calc-gray-400);
+}
+
+/* ========================================
+   RÉSULTATS
+======================================== */
+
+.results-placeholder {
+    text-align: center;
+    padding: var(--calc-space-8) var(--calc-space-4);
+    color: var(--calc-gray-500);
+}
+
+.placeholder-icon {
+    font-size: 36px;
+    margin-bottom: var(--calc-space-4);
+    opacity: 0.7;
+}
+
+.results-placeholder h4 {
+    font-size: 16px;
+    margin: 0 0 var(--calc-space-2);
+    color: var(--calc-gray-700);
+    font-weight: 600;
+}
+
+.results-placeholder p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.results-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 150px;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--calc-gray-200);
+    border-top: 2px solid var(--calc-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.results-active {
+    animation: fadeIn 0.4s ease-out;
+}
+
+.result-best {
+    text-align: center;
+    padding: var(--calc-space-6);
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-radius: var(--calc-radius);
+    margin-bottom: var(--calc-space-6);
+}
+
+.result-carrier {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--calc-primary);
+    margin-bottom: var(--calc-space-2);
+}
+
+.result-price {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--calc-primary-dark);
+    margin-bottom: var(--calc-space-2);
+}
+
+.result-details {
+    font-size: 12px;
+    color: var(--calc-gray-600);
+}
+
+.result-comparison {
+    margin-top: var(--calc-space-6);
+}
+
+.comparison-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--calc-gray-700);
+    margin-bottom: var(--calc-space-3);
+}
+
+.comparison-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--calc-space-2);
+}
+
+.comparison-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: ce
