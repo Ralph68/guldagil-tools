@@ -1,0 +1,505 @@
+/**
+ * Titre: CSS Interface pas-à-pas - Module Calculateur
+ * Chemin: /public/assets/css/calculateur-stepwise.css
+ * Version: 0.5 beta + build
+ * 
+ * Styles pour interface calculateur inspirée de l'ancienne version
+ * Layout desktop-friendly avec header fixe et résultats toujours visibles
+ */
+
+/* ========================================
+   VARIABLES CSS INTERFACE PAS-À-PAS
+======================================== */
+
+:root {
+    /* Couleurs principales */
+    --calc-primary: #3b82f6;
+    --calc-primary-dark: #1e40af;
+    --calc-secondary: #10b981;
+    --calc-warning: #f59e0b;
+    --calc-error: #ef4444;
+    
+    /* Couleurs neutres */
+    --calc-gray-50: #f8fafc;
+    --calc-gray-100: #f1f5f9;
+    --calc-gray-200: #e2e8f0;
+    --calc-gray-300: #cbd5e1;
+    --calc-gray-400: #94a3b8;
+    --calc-gray-500: #64748b;
+    --calc-gray-600: #475569;
+    --calc-gray-700: #334155;
+    --calc-gray-800: #1e293b;
+    --calc-gray-900: #0f172a;
+    
+    /* Espacements */
+    --calc-space-1: 0.25rem;
+    --calc-space-2: 0.5rem;
+    --calc-space-3: 0.75rem;
+    --calc-space-4: 1rem;
+    --calc-space-6: 1.5rem;
+    --calc-space-8: 2rem;
+    --calc-space-12: 3rem;
+    
+    /* Radius */
+    --calc-radius: 0.375rem;
+    --calc-radius-lg: 0.75rem;
+    
+    /* Ombres */
+    --calc-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --calc-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --calc-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    
+    /* Transitions */
+    --calc-transition: all 0.2s ease;
+}
+
+/* ========================================
+   LAYOUT GÉNÉRAL
+======================================== */
+
+.calculator-page {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--calc-gray-50);
+    color: var(--calc-gray-800);
+    line-height: 1.5;
+}
+
+/* ========================================
+   HEADER FIXE
+======================================== */
+
+.calculator-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-bottom: 1px solid var(--calc-gray-200);
+    padding: var(--calc-space-3) var(--calc-space-6);
+    z-index: 1000;
+    box-shadow: var(--calc-shadow);
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-3);
+}
+
+.brand-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--calc-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+}
+
+.brand-info h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--calc-gray-800);
+}
+
+.brand-info p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--calc-gray-500);
+}
+
+.header-actions {
+    display: flex;
+    gap: var(--calc-space-3);
+}
+
+.header-btn {
+    padding: var(--calc-space-2) var(--calc-space-4);
+    border: 1px solid var(--calc-gray-300);
+    background: white;
+    border-radius: var(--calc-radius);
+    font-size: 14px;
+    text-decoration: none;
+    color: var(--calc-gray-700);
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-2);
+    transition: var(--calc-transition);
+    cursor: pointer;
+}
+
+.header-btn:hover {
+    background: var(--calc-gray-50);
+    border-color: var(--calc-gray-400);
+    color: var(--calc-gray-800);
+}
+
+.header-btn.primary {
+    background: var(--calc-primary);
+    color: white;
+    border-color: var(--calc-primary);
+}
+
+.header-btn.primary:hover {
+    background: var(--calc-primary-dark);
+    border-color: var(--calc-primary-dark);
+}
+
+/* ========================================
+   CONTAINER PRINCIPAL
+======================================== */
+
+.calculator-container {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: var(--calc-space-6);
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 80px var(--calc-space-6) var(--calc-space-6);
+    min-height: calc(100vh - 80px);
+}
+
+/* ========================================
+   SECTION FORMULAIRE
+======================================== */
+
+.form-section {
+    background: white;
+    border-radius: var(--calc-radius-lg);
+    box-shadow: var(--calc-shadow);
+    overflow: hidden;
+}
+
+.form-header {
+    background: linear-gradient(135deg, var(--calc-primary) 0%, var(--calc-primary-dark) 100%);
+    color: white;
+    padding: var(--calc-space-6);
+}
+
+.form-header h2 {
+    margin: 0 0 var(--calc-space-2);
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.form-header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+.form-content {
+    padding: var(--calc-space-8);
+}
+
+/* ========================================
+   ÉTAPES DU FORMULAIRE
+======================================== */
+
+.form-step {
+    margin-bottom: var(--calc-space-8);
+    padding-bottom: var(--calc-space-8);
+    border-bottom: 1px solid var(--calc-gray-200);
+}
+
+.form-step:last-of-type {
+    border-bottom: none;
+    margin-bottom: var(--calc-space-6);
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-3);
+    margin-bottom: var(--calc-space-4);
+}
+
+.step-number {
+    width: 24px;
+    height: 24px;
+    background: var(--calc-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.step-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--calc-gray-800);
+    margin: 0;
+}
+
+/* ========================================
+   CHAMPS DE FORMULAIRE
+======================================== */
+
+.field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--calc-space-4);
+    margin-bottom: var(--calc-space-4);
+}
+
+.field-group.single {
+    grid-template-columns: 1fr;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--calc-gray-700);
+    margin-bottom: var(--calc-space-2);
+}
+
+.form-input {
+    padding: var(--calc-space-3);
+    border: 1px solid var(--calc-gray-300);
+    border-radius: var(--calc-radius);
+    font-size: 14px;
+    transition: var(--calc-transition);
+    background: white;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--calc-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-input.valid {
+    border-color: var(--calc-secondary);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.form-input.invalid {
+    border-color: var(--calc-error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.field-hint {
+    font-size: 12px;
+    color: var(--calc-gray-500);
+    margin-top: var(--calc-space-1);
+}
+
+.field-feedback {
+    font-size: 12px;
+    margin-top: var(--calc-space-1);
+    min-height: 16px;
+}
+
+.field-feedback.valid {
+    color: var(--calc-secondary);
+}
+
+.field-feedback.invalid {
+    color: var(--calc-error);
+}
+
+/* ========================================
+   OPTIONS RADIO/CHECKBOX
+======================================== */
+
+.options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--calc-space-3);
+}
+
+.option-card {
+    border: 1px solid var(--calc-gray-300);
+    border-radius: var(--calc-radius);
+    padding: var(--calc-space-4);
+    cursor: pointer;
+    transition: var(--calc-transition);
+    position: relative;
+    background: white;
+}
+
+.option-card:hover {
+    border-color: var(--calc-primary);
+    box-shadow: var(--calc-shadow);
+}
+
+.option-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.option-card input[type="radio"]:checked + .option-content {
+    color: var(--calc-primary);
+}
+
+.option-card:has(input:checked) {
+    border-color: var(--calc-primary);
+    background: rgba(59, 130, 246, 0.05);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.option-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--calc-space-2);
+}
+
+.option-icon {
+    font-size: 24px;
+}
+
+.option-title {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.option-desc {
+    font-size: 12px;
+    color: var(--calc-gray-500);
+}
+
+/* ========================================
+   CHECKBOX OPTION
+======================================== */
+
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-3);
+    padding: var(--calc-space-4);
+    border: 1px solid var(--calc-gray-300);
+    border-radius: var(--calc-radius);
+    cursor: pointer;
+    transition: var(--calc-transition);
+    margin-top: var(--calc-space-4);
+}
+
+.checkbox-option:hover {
+    border-color: var(--calc-primary);
+    background: rgba(59, 130, 246, 0.02);
+}
+
+.checkbox-option input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--calc-primary);
+}
+
+.checkbox-content {
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-3);
+    flex: 1;
+}
+
+.checkbox-icon {
+    font-size: 20px;
+}
+
+.checkbox-text {
+    flex: 1;
+}
+
+.checkbox-title {
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--calc-gray-800);
+}
+
+.checkbox-desc {
+    font-size: 12px;
+    color: var(--calc-gray-500);
+}
+
+/* ========================================
+   ACTIONS FORMULAIRE
+======================================== */
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--calc-space-3);
+    padding-top: var(--calc-space-4);
+    border-top: 1px solid var(--calc-gray-200);
+}
+
+.btn {
+    padding: var(--calc-space-3) var(--calc-space-6);
+    border: none;
+    border-radius: var(--calc-radius);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--calc-transition);
+    display: flex;
+    align-items: center;
+    gap: var(--calc-space-2);
+}
+
+.btn-secondary {
+    background: var(--calc-gray-100);
+    color: var(--calc-gray-700);
+    border: 1px solid var(--calc-gray-300);
+}
+
+.btn-secondary:hover {
+    background: var(--calc-gray-200);
+    border-color: var(--calc-gray-400);
+}
+
+/* ========================================
+   SECTION RÉSULTATS (TOUJOURS VISIBLE)
+======================================== */
+
+.results-section {
+    background: white;
+    border-radius: var(--calc-radius-lg);
+    box-shadow: var(--calc-shadow);
+    height: fit-content;
+    position: sticky;
+    top: 100px;
+}
+
+.results-header {
+    background: linear-gradient(135deg, var(--calc-secondary) 0%, #059669 100%);
+    color: white;
+    padding: var(--calc-space-6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.results-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.results-status {
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.
