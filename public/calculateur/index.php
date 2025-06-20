@@ -67,7 +67,7 @@ $preset_data = [
     
     <!-- CSS - UN SEUL FICHIER LAYOUT -->
     <link rel="stylesheet" href="../assets/css/app.min.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/calculateur.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="../assets/img/favicon.png">
@@ -296,13 +296,7 @@ $preset_data = [
         </div>
     </footer>
 
-    <!-- JavaScript - Architecture modulaire -->
-    <script src="../assets/js/app.min.js"></script>
-    <script src="../assets/js/modules/calculateur/utils.js"></script>
-    <script src="../assets/js/modules/calculateur/ui.js"></script>
-    <script src="../assets/js/modules/calculateur/form-handler.js"></script>
-    <script src="../assets/js/modules/calculateur/calculs.js"></script>
-    <script src="../assets/js/modules/calculateur/resultats-display.js"></script>
+    <!-- JavaScript - UNIQUEMENT LES FICHIERS QUI EXISTENT -->
     <script src="../assets/js/modules/calculateur/calculateur.js"></script>
     
     <?php if (!empty($preset_data['departement']) && !empty($preset_data['poids'])): ?>
