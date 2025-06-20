@@ -1,260 +1,296 @@
 <?php
 /**
- * public/calculateur/index.php - VERSION DEBUG pour diagnostiquer erreur 500
+ * public/calculateur/index.php - Module Calculateur complet
  * Chemin: /public/calculateur/index.php
+ * 
+ * CORRECTIONS:
+ * - Utilise config/config.php (pas /config.php à la racine)
+ * - Utilise la nouvelle classe Transport relocalisée
  */
 
-// Activation affichage erreurs pour diagnostic
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// Configuration principale
+require __DIR__ . '/../../config/config.php';
 
-echo "<!-- DEBUG: Début du script -->\n";
+// Classe Transport directement depuis son emplacement
+require __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
 
-// Test 1: Vérification des chemins
-$configPath = __DIR__ . '/../../config/config.php';
-$transportPath = __DIR__ . '/../../src/modules/calculateur/services/TransportCalculator.php';
-
-echo "<!-- DEBUG: Config path: $configPath -->\n";
-echo "<!-- DEBUG: Transport path: $transportPath -->\n";
-
-// Test 2: Existence des fichiers
-if (!file_exists($configPath)) {
-    die("❌ ERREUR: Fichier config non trouvé à: $configPath");
+// Démarrage session si pas déjà fait
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-if (!file_exists($transportPath)) {
-    die("❌ ERREUR: Fichier Transport non trouvé à: $transportPath");
+// Authentification (héritée du portail principal)
+$auth_required = false; // Synchronisé avec le portail principal
+
+if ($auth_required && !isset($_SESSION['authenticated'])) {
+    header('Location: ../');
+    exit;
 }
 
-echo "<!-- DEBUG: Fichiers trouvés -->\n";
-
-// Test 3: Inclusion configuration
-try {
-    require_once $configPath;
-    echo "<!-- DEBUG: Config chargée -->\n";
-} catch (Exception $e) {
-    die("❌ ERREUR Config: " . $e->getMessage());
-} catch (Error $e) {
-    die("❌ ERREUR FATALE Config: " . $e->getMessage());
-}
-
-// Test 4: Vérification variable $db
-if (!isset($db)) {
-    die("❌ ERREUR: Variable \$db non définie après inclusion config");
-}
-
-echo "<!-- DEBUG: Variable \$db disponible -->\n";
-
-// Test 5: Test connexion base
-try {
-    $testQuery = $db->query("SELECT 1 as test");
-    $testResult = $testQuery->fetch();
-    if ($testResult['test'] == 1) {
-        echo "<!-- DEBUG: Connexion BDD OK -->\n";
-    }
-} catch (Exception $e) {
-    die("❌ ERREUR BDD: " . $e->getMessage());
-}
-
-// Test 6: Inclusion classe Transport
-try {
-    require_once $transportPath;
-    echo "<!-- DEBUG: Classe Transport chargée -->\n";
-} catch (Exception $e) {
-    die("❌ ERREUR Transport: " . $e->getMessage());
-} catch (Error $e) {
-    die("❌ ERREUR FATALE Transport: " . $e->getMessage());
-}
-
-// Test 7: Instanciation classe Transport
+// Initialisation de la classe Transport
 try {
     $transport = new Transport($db);
-    echo "<!-- DEBUG: Instance Transport créée -->\n";
 } catch (Exception $e) {
-    die("❌ ERREUR Instance Transport: " . $e->getMessage());
-} catch (Error $e) {
-    die("❌ ERREUR FATALE Instance Transport: " . $e->getMessage());
+    if (DEBUG) {
+        die('Erreur initialisation Transport: ' . $e->getMessage());
+    } else {
+        die('Service temporairement indisponible');
+    }
 }
 
-// Test 8: Variables système
-$phpVersion = PHP_VERSION;
-$memoryLimit = ini_get('memory_limit');
-$maxExecutionTime = ini_get('max_execution_time');
+// Traitement du formulaire si soumission
+$results = null;
+$error = null;
 
-// Si on arrive ici, tout va bien !
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $params = [
+            'departement' => $_POST['departement'] ?? '',
+            'poids' => (float)($_POST['poids'] ?? 0),
+            'type' => $_POST['type'] ?? 'colis',
+            'adr' => $_POST['adr'] ?? 'non',
+            'option_sup' => $_POST['option_sup'] ?? 'aucune',
+            'enlevement' => isset($_POST['enlevement']),
+            'palettes' => (int)($_POST['palettes'] ?? 0)
+        ];
+        
+        // Validation basique
+        if (empty($params['departement']) || $params['poids'] <= 0) {
+            throw new Exception('Département et poids sont obligatoires');
+        }
+        
+        // Calcul des tarifs
+        $results = $transport->calculateAll($params);
+        
+    } catch (Exception $e) {
+        $error = $e->getMessage();
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔧 Calculateur Guldagil - Mode Debug</title>
+    <title>Calculateur de frais - Portail Guldagil</title>
+    <link rel="stylesheet" href="../assets/css/portail-base.css">
+    <link rel="stylesheet" href="../assets/css/calculateur-module.css">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f8ff; }
-        .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 10px 0; }
-        .info { background: #cce7ff; color: #004085; padding: 15px; border-radius: 5px; margin: 10px 0; }
-        .form-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 800px; }
-        .system-info { background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 0.9em; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-control { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        .btn { background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        .btn:hover { background: #0056b3; }
-        .results { background: #f8f9fa; padding: 20px; border-radius: 5px; margin-top: 20px; }
-        .debug-section { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        /* Styles de base pour le rendu immédiat */
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .module-header { background: #2563eb; color: white; padding: 1rem; margin-bottom: 2rem; border-radius: 8px; }
+        .header-brand { display: flex; align-items: center; gap: 1rem; }
+        .module-title { margin: 0; font-size: 1.5rem; }
+        .module-subtitle { opacity: 0.8; margin: 0; }
+        .calculator-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 1200px; }
+        .form-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .form-header h2 { margin: 0 0 0.5rem; color: #2563eb; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-control { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; }
+        .btn { padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #1d4ed8; }
+        .results-section { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .error-container { background: #fee2e2; color: #dc2626; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+        .debug-info { background: #f3f4f6; padding: 1rem; border-radius: 4px; margin-top: 1rem; font-family: monospace; font-size: 0.9rem; }
+        .back-link { text-decoration: none; color: white; font-size: 1.2rem; }
+        .header-actions { margin-left: auto; }
+        .account-info { opacity: 0.8; }
+        @media (max-width: 768px) { .calculator-layout { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-    <h1>🔧 Calculateur Guldagil - Mode Debug</h1>
-    
-    <div class="success">
-        ✅ <strong>Diagnostic réussi !</strong> Tous les composants ont été chargés correctement.
-    </div>
-    
-    <div class="info">
-        🔍 <strong>Tests effectués :</strong>
-        <ul>
-            <li>✅ Fichiers de configuration trouvés</li>
-            <li>✅ Configuration chargée</li>
-            <li>✅ Connexion base de données OK</li>
-            <li>✅ Classe Transport chargée</li>
-            <li>✅ Instance Transport créée</li>
-        </ul>
-    </div>
-    
-    <div class="debug-section">
-        <h3>🔧 Informations système</h3>
-        <div class="system-info">
-            <strong>PHP Version:</strong> <?= $phpVersion ?><br>
-            <strong>Memory Limit:</strong> <?= $memoryLimit ?><br>
-            <strong>Max Execution Time:</strong> <?= $maxExecutionTime ?>s<br>
-            <strong>Date/Heure:</strong> <?= date('Y-m-d H:i:s') ?><br>
-            <strong>Timezone:</strong> <?= date_default_timezone_get() ?><br>
-            <strong>Version App:</strong> <?= defined('APP_VERSION') ? APP_VERSION : 'Non définie' ?><br>
-            <strong>Debug Mode:</strong> <?= defined('DEBUG') && DEBUG ? 'Activé' : 'Désactivé' ?>
-        </div>
-    </div>
-    
-    <div class="form-container">
-        <h2>🚚 Calculateur de frais de port</h2>
-        
-        <?php
-        // Traitement du formulaire
-        $results = null;
-        $error = null;
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            try {
-                $params = [
-                    'departement' => $_POST['departement'] ?? '',
-                    'poids' => (float)($_POST['poids'] ?? 0),
-                    'type' => $_POST['type'] ?? 'colis',
-                    'adr' => $_POST['adr'] ?? 'non',
-                    'option_sup' => $_POST['option_sup'] ?? 'aucune',
-                    'enlevement' => isset($_POST['enlevement']),
-                    'palettes' => (int)($_POST['palettes'] ?? 0)
-                ];
-                
-                // Validation
-                if (empty($params['departement']) || $params['poids'] <= 0) {
-                    throw new Exception('Département et poids sont obligatoires');
-                }
-                
-                // Test simple sans la méthode calculateAll
-                echo "<div class='info'>🧮 <strong>Paramètres reçus:</strong> " . json_encode($params) . "</div>";
-                
-                // Test basique de la classe Transport
-                $carriers = ['xpo', 'heppner', 'kn'];
-                $results = [];
-                
-                foreach ($carriers as $carrier) {
-                    try {
-                        // Test de base sans calcul complexe
-                        $results[$carrier] = rand(2500, 8500) / 100; // Prix simulé pour test
-                    } catch (Exception $e) {
-                        $results[$carrier] = null;
-                        $error = "Erreur calcul $carrier: " . $e->getMessage();
-                    }
-                }
-                
-            } catch (Exception $e) {
-                $error = $e->getMessage();
-            }
-        }
-        ?>
-        
-        <?php if ($error): ?>
-        <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-            <strong>❌ Erreur:</strong> <?= htmlspecialchars($error) ?>
-        </div>
-        <?php endif; ?>
-        
-        <form method="POST">
-            <div class="form-group">
-                <label for="departement">🗺️ Département de destination *</label>
-                <input type="text" id="departement" name="departement" class="form-control" 
-                       placeholder="Ex: 75, 69, 13..." 
-                       value="<?= htmlspecialchars($_POST['departement'] ?? '75') ?>" 
-                       pattern="[0-9]{2,3}" maxlength="3" required>
-                <small style="color: #666;">Format: 2 ou 3 chiffres (75, 976...)</small>
+    <!-- Header module -->
+    <header class="module-header">
+        <div class="header-container">
+            <div class="header-brand">
+                <a href="../" class="back-link" title="Retour à l'accueil">
+                    <span>←</span>
+                </a>
+                <div class="header-info">
+                    <h1 class="module-title">Calculateur de frais</h1>
+                    <p class="module-subtitle">Interface complète</p>
+                </div>
             </div>
-
-            <div class="form-group">
-                <label for="poids">⚖️ Poids total (kg) *</label>
-                <input type="number" id="poids" name="poids" class="form-control" 
-                       placeholder="Ex: 25.5"
-                       value="<?= htmlspecialchars($_POST['poids'] ?? '25') ?>" 
-                       step="0.1" min="0.1" max="10000" required>
-            </div>
-
-            <div class="form-group">
-                <label for="type">📦 Type d'envoi</label>
-                <select id="type" name="type" class="form-control">
-                    <option value="colis" <?= ($_POST['type'] ?? '') === 'colis' ? 'selected' : '' ?>>Colis</option>
-                    <option value="palette" <?= ($_POST['type'] ?? '') === 'palette' ? 'selected' : '' ?>>Palette</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="adr">⚠️ Marchandise dangereuse (ADR)</label>
-                <select id="adr" name="adr" class="form-control">
-                    <option value="non" <?= ($_POST['adr'] ?? 'non') === 'non' ? 'selected' : '' ?>>Non</option>
-                    <option value="oui" <?= ($_POST['adr'] ?? '') === 'oui' ? 'selected' : '' ?>>Oui</option>
-                </select>
-            </div>
-
-            <button type="submit" class="btn">
-                🧮 Calculer les tarifs (Mode Test)
-            </button>
-        </form>
-        
-        <?php if ($results): ?>
-        <div class="results">
-            <h3>📊 Résultats de test</h3>
-            <p><em>Mode debug - Tarifs simulés pour vérifier le bon fonctionnement</em></p>
             
-            <?php foreach ($results as $carrier => $price): ?>
-            <div style="padding: 10px; border: 1px solid #ddd; margin: 5px 0; border-radius: 5px;">
-                <strong><?= strtoupper($carrier) ?>:</strong>
-                <?php if ($price !== null): ?>
-                    <?= number_format($price, 2, ',', ' ') ?> € <em>(simulé)</em>
-                <?php else: ?>
-                    <span style="color: #dc3545;">Non disponible</span>
+            <div class="header-actions">
+                <div class="account-info">
+                    👨‍💻 Dev | Version <?= APP_VERSION ?> | Build <?= BUILD_NUMBER ?>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Layout principal calculateur -->
+    <main class="calculator-layout">
+        <!-- Colonne formulaire (gauche) -->
+        <section class="form-section">
+            <div class="form-card">
+                <div class="form-header">
+                    <h2>🚚 Paramètres d'expédition</h2>
+                    <p>Renseignez vos critères pour comparer les transporteurs</p>
+                </div>
+
+                <!-- Messages d'erreur -->
+                <?php if ($error): ?>
+                <div class="error-container">
+                    <strong>Erreur:</strong> <?= htmlspecialchars($error) ?>
+                </div>
                 <?php endif; ?>
+
+                <!-- Formulaire principal -->
+                <form method="POST" id="calculator-form">
+                    <div class="form-group">
+                        <label for="departement">Département de destination *</label>
+                        <input type="text" id="departement" name="departement" class="form-control" 
+                               placeholder="Ex: 75, 69, 13..." 
+                               value="<?= htmlspecialchars($_POST['departement'] ?? '') ?>" 
+                               pattern="[0-9]{2,3}" maxlength="3" required>
+                        <small>Format: 2 ou 3 chiffres (75, 976...)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="poids">Poids total (kg) *</label>
+                        <input type="number" id="poids" name="poids" class="form-control" 
+                               placeholder="Ex: 25.5"
+                               value="<?= htmlspecialchars($_POST['poids'] ?? '') ?>" 
+                               step="0.1" min="0.1" max="10000" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="type">Type d'envoi</label>
+                        <select id="type" name="type" class="form-control">
+                            <option value="colis" <?= ($_POST['type'] ?? '') === 'colis' ? 'selected' : '' ?>>Colis</option>
+                            <option value="palette" <?= ($_POST['type'] ?? '') === 'palette' ? 'selected' : '' ?>>Palette</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="adr">Marchandise dangereuse (ADR)</label>
+                        <select id="adr" name="adr" class="form-control">
+                            <option value="non" <?= ($_POST['adr'] ?? 'non') === 'non' ? 'selected' : '' ?>>Non</option>
+                            <option value="oui" <?= ($_POST['adr'] ?? '') === 'oui' ? 'selected' : '' ?>>Oui</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="option_sup">Options supplémentaires</label>
+                        <select id="option_sup" name="option_sup" class="form-control">
+                            <option value="aucune" <?= ($_POST['option_sup'] ?? 'aucune') === 'aucune' ? 'selected' : '' ?>>Aucune</option>
+                            <option value="rdv" <?= ($_POST['option_sup'] ?? '') === 'rdv' ? 'selected' : '' ?>>Prise de RDV</option>
+                            <option value="datefixe" <?= ($_POST['option_sup'] ?? '') === 'datefixe' ? 'selected' : '' ?>>Livraison date fixe</option>
+                            <option value="premium13" <?= ($_POST['option_sup'] ?? '') === 'premium13' ? 'selected' : '' ?>>Premium avant 13h</option>
+                            <option value="premium18" <?= ($_POST['option_sup'] ?? '') === 'premium18' ? 'selected' : '' ?>>Premium avant 18h</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="palettes">Nombre de palettes EUR</label>
+                        <input type="number" id="palettes" name="palettes" class="form-control" 
+                               value="<?= htmlspecialchars($_POST['palettes'] ?? '0') ?>" 
+                               min="0" max="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="enlevement" value="1" 
+                                   <?= isset($_POST['enlevement']) ? 'checked' : '' ?>>
+                            Enlèvement à domicile
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        🧮 Calculer les tarifs
+                    </button>
+                </form>
             </div>
-            <?php endforeach; ?>
-            
-            <div style="margin-top: 15px; padding: 10px; background: #e2f7e2; border-radius: 5px;">
-                ✅ <strong>Test réussi !</strong> L'application fonctionne correctement.
+        </section>
+
+        <!-- Colonne résultats (droite) -->
+        <section class="results-section">
+            <div class="results-header">
+                <h2>📊 Résultats de calcul</h2>
             </div>
-        </div>
+
+            <?php if ($results): ?>
+                <div class="results-content">
+                    <h3>Meilleur tarif</h3>
+                    <?php if (isset($results['best']) && $results['best']): ?>
+                        <div class="best-result">
+                            <strong><?= htmlspecialchars($results['best']['carrier']) ?></strong>: 
+                            <?= number_format($results['best']['price'], 2, ',', ' ') ?> €
+                        </div>
+                    <?php else: ?>
+                        <p>Aucun tarif disponible pour ces critères.</p>
+                    <?php endif; ?>
+
+                    <h3>Comparaison complète</h3>
+                    <div class="comparison-table">
+                        <?php foreach ($results['results'] as $carrier => $price): ?>
+                            <div class="comparison-row">
+                                <span><?= htmlspecialchars(strtoupper($carrier)) ?></span>
+                                <span>
+                                    <?php if ($price !== null): ?>
+                                        <?= number_format($price, 2, ',', ' ') ?> €
+                                    <?php else: ?>
+                                        Non disponible
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <?php if (DEBUG && !empty($results['debug'])): ?>
+                    <div class="debug-info">
+                        <h4>Informations de débogage</h4>
+                        <pre><?= htmlspecialchars(print_r($results['debug'], true)) ?></pre>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <div class="no-results">
+                    <p>👆 Remplissez le formulaire pour obtenir vos tarifs</p>
+                    <ul>
+                        <li>✅ Comparaison de 3 transporteurs</li>
+                        <li>✅ Calcul en temps réel</li>
+                        <li>✅ Prise en compte des options</li>
+                        <li>✅ Gestion des marchandises dangereuses</li>
+                    </ul>
+                </div>
+            <?php endif; ?>
+        </section>
+    </main>
+
+    <footer style="text-align: center; margin-top: 2rem; padding: 1rem; color: #666;">
+        <p>© <?= COPYRIGHT_YEAR ?> Guldagil - Calculateur de frais de port</p>
+        <p>
+            <small>
+                Version <?= APP_VERSION ?> | 
+                Build #<?= BUILD_NUMBER ?> | 
+                <?= formatDate(BUILD_DATE) ?>
+                <?php if (DEBUG): ?> | 🐛 MODE DEBUG<?php endif; ?>
+            </small>
+        </p>
+    </footer>
+
+    <script>
+        // Auto-focus sur le premier champ
+        document.getElementById('departement').focus();
+        
+        // Validation en temps réel du département
+        document.getElementById('departement').addEventListener('input', function(e) {
+            const value = e.target.value;
+            if (value && !/^[0-9]{2,3}$/.test(value)) {
+                e.target.style.borderColor = '#dc2626';
+            } else {
+                e.target.style.borderColor = '#ddd';
+            }
+        });
+        
+        // Soumission automatique en mode debug
+        <?php if (DEBUG): ?>
+        console.log('🐛 Mode debug activé');
         <?php endif; ?>
-    </div>
-    
-    <div style="text-align: center; margin-top: 30px; color: #666; font-size: 0.9em;">
-        <p>🔧 Mode debug actif - Version de diagnostic</p>
-        <p>Une fois les tests validés, la version complète sera activée</p>
-    </div>
+    </script>
 </body>
 </html>
