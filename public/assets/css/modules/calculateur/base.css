@@ -1,0 +1,234 @@
+/**
+ * Titre: Variables et styles de base - Module Calculateur
+ * Chemin: /public/assets/css/modules/calculateur/base.css
+ * Version: 0.5 beta + build
+ * 
+ * Variables CSS et styles fondamentaux pour écrans 4/3 17-19"
+ */
+
+/* ========================================
+   VARIABLES CSS CALCULATEUR
+======================================== */
+
+:root {
+    /* Couleurs principales */
+    --calc-primary: #3b82f6;
+    --calc-primary-dark: #1e40af;
+    --calc-secondary: #10b981;
+    --calc-warning: #f59e0b;
+    --calc-error: #ef4444;
+    
+    /* Couleurs neutres */
+    --calc-gray-50: #f8fafc;
+    --calc-gray-100: #f1f5f9;
+    --calc-gray-200: #e2e8f0;
+    --calc-gray-300: #cbd5e1;
+    --calc-gray-400: #94a3b8;
+    --calc-gray-500: #64748b;
+    --calc-gray-600: #475569;
+    --calc-gray-700: #334155;
+    --calc-gray-800: #1e293b;
+    
+    /* Espacements optimisés pour écrans 4/3 */
+    --calc-space-1: 0.25rem;
+    --calc-space-2: 0.5rem;
+    --calc-space-3: 0.75rem;
+    --calc-space-4: 1rem;
+    --calc-space-6: 1.5rem;
+    --calc-space-8: 2rem;
+    
+    /* Radius */
+    --calc-radius: 0.375rem;
+    --calc-radius-lg: 0.5rem;
+    
+    /* Ombres */
+    --calc-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --calc-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    
+    /* Transitions */
+    --calc-transition: all 0.2s ease;
+    --calc-transition-fast: all 0.15s ease;
+    
+    /* Tailles optimisées pour écrans 4/3 */
+    --calc-header-height: 64px;
+    --calc-form-width: 480px;
+    --calc-results-width: 360px;
+    --calc-container-max: 1280px; /* Pour écrans 17-19" 4/3 */
+}
+
+/* ========================================
+   RESET ET BASE
+======================================== */
+
+.calculator-page {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--calc-gray-50);
+    color: var(--calc-gray-800);
+    line-height: 1.5;
+    font-size: 14px; /* Optimisé pour anciens écrans */
+}
+
+/* ========================================
+   UTILITAIRES
+======================================== */
+
+.hidden {
+    display: none !important;
+}
+
+.invisible {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-down {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 200px;
+    }
+}
+
+/* ========================================
+   ÉTATS DE VALIDATION
+======================================== */
+
+.form-input.valid {
+    border-color: var(--calc-secondary);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.form-input.invalid {
+    border-color: var(--calc-error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.field-feedback {
+    font-size: 12px;
+    margin-top: var(--calc-space-1);
+    min-height: 16px;
+}
+
+.field-feedback.valid {
+    color: var(--calc-secondary);
+}
+
+.field-feedback.invalid {
+    color: var(--calc-error);
+}
+
+/* ========================================
+   ÉTATS DÉSACTIVÉS
+======================================== */
+
+.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.grayed-out {
+    opacity: 0.3;
+    pointer-events: none;
+    position: relative;
+}
+
+.grayed-out::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    cursor: not-allowed;
+}
+
+/* ========================================
+   ALERTES
+======================================== */
+
+.poids-alert {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--calc-warning);
+    padding: var(--calc-space-3);
+    border-radius: var(--calc-radius);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    margin-top: var(--calc-space-3);
+    font-size: 13px;
+    text-align: center;
+    font-weight: 500;
+}
+
+/* ========================================
+   RESPONSIVE POUR ANCIENS ÉCRANS
+======================================== */
+
+/* Écrans 4/3 17" (1280x1024) */
+@media (max-width: 1280px) and (max-height: 1024px) {
+    :root {
+        --calc-space-8: 1.5rem;
+        --calc-form-width: 440px;
+        --calc-results-width: 320px;
+    }
+}
+
+/* Écrans 4/3 15" (1024x768) */
+@media (max-width: 1024px) and (max-height: 768px) {
+    :root {
+        --calc-space-8: 1rem;
+        --calc-form-width: 380px;
+        --calc-results-width: 280px;
+    }
+    
+    .calculator-page {
+        font-size: 13px;
+    }
+}
+
+/* Tablettes */
+@media (max-width: 768px) {
+    :root {
+        --calc-form-width: 100%;
+        --calc-results-width: 100%;
+        --calc-space-8: 1rem;
+    }
+}
+
+/* Mobiles */
+@media (max-width: 480px) {
+    .calculator-page {
+        font-size: 14px;
+    }
+    
+    :root {
+        --calc-space-8: 0.75rem;
+        --calc-space-6: 1rem;
+    }
+}
