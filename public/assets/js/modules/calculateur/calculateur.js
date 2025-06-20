@@ -1,567 +1,331 @@
 /**
- * Calculator.js - VERSION CORRIGÉE
- * Gestion du calculateur de frais de port avec logique Excel
+ * Titre: Module Calculateur - Fichier principal
+ * Chemin: /public/assets/js/modules/calculateur/calculateur.js
+ * Version: 0.5 beta + build
+ * 
+ * Orchestrateur principal du module calculateur de frais de port
+ * Architecture modulaire pour faciliter la maintenance
  */
 
-class PortCalculator {
-    constructor(options = {}) {
-        this.formSelector = options.formSelector || '#calculator-form';
-        this.resultsSelector = options.resultsSelector || '#results-container';
-        this.debugMode = options.debug || false;
-        
-        this.form = document.querySelector(this.formSelector);
-        this.resultsContainer = document.querySelector(this.resultsSelector);
-        
-        this.apiEndpoint = '/api/calculate.php';
+// ========================================
+// NAMESPACE ET CONFIGURATION
+// ========================================
+
+window.Calculateur = window.Calculateur || {};
+
+const CONFIG = {
+    AUTO_CALC_DELAY: 300,
+    MAX_POIDS: 3500,
+    MIN_POIDS: 0.1,
+    PALETTE_THRESHOLD: 60,
+    API_ENDPOINT: 'ajax-calculate.php',
+    VERSION: '0.5 beta',
+    DEBUG: window.location.search.includes('debug=1')
+};
+
+// ========================================
+// ÉTAT GLOBAL DU CALCULATEUR
+// ========================================
+
+const CalculateurState = {
+    isCalculating: false,
+    currentResults: null,
+    formData: {},
+    calculationTimeout: null,
+    
+    // Méthodes d'état
+    setCalculating(state) {
+        this.isCalculating = state;
+        Calculateur.UI.updateCalculatingState(state);
+    },
+    
+    setResults(results) {
+        this.currentResults = results;
+    },
+    
+    updateFormData() {
+        this.formData = Calculateur.Form.getFormData();
+    },
+    
+    isFormValid() {
+        return Calculateur.Form.validateForm().isValid;
+    },
+    
+    reset() {
         this.isCalculating = false;
-        
-        this.init();
+        this.currentResults = null;
+        this.formData = {};
+        if (this.calculationTimeout) {
+            clearTimeout(this.calculationTimeout);
+            this.calculationTimeout = null;
+        }
     }
+};
 
+// ========================================
+// ÉLÉMENTS DOM CACHÉS GLOBALEMENT
+// ========================================
+
+const Elements = {
+    // Formulaire
+    form: null,
+    departement: null,
+    poids: null,
+    typeInputs: null,
+    adrInputs: null,
+    optionSup: null,
+    enlevement: null,
+    palettes: null,
+    paletteOptions: null,
+    
+    // Actions
+    btnCalculate: null,
+    
+    // Résultats
+    loadingZone: null,
+    resultMain: null,
+    resultStatus: null,
+    resultContent: null,
+    alertsZone: null,
+    comparisonZone: null,
+    quickActions: null,
+    
+    // Cache des éléments
     init() {
-        if (!this.form || !this.resultsContainer) {
-            console.error('Éléments requis non trouvés');
-            return;
-        }
-
-        this.bindEvents();
-        this.loadFormState();
-        this.setupFormValidation();
+        this.form = document.getElementById('calculator-form');
+        this.departement = document.getElementById('departement');
+        this.poids = document.getElementById('poids');
+        this.typeInputs = document.querySelectorAll('input[name="type"]');
+        this.adrInputs = document.querySelectorAll('input[name="adr"]');
+        this.optionSup = document.getElementById('option_sup');
+        this.enlevement = document.getElementById('enlevement');
+        this.palettes = document.getElementById('palettes');
+        this.paletteOptions = document.getElementById('palette-options');
+        
+        this.btnCalculate = document.getElementById('btn-calculate');
+        
+        this.loadingZone = document.getElementById('loading-zone');
+        this.resultMain = document.getElementById('result-main');
+        this.resultStatus = document.getElementById('result-status');
+        this.resultContent = document.getElementById('result-content');
+        this.alertsZone = document.getElementById('alerts-zone');
+        this.comparisonZone = document.getElementById('comparison-zone');
+        this.quickActions = document.getElementById('quick-actions');
+        
+        return this.form !== null; // Vérification éléments critiques
     }
+};
 
-    bindEvents() {
+// ========================================
+// MODULE PRINCIPAL CALCULATEUR
+// ========================================
+
+Calculateur.Core = {
+    /**
+     * Initialisation du module calculateur
+     */
+    init() {
+        if (CONFIG.DEBUG) {
+            console.log('🚚 Initialisation Module Calculateur v' + CONFIG.VERSION);
+        }
+        
+        // Cache des éléments DOM
+        if (!Elements.init()) {
+            console.error('❌ Éléments DOM calculateur non trouvés');
+            return false;
+        }
+        
+        // Initialisation des sous-modules
+        this.initSubModules();
+        
+        // Configuration initiale
+        this.setupInitialState();
+        
+        // Événements globaux
+        this.bindGlobalEvents();
+        
+        if (CONFIG.DEBUG) {
+            console.log('✅ Module Calculateur initialisé avec succès');
+        }
+        
+        return true;
+    },
+    
+    /**
+     * Initialisation des sous-modules
+     */
+    initSubModules() {
+        // Initialiser dans l'ordre de dépendance
+        if (Calculateur.Utils) Calculateur.Utils.init();
+        if (Calculateur.Form) Calculateur.Form.init();
+        if (Calculateur.Calculs) Calculateur.Calculs.init();
+        if (Calculateur.Resultats) Calculateur.Resultats.init();
+        if (Calculateur.UI) Calculateur.UI.init();
+    },
+    
+    /**
+     * Configuration initiale
+     */
+    setupInitialState() {
+        CalculateurState.reset();
+        CalculateurState.updateFormData();
+        
+        // Focus automatique sur le premier champ
+        setTimeout(() => {
+            if (Elements.departement) {
+                Elements.departement.focus();
+            }
+        }, 100);
+    },
+    
+    /**
+     * Événements globaux
+     */
+    bindGlobalEvents() {
         // Soumission du formulaire
-        this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+        if (Elements.form) {
+            Elements.form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.performCalculation();
+            });
+            
+            Elements.form.addEventListener('reset', () => {
+                this.resetCalculator();
+            });
+        }
         
-        // Validation en temps réel
-        this.form.addEventListener('input', (e) => this.handleInput(e));
-        this.form.addEventListener('change', (e) => this.handleChange(e));
-        
-        // Sauvegarde automatique
-        this.form.addEventListener('input', () => this.saveFormState());
-        this.form.addEventListener('change', () => this.saveFormState());
-    }
-
-    async handleSubmit(e) {
-        e.preventDefault();
-        
-        if (this.isCalculating) return;
-        
-        const formData = this.getFormData();
-        const validation = this.validateForm(formData);
-        
-        if (!validation.valid) {
-            this.showErrors(validation.errors);
+        // Bouton de calcul
+        if (Elements.btnCalculate) {
+            Elements.btnCalculate.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.performCalculation();
+            });
+        }
+    },
+    
+    /**
+     * Exécution du calcul principal
+     */
+    async performCalculation() {
+        if (CalculateurState.isCalculating) {
+            if (CONFIG.DEBUG) console.log('⏳ Calcul déjà en cours...');
             return;
         }
-
-        await this.performCalculation(formData);
-    }
-
-    getFormData() {
-        const formData = new FormData(this.form);
-        const data = {};
         
-        // Conversion en objet avec types appropriés
-        data.departement = formData.get('departement')?.trim();
-        data.poids = parseFloat(formData.get('poids')) || 0;
-        data.type = formData.get('type');
-        data.adr = formData.has('adr');
-        data.option_sup = formData.get('option_sup') || 'standard';
-        data.enlevement = formData.has('enlevement');
-        data.palettes = parseInt(formData.get('palettes')) || 0;
-        
-        return data;
-    }
-
-    validateForm(data) {
-        const errors = [];
-        
-        // Validation département
-        if (!data.departement || !/^\d{1,2}$/.test(data.departement)) {
-            errors.push('Veuillez saisir un département valide (01-95)');
-        } else {
-            const dept = parseInt(data.departement);
-            if (dept < 1 || dept > 95) {
-                errors.push('Le département doit être entre 01 et 95');
-            }
+        // Validation
+        const validation = Calculateur.Form.validateForm();
+        if (!validation.isValid) {
+            Calculateur.UI.showValidationErrors(validation.errors);
+            return;
         }
         
-        // Validation poids
-        if (!data.poids || data.poids <= 0) {
-            errors.push('Veuillez saisir un poids supérieur à 0 kg');
-        } else if (data.poids > 10000) {
-            errors.push('Le poids maximum est de 10 000 kg');
-        }
-        
-        // Validation type
-        if (!data.type || !['colis', 'palette'].includes(data.type)) {
-            errors.push('Veuillez sélectionner un type d\'envoi');
-        }
-        
-        // Validation palettes
-        if (data.type === 'palette' && data.palettes < 0) {
-            errors.push('Le nombre de palettes ne peut pas être négatif');
-        }
-        
-        return {
-            valid: errors.length === 0,
-            errors: errors
-        };
-    }
-
-    async performCalculation(data) {
-        this.isCalculating = true;
-        this.showLoading();
+        // Lancement du calcul
+        CalculateurState.setCalculating(true);
+        CalculateurState.updateFormData();
         
         try {
-            const response = await fetch(this.apiEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            
-            if (result.success) {
-                this.displayResults(result);
-                this.saveToHistory(data, result);
-            } else {
-                this.showErrors(result.errors || ['Erreur inconnue']);
-            }
-            
+            const results = await Calculateur.Calculs.performCalculation(CalculateurState.formData);
+            this.handleCalculationSuccess(results);
         } catch (error) {
-            console.error('Erreur de calcul:', error);
-            this.showErrors(['Erreur de connexion. Veuillez réessayer.']);
+            this.handleCalculationError(error);
         } finally {
-            this.isCalculating = false;
+            CalculateurState.setCalculating(false);
         }
-    }
-
-    displayResults(result) {
-        const html = this.buildResultsHTML(result);
-        this.resultsContainer.innerHTML = html;
+    },
+    
+    /**
+     * Gestion succès de calcul
+     */
+    handleCalculationSuccess(results) {
+        CalculateurState.setResults(results);
+        Calculateur.Resultats.displayResults(results);
         
-        // Animation d'apparition
-        this.resultsContainer.style.opacity = '0';
-        this.resultsContainer.style.transform = 'translateY(20px)';
-        
-        requestAnimationFrame(() => {
-            this.resultsContainer.style.transition = 'all 0.3s ease';
-            this.resultsContainer.style.opacity = '1';
-            this.resultsContainer.style.transform = 'translateY(0)';
-        });
-    }
-
-    buildResultsHTML(result) {
-        let html = '';
-        
-        // Affichage des suggestions importantes en premier
-        if (result.suggestions && result.suggestions.length > 0) {
-            html += '<div class="suggestions-container">';
-            result.suggestions.forEach(suggestion => {
-                html += this.buildSuggestionHTML(suggestion);
-            });
-            html += '</div>';
+        // Sauvegarde historique si disponible
+        if (Calculateur.Form.saveToHistory) {
+            Calculateur.Form.saveToHistory(CalculateurState.formData, results);
         }
         
-        // Meilleur tarif
-        if (result.best && result.best.price) {
-            html += this.buildBestResultHTML(result);
+        if (CONFIG.DEBUG) {
+            console.log('✅ Calcul terminé avec succès', results);
+        }
+    },
+    
+    /**
+     * Gestion erreur de calcul
+     */
+    handleCalculationError(error) {
+        console.error('❌ Erreur calcul:', error);
+        Calculateur.UI.showError('Erreur lors du calcul. Veuillez réessayer.');
+    },
+    
+    /**
+     * Reset complet du calculateur
+     */
+    resetCalculator() {
+        CalculateurState.reset();
+        
+        if (Calculateur.Form.reset) Calculateur.Form.reset();
+        if (Calculateur.Resultats.clear) Calculateur.Resultats.clear();
+        if (Calculateur.UI.reset) Calculateur.UI.reset();
+        
+        setTimeout(() => {
+            if (Elements.departement) Elements.departement.focus();
+        }, 50);
+    },
+    
+    /**
+     * Calcul automatique avec délai
+     */
+    triggerAutoCalculation() {
+        if (CalculateurState.calculationTimeout) {
+            clearTimeout(CalculateurState.calculationTimeout);
         }
         
-        // Tableau de comparaison
-        html += this.buildComparisonTableHTML(result);
-        
-        // Debug si activé
-        if (this.debugMode && result.debug) {
-            html += this.buildDebugHTML(result.debug);
-        }
-        
-        return html;
-    }
-
-    buildSuggestionHTML(suggestion) {
-        const typeClass = suggestion.type || 'info';
-        return `
-            <div class="alert alert-${typeClass}">
-                <h4>${suggestion.title || 'Information'}</h4>
-                <p>${suggestion.message}</p>
-                ${suggestion.alternative ? `<p><strong>Alternative :</strong> ${suggestion.alternative}</p>` : ''}
-            </div>
-        `;
-    }
-
-    buildBestResultHTML(result) {
-        const best = result.best;
-        const carrier = result.formatted[best.carrier];
-        
-        return `
-            <div class="best-result">
-                <div class="best-result-header">
-                    <h3>🏆 Meilleur tarif</h3>
-                    <div class="best-result-badge">Recommandé</div>
-                </div>
-                <div class="best-result-content">
-                    <div class="carrier-info">
-                        <div class="carrier-name">${carrier.name}</div>
-                        <div class="carrier-details">
-                            ${this.getCarrierDetails(best.carrier, result.params)}
-                        </div>
-                    </div>
-                    <div class="price-info">
-                        <div class="price-amount">${carrier.formatted}</div>
-                        <div class="price-details">TTC, frais inclus</div>
-                    </div>
-                </div>
-                ${this.buildOptimizationTips(result, best.carrier)}
-            </div>
-        `;
-    }
-
-    buildComparisonTableHTML(result) {
-        const carriers = ['heppner', 'xpo', 'kn'];
-        let tableRows = '';
-        
-        carriers.forEach(carrier => {
-            if (result.formatted[carrier]) {
-                const info = result.formatted[carrier];
-                const isBest = result.best && result.best.carrier === carrier;
-                const isAvailable = info.available;
-                
-                const statusBadge = isBest ? 
-                    '<span class="badge badge-success">Meilleur choix</span>' :
-                    isAvailable ? 
-                        '<span class="badge badge-available">Disponible</span>' :
-                        '<span class="badge badge-unavailable">Non disponible</span>';
-                
-                const reasonText = !isAvailable && info.debug && info.debug.error ? 
-                    `<small class="text-muted">${info.debug.error}</small>` : '';
-                
-                tableRows += `
-                    <tr class="carrier-row ${isBest ? 'best-row' : ''} ${!isAvailable ? 'unavailable-row' : ''}">
-                        <td>
-                            <div class="carrier-cell">
-                                <strong>${info.name}</strong>
-                                ${this.getCarrierDetails(carrier, result.params)}
-                                ${reasonText}
-                            </div>
-                        </td>
-                        <td class="price-cell">
-                            <div class="price-display">${info.formatted}</div>
-                        </td>
-                        <td class="status-cell">
-                            ${statusBadge}
-                        </td>
-                    </tr>
-                `;
-            }
-        });
-        
-        return `
-            <div class="comparison-section">
-                <h3>📊 Comparaison détaillée</h3>
-                <div class="table-responsive">
-                    <table class="comparison-table">
-                        <thead>
-                            <tr>
-                                <th>Transporteur</th>
-                                <th>Tarif</th>
-                                <th>Statut</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableRows}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        `;
-    }
-
-    getCarrierDetails(carrier, params) {
-        const details = [];
-        
-        // Délai de livraison
-        const delays = {
-            'heppner': params.option_sup === 'standard' ? '24-48h' : '24h',
-            'xpo': params.option_sup === 'standard' ? '24-48h' : '24h',
-            'kn': '48-72h'
-        };
-        
-        if (delays[carrier]) {
-            details.push(`⏱️ ${delays[carrier]}`);
-        }
-        
-        // Type de service
-        if (params.option_sup !== 'standard') {
-            const serviceNames = {
-                'rdv': 'Prise de RDV',
-                'star18': 'Star avant 18h',
-                'star13': 'Star avant 13h',
-                'premium18': 'Premium avant 18h',
-                'premium13': 'Premium avant 13h',
-                'datefixe18': 'Date fixe avant 18h',
-                'datefixe13': 'Date fixe avant 13h'
-            };
-            
-            if (serviceNames[params.option_sup]) {
-                details.push(`⭐ ${serviceNames[params.option_sup]}`);
-            }
-        }
-        
-        // ADR
-        if (params.adr) {
-            details.push('☣️ ADR');
-        }
-        
-        // Enlèvement
-        if (params.enlevement) {
-            details.push('📦 Enlèvement');
-        }
-        
-        // Palettes
-        if (params.palettes > 0) {
-            details.push(`🏭 ${params.palettes} palette${params.palettes > 1 ? 's' : ''} EUR`);
-        }
-        
-        return details.length > 0 ? `<div class="carrier-details">${details.join(' • ')}</div>` : '';
-    }
-
-    buildOptimizationTips(result, bestCarrier) {
-        const tips = [];
-        
-        // Vérifier si une suggestion "Payant pour 100kg" existe
-        if (result.debug[bestCarrier] && result.debug[bestCarrier].suggestion) {
-            tips.push(`💡 ${result.debug[bestCarrier].suggestion}`);
-        }
-        
-        // Autres optimisations possibles
-        if (result.params.poids < 100 && result.params.type === 'colis') {
-            tips.push('💡 Considérez grouper vos envois pour optimiser les coûts');
-        }
-        
-        if (tips.length === 0) return '';
-        
-        return `
-            <div class="optimization-tips">
-                <h4>💡 Conseils d'optimisation</h4>
-                <ul>
-                    ${tips.map(tip => `<li>${tip}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    buildDebugHTML(debug) {
-        return `
-            <div class="debug-section">
-                <h3>🔧 Informations de débogage</h3>
-                <pre class="debug-content">${JSON.stringify(debug, null, 2)}</pre>
-            </div>
-        `;
-    }
-
-    showLoading() {
-        this.resultsContainer.innerHTML = `
-            <div class="loading-container">
-                <div class="loading-spinner"></div>
-                <div class="loading-text">Calcul en cours...</div>
-                <div class="loading-subtext">Comparaison des transporteurs</div>
-            </div>
-        `;
-    }
-
-    showErrors(errors) {
-        const errorsHTML = errors.map(error => `<li>${error}</li>`).join('');
-        this.resultsContainer.innerHTML = `
-            <div class="alert alert-error">
-                <h4>⚠️ Erreur de validation</h4>
-                <ul>${errorsHTML}</ul>
-            </div>
-        `;
-    }
-
-    handleInput(e) {
-        this.validateField(e.target);
-        this.updateFormState(e.target);
-    }
-
-    handleChange(e) {
-        this.updateFormState(e.target);
-        
-        // Logique spécifique selon le champ
-        if (e.target.name === 'type') {
-            this.togglePalettesField(e.target.value);
-        }
-        
-        if (e.target.name === 'enlevement') {
-            this.toggleEnlevementOptions(e.target.checked);
+        if (CalculateurState.isFormValid()) {
+            CalculateurState.calculationTimeout = setTimeout(() => {
+                this.performCalculation();
+            }, CONFIG.AUTO_CALC_DELAY);
         }
     }
+};
 
-    validateField(field) {
-        const value = field.value.trim();
-        let isValid = true;
-        let message = '';
-        
-        switch (field.name) {
-            case 'departement':
-                isValid = /^\d{1,2}$/.test(value) && parseInt(value) >= 1 && parseInt(value) <= 95;
-                message = isValid ? '' : 'Département invalide (01-95)';
-                break;
-                
-            case 'poids':
-                isValid = value && parseFloat(value) > 0 && parseFloat(value) <= 10000;
-                message = isValid ? '' : 'Poids invalide (1-10000 kg)';
-                break;
-        }
-        
-        this.setFieldValidation(field, isValid, message);
-        return isValid;
-    }
+// ========================================
+// EXPOSER LES RÉFÉRENCES GLOBALES
+// ========================================
 
-    setFieldValidation(field, isValid, message) {
-        const container = field.closest('.form-group');
-        const feedback = container?.querySelector('.field-feedback');
-        
-        field.classList.toggle('is-invalid', !isValid);
-        field.classList.toggle('is-valid', isValid && field.value.trim() !== '');
-        
-        if (feedback) {
-            feedback.textContent = message;
-            feedback.style.display = message ? 'block' : 'none';
-        }
-    }
+// Pour les autres modules
+Calculateur.State = CalculateurState;
+Calculateur.Elements = Elements;
+Calculateur.Config = CONFIG;
 
-    togglePalettesField(type) {
-        const palettesGroup = document.querySelector('.palettes-group');
-        if (palettesGroup) {
-            palettesGroup.style.display = type === 'palette' ? 'block' : 'none';
-        }
-    }
-
-    toggleEnlevementOptions(isEnlevement) {
-        const optionSelects = document.querySelectorAll('[name="option_sup"] option');
-        const premiumOptions = ['rdv', 'star18', 'star13', 'premium18', 'premium13', 'datefixe18', 'datefixe13'];
-        
-        optionSelects.forEach(option => {
-            if (premiumOptions.includes(option.value)) {
-                option.disabled = isEnlevement;
-                if (isEnlevement && option.selected) {
-                    // Basculer vers standard si option premium sélectionnée
-                    document.querySelector('[name="option_sup"]').value = 'standard';
-                }
-            }
-        });
-    }
-
-    updateFormState(field) {
-        // Mise à jour temps réel de l'interface
-        if (field.name === 'adr') {
-            this.updateADRWarnings(field.checked);
-        }
-    }
-
-    updateADRWarnings(hasADR) {
-        const optionSelect = document.querySelector('[name="option_sup"]');
-        const starOptions = optionSelect?.querySelectorAll('option[value^="star"], option[value^="datefixe"]');
-        
-        starOptions?.forEach(option => {
-            if (hasADR) {
-                option.textContent = option.textContent.replace(' (⚠️ Non disponible avec ADR)', '') + ' (⚠️ Non disponible avec ADR)';
-            } else {
-                option.textContent = option.textContent.replace(' (⚠️ Non disponible avec ADR)', '');
-            }
-        });
-    }
-
-    setupFormValidation() {
-        // Validation en temps réel
-        const fields = this.form.querySelectorAll('input[required], select[required]');
-        fields.forEach(field => {
-            field.addEventListener('blur', () => this.validateField(field));
-        });
-    }
-
-    saveFormState() {
-        try {
-            const formData = this.getFormData();
-            sessionStorage.setItem('calculator_form_state', JSON.stringify(formData));
-        } catch (e) {
-            // Ignore les erreurs de storage
-        }
-    }
-
-    loadFormState() {
-        try {
-            const saved = sessionStorage.getItem('calculator_form_state');
-            if (saved) {
-                const data = JSON.parse(saved);
-                this.populateForm(data);
-            }
-        } catch (e) {
-            // Ignore les erreurs de storage
-        }
-    }
-
-    populateForm(data) {
-        Object.entries(data).forEach(([key, value]) => {
-            const field = this.form.querySelector(`[name="${key}"]`);
-            if (field) {
-                if (field.type === 'checkbox') {
-                    field.checked = Boolean(value);
-                } else {
-                    field.value = value;
-                }
-                
-                // Déclencher les événements pour la mise à jour de l'interface
-                field.dispatchEvent(new Event('change'));
-            }
-        });
-    }
-
-    saveToHistory(formData, result) {
-        try {
-            let history = JSON.parse(localStorage.getItem('calculator_history') || '[]');
-            
-            const entry = {
-                timestamp: Date.now(),
-                params: formData,
-                best: result.best,
-                id: Date.now().toString()
-            };
-            
-            history.unshift(entry);
-            history = history.slice(0, 20); // Garder 20 dernières
-            
-            localStorage.setItem('calculator_history', JSON.stringify(history));
-        } catch (e) {
-            // Ignore les erreurs de storage
-        }
-    }
+// Pour debug et tests
+if (CONFIG.DEBUG) {
+    window.CalculateurDebug = {
+        state: CalculateurState,
+        elements: Elements,
+        config: CONFIG,
+        core: Calculateur.Core
+    };
 }
 
-// Auto-initialisation
+// ========================================
+// AUTO-INITIALISATION
+// ========================================
+
 document.addEventListener('DOMContentLoaded', () => {
     // Vérifier si on est sur la page du calculateur
     if (document.querySelector('#calculator-form')) {
-        const calculator = new PortCalculator({
-            debug: window.location.search.includes('debug=1')
-        });
+        Calculateur.Core.init();
         
-        // Exposer globalement pour debugging
-        window.calculator = calculator;
+        // Exposer globalement pour compatibilité
+        window.calculateur = Calculateur.Core;
     }
 });
 
-// Export pour utilisation en module
+// ========================================
+// EXPORT MODULE (pour tests unitaires)
+// ========================================
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = PortCalculator;
+    module.exports = Calculateur;
 }
