@@ -57,9 +57,11 @@ $demo_mode = isset($_GET['demo']) && $_GET['demo'] === '1';
     <meta name="description" content="Calculateur de frais de port - Interface complète Guldagil">
     <meta name="keywords" content="calculateur, frais de port, transport, Guldagil">
     
-    <!-- CSS -->
+    <!-- CSS modulaire -->
     <link rel="stylesheet" href="../assets/css/app.min.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/calculateur-stepwise.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/base.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/components.css">
 </head>
 <body class="calculator-page">
 
@@ -101,7 +103,7 @@ $demo_mode = isset($_GET['demo']) && $_GET['demo'] === '1';
             <div class="form-content">
                 <form id="calculator-form" novalidate>
                     
-                    <!-- Étape 1: Destination et poids -->
+                    <!-- Étape 1: Destination et poids (toujours visible) -->
                     <div class="form-step" id="step-destination">
                         <div class="step-header">
                             <div class="step-number">1</div>
@@ -131,122 +133,144 @@ $demo_mode = isset($_GET['demo']) && $_GET['demo'] === '1';
                                        placeholder="Ex: 25"
                                        min="0.1"
                                        max="3500"
-                                       step="0.1">
-                                <div class="field-hint">Maximum 3500 kg</div>
+                                       step="1">
+                                <div class="field-hint">Maximum 3500 kg (sans virgule)</div>
                                 <div class="field-feedback" id="poids-feedback"></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Étape 2: Type d'expédition -->
-                    <div class="form-step" id="step-type">
+                    <!-- Étape 2: Type d'expédition (masquée par défaut) -->
+                    <div class="form-step hidden" id="step-type">
                         <div class="step-header">
                             <div class="step-number">2</div>
                             <h3 class="step-title">📦 Type d'expédition</h3>
                         </div>
                         
-                        <div class="options-grid">
-                            <label class="option-card">
-                                <input type="radio" name="type" value="colis" checked>
-                                <div class="option-content">
-                                    <div class="option-icon">📦</div>
-                                    <div class="option-title">Colis</div>
-                                    <div class="option-desc">Emballage individuel</div>
-                                </div>
+                        <div class="type-buttons">
+                            <label class="type-btn">
+                                <input type="radio" name="type" value="colis">
+                                <span class="btn-content">
+                                    <span class="btn-icon">📦</span>
+                                    <span class="btn-text">Colis</span>
+                                </span>
                             </label>
                             
-                            <label class="option-card">
+                            <label class="type-btn">
                                 <input type="radio" name="type" value="palette">
-                                <div class="option-content">
-                                    <div class="option-icon">🛏️</div>
-                                    <div class="option-title">Palette</div>
-                                    <div class="option-desc">Sur support EUR</div>
-                                </div>
+                                <span class="btn-content">
+                                    <span class="btn-icon">🛏️</span>
+                                    <span class="btn-text">Palette</span>
+                                </span>
                             </label>
+                        </div>
+                        
+                        <div class="poids-alert hidden" id="poids-alert">
+                            ⚠️ Pour ce poids, seule la palette est disponible
                         </div>
                     </div>
 
-                    <!-- Étape 3: Marchandises dangereuses -->
-                    <div class="form-step" id="step-adr">
+                    <!-- Étape 3: Marchandises dangereuses (masquée par défaut) -->
+                    <div class="form-step hidden" id="step-adr">
                         <div class="step-header">
                             <div class="step-number">3</div>
                             <h3 class="step-title">⚠️ Marchandises dangereuses (ADR)</h3>
                         </div>
                         
-                        <div class="options-grid">
-                            <label class="option-card">
-                                <input type="radio" name="adr" value="non" checked>
-                                <div class="option-content">
-                                    <div class="option-icon">✅</div>
-                                    <div class="option-title">Non ADR</div>
-                                    <div class="option-desc">Marchandise standard</div>
-                                </div>
+                        <div class="adr-buttons">
+                            <label class="adr-btn">
+                                <input type="radio" name="adr" value="non">
+                                <span class="btn-content">
+                                    <span class="btn-icon">✅</span>
+                                    <span class="btn-text">Non ADR</span>
+                                </span>
                             </label>
                             
-                            <label class="option-card">
+                            <label class="adr-btn">
                                 <input type="radio" name="adr" value="oui">
-                                <div class="option-content">
-                                    <div class="option-icon">⚠️</div>
-                                    <div class="option-title">ADR</div>
-                                    <div class="option-desc">Marchandise dangereuse</div>
-                                </div>
+                                <span class="btn-content">
+                                    <span class="btn-icon">⚠️</span>
+                                    <span class="btn-text">ADR</span>
+                                </span>
                             </label>
                         </div>
                     </div>
 
-                    <!-- Étape 4: Options de livraison -->
-                    <div class="form-step" id="step-options">
+                    <!-- Options de livraison (masquées par défaut, apparaissent après calcul) -->
+                    <div class="form-step hidden" id="step-options">
                         <div class="step-header">
                             <div class="step-number">4</div>
                             <h3 class="step-title">🚀 Options de livraison</h3>
                         </div>
                         
-                        <div class="form-field">
-                            <label class="form-label" for="service_livraison">Service de livraison</label>
-                            <select id="service_livraison" name="service_livraison" class="form-input">
-                                <option value="standard">Livraison standard</option>
-                                <?php foreach ($options_disponibles as $option): ?>
-                                <option value="<?= htmlspecialchars($option['code_option']) ?>" 
-                                        data-prix="<?= $option['montant'] ?>"
-                                        data-transporteur="<?= htmlspecialchars($option['transporteur']) ?>">
-                                    <?= htmlspecialchars($option['libelle']) ?> 
-                                    (+<?= number_format($option['montant'], 2) ?>€)
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="options-buttons">
+                            <label class="option-btn active">
+                                <input type="radio" name="service_livraison" value="standard" checked>
+                                <span class="btn-content">
+                                    <span class="btn-text">Standard</span>
+                                    <span class="btn-price">Inclus</span>
+                                </span>
+                            </label>
+                            
+                            <label class="option-btn">
+                                <input type="radio" name="service_livraison" value="rdv">
+                                <span class="btn-content">
+                                    <span class="btn-text">Prise de RDV</span>
+                                    <span class="btn-price">+15€</span>
+                                </span>
+                            </label>
+                            
+                            <label class="option-btn">
+                                <input type="radio" name="service_livraison" value="premium">
+                                <span class="btn-content">
+                                    <span class="btn-text">Premium 13h</span>
+                                    <span class="btn-price">+22€</span>
+                                </span>
+                            </label>
+                            
+                            <label class="option-btn">
+                                <input type="radio" name="service_livraison" value="datefixe">
+                                <span class="btn-content">
+                                    <span class="btn-text">Date fixe</span>
+                                    <span class="btn-price">+18€</span>
+                                </span>
+                            </label>
                         </div>
-                        
-                        <label class="checkbox-option">
-                            <input type="checkbox" id="enlevement" name="enlevement">
-                            <div class="checkbox-content">
-                                <div class="checkbox-icon">🚚</div>
-                                <div class="checkbox-text">
-                                    <div class="checkbox-title">Enlèvement</div>
-                                    <div class="checkbox-desc">Collecte sur votre site</div>
-                                </div>
-                            </div>
-                        </label>
                     </div>
 
                     <!-- Options palette (masquées par défaut) -->
-                    <div class="form-step" id="step-palettes" style="display: none;">
+                    <div class="form-step hidden" id="step-palettes">
                         <div class="step-header">
                             <div class="step-number">5</div>
                             <h3 class="step-title">🛏️ Nombre de palettes EUR</h3>
                         </div>
                         
-                        <div class="field-group single">
-                            <div class="form-field">
-                                <label class="form-label" for="palettes">Nombre de palettes</label>
-                                <input type="number" 
-                                       id="palettes" 
-                                       name="palettes" 
-                                       class="form-input" 
-                                       min="0" 
-                                       max="10" 
-                                       value="0">
-                            </div>
+                        <div class="palette-input">
+                            <input type="number" 
+                                   id="palettes" 
+                                   name="palettes" 
+                                   class="form-input" 
+                                   min="0" 
+                                   max="10" 
+                                   value="1"
+                                   placeholder="Nombre">
+                            <span class="input-suffix">palettes EUR</span>
                         </div>
+                    </div>
+
+                    <!-- Enlèvement à part -->
+                    <div class="form-step hidden" id="step-enlevement">
+                        <div class="step-divider"></div>
+                        <label class="enlevement-option">
+                            <input type="checkbox" id="enlevement" name="enlevement">
+                            <span class="checkbox-content">
+                                <span class="checkbox-icon">🚚</span>
+                                <span class="checkbox-text">
+                                    <span class="checkbox-title">Enlèvement sur site</span>
+                                    <span class="checkbox-desc">Collecte à votre adresse</span>
+                                </span>
+                            </span>
+                        </label>
                     </div>
 
                     <!-- Actions -->
