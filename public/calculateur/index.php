@@ -357,18 +357,75 @@ $debug_mode = isset($_GET['debug']) || (defined('DEBUG') && DEBUG);
     <!-- Footer -->
     <?php include __DIR__ . '/views/partials/footer.php'; ?>
 
-    <!-- Scripts JavaScript - Architecture modulaire -->
-    <script src="../assets/js/modules/calculateur/core/config.js"></script>
-    <script src="../assets/js/modules/calculateur/core/state-manager.js"></script>
-    <script src="../assets/js/modules/calculateur/core/api-service.js"></script>
-    <script src="../assets/js/modules/calculateur/models/form-data.js"></script>
-    <script src="../assets/js/modules/calculateur/models/validation.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/form-controller.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/calculation-controller.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/ui-controller.js"></script>
-    <script src="../assets/js/modules/calculateur/views/progressive-form.js"></script>
-    <script src="../assets/js/modules/calculateur/views/results-display.js"></script>
-    <script src="../assets/js/modules/calculateur/main.js"></script>
+    <!-- Scripts JavaScript - TEST TEMPORAIRE -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM chargé');
+        
+        // Gestion simple du type
+        const typeRadios = document.querySelectorAll('input[name="type"]');
+        const palettesField = document.getElementById('field-palettes');
+        
+        typeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                console.log('Type changé:', this.value);
+                if (palettesField) {
+                    palettesField.style.display = this.value === 'palette' ? 'block' : 'none';
+                }
+            });
+        });
+        
+        // Navigation étapes simple
+        const steps = document.querySelectorAll('.form-step');
+        const progressSteps = document.querySelectorAll('.progress-step');
+        let currentStep = 0;
+        
+        function goToStep(stepIndex) {
+            console.log('Aller à étape:', stepIndex);
+            
+            steps.forEach((step, index) => {
+                step.classList.toggle('active', index === stepIndex);
+            });
+            
+            progressSteps.forEach((step, index) => {
+                step.classList.remove('pending', 'current', 'completed');
+                if (index < stepIndex) {
+                    step.classList.add('completed');
+                } else if (index === stepIndex) {
+                    step.classList.add('current');
+                } else {
+                    step.classList.add('pending');
+                }
+            });
+            
+            currentStep = stepIndex;
+        }
+        
+        // Auto-avancement simple
+        const departement = document.getElementById('departement');
+        const poids = document.getElementById('poids');
+        
+        function checkStep1() {
+            if (departement.value.length >= 2 && poids.value) {
+                setTimeout(() => goToStep(1), 500);
+            }
+        }
+        
+        departement?.addEventListener('input', checkStep1);
+        poids?.addEventListener('input', checkStep1);
+        
+        typeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                setTimeout(() => goToStep(2), 300);
+            });
+        });
+        
+        // Navigation manuelle
+        progressSteps.forEach((step, index) => {
+            step.addEventListener('click', () => goToStep(index));
+        });
+    });
+    </script>
 
     <!-- Initialisation -->
     <script>
