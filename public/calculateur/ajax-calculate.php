@@ -153,18 +153,6 @@ try {
     // CHARGEMENT DE LA CLASSE TRANSPORT - CORRIGÉ
     $transport_class_path = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
     
-    // Fallback vers anciens emplacements
-    if (!file_exists($transport_class_path)) {
-        $transport_class_path = __DIR__ . '/../../src/modules/calculateur/services/Transport.php';
-    }
-    if (!file_exists($transport_class_path)) {
-        $transport_class_path = __DIR__ . '/../../lib/Transport.php';
-    }
-    
-    if (!file_exists($transport_class_path)) {
-        throw new Exception('Classe Transport non trouvée dans les emplacements prévus', 500);
-    }
-    
     require_once $transport_class_path;
     
     if (!class_exists('Transport')) {
