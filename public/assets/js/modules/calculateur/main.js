@@ -1,511 +1,400 @@
-// =============================================================================
-// FICHIER 8: /public/assets/js/modules/calculateur/main.js
-// =============================================================================
-
 /**
- * Point d'entrée principal du module calculateur
+ * Titre: Point d'entrée principal - Orchestration modulaire
+ * Chemin: /public/assets/js/modules/calculateur/main.js
+ * Version: 0.5 beta + build
  */
+
 class CalculateurApp {
     constructor() {
         this.initialized = false;
-        this.modules = [];
+        this.modules = new Map();
+        this.initOrder = [
+            'config',
+            'state',
+            'api',
+            'models',
+            'controllers',
+            'views'
+        ];
     }
-    
-    /**
-     * Initialisation de l'application
-     */
-    async init() {
+
+    async init(serverConfig = {}) {
         if (this.initialized) return;
-        
+
         try {
-            if (CalculateurConfig.DEBUG) {
-                console.log('🚀 Initialisation Calculateur v' + CalculateurConfig.VERSION);
-            }
+            CalculateurConfig.log('info', `🚀 Initialisation Calculateur v${CalculateurConfig.META.VERSION}`);
             
-            // Vérifier que tous les modules sont chargés
-            if (!this.checkDependencies()) {
-                throw new Error('Modules manquants');
-            }
-            
-            // Initialiser les modules dans l'ordre
+            this.validateDependencies();
+            this.mergeServerConfig(serverConfig);
             await this.initializeModules();
-            
-            // Configuration globale
-            this.setupGlobalEvents();
-            
-            // Interface initiale
-            this.setupInitialUI();
+            this.setupGlobalHandlers();
             
             this.initialized = true;
+            CalculateurConfig.log('info', '✅ Calculateur opérationnel');
             
-            if (CalculateurConfig.DEBUG) {
-                console.log('✅ Calculateur initialisé avec succès');
+            if (CalculateurConfig.DEBUG.ENABLED) {
                 this.exposeDebugAPI();
             }
-            
+
         } catch (error) {
-            console.error('❌ Erreur initialisation Calculateur:', error);
-            this.showError('Erreur d\'initialisation du calculateur');
+            this.handleInitError(error);
         }
     }
-    
-    /**
-     * Vérification des dépendances
-     */
-    checkDependencies() {
-        const requiredModules = [
+
+    validateDependencies() {
+        const required = [
             'CalculateurConfig',
-            'calculateurState',
+            'calculateurState', 
             'apiService',
             'formDataModel',
+            'validationModel',
             'formController',
-            'calcController',
-            'resultsView'
+            'calcController', 
+            'uiController',
+            'progressiveFormView',
+            'resultsDisplayView'
         ];
-        
-        const missing = requiredModules.filter(module => !window[module]);
-        
+
+        const missing = required.filter(dep => !window[dep]);
         if (missing.length > 0) {
-            console.error('Modules manquants:', missing);
-            return false;
+            throw new Error(`Modules manquants: ${missing.join(', ')}`);
+        }
+    }
+
+    mergeServerConfig(serverConfig) {
+        if (serverConfig.presetData) {
+            this.loadPresetData(serverConfig.presetData);
         }
         
-        return true;
+        if (serverConfig.optionsService) {
+            CalculateurConfig.CARRIERS.SERVICES = {
+                ...CalculateurConfig.CARRIERS.SERVICES,
+                ...this.parseServerOptions(serverConfig.optionsService)
+            };
+        }
     }
-    
-    /**
-     * Initialisation des modules
-     */
+
     async initializeModules() {
-        const modules = [
-            window.formController,
-            window.calcController,
-            window.resultsView
-        ];
+        // Core services
+        await this.initCore();
         
-        for (const module of modules) {
-            if (module && typeof module.init === 'function') {
-                await module.init();
-                this.modules.push(module);
-            }
-        }
+        // Models
+        await this.initModels();
+        
+        // Controllers
+        await this.initControllers();
+        
+        // Views
+        await this.initViews();
+        
+        // Cross-module connections
+        this.connectModules();
     }
-    
-    /**
-     * Événements globaux
-     */
-    setupGlobalEvents() {
-        // Gestion des erreurs globales
-        window.addEventListener('error', (event) => {
-            if (CalculateurConfig.DEBUG) {
-                console.error('Erreur globale:', event.error);
-            }
-        });
+
+    async initCore() {
+        // State manager déjà initialisé globalement
+        this.modules.set('state', window.calculateurState);
         
-        // Gestion du beforeunload
-        window.addEventListener('beforeunload', () => {
-            this.cleanup();
-        });
+        // API service
+        window.apiService.init();
+        this.modules.set('api', window.apiService);
         
-        // Raccourcis clavier
-        document.addEventListener('keydown', (event) => {
-            // Échapper pour reset
-            if (event.key === 'Escape') {
-                window.formController?.reset();
-            }
-            
-            // Ctrl+Enter pour calculer
-            if (event.ctrlKey && event.key === 'Enter') {
-                const form = document.getElementById('calculator-form');
-                if (form) {
-                    form.dispatchEvent(new Event('submit'));
-                }
-            }
-        });
+        CalculateurConfig.log('debug', 'Core initialisé');
     }
-    
-    /**
-     * Interface utilisateur initiale
-     */
-    setupInitialUI() {
-        // Afficher placeholder dans résultats
-        window.resultsView?.showPlaceholder();
+
+    async initModels() {
+        // Models sont des singletons, pas d'init spéciale
+        this.modules.set('formData', window.formDataModel);
+        this.modules.set('validation', window.validationModel);
         
-        // Focus sur premier champ
-        setTimeout(() => {
-            const firstField = document.getElementById('departement');
-            if (firstField) {
-                firstField.focus();
-            }
-        }, 100);
-        
-        // Charger données URL si présentes
-        this.loadURLParams();
+        CalculateurConfig.log('debug', 'Models initialisés');
     }
-    
-    /**
-     * Chargement des paramètres URL
-     */
-    loadURLParams() {
-        const params = new URLSearchParams(window.location.search);
-        const urlData = {};
+
+    async initControllers() {
+        // Form controller
+        window.formController.init();
+        this.modules.set('formController', window.formController);
         
-        // Mapper les paramètres URL
-        const urlMappings = {
-            'dept': 'departement',
-            'departement': 'departement',
-            'poids': 'poids',
-            'type': 'type',
-            'adr': 'adr'
-        };
+        // Calculation controller
+        window.calcController.init();
+        this.modules.set('calcController', window.calcController);
         
-        Object.entries(urlMappings).forEach(([urlParam, formField]) => {
-            const value = params.get(urlParam);
-            if (value) {
-                urlData[formField] = value;
-            }
-        });
+        // UI controller
+        window.uiController.init();
+        this.modules.set('uiController', window.uiController);
         
-        // Appliquer les données URL
-        if (Object.keys(urlData).length > 0) {
-            calculateurState.dispatch({
-                type: 'FORM_UPDATE',
-                payload: urlData
+        CalculateurConfig.log('debug', 'Controllers initialisés');
+    }
+
+    async initViews() {
+        // Progressive form view
+        window.progressiveFormView.init();
+        this.modules.set('progressiveForm', window.progressiveFormView);
+        
+        // Results display view
+        window.resultsDisplayView.init();
+        this.modules.set('resultsDisplay', window.resultsDisplayView);
+        
+        CalculateurConfig.log('debug', 'Views initialisées');
+    }
+
+    connectModules() {
+        // Connecter validation aux contrôleurs
+        this.setupValidationPipeline();
+        
+        // Connecter calculs automatiques
+        this.setupAutoCalculation();
+        
+        // Connecter animations
+        this.setupAnimationPipeline();
+    }
+
+    setupValidationPipeline() {
+        window.calculateurState.observe('formData', (newData, oldData) => {
+            const validation = window.validationModel.validateAll(newData);
+            window.calculateurState.set('validation', {
+                isValid: validation.valid,
+                errors: this.extractFieldErrors(validation.fields),
+                touchedFields: window.calculateurState.get('validation.touchedFields') || new Set()
             });
-            
-            // Auto-calcul si données complètes
-            setTimeout(() => {
-                const currentData = calculateurState.getState().form.data;
-                if (formDataModel.isComplete(currentData)) {
-                    window.calcController?.startCalculation(currentData);
+        });
+    }
+
+    setupAutoCalculation() {
+        window.calculateurState.observe('validation.isValid', (isValid) => {
+            if (isValid && CalculateurConfig.isFeatureEnabled('REAL_TIME_CALC')) {
+                const formData = window.calculateurState.get('formData');
+                if (window.formDataModel.isComplete(formData)) {
+                    window.calcController.scheduleCalculation();
                 }
-            }, 500);
+            }
+        });
+    }
+
+    setupAnimationPipeline() {
+        // Animation lors des transitions d'étapes
+        window.calculateurState.observe('ui.currentStep', (step, oldStep) => {
+            if (oldStep !== undefined) {
+                this.triggerStepAnimation(oldStep, step);
+            }
+        });
+        
+        // Animation lors des résultats
+        window.calculateurState.observe('ui.showResults', (show) => {
+            if (show) {
+                this.triggerResultsAnimation();
+            }
+        });
+    }
+
+    setupGlobalHandlers() {
+        // Gestion erreurs globales
+        window.addEventListener('error', this.handleGlobalError.bind(this));
+        window.addEventListener('unhandledrejection', this.handleGlobalError.bind(this));
+        
+        // Gestion fermeture page
+        window.addEventListener('beforeunload', this.cleanup.bind(this));
+        
+        // Gestion raccourcis clavier
+        document.addEventListener('keydown', this.handleGlobalKeyboard.bind(this));
+        
+        // Performance monitoring
+        this.setupPerformanceMonitoring();
+    }
+
+    handleGlobalKeyboard(event) {
+        // Ctrl/Cmd + R : Reset
+        if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+            event.preventDefault();
+            this.reset();
+        }
+        
+        // Escape : Actions d'annulation
+        if (event.key === 'Escape') {
+            window.calcController.cancelCalculation();
         }
     }
-    
-    /**
-     * API de debug
-     */
-    exposeDebugAPI() {
-        window.CalculateurDebug = {
-            getState: () => calculateurState.getState(),
-            getConfig: () => CalculateurConfig,
-            getHistory: () => calculateurState.actionHistory,
-            reset: () => window.formController?.reset(),
-            simulate: (data) => window.calcController?.startCalculation(data),
-            modules: this.modules,
-            version: CalculateurConfig.VERSION
-        };
+
+    setupPerformanceMonitoring() {
+        if (!CalculateurConfig.DEBUG.ENABLED) return;
         
-        console.log('🔧 API Debug disponible: window.CalculateurDebug');
+        let calcCount = 0;
+        window.calculateurState.observe('ui.isCalculating', (calculating) => {
+            if (!calculating) {
+                calcCount++;
+                if (calcCount % 10 === 0) {
+                    const stats = window.apiService.getStats();
+                    CalculateurConfig.log('info', `Performance après ${calcCount} calculs:`, stats);
+                }
+            }
+        });
     }
-    
-    /**
-     * Affichage d'erreur critique
-     */
-    showError(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'calculateur-error';
-        errorDiv.innerHTML = `
+
+    loadPresetData(presetData) {
+        Object.entries(presetData).forEach(([key, value]) => {
+            if (value) {
+                const normalized = window.formDataModel.normalize({ [key]: value });
+                window.calculateurState.updateFormData(key, normalized[key]);
+            }
+        });
+    }
+
+    parseServerOptions(options) {
+        const parsed = {};
+        options.forEach(option => {
+            parsed[option.code_option] = {
+                label: option.libelle,
+                carrier: option.transporteur,
+                cost: parseFloat(option.montant) || 0
+            };
+        });
+        return parsed;
+    }
+
+    extractFieldErrors(validationFields) {
+        const errors = {};
+        Object.entries(validationFields).forEach(([field, result]) => {
+            if (!result.valid && result.errors.length > 0) {
+                errors[field] = result.errors[0]; // Premier erreur seulement
+            }
+        });
+        return errors;
+    }
+
+    triggerStepAnimation(oldStep, newStep) {
+        const direction = newStep > oldStep ? 'forward' : 'backward';
+        document.body.setAttribute('data-step-transition', direction);
+        
+        setTimeout(() => {
+            document.body.removeAttribute('data-step-transition');
+        }, 500);
+    }
+
+    triggerResultsAnimation() {
+        const resultsPanel = document.querySelector('.results-panel');
+        if (resultsPanel) {
+            resultsPanel.classList.add('results-appear');
+        }
+    }
+
+    handleInitError(error) {
+        CalculateurConfig.log('error', 'Erreur initialisation:', error);
+        
+        this.showCriticalError(
+            'Erreur d\'initialisation du calculateur',
+            error.message,
+            () => window.location.reload()
+        );
+    }
+
+    handleGlobalError(event) {
+        const error = event.error || event.reason;
+        CalculateurConfig.log('error', 'Erreur globale:', error);
+        
+        // Ne pas afficher les erreurs de réseau en modal
+        if (error?.message?.includes('fetch')) {
+            return;
+        }
+        
+        window.uiController?.showToast(
+            'Une erreur inattendue s\'est produite',
+            'error'
+        );
+    }
+
+    showCriticalError(title, message, retryCallback) {
+        const modal = document.createElement('div');
+        modal.className = 'error-modal';
+        modal.innerHTML = `
             <div class="error-content">
-                <h3>❌ Erreur Calculateur</h3>
+                <h3>${title}</h3>
                 <p>${message}</p>
-                <button onclick="location.reload()">Recharger la page</button>
+                <div class="error-actions">
+                    <button onclick="window.location.reload()">Recharger</button>
+                    <button onclick="window.history.back()">Retour</button>
+                </div>
             </div>
         `;
         
-        // Insérer au début du body
-        document.body.insertBefore(errorDiv, document.body.firstChild);
-    }
-    
-    /**
-     * Nettoyage lors de la fermeture
-     */
-    cleanup() {
-        // Annuler les calculs en cours
-        window.calcController?.cancelCalculation();
+        document.body.appendChild(modal);
         
-        // Nettoyer les timeouts
+        const style = document.createElement('style');
+        style.textContent = `
+            .error-modal {
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.8); display: flex; align-items: center;
+                justify-content: center; z-index: 10000;
+            }
+            .error-content {
+                background: white; padding: 2rem; border-radius: 8px;
+                max-width: 400px; text-align: center;
+            }
+            .error-actions { margin-top: 1rem; display: flex; gap: 1rem; }
+            .error-actions button {
+                flex: 1; padding: 0.5rem; border: 1px solid #ccc;
+                background: white; cursor: pointer; border-radius: 4px;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    reset() {
+        CalculateurConfig.log('info', 'Reset complet de l\'application');
+        
+        window.calculateurState.reset();
+        window.formController.reset();
+        window.resultsDisplayView.reset();
+        window.calcController.cancelCalculation();
+    }
+
+    cleanup() {
+        CalculateurConfig.log('info', 'Nettoyage avant fermeture');
+        
         this.modules.forEach(module => {
             if (module.cleanup) {
                 module.cleanup();
             }
         });
+        
+        window.calcController.cancelCalculation();
     }
-    
-    /**
-     * Restart de l'application
-     */
-    restart() {
-        this.cleanup();
-        this.initialized = false;
-        this.modules = [];
-        setTimeout(() => this.init(), 100);
+
+    exposeDebugAPI() {
+        window.calculateurDebug = {
+            app: this,
+            state: () => window.calculateurState.getDebugSummary(),
+            config: CalculateurConfig,
+            modules: this.modules,
+            stats: () => window.apiService.getStats(),
+            reset: () => this.reset(),
+            simulate: {
+                calculation: () => window.calcController.calculate(true),
+                error: () => { throw new Error('Test error'); },
+                step: (n) => window.calculateurState.goToStep(n)
+            }
+        };
+        
+        CalculateurConfig.log('info', 'API Debug exposée: window.calculateurDebug');
+    }
+
+    getStatus() {
+        return {
+            initialized: this.initialized,
+            modules: Array.from(this.modules.keys()),
+            state: window.calculateurState?.getDebugSummary(),
+            version: CalculateurConfig.META.VERSION
+        };
     }
 }
 
 // Instance globale
 window.calculateurApp = new CalculateurApp();
 
-// Auto-initialisation au chargement DOM
+// Auto-initialisation
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        window.calculateurApp.init();
+        window.calculateurApp.init(window.CALCULATEUR_CONFIG);
     });
 } else {
-    // DOM déjà chargé
-    window.calculateurApp.init();
-}
-
-// =============================================================================
-// FICHIER 9: Styles CSS pour accompagner la nouvelle architecture
-// =============================================================================
-
-/* 
-FICHIER: /public/assets/css/modules/calculateur/architecture.css
-
-Styles pour supporter la nouvelle architecture JS
-*/
-
-/* États des champs de formulaire */
-.form-input.error {
-    border-color: var(--calculateur-error);
-    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
-}
-
-.form-input.valid {
-    border-color: var(--calculateur-success);
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
-}
-
-/* Messages d'erreur des champs */
-.field-error {
-    color: var(--calculateur-error);
-    font-size: 12px;
-    margin-top: 4px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.field-error::before {
-    content: "⚠️";
-    font-size: 10px;
-}
-
-/* États des résultats */
-.results-status {
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
-    text-align: center;
-    margin-bottom: 16px;
-}
-
-.results-status.success {
-    background: var(--calculateur-success);
-    color: white;
-}
-
-.results-status.error {
-    background: var(--calculateur-error);
-    color: white;
-}
-
-.results-status.warning {
-    background: var(--calculateur-warning);
-    color: white;
-}
-
-.results-status.loading {
-    background: var(--calculateur-secondary);
-    color: white;
-}
-
-.results-status.placeholder {
-    background: var(--calculateur-gray-100);
-    color: var(--calculateur-gray-600);
-}
-
-/* Spinner de chargement */
-.loading-spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid var(--calculateur-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 16px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* États de contenu */
-.loading-state,
-.error-message,
-.placeholder-state,
-.affretement-message {
-    text-align: center;
-    padding: 32px 16px;
-}
-
-.placeholder-icon,
-.error-icon,
-.affretement-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.7;
-}
-
-/* Meilleur tarif */
-.best-rate {
-    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-    color: white;
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
-    text-align: center;
-}
-
-.best-rate-header h3 {
-    margin: 0 0 16px 0;
-    font-size: 18px;
-}
-
-.carrier-name {
-    font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 8px;
-}
-
-.price {
-    font-size: 32px;
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-
-.delivery-time {
-    font-size: 14px;
-    opacity: 0.9;
-}
-
-/* Comparaison transporteurs */
-.comparison-section {
-    margin-top: 24px;
-}
-
-.comparison-section h4 {
-    margin: 0 0 16px 0;
-    color: var(--calculateur-gray-700);
-}
-
-.carriers-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.carrier-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    border: 1px solid var(--calculateur-gray-200);
-    border-radius: 8px;
-    background: white;
-}
-
-.carrier-item.best {
-    border-color: var(--calculateur-success);
-    background: rgba(16, 185, 129, 0.05);
-}
-
-.carrier-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.best-badge {
-    background: var(--calculateur-success);
-    color: white;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-weight: 500;
-}
-
-.carrier-price {
-    font-weight: 600;
-    color: var(--calculateur-primary);
-}
-
-/* Message d'affrètement */
-.affretement-message {
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    border-radius: 12px;
-    padding: 32px;
-}
-
-.contact-info {
-    margin-top: 16px;
-    padding: 16px;
-    background: rgba(245, 158, 11, 0.1);
-    border-radius: 8px;
-}
-
-/* Bouton retry */
-.retry-btn {
-    background: var(--calculateur-primary);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-top: 16px;
-    transition: background-color 0.2s;
-}
-
-.retry-btn:hover {
-    background: var(--calculateur-secondary);
-}
-
-/* Erreur critique */
-.calculateur-error {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: var(--calculateur-error);
-    color: white;
-    padding: 16px;
-    text-align: center;
-    z-index: 9999;
-}
-
-.error-content button {
-    background: white;
-    color: var(--calculateur-error);
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 8px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .carrier-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-    
-    .carrier-price {
-        align-self: flex-end;
-    }
+    window.calculateurApp.init(window.CALCULATEUR_CONFIG);
 }
