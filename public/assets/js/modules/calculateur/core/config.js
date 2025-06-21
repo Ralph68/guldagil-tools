@@ -1,4 +1,4 @@
-/**
+/** 
  * Titre: Configuration centralisée du module calculateur
  * Chemin: /public/assets/js/modules/calculateur/core/config.js
  * Version: 0.5 beta + build
