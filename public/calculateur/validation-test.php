@@ -100,6 +100,7 @@ function formatResults($results) {
 
 // TRAITEMENT DU FORMULAIRE
 if ($_POST) {
+    $adr = (isset($_POST['adr']) && $_POST['adr'] === 'oui');
     $start_time = microtime(true);
     
     $params = [
