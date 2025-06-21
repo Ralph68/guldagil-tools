@@ -376,3 +376,4 @@ function formatResults($results) {
                         <span><?= htmlspecialchars($data['name']) ?></span>
                         <?php if ($is_best): ?>
                             <span class="best
+    ?>
