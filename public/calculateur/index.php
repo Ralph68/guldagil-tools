@@ -15,9 +15,9 @@
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/version.php';
 
-// Sécurité basique
+// Définir BASE_PATH si pas défini
 if (!defined('BASE_PATH')) {
-    die('Accès non autorisé');
+    define('BASE_PATH', dirname(__DIR__, 2));
 }
 
 // Démarrage session si nécessaire
