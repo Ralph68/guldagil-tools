@@ -40,43 +40,30 @@ if ($_POST) {
             echo "7. Instance créée<br>";
             
             // Test calcul
-            try {
-                $results = $transport->calculateAll($params);
-                echo "8. Calcul array OK<br>";
-                echo "<pre>";
-                print_r($results);
-                echo "</pre>";
-            } catch (Exception $e) {
-                echo "8. Erreur array: " . $e->getMessage() . "<br>";
-                
-                try {
-                    $results = $transport->calculateAll(
-                        $params['type'],
-                        $params['adr'], 
-                        $params['poids'],
-                        $params['service_livraison'],
-                        $params['departement'],
-                        $params['palettes'],
-                        $params['enlevement']
-                    );
-                    echo "9. Calcul params OK<br>";
-                    echo "<pre>";
-                    print_r($results);
-                    echo "</pre>";
-                } catch (Exception $e2) {
-                    echo "9. Erreur params: " . $e2->getMessage() . "<br>";
-                    echo "Stack: " . $e2->getTraceAsString() . "<br>";
-                }
-            }
-            
-        } catch (Exception $e) {
-            echo "Erreur chargement: " . $e->getMessage() . "<br>";
-        }
-    } else {
-        echo "5. Fichier manquant: $transport_file<br>";
+            // Dans debug-500.php, remplace la section "Test calcul" par :
+try {
+    echo "Test signature array...<br>";
+    $results = $transport->calculateAll($params);
+    echo "✅ Array OK<br>";
+} catch (Error $e) {
+    echo "❌ Erreur PHP: " . $e->getMessage() . " ligne " . $e->getLine() . "<br>";
+} catch (Exception $e) {
+    echo "❌ Exception: " . $e->getMessage() . "<br>";
+    
+    try {
+        echo "Test signature séparée...<br>";
+        $results = $transport->calculateAll(
+            $params['type'], $params['adr'], $params['poids'],
+            $params['service_livraison'], $params['departement'],
+            $params['palettes'], $params['enlevement']
+        );
+        echo "✅ Params OK<br>";
+    } catch (Error $e2) {
+        echo "❌ Erreur PHP params: " . $e2->getMessage() . " ligne " . $e2->getLine() . "<br>";
+    } catch (Exception $e2) {
+        echo "❌ Exception params: " . $e2->getMessage() . "<br>";
     }
 }
-?>
 
 <form method="POST">
     <input type="text" name="departement" value="67" placeholder="Dept">
