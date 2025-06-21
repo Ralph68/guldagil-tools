@@ -78,10 +78,11 @@ class Transport
             'params' => $params,
             'carrier' => $carrier
         ];
+        
         // Normaliser ADR en booléen si c'est une string
-if (is_string($params['adr'])) {
-    $params['adr'] = ($params['adr'] === 'oui');
-}
+        if (is_string($params['adr'])) {
+            $params['adr'] = ($params['adr'] === 'oui');
+        }
 
         // 1. Vérifications de compatibilité
         if (!$this->validateCarrierConstraints($carrier, $params)) {
@@ -106,242 +107,245 @@ if (is_string($params['adr'])) {
     }
 
     /**
- * CALCUL HEPPNER corrigé selon logique Excel
- */
-private function calculateHeppner(string $dept, float $poids, string $type, bool $adr, string $option_sup, bool $enlevement, int $palettes): ?float
-{
-    // Vérifications compatibilité (inchangé)
-    if ($adr && in_array($option_sup, ['star18', 'star13', 'datefixe18', 'datefixe13'])) {
-        $this->debug['heppner']['error'] = 'ADR incompatible avec Star/Priority';
-        return null;
-    }
-
-    if ($poids > 1000 && in_array($option_sup, ['star18', 'star13', 'datefixe18', 'datefixe13'])) {
-        $this->debug['heppner']['error'] = 'Star/Priority limité à 1000kg';
-        return null;
-    }
-
-    // 1. Calcul tarif de base avec logique MIN(forfait, tranche supérieure)
-    $tarifBase = $this->getHeppnerBaseTariffWithComparison($dept, $poids);
-    if ($tarifBase === null) {
-        $this->debug['heppner']['error'] = 'Aucun tarif trouvé';
-        return null;
-    }
-    
-    $this->debug['heppner']['tarif_base'] = $tarifBase;
-
-    // 2. Calcul des pourcentages UNIQUEMENT sur le forfait transport
-    $forfaitTransport = $tarifBase; // Le tarif de base = forfait transport expedition
-    
-    // Surcharge gasoil (% sur forfait transport uniquement)
-    $surchargeGasoil = $this->getSurchargeGasoil('heppner');
-    $montantSurchargeGasoil = $forfaitTransport * $surchargeGasoil;
-    
-    $this->debug['heppner']['forfait_transport'] = number_format($forfaitTransport, 2) . '€';
-    $this->debug['heppner']['surcharge_gasoil'] = number_format($surchargeGasoil * 100, 2) . '% sur forfait = ' . number_format($montantSurchargeGasoil, 2) . '€';
-
-    // Haute Saison (% sur forfait transport uniquement) - juillet/août
-    $montantHauteSaison = 0;
-    if ($this->isHauteSaison()) {
-        $montantHauteSaison = max($forfaitTransport * 0.10, 5.00);
-        $this->debug['heppner']['haute_saison'] = '10% sur forfait (min 5€) = ' . number_format($montantHauteSaison, 2) . '€';
-    }
-    
-    // Sous-total avec pourcentages
-    $sousTotal = $forfaitTransport + $montantSurchargeGasoil + $montantHauteSaison;
-
-    // 3. ADR (aucun impact pour Heppner)
-    if ($adr) {
-        $this->debug['heppner']['adr'] = '0€ (pas d\'impact)';
-    }
-
-    // 4. Options de service (depuis BDD taxes_transporteurs)
-    $coutOption = $this->getOptionCost('heppner', 'rdv');
-    switch ($option_sup) {
-        case 'rdv':
-            $coutOption = 6.70; // Sera récupéré depuis BDD quand ajouté
-            $this->debug['heppner']['option_rdv'] = number_format($coutOption, 2) . '€';
-            break;
-        case 'star18':
-        case 'star13':
-        case 'datefixe18': 
-        case 'datefixe13':
-            // Utiliser les tarifs Star depuis gul_heppner_star
-            $tarifStar = $this->getHeppnerStarTariffFromDB($option_sup, $poids);
-            if ($tarifStar !== null) {
-                // Recalculer avec le nouveau forfait transport
-                $forfaitTransport = $tarifStar;
-                $montantSurchargeGasoil = $forfaitTransport * $surchargeGasoil;
-                if ($this->isHauteSaison()) {
-                    $montantHauteSaison = max($forfaitTransport * 0.10, 5.00);
-                }
-                $sousTotal = $forfaitTransport + $montantSurchargeGasoil + $montantHauteSaison;
-                $this->debug['heppner']['tarif_star_' . $option_sup] = number_format($tarifStar, 2) . '€';
-            }
-            break;
-    }
-
-    // 5. Enlèvement si applicable
-    $coutEnlevement = 0;
-    if ($enlevement) {
-        $coutEnlevement = 0; // À configurer dans gul_taxes_transporteurs si nécessaire
-        if ($coutEnlevement > 0) {
-            $this->debug['heppner']['enlevement'] = number_format($coutEnlevement, 2) . '€';
+     * CALCUL HEPPNER corrigé selon logique Excel
+     */
+    private function calculateHeppner(string $dept, float $poids, string $type, bool $adr, string $option_sup, bool $enlevement, int $palettes): ?float
+    {
+        // Vérifications compatibilité
+        if ($adr && in_array($option_sup, ['star18', 'star13', 'datefixe18', 'datefixe13'])) {
+            $this->debug['heppner']['error'] = 'ADR incompatible avec Star/Priority';
+            return null;
         }
-    }
 
-    // 6. Contributions depuis BDD gul_taxes_transporteurs
-    $contributions = $this->getHeppnerContributions();
-    
-    $this->debug['heppner']['pase'] = number_format($contributions['surete'], 2) . '€';
-    $this->debug['heppner']['csse'] = number_format($contributions['contribution_sanitaire'], 2) . '€';
-    $this->debug['heppner']['transition_energetique'] = number_format($contributions['participation_transition_energetique'], 2) . '€';
+        if ($poids > 1000 && in_array($option_sup, ['star18', 'star13', 'datefixe18', 'datefixe13'])) {
+            $this->debug['heppner']['error'] = 'Star/Priority limité à 1000kg';
+            return null;
+        }
 
-    // 7. Total final
-    $totalContributions = $contributions['surete'] + $contributions['contribution_sanitaire'] + $contributions['participation_transition_energetique'];
-    $tarifFinal = $sousTotal + $coutOption + $coutEnlevement + $totalContributions;
-    
-    $this->debug['heppner']['tarif_final'] = $tarifFinal;
-    $this->debug['heppner']['detail_calcul'] = [
-        'tarif_base' => $tarifBase,
-        'surcharge_gasoil' => $montantSurchargeGasoil,
-        'haute_saison' => $montantHauteSaison,
-        'option' => $coutOption,
-        'enlevement' => $coutEnlevement,
-        'taxes_fixes' => $totalContributions,
-        'total' => $tarifFinal
-    ];
-
-    return round($tarifFinal, 2);
-}
-
-    private function isHauteSaison(): bool
-{
-    return in_array((int)date('n'), [7, 8]);
-}
-/**
- * Calcul tarif de base Heppner avec comparaison forfait/tranche supérieure
- */
-private function getHeppnerBaseTariffWithComparison(string $dept, float $poids): ?float
-{
-    $column = $this->getHeppnerColumn($poids);
-    if (!$column) return null;
-
-    $sql = "SELECT `$column` FROM gul_heppner_rates WHERE num_departement = :dept LIMIT 1";
-    $stmt = $this->db->prepare($sql);
-    $stmt->execute([':dept' => $dept]);
-    $result = $stmt->fetch();
-
-    if (!$result || !$result[$column]) {
-        return null;
-    }
-
-    $tarifPour100kg = (float)$result[$column];
-    $tarifActuel = $poids >= 100 ? ($poids / 100) * $tarifPour100kg : $tarifPour100kg;
-    
-    // Comparer avec tranche supérieure pour optimisation
-    $tarifOptimal = $this->compareWithUpperTranche($dept, $poids, $tarifActuel);
-    
-    return $tarifOptimal;
-}
-
-/**
- * Compare le tarif actuel avec la tranche supérieure
- */
-private function compareWithUpperTranche(string $dept, float $poids, float $tarifActuel): float
-{
-    $trancheSuperieure = $this->getUpperTranche($poids);
-    if (!$trancheSuperieure) return $tarifActuel;
-    
-    $sql = "SELECT `{$trancheSuperieure['column']}` FROM gul_heppner_rates WHERE num_departement = :dept LIMIT 1";
-    $stmt = $this->db->prepare($sql);
-    $stmt->execute([':dept' => $dept]);
-    $result = $stmt->fetch();
-    
-    if ($result && $result[$trancheSuperieure['column']]) {
-        $tarifSuperieur = ($trancheSuperieure['poids'] / 100) * (float)$result[$trancheSuperieure['column']];
+        // 1. Calcul tarif de base avec logique MIN(forfait, tranche supérieure)
+        $tarifBase = $this->getHeppnerBaseTariffWithComparison($dept, $poids);
+        if ($tarifBase === null) {
+            $this->debug['heppner']['error'] = 'Aucun tarif trouvé';
+            return null;
+        }
         
-        if ($tarifSuperieur < $tarifActuel) {
-            $economie = $tarifActuel - $tarifSuperieur;
-            $this->debug['heppner']['suggestion'] = "Payant pour {$trancheSuperieure['poids']}kg (-" . number_format($economie, 2) . "€)";
-            return $tarifSuperieur;
+        $this->debug['heppner']['tarif_base'] = $tarifBase;
+
+        // 2. Calcul des pourcentages UNIQUEMENT sur le forfait transport
+        $forfaitTransport = $tarifBase; // Le tarif de base = forfait transport expedition
+        
+        // Surcharge gasoil (% sur forfait transport uniquement)
+        $surchargeGasoil = $this->getSurchargeGasoil('heppner');
+        $montantSurchargeGasoil = $forfaitTransport * $surchargeGasoil;
+        
+        $this->debug['heppner']['forfait_transport'] = number_format($forfaitTransport, 2) . '€';
+        $this->debug['heppner']['surcharge_gasoil'] = number_format($surchargeGasoil * 100, 2) . '% sur forfait = ' . number_format($montantSurchargeGasoil, 2) . '€';
+
+        // Haute Saison (% sur forfait transport uniquement) - juillet/août
+        $montantHauteSaison = 0;
+        if ($this->isHauteSaison()) {
+            $montantHauteSaison = max($forfaitTransport * 0.10, 5.00);
+            $this->debug['heppner']['haute_saison'] = '10% sur forfait (min 5€) = ' . number_format($montantHauteSaison, 2) . '€';
         }
+        
+        // Sous-total avec pourcentages
+        $sousTotal = $forfaitTransport + $montantSurchargeGasoil + $montantHauteSaison;
+
+        // 3. ADR (aucun impact pour Heppner)
+        if ($adr) {
+            $this->debug['heppner']['adr'] = '0€ (pas d\'impact)';
+        }
+
+        // 4. Options de service
+        $coutOption = 0;
+        switch ($option_sup) {
+            case 'rdv':
+                $coutOption = $this->getOptionCost('heppner', 'rdv');
+                $this->debug['heppner']['option_rdv'] = number_format($coutOption, 2) . '€';
+                break;
+            case 'star18':
+            case 'star13':
+            case 'datefixe18': 
+            case 'datefixe13':
+                // Utiliser les tarifs Star depuis gul_heppner_star
+                $tarifStar = $this->getHeppnerStarTariffFromDB($option_sup, $poids);
+                if ($tarifStar !== null) {
+                    // Recalculer avec le nouveau forfait transport
+                    $forfaitTransport = $tarifStar;
+                    $montantSurchargeGasoil = $forfaitTransport * $surchargeGasoil;
+                    if ($this->isHauteSaison()) {
+                        $montantHauteSaison = max($forfaitTransport * 0.10, 5.00);
+                    }
+                    $sousTotal = $forfaitTransport + $montantSurchargeGasoil + $montantHauteSaison;
+                    $this->debug['heppner']['tarif_star_' . $option_sup] = number_format($tarifStar, 2) . '€';
+                }
+                break;
+        }
+
+        // 5. Enlèvement si applicable
+        $coutEnlevement = 0;
+        if ($enlevement) {
+            $coutEnlevement = 0; // À configurer dans gul_taxes_transporteurs si nécessaire
+            if ($coutEnlevement > 0) {
+                $this->debug['heppner']['enlevement'] = number_format($coutEnlevement, 2) . '€';
+            }
+        }
+
+        // 6. Contributions depuis BDD gul_taxes_transporteurs
+        $contributions = $this->getHeppnerContributions();
+        
+        $this->debug['heppner']['pase'] = number_format($contributions['surete'], 2) . '€';
+        $this->debug['heppner']['csse'] = number_format($contributions['contribution_sanitaire'], 2) . '€';
+        $this->debug['heppner']['transition_energetique'] = number_format($contributions['participation_transition_energetique'], 2) . '€';
+
+        // 7. Total final
+        $totalContributions = $contributions['surete'] + $contributions['contribution_sanitaire'] + $contributions['participation_transition_energetique'];
+        $tarifFinal = $sousTotal + $coutOption + $coutEnlevement + $totalContributions;
+        
+        $this->debug['heppner']['tarif_final'] = $tarifFinal;
+        $this->debug['heppner']['detail_calcul'] = [
+            'tarif_base' => $tarifBase,
+            'surcharge_gasoil' => $montantSurchargeGasoil,
+            'haute_saison' => $montantHauteSaison,
+            'option' => $coutOption,
+            'enlevement' => $coutEnlevement,
+            'taxes_fixes' => $totalContributions,
+            'total' => $tarifFinal
+        ];
+
+        return round($tarifFinal, 2);
     }
-    
-    return $tarifActuel;
-}
 
-/**
- * Détermine la tranche supérieure pour comparaison
- */
-private function getUpperTranche(float $poids): ?array
-{
-    if ($poids < 100) return ['column' => 'tarif_100_299', 'poids' => 100];
-    if ($poids < 300) return ['column' => 'tarif_300_499', 'poids' => 300];
-    if ($poids < 500) return ['column' => 'tarif_500_999', 'poids' => 500];
-    if ($poids < 1000) return ['column' => 'tarif_1000_1999', 'poids' => 1000];
-    
-    return null; // Pas de tranche supérieure
-}
+    /**
+     * Vérifie si on est en période haute saison
+     */
+    private function isHauteSaison(): bool
+    {
+        return in_array((int)date('n'), [7, 8]);
+    }
 
-/**
- * Tarifs Star depuis BDD gul_heppner_star
- */
-private function getHeppnerStarTariffFromDB(string $option, float $poids): ?float
-{
-    $column = in_array($option, ['star13', 'datefixe13']) ? 'tarif_13h' : 'tarif_18h';
-    
-    $sql = "SELECT `$column` FROM gul_heppner_star 
-            WHERE poids_max >= :poids AND actif = 1 
-            ORDER BY poids_max ASC LIMIT 1";
-    $stmt = $this->db->prepare($sql);
-    $stmt->execute([':poids' => $poids]);
-    $result = $stmt->fetch();
-    
-    return $result ? (float)$result[$column] : null;
-}
+    /**
+     * Calcul tarif de base Heppner avec comparaison forfait/tranche supérieure
+     */
+    private function getHeppnerBaseTariffWithComparison(string $dept, float $poids): ?float
+    {
+        $column = $this->getHeppnerColumn($poids);
+        if (!$column) return null;
 
-/**
- * Récupère les contributions Heppner depuis BDD
- */
-private function getHeppnerContributions(): array
-{
-    $sql = "SELECT participation_transition_energetique, contribution_sanitaire, surete 
-            FROM gul_taxes_transporteurs WHERE transporteur = 'Heppner' LIMIT 1";
-    $stmt = $this->db->prepare($sql);
-    $stmt->execute();
-    $result = $stmt->fetch();
-    
-    return [
-        'participation_transition_energetique' => $result ? (float)$result['participation_transition_energetique'] : 0.50,
-        'contribution_sanitaire' => $result ? (float)$result['contribution_sanitaire'] : 0.40,
-        'surete' => $result ? (float)$result['surete'] : 2.30
-    ];
-}
+        $sql = "SELECT `$column` FROM gul_heppner_rates WHERE num_departement = :dept LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':dept' => $dept]);
+        $result = $stmt->fetch();
 
+        if (!$result || !$result[$column]) {
+            return null;
+        }
 
-/**
- * Correction colonne Heppner pour 450kg
- */
-private function getHeppnerColumn(float $poids): ?string
-{
-    if ($poids < 10) return 'tarif_0_9';
-    if ($poids < 20) return 'tarif_10_19';
-    if ($poids < 30) return 'tarif_20_29';
-    if ($poids < 40) return 'tarif_30_39';
-    if ($poids < 50) return 'tarif_40_49';
-    if ($poids < 60) return 'tarif_50_59';
-    if ($poids < 70) return 'tarif_60_69';
-    if ($poids < 80) return 'tarif_70_79';
-    if ($poids < 90) return 'tarif_80_89';
-    if ($poids < 100) return 'tarif_90_99';
-    if ($poids < 300) return 'tarif_100_299';
-    if ($poids < 500) return 'tarif_300_499'; // 450kg tombe ici
-    if ($poids < 1000) return 'tarif_500_999';
-    if ($poids < 2000) return 'tarif_1000_1999';
+        $tarifPour100kg = (float)$result[$column];
+        $tarifActuel = $poids >= 100 ? ($poids / 100) * $tarifPour100kg : $tarifPour100kg;
+        
+        // Comparer avec tranche supérieure pour optimisation
+        $tarifOptimal = $this->compareWithUpperTranche($dept, $poids, $tarifActuel);
+        
+        return $tarifOptimal;
+    }
 
-    return null;
-}
+    /**
+     * Compare le tarif actuel avec la tranche supérieure
+     */
+    private function compareWithUpperTranche(string $dept, float $poids, float $tarifActuel): float
+    {
+        $trancheSuperieure = $this->getUpperTranche($poids);
+        if (!$trancheSuperieure) return $tarifActuel;
+        
+        $sql = "SELECT `{$trancheSuperieure['column']}` FROM gul_heppner_rates WHERE num_departement = :dept LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':dept' => $dept]);
+        $result = $stmt->fetch();
+        
+        if ($result && $result[$trancheSuperieure['column']]) {
+            $tarifSuperieur = ($trancheSuperieure['poids'] / 100) * (float)$result[$trancheSuperieure['column']];
+            
+            if ($tarifSuperieur < $tarifActuel) {
+                $economie = $tarifActuel - $tarifSuperieur;
+                $this->debug['heppner']['suggestion'] = "Payant pour {$trancheSuperieure['poids']}kg (-" . number_format($economie, 2) . "€)";
+                return $tarifSuperieur;
+            }
+        }
+        
+        return $tarifActuel;
+    }
+
+    /**
+     * Détermine la tranche supérieure pour comparaison
+     */
+    private function getUpperTranche(float $poids): ?array
+    {
+        if ($poids < 100) return ['column' => 'tarif_100_299', 'poids' => 100];
+        if ($poids < 300) return ['column' => 'tarif_300_499', 'poids' => 300];
+        if ($poids < 500) return ['column' => 'tarif_500_999', 'poids' => 500];
+        if ($poids < 1000) return ['column' => 'tarif_1000_1999', 'poids' => 1000];
+        
+        return null; // Pas de tranche supérieure
+    }
+
+    /**
+     * Tarifs Star depuis BDD gul_heppner_star
+     */
+    private function getHeppnerStarTariffFromDB(string $option, float $poids): ?float
+    {
+        $column = in_array($option, ['star13', 'datefixe13']) ? 'tarif_13h' : 'tarif_18h';
+        
+        $sql = "SELECT `$column` FROM gul_heppner_star 
+                WHERE poids_max >= :poids AND actif = 1 
+                ORDER BY poids_max ASC LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':poids' => $poids]);
+        $result = $stmt->fetch();
+        
+        return $result ? (float)$result[$column] : null;
+    }
+
+    /**
+     * Récupère les contributions Heppner depuis BDD
+     */
+    private function getHeppnerContributions(): array
+    {
+        $sql = "SELECT participation_transition_energetique, contribution_sanitaire, surete 
+                FROM gul_taxes_transporteurs WHERE transporteur = 'Heppner' LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        $result = $stmt->fetch();
+        
+        return [
+            'participation_transition_energetique' => $result ? (float)$result['participation_transition_energetique'] : 0.50,
+            'contribution_sanitaire' => $result ? (float)$result['contribution_sanitaire'] : 0.40,
+            'surete' => $result ? (float)$result['surete'] : 2.30
+        ];
+    }
+
+    /**
+     * Correction colonne Heppner pour 450kg
+     */
+    private function getHeppnerColumn(float $poids): ?string
+    {
+        if ($poids < 10) return 'tarif_0_9';
+        if ($poids < 20) return 'tarif_10_19';
+        if ($poids < 30) return 'tarif_20_29';
+        if ($poids < 40) return 'tarif_30_39';
+        if ($poids < 50) return 'tarif_40_49';
+        if ($poids < 60) return 'tarif_50_59';
+        if ($poids < 70) return 'tarif_60_69';
+        if ($poids < 80) return 'tarif_70_79';
+        if ($poids < 90) return 'tarif_80_89';
+        if ($poids < 100) return 'tarif_90_99';
+        if ($poids < 300) return 'tarif_100_299';
+        if ($poids < 500) return 'tarif_300_499'; // 450kg tombe ici
+        if ($poids < 1000) return 'tarif_500_999';
+        if ($poids < 2000) return 'tarif_1000_1999';
+
+        return null;
+    }
 
     /**
      * CALCUL XPO selon logique Excel
@@ -531,26 +535,26 @@ private function getHeppnerColumn(float $poids): ?string
     private function validateCarrierConstraints(string $carrier, array $params): bool
     {
         switch ($carrier) {
-    case 'heppner':
-        if ($params['type'] === 'colis') {
-            if ($params['poids'] > 60) {
-                $this->debug['heppner']['error'] = 'Colis limité à 60kg - Utilisez palette';
-                return false;
-            }
-            if ($params['palettes'] > 2) {
-                $this->debug['heppner']['error'] = 'Maximum 2 colis par expédition';
-                return false;
-            }
+            case 'heppner':
+                if ($params['type'] === 'colis') {
+                    if ($params['poids'] > 60) {
+                        $this->debug['heppner']['error'] = 'Colis limité à 60kg - Utilisez palette';
+                        return false;
+                    }
+                    if ($params['palettes'] > 2) {
+                        $this->debug['heppner']['error'] = 'Maximum 2 colis par expédition';
+                        return false;
+                    }
+                }
+                break;
+            case 'xpo':
+            case 'kn':
+                if ($params['type'] === 'colis') {
+                    $this->debug[$carrier]['error'] = 'Colis non accepté';
+                    return false;
+                }
+                break;
         }
-        break;
-    case 'xpo':
-    case 'kn':
-        if ($params['type'] === 'colis') {
-            $this->debug[$carrier]['error'] = 'Colis non accepté';
-            return false;
-        }
-        break;
-}
 
         // Vérification poids maximum
         $maxWeight = $this->getCarrierMaxWeight($carrier);
@@ -642,18 +646,18 @@ private function getHeppnerColumn(float $poids): ?string
      * Récupère le coût d'une option
      */
     private function getOptionCost(string $carrier, string $option): float
-{
-    if ($option === 'rdv') {
-        $sql = "SELECT option_rdv_tarif FROM gul_taxes_transporteurs WHERE transporteur = :carrier LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':carrier' => $this->taxNames[$carrier]]);
-        $result = $stmt->fetch();
+    {
+        if ($option === 'rdv') {
+            $sql = "SELECT option_rdv_tarif FROM gul_taxes_transporteurs WHERE transporteur = :carrier LIMIT 1";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':carrier' => $this->taxNames[$carrier]]);
+            $result = $stmt->fetch();
+            
+            return $result && $result['option_rdv_tarif'] ? (float)$result['option_rdv_tarif'] : 0;
+        }
         
-        return $result && $result['option_rdv_tarif'] ? (float)$result['option_rdv_tarif'] : 0;
+        return 0;
     }
-    
-    return 0;
-}
 
     /**
      * Clé de poids pour table Star
@@ -670,61 +674,4 @@ private function getHeppnerColumn(float $poids): ?string
 
         return 999; // Max
     }
-    private function getHeppnerBaseTariffOptimized(string $dept, float $poids): ?float
-{
-    $tarifActuel = $this->getHeppnerTranche($dept, $poids);
-    if ($tarifActuel === null) return null;
-    
-    // Comparer avec tranche supérieure si possible
-    $nextTranche = $this->getNextTranche($poids);
-    if ($nextTranche) {
-        $tarifSup = $this->getHeppnerTranche($dept, $nextTranche);
-        if ($tarifSup && $tarifSup < $tarifActuel) {
-            $this->debug['heppner']['suggestion'] = "Payant pour {$nextTranche}kg (-" . number_format($tarifActuel - $tarifSup, 2) . "€)";
-            return $tarifSup;
-        }
-    }
-    
-    return $tarifActuel;
-}
-
-private function getNextTranche(float $poids): ?int
-{
-    if ($poids < 100) return 100;
-    if ($poids < 300) return 300;
-    if ($poids < 500) return 500;
-    if ($poids < 1000) return 1000;
-    return null;
-}
-
-private function getHeppnerOptionCost(string $option, float $poids, float $forfait): float
-{
-    switch ($option) {
-        case 'rdv': 
-            return $this->getOptionCost('heppner', 'rdv'); // Utilise BDD
-        case 'star18': case 'star13': case 'datefixe18': case 'datefixe13':
-            return $this->getHeppnerStarTariff($forfait, $option, $poids) - $forfait;
-        default: return 0;
-    }
-}
-
-private function getHeppnerContributions(): array
-{
-    $sql = "SELECT participation_transition_energetique, contribution_sanitaire, surete 
-            FROM gul_taxes_transporteurs WHERE transporteur = 'Heppner' LIMIT 1";
-    $stmt = $this->db->prepare($sql);
-    $stmt->execute();
-    $result = $stmt->fetch();
-    
-    return [
-        'surete' => $result ? (float)$result['surete'] : 2.30,
-        'sanitaire' => $result ? (float)$result['contribution_sanitaire'] : 0.40,
-        'transition' => $result ? (float)$result['participation_transition_energetique'] : 0.50
-    ];
-}
-
-private function isHauteSaisonHeppner(): bool
-{
-    return in_array((int)date('n'), [7, 8]);
-}
 }
