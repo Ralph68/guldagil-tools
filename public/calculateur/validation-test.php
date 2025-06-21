@@ -375,5 +375,137 @@ function formatResults($results) {
                     <div style="display: flex; align-items: center;">
                         <span><?= htmlspecialchars($data['name']) ?></span>
                         <?php if ($is_best): ?>
-                            <span class="best
-    ?>
+                            <span class="best-badge">Meilleur</span>
+                        <?php endif; ?>
+                    </div>
+                    <div style="font-weight: 600; color: #1e40af;">
+                        <?= htmlspecialchars($data['formatted']) ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- Debug détaillé -->
+        <div class="section">
+            <h2>🔍 Informations de debug</h2>
+            
+            <?php if (!empty($debug_info['transport_debug'])): ?>
+            <div class="debug">
+                <h4>Debug classe Transport</h4>
+                <pre><?= htmlspecialchars(print_r($debug_info['transport_debug'], true)) ?></pre>
+            </div>
+            <?php endif; ?>
+            
+            <?php if (isset($debug_info['signature'])): ?>
+            <div class="debug">
+                <h4>Signature méthode utilisée</h4>
+                <p><strong><?= htmlspecialchars($debug_info['signature']) ?></strong></p>
+                <?php if ($debug_info['signature'] === 'array'): ?>
+                    <p class="success">✅ Utilise la nouvelle signature (array)</p>
+                <?php else: ?>
+                    <p class="warning">⚠️ Utilise l'ancienne signature (paramètres séparés)</p>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+            
+            <?php if (isset($debug_info['exception'])): ?>
+            <div class="debug">
+                <h4>Exception détaillée</h4>
+                <div class="error">
+                    <strong>Message:</strong> <?= htmlspecialchars($debug_info['exception']['message']) ?><br>
+                    <strong>Fichier:</strong> <?= htmlspecialchars($debug_info['exception']['file']) ?><br>
+                    <strong>Ligne:</strong> <?= htmlspecialchars($debug_info['exception']['line']) ?>
+                </div>
+                <pre><?= htmlspecialchars($debug_info['exception']['trace']) ?></pre>
+            </div>
+            <?php endif; ?>
+            
+            <div class="debug">
+                <h4>Résultats bruts</h4>
+                <pre><?= htmlspecialchars(print_r($results, true)) ?></pre>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        <!-- Tests système -->
+        <div class="section">
+            <h2>🔧 Tests système</h2>
+            
+            <?php
+            $system_tests = [];
+            
+            try {
+                $stmt = $db->query("SELECT 1");
+                $system_tests['db'] = ['status' => 'success', 'message' => 'Connexion DB OK'];
+            } catch (Exception $e) {
+                $system_tests['db'] = ['status' => 'error', 'message' => 'Erreur DB: ' . $e->getMessage()];
+            }
+            
+            $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
+            if (file_exists($transport_file)) {
+                $system_tests['transport_file'] = ['status' => 'success', 'message' => 'Fichier Transport trouvé'];
+                
+                try {
+                    require_once $transport_file;
+                    if (class_exists('Transport')) {
+                        $system_tests['transport_class'] = ['status' => 'success', 'message' => 'Classe Transport chargée'];
+                        
+                        $transport_test = new Transport($db);
+                        $methods = get_class_methods($transport_test);
+                        $system_tests['transport_methods'] = [
+                            'status' => 'success', 
+                            'message' => 'Méthodes: ' . implode(', ', $methods)
+                        ];
+                    } else {
+                        $system_tests['transport_class'] = ['status' => 'error', 'message' => 'Classe Transport non trouvée'];
+                    }
+                } catch (Exception $e) {
+                    $system_tests['transport_class'] = ['status' => 'error', 'message' => 'Erreur classe: ' . $e->getMessage()];
+                }
+            } else {
+                $system_tests['transport_file'] = ['status' => 'error', 'message' => 'Fichier Transport manquant'];
+            }
+            
+            $tables = ['gul_xpo_rates', 'gul_heppner_rates', 'gul_kn_rates', 'gul_taxes_transporteurs'];
+            foreach ($tables as $table) {
+                try {
+                    $count = $db->query("SELECT COUNT(*) FROM `$table`")->fetchColumn();
+                    $system_tests["table_$table"] = ['status' => 'success', 'message' => "Table $table: $count lignes"];
+                } catch (Exception $e) {
+                    $system_tests["table_$table"] = ['status' => 'error', 'message' => "Erreur $table: " . $e->getMessage()];
+                }
+            }
+            
+            $ajax_file = __DIR__ . '/ajax-calculate.php';
+            if (file_exists($ajax_file)) {
+                $system_tests['ajax_file'] = ['status' => 'success', 'message' => 'Fichier AJAX trouvé'];
+            } else {
+                $system_tests['ajax_file'] = ['status' => 'error', 'message' => 'Fichier AJAX manquant'];
+            }
+            ?>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                <?php foreach ($system_tests as $test => $result): ?>
+                <div class="<?= $result['status'] ?>">
+                    <strong><?= htmlspecialchars($test) ?>:</strong><br>
+                    <?= htmlspecialchars($result['message']) ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 40px; padding: 20px; color: #64748b; border-top: 1px solid #e2e8f0;">
+            <p>Interface de validation - Compatible Architecture JS v<?= $version_info['version'] ?? '0.5' ?></p>
+            <p>
+                <a href="index.php">← Calculateur principal</a> | 
+                <a href="debug-simple.php">Debug simple</a> | 
+                <a href="../">Portail</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
