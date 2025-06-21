@@ -31,6 +31,9 @@ if (function_exists('hasModuleAccess') && !hasModuleAccess('calculateur')) {
     exit('Module calculateur non disponible');
 }
 
+// Mode debug
+$debug_mode = defined('DEBUG') && DEBUG === true;
+
 // =========================================================================
 // RÉCUPÉRATION DES DONNÉES
 // =========================================================================
@@ -80,11 +83,16 @@ $preset_data = [
     'departement' => $_GET['dept'] ?? ($_GET['departement'] ?? ($_SESSION['calc_dept'] ?? '')),
     'poids' => $_GET['poids'] ?? ($_SESSION['calc_poids'] ?? ''),
     'type' => $_GET['type'] ?? ($_SESSION['calc_type'] ?? ''),
-    'adr' => $_GET['adr'] ?? ($_SESSION['calc_adr'] ?? 'non')
+    'adr' => $_GET['adr'] ?? ($_SESSION['calc_adr'] ?? ''),
+    'options' => $_GET['options'] ?? ($_SESSION['calc_options'] ?? []),
+    'palettes' => $_GET['palettes'] ?? ($_SESSION['calc_palettes'] ?? ''),
+    'enlevement' => isset($_GET['enlevement']) || ($_SESSION['calc_enlevement'] ?? false)
 ];
 
-// Mode debug
-$debug_mode = isset($_GET['debug']) || (defined('DEBUG') && DEBUG);
+// Sauvegarde en session
+if (!empty($preset_data['departement'])) $_SESSION['calc_dept'] = $preset_data['departement'];
+if (!empty($preset_data['poids'])) $_SESSION['calc_poids'] = $preset_data['poids'];
+if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
 
 ?>
 <!DOCTYPE html>
@@ -92,225 +100,242 @@ $debug_mode = isset($_GET['debug']) || (defined('DEBUG') && DEBUG);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?> - Guldagil</title>
+    <title><?= htmlspecialchars($page_title) ?> - Gul Transport</title>
     
-    <!-- Meta tags SEO et techniques -->
-    <meta name="description" content="Calculateur de frais de port - Interface progressive pour comparaison Heppner, XPO et K+N">
-    <meta name="keywords" content="calculateur, frais de port, transport, Heppner, XPO, Kuehne Nagel, Guldagil">
-    <meta name="author" content="Guldagil">
-    <meta name="robots" content="noindex, nofollow">
-    <?php if ($debug_mode): ?>
-    <meta name="environment" content="development">
-    <?php endif; ?>
+    <!-- Styles CSS -->
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/forms.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/results.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/responsive.css">
     
-    <!-- Preconnect pour optimisation -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <!-- CSS - Architecture modulaire -->
-    <link rel="stylesheet" href="assets/css/modules/calculateur/base.css">
-    <link rel="stylesheet" href="assets/css/modules/calculateur/layout.css">
-    <link rel="stylesheet" href="assets/css/modules/calculateur/progressive-form.css">
-    <link rel="stylesheet" href="assets/css/modules/calculateur/results.css">
-    <link rel="stylesheet" href="assets/css/modules/calculateur/components.css">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="../assets/img/favicon.png">
-    
-    <!-- Données pour JavaScript -->
-    <script>
-        window.CALCULATEUR_CONFIG = {
-            presetData: <?= json_encode($preset_data, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
-            optionsService: <?= json_encode($options_service, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
-            deptRestrictions: <?= json_encode($dept_restrictions, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
-            debugMode: <?= json_encode($debug_mode) ?>,
-            version: <?= json_encode($version_info, JSON_HEX_TAG | JSON_HEX_AMP) ?>
-        };
-    </script>
+    <!-- Meta SEO -->
+    <meta name="description" content="Calculateur de frais de port - Comparez les tarifs des transporteurs">
+    <meta name="robots" content="index,follow">
 </head>
-<body class="calculator-page">
-
-    <!-- Header avec navigation -->
+<body class="calculateur-page">
+    
+    <!-- Header -->
     <?php include __DIR__ . '/views/partials/header.php'; ?>
-
-    <!-- Contenu principal -->
-    <main class="calculator-main">
-        <div class="calc-container">
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="calculateur-container">
+            
+            <!-- Hero Section -->
+            <section class="hero-section">
+                <div class="hero-content">
+                    <h1 class="hero-title">
+                        🧮 Calculateur de frais de port
+                    </h1>
+                    <p class="hero-subtitle">
+                        Comparez instantanément les tarifs des transporteurs
+                    </p>
+                </div>
+            </section>
+            
+            <!-- Layout principal -->
             <div class="calculator-layout">
                 
-                <!-- Section formulaire progressif -->
-                <section class="form-section">
-                    <!-- En-tête formulaire -->
-                    <div class="form-header">
+                <!-- Section paramètres -->
+                <section class="parameters-section">
+                    <div class="parameters-header">
                         <h2>
-                            <span>🚚</span>
-                            Calculateur de frais de port
+                            📦 Paramètres d'expédition
                         </h2>
-                        <p>Interface progressive - Comparez Heppner, XPO et K+N en temps réel</p>
+                        <p>Renseignez les informations de votre envoi</p>
                     </div>
                     
-                    <!-- Barre de progression -->
-                    <div class="progress-container">
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="progress-fill"></div>
-                        </div>
-                        <div class="progress-steps" id="progress-steps">
-                            <!-- Généré par JavaScript -->
-                        </div>
-                    </div>
-                    
-                    <!-- Contenu du formulaire -->
-                    <div class="form-content">
-                        <form id="calculator-form" class="form-steps-container">
+                    <div class="form-steps">
+                        <form id="calculator-form" method="post" action="ajax-calculate.php">
                             
-                            <!-- Étape 1: Destination et poids -->
-                            <div class="form-step active" id="step-destination" data-step="0">
+                            <!-- Étape 1: Destination -->
+                            <div class="form-step" id="step-1">
                                 <div class="step-header">
                                     <div class="step-number">1</div>
-                                    <h3 class="step-title">📍 Destination et poids</h3>
-                                    <p class="step-description">Indiquez où livrer et le poids de votre envoi</p>
+                                    <h3 class="step-title">Destination</h3>
                                 </div>
                                 
-                                <div class="form-fields">
-                                    <div class="form-field">
-                                        <label for="departement" class="form-label">
-                                            Département de livraison <span class="required">*</span>
-                                        </label>
-                                        <input 
-                                            type="text" 
-                                            id="departement" 
-                                            name="departement" 
-                                            class="form-input" 
-                                            placeholder="Ex: 67, 75, 13..."
-                                            maxlength="3"
-                                            autocomplete="off"
-                                            value="<?= htmlspecialchars($preset_data['departement']) ?>"
-                                            required
-                                        >
-                                        <div class="field-hint">Code département français (01 à 95)</div>
-                                        <div class="field-error" id="error-departement" style="display: none;"></div>
-                                    </div>
-                                    
-                                    <div class="form-field">
-                                        <label for="poids" class="form-label">
-                                            Poids total <span class="required">*</span>
-                                        </label>
-                                        <input 
-                                            type="number" 
-                                            id="poids" 
-                                            name="poids" 
-                                            class="form-input" 
-                                            placeholder="150"
-                                            min="0.1" 
-                                            max="3500" 
-                                            step="0.1"
-                                            value="<?= htmlspecialchars($preset_data['poids']) ?>"
-                                            required
-                                        >
-                                        <div class="field-hint">Poids en kilogrammes (0.1 à 3500 kg)</div>
-                                        <div class="field-error" id="error-poids" style="display: none;"></div>
+                                <div class="form-group">
+                                    <label for="departement" class="form-label">
+                                        📍 Département de livraison
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        id="departement" 
+                                        name="departement" 
+                                        class="form-control" 
+                                        placeholder="Ex: 75"
+                                        value="<?= htmlspecialchars($preset_data['departement']) ?>"
+                                        pattern="^(0[1-9]|[1-8][0-9]|9[0-5])$"
+                                        maxlength="2"
+                                        required
+                                    >
+                                    <div class="field-help">
+                                        Saisissez le numéro de département (01 à 95)
                                     </div>
                                 </div>
                                 
                                 <div class="step-summary" id="summary-step-1" style="display: none;">
-                                    <div class="summary-title">Récapitulatif</div>
+                                    <div class="summary-title">Destination</div>
                                     <div class="summary-content" id="summary-content-1"></div>
                                 </div>
                             </div>
                             
-                            <!-- Étape 2: Type d'envoi -->
-                            <div class="form-step" id="step-type" data-step="1">
+                            <!-- Étape 2: Caractéristiques -->
+                            <div class="form-step" id="step-2">
                                 <div class="step-header">
                                     <div class="step-number">2</div>
-                                    <h3 class="step-title">📦 Type d'expédition</h3>
-                                    <p class="step-description">Choisissez comment vous expédiez</p>
+                                    <h3 class="step-title">Caractéristiques</h3>
                                 </div>
                                 
-                                <div class="form-fields">
-                                    <div class="form-field">
-                                        <label class="form-label">Type d'envoi <span class="required">*</span></label>
-                                        <div class="radio-group">
-                                            <label class="radio-option" for="type-colis">
-                                                <input type="radio" id="type-colis" name="type" value="colis" class="radio-input">
-                                                <div class="radio-content">
-                                                    <div class="radio-title">📦 Colis</div>
-                                                    <div class="radio-description">Envoi jusqu'à 60kg - Maximum 2 colis</div>
-                                                </div>
-                                            </label>
-                                            <label class="radio-option" for="type-palette">
-                                                <input type="radio" id="type-palette" name="type" value="palette" class="radio-input">
-                                                <div class="radio-content">
-                                                    <div class="radio-title">🏗️ Palette(s)</div>
-                                                    <div class="radio-description">Palette EUR 80x120cm - Jusqu'à 26 palettes</div>
-                                                </div>
-                                            </label>
-                                        </div>
+                                <!-- Poids -->
+                                <div class="form-group">
+                                    <label for="poids" class="form-label">
+                                        ⚖️ Poids total (kg)
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        id="poids" 
+                                        name="poids" 
+                                        class="form-control" 
+                                        placeholder="Ex: 25.5"
+                                        value="<?= htmlspecialchars($preset_data['poids']) ?>"
+                                        min="0.1"
+                                        max="3500"
+                                        step="0.1"
+                                        required
+                                    >
+                                    <div class="field-help">
+                                        Poids total de votre envoi (0.1 à 3500 kg)
                                     </div>
-                                    
-                                    <div class="form-field" id="field-palettes" style="display: none;">
-                                        <label for="palettes" class="form-label">Nombre de palettes EUR</label>
-                                        <input 
-                                            type="number" 
-                                            id="palettes" 
-                                            name="palettes" 
-                                            class="form-input" 
-                                            placeholder="1"
-                                            min="0" 
-                                            max="26"
-                                            value="0"
-                                        >
-                                        <div class="field-hint">Palettes EUR 80x120cm (0 à 26 palettes)</div>
+                                </div>
+                                
+                                <!-- Type d'envoi -->
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        📦 Type d'envoi
+                                    </label>
+                                    <div class="radio-group">
+                                        <label class="radio-option">
+                                            <input 
+                                                type="radio" 
+                                                name="type" 
+                                                value="colis" 
+                                                <?= ($preset_data['type'] === 'colis' || empty($preset_data['type'])) ? 'checked' : '' ?>
+                                            >
+                                            <span class="radio-label">🎁 Colis</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input 
+                                                type="radio" 
+                                                name="type" 
+                                                value="palette" 
+                                                <?= $preset_data['type'] === 'palette' ? 'checked' : '' ?>
+                                            >
+                                            <span class="radio-label">🏗️ Palette</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Nombre de palettes (conditionnel) -->
+                                <div class="form-group" id="field-palettes" style="display: <?= $preset_data['type'] === 'palette' ? 'block' : 'none' ?>;">
+                                    <label for="palettes" class="form-label">
+                                        🏗️ Nombre de palettes EUR
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        id="palettes" 
+                                        name="palettes" 
+                                        class="form-control" 
+                                        placeholder="Ex: 2"
+                                        value="<?= htmlspecialchars($preset_data['palettes']) ?>"
+                                        min="1"
+                                        max="26"
+                                    >
+                                    <div class="field-help">
+                                        Nombre de palettes Europe (1 à 26)
+                                    </div>
+                                </div>
+                                
+                                <!-- Matières dangereuses -->
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        ⚠️ Matières dangereuses (ADR)
+                                    </label>
+                                    <div class="radio-group">
+                                        <label class="radio-option">
+                                            <input 
+                                                type="radio" 
+                                                name="adr" 
+                                                value="non" 
+                                                <?= ($preset_data['adr'] === 'non' || empty($preset_data['adr'])) ? 'checked' : '' ?>
+                                            >
+                                            <span class="radio-label">✅ Non</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input 
+                                                type="radio" 
+                                                name="adr" 
+                                                value="oui" 
+                                                <?= $preset_data['adr'] === 'oui' ? 'checked' : '' ?>
+                                            >
+                                            <span class="radio-label">⚠️ Oui</span>
+                                        </label>
                                     </div>
                                 </div>
                                 
                                 <div class="step-summary" id="summary-step-2" style="display: none;">
-                                    <div class="summary-title">Type sélectionné</div>
+                                    <div class="summary-title">Caractéristiques</div>
                                     <div class="summary-content" id="summary-content-2"></div>
                                 </div>
                             </div>
                             
                             <!-- Étape 3: Options -->
-                            <div class="form-step" id="step-options" data-step="2">
+                            <div class="form-step" id="step-3">
                                 <div class="step-header">
                                     <div class="step-number">3</div>
-                                    <h3 class="step-title">⚡ Options et services</h3>
-                                    <p class="step-description">Personnalisez votre expédition</p>
+                                    <h3 class="step-title">Options de service</h3>
                                 </div>
                                 
-                                <div class="form-fields">
-                                    <div class="form-field">
-                                        <label for="adr" class="form-label">Marchandises dangereuses (ADR)</label>
-                                        <select id="adr" name="adr" class="form-select">
-                                            <option value="non" <?= $preset_data['adr'] === 'non' ? 'selected' : '' ?>>Non - Marchandises normales</option>
-                                            <option value="oui" <?= $preset_data['adr'] === 'oui' ? 'selected' : '' ?>>Oui - ADR requis</option>
-                                        </select>
-                                        <div class="field-hint">Les marchandises ADR ont des restrictions et surcoûts</div>
-                                    </div>
-                                    
-                                    <div class="form-field">
-                                        <label for="service_livraison" class="form-label">Service de livraison</label>
-                                        <select id="service_livraison" name="service_livraison" class="form-select">
-                                            <option value="standard">Livraison standard</option>
-                                            <option value="rdv">Prise de RDV (+15€)</option>
-                                            <option value="star18">Star 18h - Heppner uniquement</option>
-                                            <option value="star13">Star 13h - Heppner uniquement</option>
-                                            <option value="datefixe18">Date fixe avant 18h</option>
-                                            <option value="datefixe13">Date fixe avant 13h</option>
-                                            <option value="premium18">Premium 18h - XPO uniquement</option>
-                                            <option value="premium13">Premium 13h - XPO uniquement</option>
-                                        </select>
-                                        <div class="field-hint">Choisissez le service adapté à vos besoins</div>
-                                    </div>
-                                    
-                                    <div class="form-field">
-                                        <label class="checkbox-field">
-                                            <input type="checkbox" id="enlevement" name="enlevement" class="checkbox-input" value="1">
+                                <!-- Options supplémentaires -->
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        ⚙️ Options supplémentaires
+                                    </label>
+                                    <div class="checkbox-group">
+                                        <?php foreach ($options_service as $option): ?>
+                                        <label class="checkbox-option">
+                                            <input 
+                                                type="checkbox" 
+                                                name="options[]" 
+                                                value="<?= htmlspecialchars($option['code_option']) ?>"
+                                                <?= in_array($option['code_option'], (array)$preset_data['options']) ? 'checked' : '' ?>
+                                            >
                                             <span class="checkbox-label">
-                                                Enlèvement chez l'expéditeur (+25€)
+                                                <?= htmlspecialchars($option['libelle']) ?>
+                                                <?php if ($option['montant'] > 0): ?>
+                                                <span class="option-price">+<?= number_format($option['montant'], 2) ?>€</span>
+                                                <?php endif; ?>
                                             </span>
                                         </label>
-                                        <div class="field-hint">Service d'enlèvement à domicile ou en entreprise</div>
+                                        <?php endforeach; ?>
                                     </div>
+                                </div>
+                                
+                                <!-- Enlèvement -->
+                                <div class="form-group">
+                                    <label class="checkbox-option checkbox-primary">
+                                        <input 
+                                            type="checkbox" 
+                                            name="enlevement" 
+                                            value="1"
+                                            <?= $preset_data['enlevement'] ? 'checked' : '' ?>
+                                        >
+                                        <span class="checkbox-label">
+                                            🚚 Enlèvement à domicile
+                                        </span>
+                                    </label>
                                 </div>
                                 
                                 <div class="step-summary" id="summary-step-3" style="display: none;">
@@ -357,315 +382,116 @@ $debug_mode = isset($_GET['debug']) || (defined('DEBUG') && DEBUG);
     <!-- Footer -->
     <?php include __DIR__ . '/views/partials/footer.php'; ?>
 
-    <!-- Scripts JavaScript - TEST TEMPORAIRE -->
+    <!-- Scripts JavaScript - Ordre d'importation critique -->
+    <script>
+    // Configuration serveur pour le JS
+    window.CalculateurServerConfig = {
+        presetData: <?= json_encode($preset_data) ?>,
+        optionsService: <?= json_encode($options_service) ?>,
+        deptRestrictions: <?= json_encode($dept_restrictions) ?>,
+        debugMode: <?= $debug_mode ? 'true' : 'false' ?>
+    };
+    </script>
+    
+    <!-- Scripts JS dans l'ordre de dépendance -->
+    <script src="../assets/js/modules/calculateur/core/config.js"></script>
+    <script src="../assets/js/modules/calculateur/core/state.js"></script>
+    <script src="../assets/js/modules/calculateur/services/api.js"></script>
+    <script src="../assets/js/modules/calculateur/models/form-data.js"></script>
+    <script src="../assets/js/modules/calculateur/models/validation.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/form.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/calculation.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/ui.js"></script>
+    <script src="../assets/js/modules/calculateur/views/progressive-form.js"></script>
+    <script src="../assets/js/modules/calculateur/views/results-display.js"></script>
+    <script src="../assets/js/modules/calculateur/main.js"></script>
+    
+    <!-- Initialisation -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM chargé');
+        // Vérification des dépendances
+        if (typeof CalculateurApp === 'undefined') {
+            console.error('❌ Module principal CalculateurApp non chargé');
+            return;
+        }
         
-        // Gestion simple du type
+        // Initialisation de l'application
+        const app = new CalculateurApp();
+        app.init(window.CalculateurServerConfig)
+            .then(() => {
+                console.log('✅ Calculateur initialisé avec succès');
+            })
+            .catch(error => {
+                console.error('❌ Erreur initialisation calculateur:', error);
+                
+                // Fallback simple en cas d'erreur
+                initFallbackMode();
+            });
+    });
+    
+    // Mode fallback simple
+    function initFallbackMode() {
+        console.log('🔄 Activation du mode fallback...');
+        
+        // Gestion simple du type d'envoi
         const typeRadios = document.querySelectorAll('input[name="type"]');
         const palettesField = document.getElementById('field-palettes');
         
         typeRadios.forEach(radio => {
             radio.addEventListener('change', function() {
-                console.log('Type changé:', this.value);
                 if (palettesField) {
                     palettesField.style.display = this.value === 'palette' ? 'block' : 'none';
                 }
             });
         });
         
-        // Navigation étapes simple
-        const steps = document.querySelectorAll('.form-step');
-        const progressSteps = document.querySelectorAll('.progress-step');
-        let currentStep = 0;
-        
-        function goToStep(stepIndex) {
-            console.log('Aller à étape:', stepIndex);
-            
-            steps.forEach((step, index) => {
-                step.classList.toggle('active', index === stepIndex);
-            });
-            
-            progressSteps.forEach((step, index) => {
-                step.classList.remove('pending', 'current', 'completed');
-                if (index < stepIndex) {
-                    step.classList.add('completed');
-                } else if (index === stepIndex) {
-                    step.classList.add('current');
-                } else {
-                    step.classList.add('pending');
-                }
-            });
-            
-            currentStep = stepIndex;
-        }
-        
-        // Auto-avancement simple
-        const departement = document.getElementById('departement');
-        const poids = document.getElementById('poids');
-        
-        function checkStep1() {
-            if (departement.value.length >= 2 && poids.value) {
-                setTimeout(() => goToStep(1), 500);
-            }
-        }
-        
-        departement?.addEventListener('input', checkStep1);
-        poids?.addEventListener('input', checkStep1);
-        
-        typeRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                setTimeout(() => goToStep(2), 300);
-            });
-        });
-        
-        // Navigation manuelle
-        progressSteps.forEach((step, index) => {
-            step.addEventListener('click', () => goToStep(index));
-        });
-    });
-    </script>
-
-    <!-- Initialisation -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Vérifier que tous les modules sont chargés
-            if (typeof window.calculateurApp !== 'undefined') {
-                // Initialiser avec les données serveur
-                window.calculateurApp.init(window.CALCULATEUR_CONFIG);
-            } else {
-                console.error('❌ Modules calculateur non chargés');
+        // Soumission du formulaire
+        const form = document.getElementById('calculator-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
                 
-                // Fallback basique
-                document.getElementById('calculator-form').addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    alert('Module calculateur en cours de chargement...');
+                // Collecte des données
+                const formData = new FormData(this);
+                
+                // Affichage loading
+                const resultsPanel = document.querySelector('.results-content');
+                if (resultsPanel) {
+                    resultsPanel.innerHTML = '<div class="loading">🔄 Calcul en cours...</div>';
+                }
+                
+                // Envoi AJAX
+                fetch('ajax-calculate.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && resultsPanel) {
+                        // Affichage des résultats (simplifié)
+                        let html = '<div class="results-success">';
+                        html += '<h3>🎯 Meilleur tarif</h3>';
+                        if (data.best) {
+                            html += `<div class="best-result">`;
+                            html += `<strong>${data.best.transporteur}</strong><br>`;
+                            html += `<span class="price">${data.best.prix_total}€</span>`;
+                            html += `</div>`;
+                        }
+                        html += '</div>';
+                        resultsPanel.innerHTML = html;
+                    } else {
+                        resultsPanel.innerHTML = '<div class="error">❌ Erreur de calcul</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    if (resultsPanel) {
+                        resultsPanel.innerHTML = '<div class="error">❌ Erreur de connexion</div>';
+                    }
                 });
-            }
-        });
-        
-        // Gestion des erreurs globales
-        window.addEventListener('error', function(e) {
-            console.error('Erreur JavaScript:', e.error);
-            
-            // En production, masquer les erreurs techniques
-            <?php if (!$debug_mode): ?>
-            e.preventDefault();
-            <?php endif; ?>
-        });
-        
-        // Performance monitoring
-        window.addEventListener('load', function() {
-            if (window.performance && window.performance.timing) {
-                const loadTime = window.performance.timing.loadEventEnd - window.performance.timing.navigationStart;
-                CalculateurConfig?.log('info', `Page chargée en ${loadTime}ms`);
-            }
-        });
+            });
+        }
+    }
     </script>
-
-    <?php if ($debug_mode): ?>
-    <!-- Debug panel -->
-    <div id="debug-panel" class="debug-panel" style="display: none;">
-        <div class="debug-header">
-            <h3>🐛 Debug Calculateur</h3>
-            <button onclick="document.getElementById('debug-panel').style.display='none'">×</button>
-        </div>
-        <div class="debug-content">
-            <div class="debug-section">
-                <h4>Configuration</h4>
-                <pre id="debug-config"></pre>
-            </div>
-            <div class="debug-section">
-                <h4>État actuel</h4>
-                <pre id="debug-state"></pre>
-            </div>
-            <div class="debug-section">
-                <h4>Dernière requête</h4>
-                <pre id="debug-request"></pre>
-            </div>
-            <div class="debug-section">
-                <h4>Statistiques API</h4>
-                <pre id="debug-stats"></pre>
-            </div>
-        </div>
-    </div>
-    
-    <style>
-        .debug-panel {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            width: 400px;
-            max-height: 80vh;
-            background: var(--calc-gray-900);
-            color: var(--calc-white);
-            border-radius: var(--calc-radius);
-            box-shadow: var(--calc-shadow-xl);
-            z-index: var(--calc-z-modal);
-            overflow: hidden;
-        }
-        
-        .debug-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--calc-space-3);
-            background: var(--calc-gray-800);
-            border-bottom: 1px solid var(--calc-gray-700);
-        }
-        
-        .debug-header h3 {
-            margin: 0;
-            font-size: 1rem;
-        }
-        
-        .debug-header button {
-            background: none;
-            border: none;
-            color: var(--calc-white);
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: var(--calc-space-1);
-        }
-        
-        .debug-content {
-            max-height: 60vh;
-            overflow-y: auto;
-            padding: var(--calc-space-3);
-        }
-        
-        .debug-section {
-            margin-bottom: var(--calc-space-4);
-        }
-        
-        .debug-section h4 {
-            margin: 0 0 var(--calc-space-2);
-            color: var(--calc-accent);
-            font-size: 0.9rem;
-        }
-        
-        .debug-section pre {
-            background: var(--calc-gray-800);
-            padding: var(--calc-space-2);
-            border-radius: var(--calc-radius-sm);
-            font-size: 0.8rem;
-            overflow-x: auto;
-            margin: 0;
-            white-space: pre-wrap;
-        }
-        
-        .floating-actions {
-            position: fixed;
-            bottom: var(--calc-space-6);
-            right: var(--calc-space-6);
-            display: flex;
-            flex-direction: column;
-            gap: var(--calc-space-2);
-            z-index: var(--calc-z-tooltip);
-        }
-        
-        .floating-btn {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            border: none;
-            background: var(--calc-primary);
-            color: var(--calc-white);
-            font-size: 1.2rem;
-            cursor: pointer;
-            box-shadow: var(--calc-shadow-lg);
-            transition: var(--calc-transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .floating-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--calc-shadow-xl);
-        }
-        
-        .floating-btn.debug {
-            background: var(--calc-warning);
-        }
-        
-        @media (max-width: 768px) {
-            .debug-panel {
-                width: calc(100vw - 20px);
-                max-width: 400px;
-            }
-            
-            .floating-actions {
-                bottom: var(--calc-space-4);
-                right: var(--calc-space-4);
-            }
-        }
-    </style>
-    
-    <script>
-        // Debug helpers
-        document.getElementById('btn-debug')?.addEventListener('click', function() {
-            const panel = document.getElementById('debug-panel');
-            
-            if (panel.style.display === 'none') {
-                // Mettre à jour les informations debug
-                if (window.debugCalculateur) {
-                    document.getElementById('debug-config').textContent = 
-                        JSON.stringify(CalculateurConfig, null, 2);
-                    document.getElementById('debug-state').textContent = 
-                        JSON.stringify(window.debugCalculateur.summary(), null, 2);
-                    document.getElementById('debug-stats').textContent = 
-                        JSON.stringify(window.apiService?.getStats(), null, 2);
-                }
-                
-                panel.style.display = 'block';
-            } else {
-                panel.style.display = 'none';
-            }
-        });
-        
-        // Mise à jour périodique du debug
-        if (<?= json_encode($debug_mode) ?>) {
-            setInterval(() => {
-                const panel = document.getElementById('debug-panel');
-                if (panel && panel.style.display !== 'none' && window.debugCalculateur) {
-                    document.getElementById('debug-state').textContent = 
-                        JSON.stringify(window.debugCalculateur.summary(), null, 2);
-                    document.getElementById('debug-stats').textContent = 
-                        JSON.stringify(window.apiService?.getStats(), null, 2);
-                }
-            }, 2000);
-        }
-    </script>
-    <?php endif; ?>
-
 </body>
 </html>
-
-<?php
-// =========================================================================
-// SAUVEGARDE SESSION ET NETTOYAGE
-// =========================================================================
-
-// Sauvegarder les données en session pour persister entre rechargements
-if (!empty($preset_data['departement'])) {
-    $_SESSION['calc_dept'] = $preset_data['departement'];
-}
-if (!empty($preset_data['poids'])) {
-    $_SESSION['calc_poids'] = $preset_data['poids'];
-}
-if (!empty($preset_data['type'])) {
-    $_SESSION['calc_type'] = $preset_data['type'];
-}
-
-// Logs pour monitoring (en production, utiliser un vrai système de logs)
-if ($debug_mode) {
-    error_log("Calculateur - Page chargée: " . json_encode([
-        'preset_data' => $preset_data,
-        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-        'timestamp' => date('c')
-    ]));
-}
-?>
