@@ -700,4 +700,198 @@ class Transport
 
         return 999; // Max
     }
+    /**
+     * Récupère le délai de livraison selon le transporteur et l'option
+     */
+    public function getDelaiLivraison(string $carrier, string $departement, string $option = 'standard'): ?string
+    {
+        try {
+            switch ($carrier) {
+                case 'heppner':
+                    return $this->getDelaiHeppner($departement, $option);
+                    
+                case 'xpo':
+                    return $this->getDelaiXPO($departement, $option);
+                    
+                case 'kn':
+                    // K+N utilise les mêmes délais que Heppner pour l'instant
+                    return $this->getDelaiHeppner($departement, $option);
+                    
+                default:
+                    return null;
+            }
+        } catch (Exception $e) {
+            error_log("Erreur récupération délai {$carrier}: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Délais Heppner selon les options
+     */
+    private function getDelaiHeppner(string $departement, string $option): ?string
+    {
+        // Récupération du délai standard depuis la BDD
+        $stmt = $this->db->prepare("SELECT delais FROM gul_heppner_rates WHERE num_departement = ?");
+        $stmt->execute([$departement]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$result) {
+            return null;
+        }
+        
+        $delaiStandard = $result['delais'];
+        
+        // Adaptation selon l'option premium
+        switch ($option) {
+            case 'star18':
+            case 'star_priority':
+                return $delaiStandard . ' garanti avant 18h'; // Traitement prioritaire, délai le plus court
+                
+            case 'star13':
+            case 'star_priority_13':
+                return $delaiStandard . ' garanti avant 13h'; // Traitement prioritaire, délai le plus court avant 13h
+                
+            case 'datefixe18':
+            case 'star_date':
+                return 'Date imposée avant 18h'; // Date choisie à l'avance
+                
+            case 'datefixe13':
+            case 'star_date_13':
+                return 'Date imposée avant 13h'; // Date choisie à l'avance avant 13h
+                
+            case 'rdv':
+            case 'comfort':
+                return $delaiStandard . ' sur RDV client'; // Prise de RDV avec destinataire
+                
+            case 'standard':
+            default:
+                return $delaiStandard;
+        }
+    }
+
+    /**
+     * Délais XPO selon les options
+     */
+    private function getDelaiXPO(string $departement, string $option): ?string
+    {
+        // Récupération du délai standard depuis la BDD
+        $stmt = $this->db->prepare("SELECT delais FROM gul_xpo_rates WHERE num_departement = ?");
+        $stmt->execute([$departement]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$result) {
+            return null;
+        }
+        
+        $delaiStandard = $result['delais'];
+        
+        // XPO options
+        switch ($option) {
+            case 'premium':
+                return $delaiStandard . ' garanti avant 14h'; // Délai le plus court garanti avant 14h
+                
+            case 'target':
+                return 'Date imposée + créneau'; // Date choisie à l'avance avec créneau horaire
+                
+            case 'rdv':
+                return $delaiStandard . ' sur RDV client'; // Prise de RDV avec destinataire
+                
+            case 'standard':
+            default:
+                return $delaiStandard;
+        }
+    }
+
+    /**
+     * Calcule les frais de 2e présentation selon transporteur
+     */
+    public function getFrais2ePresentation(string $carrier, float $poids = 0, float $tarifInitial = 0): array
+    {
+        switch ($carrier) {
+            case 'heppner':
+                // Forfait selon poids
+                if ($poids <= 50) {
+                    return ['montant' => 24.85, 'description' => 'Forfait 1-50kg'];
+                } elseif ($poids <= 100) {
+                    return ['montant' => 46.90, 'description' => 'Forfait 51-100kg'];
+                } else {
+                    return ['montant' => min(46.90, 74.85), 'description' => 'Prix aux 100kg (max 74.85€)'];
+                }
+                
+            case 'xpo':
+                // 60% du montant expédition
+                $montant = $tarifInitial * 0.60;
+                return ['montant' => $montant, 'description' => '60% du tarif initial'];
+                
+            case 'kn':
+                // À définir - pour l'instant comme Heppner
+                if ($poids <= 50) {
+                    return ['montant' => 24.85, 'description' => 'Forfait 1-50kg (estimé)'];
+                } else {
+                    return ['montant' => 46.90, 'description' => 'Forfait >50kg (estimé)'];
+                }
+                
+            default:
+                return ['montant' => 0, 'description' => 'Non défini'];
+        }
+    }
+
+    /**
+     * Calcule les frais de gardiennage/rétention selon transporteur
+     */
+    public function getFraisGardiennage(string $carrier, float $poids = 0, int $palettes = 0, int $jours = 1): array
+    {
+        switch ($carrier) {
+            case 'heppner':
+                if ($palettes > 0) {
+                    // Palettes : 7,10€/palette/jour (max 26,55€/jour/expédition)
+                    $montant = min($palettes * 7.10 * $jours, 26.55 * $jours);
+                    return ['montant' => $montant, 'description' => "7,10€/palette/jour (max 26,55€/jour) × {$jours}j"];
+                } else {
+                    // Colis selon poids
+                    if ($poids <= 20) {
+                        $montant = 2.90 * $jours;
+                        return ['montant' => $montant, 'description' => "2,90€/jour × {$jours}j (0-20kg)"];
+                    } elseif ($poids <= 30) {
+                        $montant = 3.85 * $jours;
+                        return ['montant' => $montant, 'description' => "3,85€/jour × {$jours}j (21-30kg)"];
+                    } else {
+                        $tranches = ceil(($poids - 30) / 10);
+                        $montant = (3.85 + ($tranches * 1.20)) * $jours;
+                        return ['montant' => $montant, 'description' => "3,85€ + 1,20€/10kg/jour × {$jours}j"];
+                    }
+                }
+                
+            case 'xpo':
+                // 3,00€/palette/jour au-delà de 5 jours
+                if ($palettes > 0) {
+                    $montant = $palettes * 3.00 * $jours;
+                    return ['montant' => $montant, 'description' => "3,00€/palette/jour × {$jours}j (>5j)"];
+                } else {
+                    // Estimation pour colis
+                    $montant = 2.00 * $jours;
+                    return ['montant' => $montant, 'description' => "2,00€/jour × {$jours}j (estimé)"];
+                }
+                
+            case 'kn':
+                // À définir - estimation
+                $montant = ($palettes > 0 ? $palettes * 5.00 : 3.00) * $jours;
+                return ['montant' => $montant, 'description' => "Tarif estimé × {$jours}j"];
+                
+            default:
+                return ['montant' => 0, 'description' => 'Non défini'];
+        }
+    }
+
+    /**
+     * Debug des calculs
+     */
+    private function addDebugInfo(string $carrier, array $info): void
+    {
+        if (!isset($this->debug[$carrier])) {
+            $this->debug[$carrier] = [];
+        }
+        $this->debug[$carrier] = array_merge($this->debug[$carrier], $info);
+    }
 }
