@@ -88,6 +88,37 @@ if ($_POST) {
 /**
  * Validation des données calculateur (réplique de api-service.js)
  */
+if (!function_exists('validateCalculatorData')) {
+    function validateCalculatorData($data) {
+        $errors = [];
+        
+        if (empty($data['departement']) || !preg_match('/^\d{2}$/', $data['departement'])) {
+            $errors['departement'] = 'Département invalide (01-95)';
+        } else {
+            $dept_num = (int)$data['departement'];
+            if ($dept_num < 1 || $dept_num > 95) {
+                $errors['departement'] = 'Département hors limites (01-95)';
+            }
+        }
+        
+        if (empty($data['poids']) || $data['poids'] < 0.1) {
+            $errors['poids'] = 'Poids minimum: 0.1kg';
+        }
+        if ($data['poids'] > 3500) {
+            $errors['poids'] = 'Poids maximum: 3500kg';
+        }
+        
+        if (!in_array($data['type'], ['colis', 'palette'])) {
+            $errors['type'] = 'Type d\'envoi invalide';
+        }
+        
+        if (!in_array($data['adr'], ['oui', 'non'])) {
+            $errors['adr'] = 'Option ADR invalide';
+        }
+        
+        return $errors;
+    }
+}
 function validateCalculatorData($data) {
     $errors = [];
     
@@ -125,6 +156,8 @@ function validateCalculatorData($data) {
 /**
  * Formater les résultats pour affichage
  */
+if (!function_exists('formatResults')) {
+    function formatResults($results) {
 function formatResults($results) {
     if (!$results) return null;
     
