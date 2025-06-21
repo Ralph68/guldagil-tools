@@ -78,6 +78,10 @@ class Transport
             'params' => $params,
             'carrier' => $carrier
         ];
+        // Normaliser ADR en booléen si c'est une string
+if (is_string($params['adr'])) {
+    $params['adr'] = ($params['adr'] === 'oui');
+}
 
         // 1. Vérifications de compatibilité
         if (!$this->validateCarrierConstraints($carrier, $params)) {
