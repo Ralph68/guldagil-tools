@@ -17,7 +17,6 @@ $debug_info = [];
 $validation_errors = [];
 $calculation_time = 0;
 
-// FONCTIONS - DÉCLARÉES UNE SEULE FOIS
 function validateCalculatorData($data) {
     $errors = [];
     
@@ -98,29 +97,24 @@ function formatResults($results) {
     return $formatted;
 }
 
-// TRAITEMENT DU FORMULAIRE
 if ($_POST) {
     $start_time = microtime(true);
     
     $params = [
-    'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
-    'poids' => floatval($_POST['poids'] ?? 0),
-    'type' => strtolower(trim($_POST['type'] ?? 'colis')),
-    'adr' => ($_POST['adr'] ?? 'non') === 'oui' ? 'oui' : 'non', // ← Garder string pour validation
-    'service_livraison' => trim($_POST['service_livraison'] ?? 'standard'),
-    'enlevement' => isset($_POST['enlevement']),
-    'palettes' => max(0, intval($_POST['palettes'] ?? 0))
-];
+        'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
+        'poids' => floatval($_POST['poids'] ?? 0),
+        'type' => strtolower(trim($_POST['type'] ?? 'colis')),
+        'adr' => ($_POST['adr'] ?? 'non') === 'oui' ? 'oui' : 'non',
+        'service_livraison' => trim($_POST['service_livraison'] ?? 'standard'),
+        'enlevement' => isset($_POST['enlevement']),
+        'palettes' => max(0, intval($_POST['palettes'] ?? 0))
+    ];
 
     $validation_errors = validateCalculatorData($params);
 
-// Puis convertir après validation :
     if (empty($validation_errors)) {
-        $params['adr'] = ($params['adr'] === 'oui'); // ← Convertir en bool ici
-        // ... continuer avec Transport
-    }
-    
-    if (empty($validation_errors)) {
+        $params['adr'] = ($params['adr'] === 'oui');
+        
         try {
             $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
             
@@ -128,24 +122,8 @@ if ($_POST) {
                 require_once $transport_file;
                 $transport = new Transport($db);
                 
-                if (method_exists($transport, 'calculateAll')) {
-                    try {
-                        $results = $transport->calculateAll($params);
-                        $debug_info['signature'] = 'array';
-                    } catch (Exception $e) {
-                        $results = $transport->calculateAll(
-                            $params['type'],
-                            $params['adr'], 
-                            $params['poids'],
-                            $params['service_livraison'],
-                            $params['departement'],
-                            $params['palettes'],
-                            $params['enlevement']
-                        );
-                        $debug_info['signature'] = 'separated_params';
-                    }
-                }
-                
+                $results = $transport->calculateAll($params);
+                $debug_info['signature'] = 'array';
                 $debug_info['transport_debug'] = $transport->debug ?? [];
                 
             } else {
@@ -217,7 +195,6 @@ if ($_POST) {
     <div class="container">
         <h1>🧪 Validation Calculateur - Compatible Architecture JS</h1>
         
-        <!-- Formulaire -->
         <div class="section form-section">
             <h2>📝 Paramètres de test</h2>
             <form method="POST">
@@ -286,7 +263,6 @@ if ($_POST) {
         </div>
 
         <?php if ($_POST): ?>
-        <!-- Statistiques -->
         <div class="section">
             <h2>📊 Statistiques</h2>
             <div class="stats">
@@ -306,7 +282,6 @@ if ($_POST) {
         </div>
 
         <?php if (!empty($validation_errors)): ?>
-        <!-- Erreurs -->
         <div class="section">
             <h2>❌ Erreurs de validation</h2>
             <?php foreach ($validation_errors as $field => $error): ?>
@@ -318,7 +293,6 @@ if ($_POST) {
         <?php endif; ?>
 
         <?php if ($results && empty($validation_errors)): ?>
-        <!-- Résultats -->
         <div class="section">
             <h2>📊 Résultats de calcul</h2>
             
@@ -353,7 +327,6 @@ if ($_POST) {
             <?php endif; ?>
         </div>
         
-        <!-- Debug -->
         <div class="section">
             <h2>🔍 Debug</h2>
             <div class="debug">
