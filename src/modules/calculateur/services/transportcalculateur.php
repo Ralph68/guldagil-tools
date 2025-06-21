@@ -22,15 +22,6 @@ class Transport
         'kn'       => 'Kuehne + Nagel',
     ];
 
-    /** Départements IDF */
-    private array $idfDepartments = ['75', '77', '78', '91', '92', '93', '94', '95'];
-    
-    /** Départements saisonniers XPO */
-    private array $xpoSeasonalDepartments = [
-        '04', '05', '06', '09', '11', '13', '17', '20', '30', '31', '32', '33', '34', 
-        '40', '44', '47', '56', '64', '65', '66', '83', '84', '85', '98'
-    ];
-
     public function __construct(PDO $db)
     {
         $this->db = $db;
@@ -404,130 +395,6 @@ class Transport
         $this->debug['xpo']['surcharge_gasoil'] = $surchargeGasoil * 100 . '%';
 
         return round($tarifBase, 2);
-    }
-
-    /**
-     * Calcul tarif de base XPO
-     */
-    private function getXPOBaseTariff(string $dept, float $poids): ?float
-    {
-        if ($poids < 100) {
-            // MIN(forfait_0-99, calcul_100kg)
-            $forfait = $this->getXPOTariff($dept, 'tarif_0_99');
-            $calcul100 = $this->getXPOTariff($dept, 'tarif_100_499');
-            
-            if ($forfait === null && $calcul100 === null) return null;
-            
-            $tarifMin = min($forfait ?? PHP_FLOAT_MAX, $calcul100 ?? PHP_FLOAT_MAX);
-            
-            // Suggestion si calcul 100kg plus intéressant
-            if ($calcul100 < $forfait) {
-                $this->debug['xpo']['suggestion'] = 'Payant pour 100kg (-' . number_format($forfait - $calcul100, 2) . '€)';
-            }
-            
-            return $tarifMin;
-        } else {
-            // Calcul au poids selon tranches
-            $column = $this->getXPOColumn($poids);
-            if (!$column) return null;
-            
-            $tarifAu100 = $this->getXPOTariff($dept, $column);
-            if ($tarifAu100 === null) return null;
-            
-            return ($poids / 100) * $tarifAu100;
-        }
-    }
-
-    /**
-     * Récupère un tarif XPO
-     */
-    private function getXPOTariff(string $dept, string $column): ?float
-    {
-        $sql = "SELECT `$column` FROM gul_xpo_rates WHERE num_departement = :dept LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':dept' => $dept]);
-        $result = $stmt->fetch();
-
-        return $result && $result[$column] ? (float)$result[$column] : null;
-    }
-
-    /**
-     * Détermine la colonne XPO selon le poids
-     */
-    private function getXPOColumn(float $poids): ?string
-    {
-        if ($poids < 100) return 'tarif_0_99';
-        if ($poids < 500) return 'tarif_100_499';
-        if ($poids < 1000) return 'tarif_500_999';
-        if ($poids < 2000) return 'tarif_1000_1999';
-        if ($poids < 3000) return 'tarif_2000_2999';
-
-        return null; // Hors grille
-    }
-
-    /**
-     * Application des majorations XPO
-     */
-    private function applyXPOMajorations(float $tarif, string $dept): float
-    {
-        // Majoration IDF
-        if (in_array($dept, $this->idfDepartments)) {
-            $tarif *= 1.07;
-            $this->debug['xpo']['majoration_idf'] = '×1.07';
-        }
-
-        // Majoration saisonnière (1er avril - 31 août)
-        if ($this->isSeasonalPeriod() && in_array($dept, $this->xpoSeasonalDepartments)) {
-            $tarif *= 1.1;
-            $this->debug['xpo']['majoration_saisonniere'] = '×1.1';
-        }
-
-        // Taxes fixes XPO
-        $tarif += 1.45 + 0.7; // 2.15€ total
-        $this->debug['xpo']['taxes_fixes'] = '+2.15€';
-
-        return $tarif;
-    }
-
-    /**
-     * Application des options XPO
-     */
-    private function applyXPOOptions(float $tarif, string $option, bool $adr): float
-    {
-        switch ($option) {
-            case 'rdv':
-                $coutRDV = $this->getOptionCost('xpo', 'rdv');
-                return $tarif + $coutRDV;
-                
-            case 'premium18':
-            case 'premium13':
-                $majoration = max($tarif * 0.30, 25);
-                $this->debug['xpo']['option_premium'] = '+' . number_format($majoration, 2) . '€';
-                return $tarif + $majoration;
-                
-            case 'datefixe18':
-            case 'datefixe13':
-                $majoration = max(min($tarif * 0.15, 40), 25);
-                $this->debug['xpo']['option_datefixe'] = '+' . number_format($majoration, 2) . '€';
-                return $tarif + $majoration;
-                
-            default:
-                return $tarif;
-        }
-    }
-
-    /**
-     * Vérifie la période saisonnière
-     */
-    private function isSeasonalPeriod(): bool
-    {
-        $now = new DateTime();
-        $year = $now->format('Y');
-        $start = new DateTime("$year-04-01");
-        $end = new DateTime("$year-08-31");
-        
-        return $now >= $start && $now <= $end;
-    }
 
     /**
      * Validation des contraintes par transporteur
@@ -658,7 +525,50 @@ class Transport
         
         return 0;
     }
+    /**
+ * Récupère les départements blacklistés d'un transporteur
+ */
+private function getCarrierBlacklist(string $carrier): array
+{
+    $sql = "SELECT departements_blacklistes FROM gul_taxes_transporteurs 
+            WHERE transporteur = :carrier LIMIT 1";
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute([':carrier' => $this->taxNames[$carrier]]);
+    $result = $stmt->fetch();
+    
+    if (!$result || !$result['departements_blacklistes']) {
+        return [];
+    }
+    
+    return array_map('trim', explode(',', $result['departements_blacklistes']));
+}
 
+/**
+ * Récupère tous les paramètres XPO depuis la BDD
+ */
+private function getXPOParamsFromDB(): array
+{
+    $sql = "SELECT * FROM gul_taxes_transporteurs WHERE transporteur = 'XPO' LIMIT 1";
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute();
+    $result = $stmt->fetch();
+    
+    if (!$result) {
+        throw new Exception('Paramètres XPO non trouvés en BDD');
+    }
+    
+    return [
+        'majoration_adr_taux' => (float)$result['majoration_adr_taux'],
+        'majoration_idf_valeur' => (float)$result['majoration_idf_valeur'],
+        'majoration_idf_departements' => $result['majoration_idf_departements'],
+        'majoration_saisonniere_taux' => (float)$result['majoration_saisonniere_taux'],
+        'majoration_saisonniere_departements' => $result['majoration_saisonniere_departements'],
+        'participation_transition_energetique' => (float)$result['participation_transition_energetique'],
+        'surete' => (float)$result['surete'],
+        'surcharge_gasoil' => (float)$result['surcharge_gasoil'],
+        'option_rdv_tarif' => (float)$result['option_rdv_tarif'] ?: 6.50
+    ];
+}
     /**
      * Clé de poids pour table Star
      */
