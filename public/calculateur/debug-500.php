@@ -18,7 +18,7 @@ if ($_POST) {
         'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
         'poids' => floatval($_POST['poids'] ?? 0),
         'type' => strtolower(trim($_POST['type'] ?? 'colis')),
-        'adr' => ($_POST['adr'] ?? 'non') === 'oui' ? 'oui' : 'non',
+        'adr' => ($_POST['adr'] ?? 'non') === 'oui', // ← BOOL au lieu de string
         'service_livraison' => trim($_POST['service_livraison'] ?? 'standard'),
         'enlevement' => isset($_POST['enlevement']),
         'palettes' => max(0, intval($_POST['palettes'] ?? 0))
