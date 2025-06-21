@@ -320,3 +320,203 @@ class CalculationController {
 
         // Annuler requête API
         if (window.apiService) {
+            window.apiService.cancelPendingRequests();
+        }
+    }
+
+    retryLastCalculation() {
+        const lastRequest = this.calculationHistory[0]?.request;
+        if (lastRequest) {
+            this.calculate(true);
+        }
+    }
+
+    getCalculationStats() {
+        return {
+            totalCalculations: this.calculationHistory.length,
+            averageTime: this.getAverageCalculationTime(),
+            lastCalculation: this.lastCalculationTime,
+            successRate: this.getSuccessRate()
+        };
+    }
+
+    getAverageCalculationTime() {
+        if (this.calculationHistory.length === 0) return 0;
+        
+        const totalTime = this.calculationHistory.reduce((sum, entry) => 
+            sum + (entry.response.calculationTime || 0), 0);
+        
+        return Math.round(totalTime / this.calculationHistory.length);
+    }
+
+    getSuccessRate() {
+        if (this.calculationHistory.length === 0) return 100;
+        
+        const successful = this.calculationHistory.filter(entry => 
+            !entry.response.error).length;
+        
+        return Math.round((successful / this.calculationHistory.length) * 100);
+    }
+
+    // Calculs spécialisés
+    calculateWeightOptimization(currentWeight, carriers) {
+        const optimizations = [];
+        const weightThresholds = [100, 300, 500, 1000, 2000];
+        
+        weightThresholds.forEach(threshold => {
+            if (currentWeight < threshold && threshold - currentWeight <= 100) {
+                optimizations.push({
+                    targetWeight: threshold,
+                    difference: threshold - currentWeight,
+                    savings: 'À calculer' // Nécessiterait un nouveau calcul
+                });
+            }
+        });
+        
+        return optimizations;
+    }
+
+    calculateSeasonalImpact(requestData) {
+        const now = new Date();
+        const isHighSeason = [6, 7].includes(now.getMonth()); // Juillet-Août
+        const isWinterSeason = [11, 0, 1, 2].includes(now.getMonth()); // Dec-Mar
+        
+        const impacts = [];
+        
+        if (isHighSeason) {
+            impacts.push({
+                type: 'high_season',
+                description: 'Période haute saison (été)',
+                impact: 'Surcoût possible sur certains transporteurs'
+            });
+        }
+        
+        if (isWinterSeason && ['04', '05', '73', '74'].includes(requestData.departement)) {
+            impacts.push({
+                type: 'winter_restrictions',
+                description: 'Restrictions hivernales montagne',
+                impact: 'Délais allongés possibles'
+            });
+        }
+        
+        return impacts;
+    }
+
+    // Analyse comparative
+    compareCarriers(carriers) {
+        const comparison = {
+            available: [],
+            unavailable: [],
+            priceRange: { min: null, max: null },
+            recommendations: []
+        };
+        
+        Object.entries(carriers).forEach(([carrier, result]) => {
+            const carrierInfo = CalculateurConfig.getCarrierInfo(carrier);
+            
+            if (result && typeof result === 'number') {
+                comparison.available.push({
+                    carrier,
+                    price: result,
+                    info: carrierInfo
+                });
+                
+                if (comparison.priceRange.min === null || result < comparison.priceRange.min) {
+                    comparison.priceRange.min = result;
+                }
+                if (comparison.priceRange.max === null || result > comparison.priceRange.max) {
+                    comparison.priceRange.max = result;
+                }
+            } else {
+                comparison.unavailable.push({
+                    carrier,
+                    info: carrierInfo,
+                    reason: 'Non disponible'
+                });
+            }
+        });
+        
+        // Trier par prix
+        comparison.available.sort((a, b) => a.price - b.price);
+        
+        // Générer recommandations
+        if (comparison.available.length > 1) {
+            const cheapest = comparison.available[0];
+            const mostExpensive = comparison.available[comparison.available.length - 1];
+            const savings = mostExpensive.price - cheapest.price;
+            
+            if (savings > 10) {
+                comparison.recommendations.push({
+                    type: 'price_difference',
+                    message: `${savings.toFixed(2)}€ d'écart entre le plus cher et le moins cher`
+                });
+            }
+        }
+        
+        return comparison;
+    }
+
+    // Gestion affichage temps réel
+    updateCalculationProgress(step, total) {
+        const progressElement = document.getElementById('status-progress');
+        if (progressElement) {
+            const percentage = ((step + 1) / total) * 100;
+            progressElement.style.setProperty('--progress', `${percentage}%`);
+        }
+        
+        // Mettre à jour étapes de chargement
+        const loadingSteps = document.querySelectorAll('.loading-step');
+        loadingSteps.forEach((stepEl, index) => {
+            stepEl.classList.remove('active', 'completed');
+            if (index < step) {
+                stepEl.classList.add('completed');
+            } else if (index === step) {
+                stepEl.classList.add('active');
+            }
+        });
+    }
+
+    // Export données
+    exportCalculationData(format = 'json') {
+        const data = {
+            request: window.calculateurState?.get('formData'),
+            results: window.calculateurState?.get('results'),
+            timestamp: new Date().toISOString(),
+            version: CalculateurConfig.META.VERSION
+        };
+        
+        switch (format) {
+            case 'json':
+                return JSON.stringify(data, null, 2);
+            case 'csv':
+                return this.convertToCSV(data);
+            default:
+                return data;
+        }
+    }
+
+    convertToCSV(data) {
+        const carriers = data.results?.carriers || {};
+        const rows = ['Transporteur,Prix,Disponible,Délai'];
+        
+        Object.entries(carriers).forEach(([carrier, result]) => {
+            const carrierInfo = CalculateurConfig.getCarrierInfo(carrier);
+            rows.push([
+                carrierInfo.name,
+                typeof result === 'number' ? result.toFixed(2) : 'N/A',
+                typeof result === 'number' ? 'Oui' : 'Non',
+                '24-48h' // Délai par défaut
+            ].join(','));
+        });
+        
+        return rows.join('\n');
+    }
+
+    cleanup() {
+        this.cancelCalculation();
+        this.calculationHistory = [];
+    }
+}
+
+// Export global
+window.calcController = new CalculationController();
