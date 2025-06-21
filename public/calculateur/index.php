@@ -1,58 +1,91 @@
 <?php
 /**
- * Titre: Module Calculateur - Interface step-by-step
+ * Titre: Module Calculateur - Interface progressive
  * Chemin: /public/calculateur/index.php
- * Version: 0.5 beta - Build auto-généré
+ * Version: 0.5 beta + build
  * 
- * Interface calculateur style step-by-step comme dans les images
+ * Interface calculateur progressive avec architecture MVC
  */
 
-// Configuration et dépendances
+// =========================================================================
+// CONFIGURATION ET SÉCURITÉ
+// =========================================================================
+
+// Chargement configuration
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/version.php';
 
-// Vérification module activé
-if (!hasModuleAccess('calculateur')) {
-    header('Location: ../');
-    exit('Module calculateur non disponible');
+// Sécurité basique
+if (!defined('BASE_PATH')) {
+    die('Accès non autorisé');
 }
 
-// Démarrage session
+// Démarrage session si nécessaire
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Récupération des options réelles de la BDD
-$options_disponibles = [];
+// Vérification accès module (si système d'authentification activé)
+if (function_exists('hasModuleAccess') && !hasModuleAccess('calculateur')) {
+    header('Location: ../');
+    exit('Module calculateur non disponible');
+}
+
+// =========================================================================
+// RÉCUPÉRATION DES DONNÉES
+// =========================================================================
+
 try {
+    // Options de service depuis BDD
+    $options_service = [];
     $stmt = $db->query("
-        SELECT DISTINCT libelle, code_option 
+        SELECT DISTINCT transporteur, code_option, libelle, montant 
         FROM gul_options_supplementaires 
         WHERE actif = 1 
-        ORDER BY libelle
+        ORDER BY transporteur, libelle
     ");
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $options_disponibles[] = $row;
+        $options_service[] = $row;
     }
+    
+    // Départements avec restrictions (pour validation côté client)
+    $dept_restrictions = [];
+    $stmt = $db->query("
+        SELECT transporteur, departements_blacklistes 
+        FROM gul_taxes_transporteurs 
+        WHERE departements_blacklistes IS NOT NULL AND departements_blacklistes != ''
+    ");
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        if ($row['departements_blacklistes']) {
+            $dept_restrictions[$row['transporteur']] = explode(',', $row['departements_blacklistes']);
+        }
+    }
+    
 } catch (Exception $e) {
-    $options_disponibles = [
-        ['libelle' => 'Livraison standard', 'code_option' => 'standard'],
-        ['libelle' => 'Livraison express', 'code_option' => 'express'],
-        ['libelle' => 'Prise de RDV', 'code_option' => 'rdv']
+    // Fallback en cas d'erreur BDD
+    $options_service = [
+        ['transporteur' => 'Tous', 'code_option' => 'standard', 'libelle' => 'Livraison standard', 'montant' => 0],
+        ['transporteur' => 'Tous', 'code_option' => 'rdv', 'libelle' => 'Prise de RDV', 'montant' => 15]
     ];
+    $dept_restrictions = [];
+    error_log("Erreur récupération données calculateur: " . $e->getMessage());
 }
 
 // Variables d'affichage
-$page_title = 'Calculateur de frais';
+$page_title = 'Calculateur de frais de port';
 $version_info = getVersionInfo();
 
-// Présets depuis URL
+// Présets depuis URL ou session
 $preset_data = [
-    'departement' => $_GET['dept'] ?? ($_GET['departement'] ?? ''),
-    'poids' => $_GET['poids'] ?? '',
-    'type' => $_GET['type'] ?? 'colis',
-    'adr' => $_GET['adr'] ?? 'non'
+    'departement' => $_GET['dept'] ?? ($_GET['departement'] ?? ($_SESSION['calc_dept'] ?? '')),
+    'poids' => $_GET['poids'] ?? ($_SESSION['calc_poids'] ?? ''),
+    'type' => $_GET['type'] ?? ($_SESSION['calc_type'] ?? ''),
+    'adr' => $_GET['adr'] ?? ($_SESSION['calc_adr'] ?? 'non')
 ];
+
+// Mode debug
+$debug_mode = isset($_GET['debug']) || (defined('DEBUG') && DEBUG);
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -61,273 +94,521 @@ $preset_data = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?> - Guldagil</title>
     
-    <!-- Meta SEO -->
-    <meta name="description" content="Calculateur de frais de port - Interface complète Guldagil">
-    <meta name="keywords" content="calculateur, frais de port, transport, Guldagil">
+    <!-- Meta tags SEO et techniques -->
+    <meta name="description" content="Calculateur de frais de port - Interface progressive pour comparaison Heppner, XPO et K+N">
+    <meta name="keywords" content="calculateur, frais de port, transport, Heppner, XPO, Kuehne Nagel, Guldagil">
+    <meta name="author" content="Guldagil">
+    <meta name="robots" content="noindex, nofollow">
+    <?php if ($debug_mode): ?>
+    <meta name="environment" content="development">
+    <?php endif; ?>
     
-    <!-- CSS - UN SEUL FICHIER LAYOUT -->
-    <link rel="stylesheet" href="../assets/css/app.min.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/calculateur.css">
+    <!-- Preconnect pour optimisation -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- CSS - Architecture modulaire -->
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/base.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/progressive-form.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/results.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/components.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="../assets/img/favicon.png">
+    
+    <!-- Données pour JavaScript -->
+    <script>
+        window.CALCULATEUR_CONFIG = {
+            presetData: <?= json_encode($preset_data, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
+            optionsService: <?= json_encode($options_service, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
+            deptRestrictions: <?= json_encode($dept_restrictions, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
+            debugMode: <?= json_encode($debug_mode) ?>,
+            version: <?= json_encode($version_info, JSON_HEX_TAG | JSON_HEX_AMP) ?>
+        };
+    </script>
 </head>
 <body class="calculator-page">
 
     <!-- Header avec navigation -->
-    <header class="calculator-header">
-        <div class="header-content">
-            <div class="header-brand">
-                <a href="../" class="brand-link">
-                    <img src="../assets/img/logo_guldagil.png" alt="Guldagil" class="brand-logo">
-                </a>
-                <div class="brand-info">
-                    <h1><?= htmlspecialchars($page_title) ?></h1>
-                    <p>Interface complète</p>
-                </div>
-            </div>
-            
-            <div class="header-actions">
-                <button type="button" class="header-btn" id="btn-nouveau-calcul">
-                    📋 Nouveau calcul
-                </button>
-                <button type="button" class="header-btn" id="btn-historique">
-                    📊 Historique
-                </button>
-                <div class="user-info">
-                    👤 Interface
-                </div>
-            </div>
-        </div>
-    </header>
+    <?php include __DIR__ . '/views/partials/header.php'; ?>
 
     <!-- Contenu principal -->
     <main class="calculator-main">
-        <div class="calculator-layout">
-            
-            <!-- Section Paramètres (Bleue - Gauche) -->
-            <section class="parameters-section">
-                <div class="parameters-header">
-                    <h2>
-                        🚚 Paramètres d'expédition
-                    </h2>
-                    <p>Renseignez vos critères pour comparer les transporteurs</p>
-                </div>
+        <div class="calc-container">
+            <div class="calculator-layout">
                 
-                <form id="calculator-form" class="form-steps">
+                <!-- Section formulaire progressif -->
+                <section class="form-section">
+                    <!-- En-tête formulaire -->
+                    <div class="form-header">
+                        <h2>
+                            <span>🚚</span>
+                            Calculateur de frais de port
+                        </h2>
+                        <p>Interface progressive - Comparez Heppner, XPO et K+N en temps réel</p>
+                    </div>
                     
-                    <!-- Étape 1: Destination et poids -->
-                    <div class="form-step" id="step-destination">
-                        <div class="step-header">
-                            <div class="step-number">1</div>
-                            <h3 class="step-title">📍 Destination et poids</h3>
+                    <!-- Barre de progression -->
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
                         </div>
-                        
-                        <div class="step-fields">
-                            <div class="form-field">
-                                <label for="departement" class="form-label">Département de livraison</label>
-                                <input 
-                                    type="text" 
-                                    id="departement" 
-                                    name="departement" 
-                                    class="form-input" 
-                                    placeholder="Ex. 67"
-                                    maxlength="3"
-                                    value="<?= htmlspecialchars($preset_data['departement']) ?>"
-                                    required
-                                >
-                                <div class="field-hint">2 chiffres (01 à 95)</div>
+                        <div class="progress-steps" id="progress-steps">
+                            <!-- Généré par JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <!-- Contenu du formulaire -->
+                    <div class="form-content">
+                        <form id="calculator-form" class="form-steps-container">
+                            
+                            <!-- Étape 1: Destination et poids -->
+                            <div class="form-step active" id="step-destination" data-step="0">
+                                <div class="step-header">
+                                    <div class="step-number">1</div>
+                                    <h3 class="step-title">📍 Destination et poids</h3>
+                                    <p class="step-description">Indiquez où livrer et le poids de votre envoi</p>
+                                </div>
+                                
+                                <div class="form-fields">
+                                    <div class="form-field">
+                                        <label for="departement" class="form-label">
+                                            Département de livraison <span class="required">*</span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            id="departement" 
+                                            name="departement" 
+                                            class="form-input" 
+                                            placeholder="Ex: 67, 75, 13..."
+                                            maxlength="3"
+                                            autocomplete="off"
+                                            value="<?= htmlspecialchars($preset_data['departement']) ?>"
+                                            required
+                                        >
+                                        <div class="field-hint">Code département français (01 à 95)</div>
+                                        <div class="field-error" id="error-departement" style="display: none;"></div>
+                                    </div>
+                                    
+                                    <div class="form-field">
+                                        <label for="poids" class="form-label">
+                                            Poids total <span class="required">*</span>
+                                        </label>
+                                        <input 
+                                            type="number" 
+                                            id="poids" 
+                                            name="poids" 
+                                            class="form-input" 
+                                            placeholder="150"
+                                            min="0.1" 
+                                            max="3500" 
+                                            step="0.1"
+                                            value="<?= htmlspecialchars($preset_data['poids']) ?>"
+                                            required
+                                        >
+                                        <div class="field-hint">Poids en kilogrammes (0.1 à 3500 kg)</div>
+                                        <div class="field-error" id="error-poids" style="display: none;"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="step-summary" id="summary-step-1" style="display: none;">
+                                    <div class="summary-title">Récapitulatif</div>
+                                    <div class="summary-content" id="summary-content-1"></div>
+                                </div>
                             </div>
                             
-                            <div class="form-field">
-                                <label for="poids" class="form-label">Poids total (kg)</label>
-                                <input 
-                                    type="number" 
-                                    id="poids" 
-                                    name="poids" 
-                                    class="form-input" 
-                                    placeholder="Ex. 25"
-                                    min="1" 
-                                    max="3500" 
-                                    step="1"
-                                    value="<?= htmlspecialchars($preset_data['poids']) ?>"
-                                    required
-                                >
-                                <div class="field-hint">Maximum 3500 kg</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Étape 2: Type d'expédition -->
-                    <div class="form-step" id="step-type">
-                        <div class="step-header">
-                            <div class="step-number">2</div>
-                            <h3 class="step-title">📦 Type d'expédition</h3>
-                        </div>
-                        
-                        <div class="option-buttons">
-                            <label class="option-button <?= $preset_data['type'] === 'colis' ? 'selected' : '' ?>" for="type-colis">
-                                <input type="radio" id="type-colis" name="type" value="colis" <?= $preset_data['type'] === 'colis' ? 'checked' : '' ?> style="display: none;">
-                                <div class="option-icon">📦</div>
-                                <div class="option-content">
-                                    <h4>Colis</h4>
-                                    <p>Emballage individuel</p>
+                            <!-- Étape 2: Type d'envoi -->
+                            <div class="form-step" id="step-type" data-step="1">
+                                <div class="step-header">
+                                    <div class="step-number">2</div>
+                                    <h3 class="step-title">📦 Type d'expédition</h3>
+                                    <p class="step-description">Choisissez comment vous expédiez</p>
                                 </div>
-                            </label>
-                            
-                            <label class="option-button <?= $preset_data['type'] === 'palette' ? 'selected' : '' ?>" for="type-palette">
-                                <input type="radio" id="type-palette" name="type" value="palette" <?= $preset_data['type'] === 'palette' ? 'checked' : '' ?> style="display: none;">
-                                <div class="option-icon">🏗️</div>
-                                <div class="option-content">
-                                    <h4>Palette</h4>
-                                    <p>Sur support EUR</p>
+                                
+                                <div class="form-fields">
+                                    <div class="form-field">
+                                        <label class="form-label">Type d'envoi <span class="required">*</span></label>
+                                        <div class="radio-group">
+                                            <label class="radio-option" for="type-colis">
+                                                <input type="radio" id="type-colis" name="type" value="colis" class="radio-input">
+                                                <div class="radio-content">
+                                                    <div class="radio-title">📦 Colis</div>
+                                                    <div class="radio-description">Envoi jusqu'à 60kg - Maximum 2 colis</div>
+                                                </div>
+                                            </label>
+                                            <label class="radio-option" for="type-palette">
+                                                <input type="radio" id="type-palette" name="type" value="palette" class="radio-input">
+                                                <div class="radio-content">
+                                                    <div class="radio-title">🏗️ Palette(s)</div>
+                                                    <div class="radio-description">Palette EUR 80x120cm - Jusqu'à 26 palettes</div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-field" id="field-palettes" style="display: none;">
+                                        <label for="palettes" class="form-label">Nombre de palettes EUR</label>
+                                        <input 
+                                            type="number" 
+                                            id="palettes" 
+                                            name="palettes" 
+                                            class="form-input" 
+                                            placeholder="1"
+                                            min="0" 
+                                            max="26"
+                                            value="0"
+                                        >
+                                        <div class="field-hint">Palettes EUR 80x120cm (0 à 26 palettes)</div>
+                                    </div>
                                 </div>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Étape 3: Marchandises dangereuses -->
-                    <div class="form-step" id="step-adr">
-                        <div class="step-header">
-                            <div class="step-number">3</div>
-                            <h3 class="step-title">⚠️ Marchandises dangereuses (ADR)</h3>
-                        </div>
-                        
-                        <div class="option-buttons">
-                            <label class="option-button <?= $preset_data['adr'] === 'non' ? 'selected' : '' ?>" for="adr-non">
-                                <input type="radio" id="adr-non" name="adr" value="non" <?= $preset_data['adr'] === 'non' ? 'checked' : '' ?> style="display: none;">
-                                <div class="option-icon">✅</div>
-                                <div class="option-content">
-                                    <h4>Non ADR</h4>
-                                    <p>Marchandise standard</p>
+                                
+                                <div class="step-summary" id="summary-step-2" style="display: none;">
+                                    <div class="summary-title">Type sélectionné</div>
+                                    <div class="summary-content" id="summary-content-2"></div>
                                 </div>
-                            </label>
-                            
-                            <label class="option-button <?= $preset_data['adr'] === 'oui' ? 'selected' : '' ?>" for="adr-oui">
-                                <input type="radio" id="adr-oui" name="adr" value="oui" <?= $preset_data['adr'] === 'oui' ? 'checked' : '' ?> style="display: none;">
-                                <div class="option-icon">⚠️</div>
-                                <div class="option-content">
-                                    <h4>ADR</h4>
-                                    <p>Marchandise dangereuse</p>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Étape 4: Options de livraison -->
-                    <div class="form-step" id="step-options">
-                        <div class="step-header">
-                            <div class="step-number">4</div>
-                            <h3 class="step-title">🚀 Options de livraison</h3>
-                        </div>
-                        
-                        <div class="step-fields single-column">
-                            <div class="form-field">
-                                <label for="service_livraison" class="form-label">Service de livraison</label>
-                                <select id="service_livraison" name="option_sup" class="form-select">
-                                    <option value="">Livraison standard</option>
-                                    <?php foreach ($options_disponibles as $option): ?>
-                                        <option value="<?= htmlspecialchars($option['code_option']) ?>">
-                                            <?= htmlspecialchars($option['libelle']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
                             </div>
                             
-                            <label class="checkbox-field" for="enlevement">
-                                <input type="checkbox" id="enlevement" name="enlevement" style="display: none;">
-                                <div class="checkbox-icon">🏭</div>
-                                <div class="checkbox-content">
-                                    <h4>Enlèvement</h4>
-                                    <p>Collecte sur votre site</p>
+                            <!-- Étape 3: Options -->
+                            <div class="form-step" id="step-options" data-step="2">
+                                <div class="step-header">
+                                    <div class="step-number">3</div>
+                                    <h3 class="step-title">⚡ Options et services</h3>
+                                    <p class="step-description">Personnalisez votre expédition</p>
                                 </div>
-                            </label>
-                        </div>
+                                
+                                <div class="form-fields">
+                                    <div class="form-field">
+                                        <label for="adr" class="form-label">Marchandises dangereuses (ADR)</label>
+                                        <select id="adr" name="adr" class="form-select">
+                                            <option value="non" <?= $preset_data['adr'] === 'non' ? 'selected' : '' ?>>Non - Marchandises normales</option>
+                                            <option value="oui" <?= $preset_data['adr'] === 'oui' ? 'selected' : '' ?>>Oui - ADR requis</option>
+                                        </select>
+                                        <div class="field-hint">Les marchandises ADR ont des restrictions et surcoûts</div>
+                                    </div>
+                                    
+                                    <div class="form-field">
+                                        <label for="service_livraison" class="form-label">Service de livraison</label>
+                                        <select id="service_livraison" name="service_livraison" class="form-select">
+                                            <option value="standard">Livraison standard</option>
+                                            <option value="rdv">Prise de RDV (+15€)</option>
+                                            <option value="star18">Star 18h - Heppner uniquement</option>
+                                            <option value="star13">Star 13h - Heppner uniquement</option>
+                                            <option value="datefixe18">Date fixe avant 18h</option>
+                                            <option value="datefixe13">Date fixe avant 13h</option>
+                                            <option value="premium18">Premium 18h - XPO uniquement</option>
+                                            <option value="premium13">Premium 13h - XPO uniquement</option>
+                                        </select>
+                                        <div class="field-hint">Choisissez le service adapté à vos besoins</div>
+                                    </div>
+                                    
+                                    <div class="form-field">
+                                        <label class="checkbox-field">
+                                            <input type="checkbox" id="enlevement" name="enlevement" class="checkbox-input" value="1">
+                                            <span class="checkbox-label">
+                                                Enlèvement chez l'expéditeur (+25€)
+                                            </span>
+                                        </label>
+                                        <div class="field-hint">Service d'enlèvement à domicile ou en entreprise</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="step-summary" id="summary-step-3" style="display: none;">
+                                    <div class="summary-title">Options sélectionnées</div>
+                                    <div class="summary-content" id="summary-content-3"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Navigation cachée (gérée par JS) -->
+                            <div class="step-navigation auto-advance-nav">
+                                <button type="button" class="nav-btn secondary" id="btn-previous">
+                                    ← Précédent
+                                </button>
+                                <button type="button" class="nav-btn primary" id="btn-next">
+                                    Suivant →
+                                </button>
+                            </div>
+                            
+                        </form>
                     </div>
-                    
-                    <!-- Actions -->
-                    <div class="form-actions">
-                        <button type="button" class="btn-reset" id="btn-reset">
-                            🔄 Réinitialiser
-                        </button>
-                    </div>
-                    
-                </form>
-            </section>
-            
-            <!-- Section Tarif (Verte - Droite) -->
-            <section class="results-section">
-                <div class="results-header">
-                    <h2>
-                        💰 Votre tarif
-                    </h2>
-                    <p class="results-status">En attente</p>
-                </div>
+                </section>
                 
-                <div class="results-content">
-                    <div class="calculation-waiting" id="waiting-zone">
-                        <div class="waiting-icon">🚀</div>
-                        <div class="waiting-text">Prêt à calculer</div>
-                        <div class="waiting-subtext">Renseignez le formulaire pour voir les tarifs de nos transporteurs partenaires</div>
-                    </div>
-                    
-                    <div class="results-display" id="results-zone" style="display: none;">
-                        <!-- Les résultats seront affichés ici par JavaScript -->
-                    </div>
-                </div>
-            </section>
-            
+                <!-- Section résultats -->
+                <section class="results-section">
+                    <?php include __DIR__ . '/views/components/results-panel.php'; ?>
+                </section>
+                
+            </div>
         </div>
     </main>
-    
+
+    <!-- Actions flottantes -->
+    <div class="floating-actions">
+        <button type="button" class="floating-btn" id="btn-reset" title="Nouveau calcul">
+            🔄
+        </button>
+        <?php if ($debug_mode): ?>
+        <button type="button" class="floating-btn debug" id="btn-debug" title="Debug">
+            🐛
+        </button>
+        <?php endif; ?>
+    </div>
+
     <!-- Footer -->
-    <footer class="calculator-footer">
-        <div class="footer-content">
-            <div class="footer-info">
-                <p>&copy; <?= date('Y') ?> Guldagil - Tous droits réservés</p>
+    <?php include __DIR__ . '/views/partials/footer.php'; ?>
+
+    <!-- Scripts JavaScript - Architecture modulaire -->
+    <script src="../assets/js/modules/calculateur/core/config.js"></script>
+    <script src="../assets/js/modules/calculateur/core/state-manager.js"></script>
+    <script src="../assets/js/modules/calculateur/core/api-service.js"></script>
+    <script src="../assets/js/modules/calculateur/models/form-data.js"></script>
+    <script src="../assets/js/modules/calculateur/models/validation.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/form-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/calculation-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/ui-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/views/progressive-form.js"></script>
+    <script src="../assets/js/modules/calculateur/views/results-display.js"></script>
+    <script src="../assets/js/modules/calculateur/main.js"></script>
+
+    <!-- Initialisation -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Vérifier que tous les modules sont chargés
+            if (typeof window.calculateurApp !== 'undefined') {
+                // Initialiser avec les données serveur
+                window.calculateurApp.init(window.CALCULATEUR_CONFIG);
+            } else {
+                console.error('❌ Modules calculateur non chargés');
+                
+                // Fallback basique
+                document.getElementById('calculator-form').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    alert('Module calculateur en cours de chargement...');
+                });
+            }
+        });
+        
+        // Gestion des erreurs globales
+        window.addEventListener('error', function(e) {
+            console.error('Erreur JavaScript:', e.error);
+            
+            // En production, masquer les erreurs techniques
+            <?php if (!$debug_mode): ?>
+            e.preventDefault();
+            <?php endif; ?>
+        });
+        
+        // Performance monitoring
+        window.addEventListener('load', function() {
+            if (window.performance && window.performance.timing) {
+                const loadTime = window.performance.timing.loadEventEnd - window.performance.timing.navigationStart;
+                CalculateurConfig?.log('info', `Page chargée en ${loadTime}ms`);
+            }
+        });
+    </script>
+
+    <?php if ($debug_mode): ?>
+    <!-- Debug panel -->
+    <div id="debug-panel" class="debug-panel" style="display: none;">
+        <div class="debug-header">
+            <h3>🐛 Debug Calculateur</h3>
+            <button onclick="document.getElementById('debug-panel').style.display='none'">×</button>
+        </div>
+        <div class="debug-content">
+            <div class="debug-section">
+                <h4>Configuration</h4>
+                <pre id="debug-config"></pre>
             </div>
-            <div class="footer-meta">
-                <span>v<?= $version_info['version'] ?></span>
-                <span>Build <?= $version_info['build'] ?></span>
-                <?php if (DEBUG): ?>
-                    <span class="debug">DEBUG</span>
-                <?php endif; ?>
+            <div class="debug-section">
+                <h4>État actuel</h4>
+                <pre id="debug-state"></pre>
+            </div>
+            <div class="debug-section">
+                <h4>Dernière requête</h4>
+                <pre id="debug-request"></pre>
+            </div>
+            <div class="debug-section">
+                <h4>Statistiques API</h4>
+                <pre id="debug-stats"></pre>
             </div>
         </div>
-    </footer>
-
-    <!-- JavaScript - UNIQUEMENT LES FICHIERS QUI EXISTENT -->
-    <script src="../assets/js/modules/calculateur/calculateur.js"></script>
+    </div>
     
-    <?php if (!empty($preset_data['departement']) && !empty($preset_data['poids'])): ?>
-    <!-- Auto-calcul si présets valides -->
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if (window.Calculateur && Calculateur.Core) {
-            setTimeout(() => {
-                if (Calculateur.State && Calculateur.State.isFormValid()) {
-                    Calculateur.Core.performCalculation();
-                }
-            }, 1000);
+    <style>
+        .debug-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 400px;
+            max-height: 80vh;
+            background: var(--calc-gray-900);
+            color: var(--calc-white);
+            border-radius: var(--calc-radius);
+            box-shadow: var(--calc-shadow-xl);
+            z-index: var(--calc-z-modal);
+            overflow: hidden;
         }
-    });
-    </script>
-    <?php endif; ?>
+        
+        .debug-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--calc-space-3);
+            background: var(--calc-gray-800);
+            border-bottom: 1px solid var(--calc-gray-700);
+        }
+        
+        .debug-header h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+        
+        .debug-header button {
+            background: none;
+            border: none;
+            color: var(--calc-white);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: var(--calc-space-1);
+        }
+        
+        .debug-content {
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: var(--calc-space-3);
+        }
+        
+        .debug-section {
+            margin-bottom: var(--calc-space-4);
+        }
+        
+        .debug-section h4 {
+            margin: 0 0 var(--calc-space-2);
+            color: var(--calc-accent);
+            font-size: 0.9rem;
+        }
+        
+        .debug-section pre {
+            background: var(--calc-gray-800);
+            padding: var(--calc-space-2);
+            border-radius: var(--calc-radius-sm);
+            font-size: 0.8rem;
+            overflow-x: auto;
+            margin: 0;
+            white-space: pre-wrap;
+        }
+        
+        .floating-actions {
+            position: fixed;
+            bottom: var(--calc-space-6);
+            right: var(--calc-space-6);
+            display: flex;
+            flex-direction: column;
+            gap: var(--calc-space-2);
+            z-index: var(--calc-z-tooltip);
+        }
+        
+        .floating-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: var(--calc-primary);
+            color: var(--calc-white);
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: var(--calc-shadow-lg);
+            transition: var(--calc-transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .floating-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--calc-shadow-xl);
+        }
+        
+        .floating-btn.debug {
+            background: var(--calc-warning);
+        }
+        
+        @media (max-width: 768px) {
+            .debug-panel {
+                width: calc(100vw - 20px);
+                max-width: 400px;
+            }
+            
+            .floating-actions {
+                bottom: var(--calc-space-4);
+                right: var(--calc-space-4);
+            }
+        }
+    </style>
     
-    <?php if (DEBUG): ?>
-    <!-- Debug info -->
     <script>
-    window.DEBUG_INFO = {
-        version: '<?= $version_info['version'] ?>',
-        build: '<?= $version_info['build'] ?>',
-        environment: 'development',
-        module: 'calculateur',
-        presets: <?= json_encode($preset_data, JSON_UNESCAPED_UNICODE) ?>
-    };
-    
-    console.log('🧮 Calculateur v<?= $version_info['version'] ?> - Debug activé');
+        // Debug helpers
+        document.getElementById('btn-debug')?.addEventListener('click', function() {
+            const panel = document.getElementById('debug-panel');
+            
+            if (panel.style.display === 'none') {
+                // Mettre à jour les informations debug
+                if (window.debugCalculateur) {
+                    document.getElementById('debug-config').textContent = 
+                        JSON.stringify(CalculateurConfig, null, 2);
+                    document.getElementById('debug-state').textContent = 
+                        JSON.stringify(window.debugCalculateur.summary(), null, 2);
+                    document.getElementById('debug-stats').textContent = 
+                        JSON.stringify(window.apiService?.getStats(), null, 2);
+                }
+                
+                panel.style.display = 'block';
+            } else {
+                panel.style.display = 'none';
+            }
+        });
+        
+        // Mise à jour périodique du debug
+        if (<?= json_encode($debug_mode) ?>) {
+            setInterval(() => {
+                const panel = document.getElementById('debug-panel');
+                if (panel && panel.style.display !== 'none' && window.debugCalculateur) {
+                    document.getElementById('debug-state').textContent = 
+                        JSON.stringify(window.debugCalculateur.summary(), null, 2);
+                    document.getElementById('debug-stats').textContent = 
+                        JSON.stringify(window.apiService?.getStats(), null, 2);
+                }
+            }, 2000);
+        }
     </script>
     <?php endif; ?>
 
 </body>
 </html>
+
+<?php
+// =========================================================================
+// SAUVEGARDE SESSION ET NETTOYAGE
+// =========================================================================
+
+// Sauvegarder les données en session pour persister entre rechargements
+if (!empty($preset_data['departement'])) {
+    $_SESSION['calc_dept'] = $preset_data['departement'];
+}
+if (!empty($preset_data['poids'])) {
+    $_SESSION['calc_poids'] = $preset_data['poids'];
+}
+if (!empty($preset_data['type'])) {
+    $_SESSION['calc_type'] = $preset_data['type'];
+}
+
+// Logs pour monitoring (en production, utiliser un vrai système de logs)
+if ($debug_mode) {
+    error_log("Calculateur - Page chargée: " . json_encode([
+        'preset_data' => $preset_data,
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        'timestamp' => date('c')
+    ]));
+}
+?>
