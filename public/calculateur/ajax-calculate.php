@@ -1,11 +1,8 @@
 <?php
 /**
- * Titre: API de calcul des frais de port
+ * Titre: API de calcul des frais de port - MISE À JOUR
  * Chemin: /public/calculateur/ajax-calculate.php
- * Version: 0.5 beta + build
- * 
- * API REST pour le calcul des tarifs de transport
- * Compatible avec l'architecture JavaScript modulaire
+ * Version: 0.5 beta - Compatible architecture modulaire JS
  */
 
 // Configuration headers API
@@ -24,14 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/version.php';
 
-// Initialisation réponse API
+// Initialisation réponse API compatible nouvelle architecture JS
 $response = [
     'success' => false,
-    'type' => 'error',
-    'bestCarrier' => null,
-    'best' => null,
-    'formatted' => [],
-    'comparison' => null,
+    'carriers' => [],
+    'best_rate' => null,
     'affretement' => false,
     'message' => '',
     'errors' => [],
@@ -86,20 +80,18 @@ try {
         throw new Exception('Champs requis manquants: ' . implode(', ', $missing_fields), 400);
     }
     
-    // Normalisation et validation des paramètres
+    // Normalisation et validation des paramètres (compatible JS)
     $params = [
         'departement' => str_pad(trim($input['departement']), 2, '0', STR_PAD_LEFT),
         'poids' => (float)$input['poids'],
         'type' => trim(strtolower($input['type'])),
         'adr' => isset($input['adr']) ? (in_array($input['adr'], ['oui', 'yes', '1', 1, true], true) ? 'oui' : 'non') : 'non',
-        'option_sup' => trim($input['option_sup'] ?? 'standard'),
+        'service_livraison' => trim($input['service_livraison'] ?? $input['option_sup'] ?? 'standard'),
         'enlevement' => isset($input['enlevement']) && in_array($input['enlevement'], ['1', 1, true, 'on'], true),
         'palettes' => max(0, (int)($input['palettes'] ?? 0))
     ];
     
     // Validation spécifique des paramètres
-    
-    // Département
     if (!preg_match('/^\d{2}$/', $params['departement'])) {
         throw new Exception('Département invalide (format: 01-95)', 422);
     }
@@ -109,7 +101,6 @@ try {
         throw new Exception('Département hors limites (01-95)', 422);
     }
     
-    // Poids
     if ($params['poids'] <= 0) {
         throw new Exception('Poids invalide (minimum 0.1kg)', 422);
     }
@@ -118,20 +109,18 @@ try {
         throw new Exception('Poids trop élevé (maximum 3500kg)', 422);
     }
     
-    // Type
     if (!in_array($params['type'], ['colis', 'palette'])) {
         throw new Exception('Type d\'envoi invalide (colis ou palette)', 422);
     }
     
-    // ADR
     if (!in_array($params['adr'], ['oui', 'non'])) {
         throw new Exception('Option ADR invalide (oui ou non)', 422);
     }
     
     // Option supplémentaire
     $valid_options = ['standard', 'rdv', 'datefixe', 'premium13', 'premium18'];
-    if (!in_array($params['option_sup'], $valid_options)) {
-        $params['option_sup'] = 'standard';
+    if (!in_array($params['service_livraison'], $valid_options)) {
+        $params['service_livraison'] = 'standard';
         $response['warnings'][] = 'Option supplémentaire invalide, remplacée par "standard"';
     }
     
@@ -140,12 +129,11 @@ try {
         $response['debug'] = [
             'input_received' => $input,
             'params_normalized' => $params,
-            'request_headers' => getallheaders(),
             'request_method' => $_SERVER['REQUEST_METHOD']
         ];
     }
     
-    // Vérification affrètement (poids très élevé ou conditions spéciales)
+    // Vérification affrètement (poids très élevé)
     if ($params['poids'] > 2000) {
         $response['affretement'] = true;
         $response['message'] = sprintf(
@@ -154,21 +142,27 @@ try {
         );
         $response['metadata']['processing_time'] = round((microtime(true) - $start_time) * 1000, 2);
         
-        logInfo('Demande affrètement', ['params' => $params]);
+        if (function_exists('logInfo')) {
+            logInfo('Demande affrètement', ['params' => $params]);
+        }
         
         echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         exit;
     }
     
-    // Chargement de la classe Transport
-    $transport_class_path = __DIR__ . '/../../src/modules/calculateur/services/Transport.php';
+    // CHARGEMENT DE LA CLASSE TRANSPORT - CORRIGÉ
+    $transport_class_path = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
+    
+    // Fallback vers anciens emplacements
     if (!file_exists($transport_class_path)) {
-        // Fallback vers ancien emplacement
+        $transport_class_path = __DIR__ . '/../../src/modules/calculateur/services/Transport.php';
+    }
+    if (!file_exists($transport_class_path)) {
         $transport_class_path = __DIR__ . '/../../lib/Transport.php';
     }
     
     if (!file_exists($transport_class_path)) {
-        throw new Exception('Classe Transport non trouvée', 500);
+        throw new Exception('Classe Transport non trouvée dans les emplacements prévus', 500);
     }
     
     require_once $transport_class_path;
@@ -180,182 +174,151 @@ try {
     // Initialisation du calculateur
     $transport = new Transport($db);
     
-    // Calcul des tarifs pour tous les transporteurs
-    $results = $transport->calculateAll(
-        $params['type'],
-        $params['adr'],
-        $params['poids'],
-        $params['option_sup'],
-        $params['departement'],
-        $params['palettes'],
-        $params['enlevement']
-    );
+    // CALCUL DES TARIFS - COMPATIBLE DEUX SIGNATURES
+    $results = null;
+    $signature_used = 'unknown';
     
-    // Traitement des résultats
+    if (method_exists($transport, 'calculateAll')) {
+        try {
+            // NOUVELLE SIGNATURE (array) - PRIORITÉ
+            $results = $transport->calculateAll($params);
+            $signature_used = 'array';
+            
+            if (DEBUG) {
+                $response['debug']['signature_used'] = 'array (nouvelle)';
+            }
+            
+        } catch (Exception $e) {
+            // ANCIENNE SIGNATURE (paramètres séparés) - FALLBACK
+            try {
+                $results = $transport->calculateAll(
+                    $params['type'],
+                    $params['adr'],
+                    $params['poids'],
+                    $params['service_livraison'],
+                    $params['departement'],
+                    $params['palettes'],
+                    $params['enlevement']
+                );
+                $signature_used = 'separated_params';
+                
+                if (DEBUG) {
+                    $response['debug']['signature_used'] = 'separated_params (ancienne)';
+                    $response['debug']['array_signature_error'] = $e->getMessage();
+                }
+                
+            } catch (Exception $e2) {
+                throw new Exception('Erreur calcul avec les deux signatures: ' . $e2->getMessage(), 500);
+            }
+        }
+    } else {
+        throw new Exception('Méthode calculateAll non trouvée dans la classe Transport', 500);
+    }
+    
+    // TRAITEMENT DES RÉSULTATS - COMPATIBLE NOUVELLE ARCHITECTURE JS
     $valid_results = [];
-    $formatted_results = [];
-    
     $carrier_names = [
         'xpo' => 'XPO Logistics',
         'heppner' => 'Heppner',
         'kn' => 'Kuehne + Nagel'
     ];
     
-    foreach ($results as $carrier => $price) {
+    // Extraire les résultats selon la structure retournée
+    $carrier_results = [];
+    if (isset($results['results'])) {
+        // Nouvelle structure avec metadata
+        $carrier_results = $results['results'];
+        if (DEBUG && isset($results['debug'])) {
+            $response['debug']['transport_debug'] = $results['debug'];
+        }
+    } else {
+        // Ancienne structure directe
+        $carrier_results = $results;
+        if (DEBUG && isset($transport->debug)) {
+            $response['debug']['transport_debug'] = $transport->debug;
+        }
+    }
+    
+    // Formater les résultats pour l'architecture JS
+    foreach ($carrier_results as $carrier => $price) {
+        $name = $carrier_names[$carrier] ?? strtoupper($carrier);
+        
         if ($price !== null && $price > 0) {
             $valid_results[$carrier] = $price;
-            $formatted_results[$carrier] = [
-                'name' => $carrier_names[$carrier] ?? strtoupper($carrier),
+            $response['carriers'][$carrier] = [
+                'name' => $name,
                 'price' => $price,
                 'formatted' => number_format($price, 2, ',', ' ') . ' €'
+            ];
+        } else {
+            $response['carriers'][$carrier] = [
+                'name' => $name,
+                'price' => null,
+                'formatted' => 'Non disponible'
             ];
         }
     }
     
-    // Vérification qu'on a au moins un résultat
-    if (empty($valid_results)) {
+    // Déterminer le meilleur tarif
+    if (!empty($valid_results)) {
+        $best_carrier = array_keys($valid_results, min($valid_results))[0];
+        $best_price = $valid_results[$best_carrier];
+        
+        $response['best_rate'] = [
+            'carrier' => $best_carrier,
+            'carrier_name' => $carrier_names[$best_carrier] ?? strtoupper($best_carrier),
+            'price' => $best_price,
+            'formatted' => number_format($best_price, 2, ',', ' ') . ' €',
+            'delivery_info' => '' // Peut être enrichi plus tard
+        ];
+        
+        $response['success'] = true;
+        $response['message'] = 'Calcul réussi';
+        
+    } else {
         $response['success'] = false;
         $response['message'] = 'Aucun tarif disponible pour ces critères';
-        $response['errors'][] = 'Aucun transporteur ne peut traiter cette expédition';
-        
-        // Suggestions selon les paramètres
-        if ($params['adr'] === 'oui') {
-            $response['warnings'][] = 'Les expéditions ADR ont des contraintes particulières';
-        }
-        if ($params['poids'] > 1000) {
-            $response['warnings'][] = 'Poids élevé - Vérifiez les conditions de transport';
-        }
-        
-        $response['metadata']['processing_time'] = round((microtime(true) - $start_time) * 1000, 2);
-        echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        exit;
     }
     
-    // Détermination du meilleur tarif
-    $best_price = min($valid_results);
-    $best_carrier = array_search($best_price, $valid_results);
-    
-    // Construction de la comparaison
-    $comparison_data = [];
-    foreach ($formatted_results as $carrier => $data) {
-        $comparison_data[] = [
-            'code' => $carrier,
-            'name' => $data['name'],
-            'price' => $data['price'],
-            'formatted' => $data['formatted']
-        ];
-    }
-    
-    // Tri par prix croissant
-    usort($comparison_data, function($a, $b) {
-        return $a['price'] <=> $b['price'];
-    });
-    
-    $price_range = [
-        'min' => $comparison_data[0]['price'],
-        'max' => end($comparison_data)['price'],
-        'difference' => end($comparison_data)['price'] - $comparison_data[0]['price']
-    ];
-    
-    // Génération des alertes/conseils
-    $alerts = [];
-    
-    if ($params['poids'] > 500) {
-        $alerts[] = [
-            'type' => 'warning',
-            'message' => sprintf('Poids élevé (%s kg) - Délais de transport possiblement allongés', 
-                number_format($params['poids'], 1))
-        ];
-    }
-    
-    if ($params['adr'] === 'oui') {
-        $alerts[] = [
-            'type' => 'info',
-            'message' => 'Transport ADR - Vérifiez les documents requis et délais supplémentaires'
-        ];
-    }
-    
-    if ($best_price > 200) {
-        $alerts[] = [
-            'type' => 'info',
-            'message' => 'Coût élevé - Envisagez de grouper vos expéditions pour optimiser'
-        ];
-    }
-    
-    if (count($valid_results) > 1 && $price_range['difference'] > 50) {
-        $savings_percent = round(($price_range['difference'] / $price_range['max']) * 100);
-        $alerts[] = [
-            'type' => 'success',
-            'message' => sprintf('Économie possible de %s € (%d%%) en choisissant le meilleur tarif', 
-                number_format($price_range['difference'], 2), $savings_percent)
-        ];
-    }
-    
-    // Construction de la réponse de succès
-    $response['success'] = true;
-    $response['type'] = 'success';
-    $response['bestCarrier'] = $best_carrier;
-    $response['best'] = $best_price;
-    $response['formatted'] = $formatted_results;
-    $response['comparison'] = [
-        'count' => count($comparison_data),
-        'carriers' => $comparison_data,
-        'range' => count($comparison_data) > 1 ? $price_range : null
-    ];
-    $response['alerts'] = $alerts;
-    $response['message'] = sprintf('Meilleur tarif trouvé: %s à %s', 
-        $formatted_results[$best_carrier]['name'], 
-        $formatted_results[$best_carrier]['formatted']);
-    
-    // Ajout des détails de debug si activé
-    if (DEBUG && isset($transport->debug)) {
-        $response['debug']['transport_debug'] = $transport->debug;
-        $response['debug']['calculation_details'] = [
-            'total_carriers_checked' => count($results),
-            'valid_results_count' => count($valid_results),
-            'best_carrier_selection' => [
-                'carrier' => $best_carrier,
-                'price' => $best_price,
-                'competition' => array_diff_key($valid_results, [$best_carrier => true])
-            ]
-        ];
-    }
-    
-    // Sauvegarde dans l'historique si table existe
-    try {
-        $stmt = $db->prepare("
-            INSERT INTO gul_calculator_history 
-            (departement, poids, type, adr, option_sup, enlevement, palettes, 
-             best_carrier, best_price, all_results, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        ");
-        
-        $stmt->execute([
-            $params['departement'],
-            $params['poids'],
-            $params['type'],
-            $params['adr'],
-            $params['option_sup'],
-            $params['enlevement'] ? 1 : 0,
-            $params['palettes'],
-            $best_carrier,
-            $best_price,
-            json_encode($valid_results)
-        ]);
-    } catch (Exception $e) {
-        // Table historique pas obligatoire, ignorer l'erreur
-        if (DEBUG) {
-            $response['debug']['history_save_error'] = $e->getMessage();
+    // Sauvegarde historique (optionnel)
+    if (!empty($valid_results)) {
+        try {
+            $stmt = $db->prepare("
+                INSERT INTO gul_calculs_historique 
+                (departement, poids, type, adr, service_livraison, enlevement, palettes, 
+                 best_carrier, best_price, all_results, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            
+            $stmt->execute([
+                $params['departement'],
+                $params['poids'],
+                $params['type'],
+                $params['adr'],
+                $params['service_livraison'],
+                $params['enlevement'] ? 1 : 0,
+                $params['palettes'],
+                $best_carrier,
+                $best_price,
+                json_encode($valid_results)
+            ]);
+            
+        } catch (Exception $e) {
+            // Table historique pas obligatoire, ignorer l'erreur
+            if (DEBUG) {
+                $response['debug']['history_save_error'] = $e->getMessage();
+            }
         }
     }
     
     // Log succès
-    logInfo('Calcul tarif réussi', [
-        'params' => $params,
-        'best_carrier' => $best_carrier,
-        'best_price' => $best_price,
-        'carriers_count' => count($valid_results)
-    ]);
+    if (function_exists('logInfo')) {
+        logInfo('Calcul tarif réussi', [
+            'params' => $params,
+            'signature' => $signature_used,
+            'carriers_count' => count($valid_results)
+        ]);
+    }
 
 } catch (Exception $e) {
     // Gestion des erreurs
@@ -363,7 +326,6 @@ try {
     http_response_code($error_code);
     
     $response['success'] = false;
-    $response['type'] = 'error';
     $response['message'] = $e->getMessage();
     $response['errors'] = [$e->getMessage()];
     
@@ -378,24 +340,26 @@ try {
     }
     
     // Log erreur
-    logError('Erreur calcul tarif', [
-        'error' => $e->getMessage(),
-        'code' => $e->getCode(),
-        'input' => $input ?? null,
-        'trace' => $e->getTraceAsString()
-    ]);
+    if (function_exists('logError')) {
+        logError('Erreur calcul tarif', [
+            'error' => $e->getMessage(),
+            'code' => $e->getCode(),
+            'input' => $input ?? null
+        ]);
+    } else {
+        error_log("API Error: " . $e->getMessage());
+    }
     
 } finally {
     // Calcul du temps de traitement
     $response['metadata']['processing_time'] = round((microtime(true) - $start_time) * 1000, 2);
     
-    // Informations de performance
+    // Informations de performance en debug
     if (DEBUG) {
         $response['metadata']['memory_usage'] = [
             'current' => round(memory_get_usage() / 1024 / 1024, 2) . ' MB',
             'peak' => round(memory_get_peak_usage() / 1024 / 1024, 2) . ' MB'
         ];
-        $response['metadata']['db_queries'] = $db->getAttribute(PDO::ATTR_CONNECTION_STATUS) ?? 'N/A';
     }
 }
 
@@ -407,30 +371,7 @@ if (DEBUG) {
 
 echo json_encode($response, $json_flags);
 
-/**
- * Fonction helper pour logs
- */
-function logInfo($message, $context = []) {
-    if (function_exists('logMessage')) {
-        logMessage('info', $message, $context);
-    }
-}
-
-function logError($message, $context = []) {
-    if (function_exists('logMessage')) {
-        logMessage('error', $message, $context);
-    } else {
-        error_log("API Error: $message - " . json_encode($context));
-    }
-}
-
-// Headers de cache pour optimisation
-if (!DEBUG) {
-    header('Cache-Control: no-cache, must-revalidate');
-    header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
-}
-
-// Header de temps de réponse
+// Headers de performance
 header('X-Response-Time: ' . $response['metadata']['processing_time'] . 'ms');
 header('X-API-Version: ' . APP_VERSION);
 ?>
