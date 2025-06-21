@@ -8,7 +8,6 @@
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/version.php';
 
-// Démarrage session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -18,10 +17,91 @@ $debug_info = [];
 $validation_errors = [];
 $calculation_time = 0;
 
+// FONCTIONS - DÉCLARÉES UNE SEULE FOIS
+function validateCalculatorData($data) {
+    $errors = [];
+    
+    if (empty($data['departement']) || !preg_match('/^\d{2}$/', $data['departement'])) {
+        $errors['departement'] = 'Département invalide (01-95)';
+    } else {
+        $dept_num = (int)$data['departement'];
+        if ($dept_num < 1 || $dept_num > 95) {
+            $errors['departement'] = 'Département hors limites (01-95)';
+        }
+    }
+    
+    if (empty($data['poids']) || $data['poids'] < 0.1) {
+        $errors['poids'] = 'Poids minimum: 0.1kg';
+    }
+    if ($data['poids'] > 3500) {
+        $errors['poids'] = 'Poids maximum: 3500kg';
+    }
+    
+    if (!in_array($data['type'], ['colis', 'palette'])) {
+        $errors['type'] = 'Type d\'envoi invalide';
+    }
+    
+    if (!in_array($data['adr'], ['oui', 'non'])) {
+        $errors['adr'] = 'Option ADR invalide';
+    }
+    
+    return $errors;
+}
+
+function formatResults($results) {
+    if (!$results) return null;
+    
+    $formatted = [
+        'success' => true,
+        'carriers' => [],
+        'best_rate' => null
+    ];
+    
+    $carrier_names = [
+        'xpo' => 'XPO Logistics',
+        'heppner' => 'Heppner',
+        'kn' => 'Kuehne + Nagel'
+    ];
+    
+    $valid_results = [];
+    $carrier_results = $results['results'] ?? $results ?? [];
+    
+    foreach ($carrier_results as $carrier => $price) {
+        $name = $carrier_names[$carrier] ?? strtoupper($carrier);
+        
+        if ($price !== null && $price > 0) {
+            $valid_results[$carrier] = $price;
+            $formatted['carriers'][$carrier] = [
+                'name' => $name,
+                'price' => $price,
+                'formatted' => number_format($price, 2, ',', ' ') . ' €'
+            ];
+        } else {
+            $formatted['carriers'][$carrier] = [
+                'name' => $name,
+                'price' => null,
+                'formatted' => 'Non disponible'
+            ];
+        }
+    }
+    
+    if (!empty($valid_results)) {
+        $best_carrier = array_keys($valid_results, min($valid_results))[0];
+        $formatted['best_rate'] = [
+            'carrier' => $best_carrier,
+            'carrier_name' => $carrier_names[$best_carrier] ?? strtoupper($best_carrier),
+            'price' => $valid_results[$best_carrier],
+            'formatted' => number_format($valid_results[$best_carrier], 2, ',', ' ') . ' €'
+        ];
+    }
+    
+    return $formatted;
+}
+
+// TRAITEMENT DU FORMULAIRE
 if ($_POST) {
     $start_time = microtime(true);
     
-    // Paramètres normalisés comme attendu par la nouvelle architecture JS
     $params = [
         'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
         'poids' => floatval($_POST['poids'] ?? 0),
@@ -32,26 +112,21 @@ if ($_POST) {
         'palettes' => max(0, intval($_POST['palettes'] ?? 0))
     ];
     
-    // Validation côté serveur (comme dans api-service.js)
     $validation_errors = validateCalculatorData($params);
     
     if (empty($validation_errors)) {
         try {
-            // Test direct avec la classe Transport
             $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
             
             if (file_exists($transport_file)) {
                 require_once $transport_file;
                 $transport = new Transport($db);
                 
-                // Test des deux signatures possibles
                 if (method_exists($transport, 'calculateAll')) {
                     try {
-                        // Nouvelle signature (array)
                         $results = $transport->calculateAll($params);
                         $debug_info['signature'] = 'array';
                     } catch (Exception $e) {
-                        // Ancienne signature (paramètres séparés)
                         $results = $transport->calculateAll(
                             $params['type'],
                             $params['adr'], 
@@ -84,133 +159,6 @@ if ($_POST) {
         }
     }
 }
-
-/**
- * Validation des données calculateur (réplique de api-service.js)
- */
-if (!function_exists('validateCalculatorData')) {
-    function validateCalculatorData($data) {
-        $errors = [];
-        
-        if (empty($data['departement']) || !preg_match('/^\d{2}$/', $data['departement'])) {
-            $errors['departement'] = 'Département invalide (01-95)';
-        } else {
-            $dept_num = (int)$data['departement'];
-            if ($dept_num < 1 || $dept_num > 95) {
-                $errors['departement'] = 'Département hors limites (01-95)';
-            }
-        }
-        
-        if (empty($data['poids']) || $data['poids'] < 0.1) {
-            $errors['poids'] = 'Poids minimum: 0.1kg';
-        }
-        if ($data['poids'] > 3500) {
-            $errors['poids'] = 'Poids maximum: 3500kg';
-        }
-        
-        if (!in_array($data['type'], ['colis', 'palette'])) {
-            $errors['type'] = 'Type d\'envoi invalide';
-        }
-        
-        if (!in_array($data['adr'], ['oui', 'non'])) {
-            $errors['adr'] = 'Option ADR invalide';
-        }
-        
-        return $errors;
-    }
-}
-function validateCalculatorData($data) {
-    $errors = [];
-    
-    // Département
-    if (empty($data['departement']) || !preg_match('/^\d{2}$/', $data['departement'])) {
-        $errors['departement'] = 'Département invalide (01-95)';
-    } else {
-        $dept_num = (int)$data['departement'];
-        if ($dept_num < 1 || $dept_num > 95) {
-            $errors['departement'] = 'Département hors limites (01-95)';
-        }
-    }
-    
-    // Poids
-    if (empty($data['poids']) || $data['poids'] < 0.1) {
-        $errors['poids'] = 'Poids minimum: 0.1kg';
-    }
-    if ($data['poids'] > 3500) {
-        $errors['poids'] = 'Poids maximum: 3500kg';
-    }
-    
-    // Type
-    if (!in_array($data['type'], ['colis', 'palette'])) {
-        $errors['type'] = 'Type d\'envoi invalide';
-    }
-    
-    // ADR
-    if (!in_array($data['adr'], ['oui', 'non'])) {
-        $errors['adr'] = 'Option ADR invalide';
-    }
-    
-    return $errors;
-}
-
-/**
- * Formater les résultats pour affichage
- */
-if (!function_exists('formatResults')) {
-    function formatResults($results) {
-function formatResults($results) {
-    if (!$results) return null;
-    
-    $formatted = [
-        'success' => true,
-        'carriers' => [],
-        'best_rate' => null
-    ];
-    
-    $carrier_names = [
-        'xpo' => 'XPO Logistics',
-        'heppner' => 'Heppner',
-        'kn' => 'Kuehne + Nagel'
-    ];
-    
-    $valid_results = [];
-    
-    // Extraire les résultats selon la structure
-    $carrier_results = $results['results'] ?? $results ?? [];
-    
-    foreach ($carrier_results as $carrier => $price) {
-        $name = $carrier_names[$carrier] ?? strtoupper($carrier);
-        
-        if ($price !== null && $price > 0) {
-            $valid_results[$carrier] = $price;
-            $formatted['carriers'][$carrier] = [
-                'name' => $name,
-                'price' => $price,
-                'formatted' => number_format($price, 2, ',', ' ') . ' €'
-            ];
-        } else {
-            $formatted['carriers'][$carrier] = [
-                'name' => $name,
-                'price' => null,
-                'formatted' => 'Non disponible'
-            ];
-        }
-    }
-    
-    // Meilleur tarif
-    if (!empty($valid_results)) {
-        $best_carrier = array_keys($valid_results, min($valid_results))[0];
-        $formatted['best_rate'] = [
-            'carrier' => $best_carrier,
-            'carrier_name' => $carrier_names[$best_carrier] ?? strtoupper($best_carrier),
-            'price' => $valid_results[$best_carrier],
-            'formatted' => number_format($valid_results[$best_carrier], 2, ',', ' ') . ' €'
-        ];
-    }
-    
-    return $formatted;
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -223,7 +171,6 @@ function formatResults($results) {
         .container { max-width: 1200px; margin: 0 auto; }
         .section { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .form-section { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; }
-        .results-section { background: white; }
         
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; color: white; }
@@ -263,22 +210,17 @@ function formatResults($results) {
 <body>
     <div class="container">
         <h1>🧪 Validation Calculateur - Compatible Architecture JS</h1>
-        <p>Interface de test compatible avec la nouvelle architecture modulaire JavaScript</p>
         
         <!-- Formulaire -->
         <div class="section form-section">
             <h2>📝 Paramètres de test</h2>
-            <form method="POST" id="validation-form">
+            <form method="POST">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
                     <div class="form-group">
                         <label for="departement">Département:</label>
-                        <input type="text" 
-                               id="departement" 
-                               name="departement" 
+                        <input type="text" id="departement" name="departement" 
                                value="<?= htmlspecialchars($_POST['departement'] ?? '67') ?>" 
-                               maxlength="2" 
-                               class="<?= isset($validation_errors['departement']) ? 'error' : (isset($_POST['departement']) ? 'valid' : '') ?>"
-                               required>
+                               maxlength="2" required>
                         <?php if (isset($validation_errors['departement'])): ?>
                             <div class="field-error"><?= htmlspecialchars($validation_errors['departement']) ?></div>
                         <?php endif; ?>
@@ -286,15 +228,9 @@ function formatResults($results) {
                     
                     <div class="form-group">
                         <label for="poids">Poids (kg):</label>
-                        <input type="number" 
-                               id="poids" 
-                               name="poids" 
+                        <input type="number" id="poids" name="poids" 
                                value="<?= htmlspecialchars($_POST['poids'] ?? '25') ?>" 
-                               step="0.1" 
-                               min="0.1" 
-                               max="3500"
-                               class="<?= isset($validation_errors['poids']) ? 'error' : (isset($_POST['poids']) ? 'valid' : '') ?>"
-                               required>
+                               step="0.1" min="0.1" max="3500" required>
                         <?php if (isset($validation_errors['poids'])): ?>
                             <div class="field-error"><?= htmlspecialchars($validation_errors['poids']) ?></div>
                         <?php endif; ?>
@@ -327,7 +263,8 @@ function formatResults($results) {
                     
                     <div class="form-group">
                         <label for="palettes">Palettes:</label>
-                        <input type="number" id="palettes" name="palettes" value="<?= htmlspecialchars($_POST['palettes'] ?? '0') ?>" min="0" max="20">
+                        <input type="number" id="palettes" name="palettes" 
+                               value="<?= htmlspecialchars($_POST['palettes'] ?? '0') ?>" min="0" max="20">
                     </div>
                 </div>
                 
@@ -343,9 +280,9 @@ function formatResults($results) {
         </div>
 
         <?php if ($_POST): ?>
-        <!-- Statistiques de validation -->
+        <!-- Statistiques -->
         <div class="section">
-            <h2>📊 Statistiques de validation</h2>
+            <h2>📊 Statistiques</h2>
             <div class="stats">
                 <div class="stat-item">
                     <div class="stat-value"><?= count($validation_errors) ?></div>
@@ -362,16 +299,8 @@ function formatResults($results) {
             </div>
         </div>
 
-        <!-- Paramètres normalisés -->
-        <div class="section">
-            <h2>📋 Paramètres normalisés (comme JS)</h2>
-            <div class="debug">
-                <pre><?= htmlspecialchars(json_encode($params, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
-            </div>
-        </div>
-
         <?php if (!empty($validation_errors)): ?>
-        <!-- Erreurs de validation -->
+        <!-- Erreurs -->
         <div class="section">
             <h2>❌ Erreurs de validation</h2>
             <?php foreach ($validation_errors as $field => $error): ?>
@@ -384,13 +313,12 @@ function formatResults($results) {
 
         <?php if ($results && empty($validation_errors)): ?>
         <!-- Résultats -->
-        <div class="section results-section">
+        <div class="section">
             <h2>📊 Résultats de calcul</h2>
             
             <?php $formatted = formatResults($results); ?>
             
             <?php if ($formatted && $formatted['best_rate']): ?>
-            <!-- Meilleur tarif -->
             <div class="best-rate">
                 <h3>🏆 Meilleur tarif</h3>
                 <div class="carrier-name"><?= htmlspecialchars($formatted['best_rate']['carrier_name']) ?></div>
@@ -399,7 +327,6 @@ function formatResults($results) {
             <?php endif; ?>
 
             <?php if ($formatted && $formatted['carriers']): ?>
-            <!-- Comparaison transporteurs -->
             <h3>🚛 Comparaison des transporteurs</h3>
             <div class="carriers-list">
                 <?php foreach ($formatted['carriers'] as $carrier => $data): ?>
@@ -419,126 +346,25 @@ function formatResults($results) {
             </div>
             <?php endif; ?>
         </div>
-        <?php endif; ?>
-
-        <!-- Debug détaillé -->
+        
+        <!-- Debug -->
         <div class="section">
-            <h2>🔍 Informations de debug</h2>
-            
-            <?php if (!empty($debug_info['transport_debug'])): ?>
-            <div class="debug">
-                <h4>Debug classe Transport</h4>
-                <pre><?= htmlspecialchars(print_r($debug_info['transport_debug'], true)) ?></pre>
-            </div>
-            <?php endif; ?>
-            
-            <?php if (isset($debug_info['signature'])): ?>
-            <div class="debug">
-                <h4>Signature méthode utilisée</h4>
-                <p><strong><?= htmlspecialchars($debug_info['signature']) ?></strong></p>
-                <?php if ($debug_info['signature'] === 'array'): ?>
-                    <p class="success">✅ Utilise la nouvelle signature (array)</p>
-                <?php else: ?>
-                    <p class="warning">⚠️ Utilise l'ancienne signature (paramètres séparés)</p>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-            
-            <?php if (isset($debug_info['exception'])): ?>
-            <div class="debug">
-                <h4>Exception détaillée</h4>
-                <div class="error">
-                    <strong>Message:</strong> <?= htmlspecialchars($debug_info['exception']['message']) ?><br>
-                    <strong>Fichier:</strong> <?= htmlspecialchars($debug_info['exception']['file']) ?><br>
-                    <strong>Ligne:</strong> <?= htmlspecialchars($debug_info['exception']['line']) ?>
-                </div>
-                <pre><?= htmlspecialchars($debug_info['exception']['trace']) ?></pre>
-            </div>
-            <?php endif; ?>
-            
+            <h2>🔍 Debug</h2>
             <div class="debug">
                 <h4>Résultats bruts</h4>
                 <pre><?= htmlspecialchars(print_r($results, true)) ?></pre>
             </div>
+            
+            <?php if (!empty($debug_info['transport_debug'])): ?>
+            <div class="debug">
+                <h4>Debug Transport</h4>
+                <pre><?= htmlspecialchars(print_r($debug_info['transport_debug'], true)) ?></pre>
+            </div>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
+        <?php endif; ?>
         
-        <!-- Tests système -->
-        <div class="section">
-            <h2>🔧 Tests système</h2>
-            
-            <?php
-            $system_tests = [];
-            
-            try {
-                $stmt = $db->query("SELECT 1");
-                $system_tests['db'] = ['status' => 'success', 'message' => 'Connexion DB OK'];
-            } catch (Exception $e) {
-                $system_tests['db'] = ['status' => 'error', 'message' => 'Erreur DB: ' . $e->getMessage()];
-            }
-            
-            $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
-            if (file_exists($transport_file)) {
-                $system_tests['transport_file'] = ['status' => 'success', 'message' => 'Fichier Transport trouvé'];
-                
-                try {
-                    require_once $transport_file;
-                    if (class_exists('Transport')) {
-                        $system_tests['transport_class'] = ['status' => 'success', 'message' => 'Classe Transport chargée'];
-                        
-                        $transport_test = new Transport($db);
-                        $methods = get_class_methods($transport_test);
-                        $system_tests['transport_methods'] = [
-                            'status' => 'success', 
-                            'message' => 'Méthodes: ' . implode(', ', $methods)
-                        ];
-                    } else {
-                        $system_tests['transport_class'] = ['status' => 'error', 'message' => 'Classe Transport non trouvée'];
-                    }
-                } catch (Exception $e) {
-                    $system_tests['transport_class'] = ['status' => 'error', 'message' => 'Erreur classe: ' . $e->getMessage()];
-                }
-            } else {
-                $system_tests['transport_file'] = ['status' => 'error', 'message' => 'Fichier Transport manquant'];
-            }
-            
-            $tables = ['gul_xpo_rates', 'gul_heppner_rates', 'gul_kn_rates', 'gul_taxes_transporteurs'];
-            foreach ($tables as $table) {
-                try {
-                    $count = $db->query("SELECT COUNT(*) FROM `$table`")->fetchColumn();
-                    $system_tests["table_$table"] = ['status' => 'success', 'message' => "Table $table: $count lignes"];
-                } catch (Exception $e) {
-                    $system_tests["table_$table"] = ['status' => 'error', 'message' => "Erreur $table: " . $e->getMessage()];
-                }
-            }
-            
-            $ajax_file = __DIR__ . '/ajax-calculate.php';
-            if (file_exists($ajax_file)) {
-                $system_tests['ajax_file'] = ['status' => 'success', 'message' => 'Fichier AJAX trouvé'];
-            } else {
-                $system_tests['ajax_file'] = ['status' => 'error', 'message' => 'Fichier AJAX manquant'];
-            }
-            ?>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
-                <?php foreach ($system_tests as $test => $result): ?>
-                <div class="<?= $result['status'] ?>">
-                    <strong><?= htmlspecialchars($test) ?>:</strong><br>
-                    <?= htmlspecialchars($result['message']) ?>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        
-        <!-- Footer -->
-        <div style="text-align: center; margin-top: 40px; padding: 20px; color: #64748b; border-top: 1px solid #e2e8f0;">
-            <p>Interface de validation - Compatible Architecture JS v<?= $version_info['version'] ?? '0.5' ?></p>
-            <p>
-                <a href="index.php">← Calculateur principal</a> | 
-                <a href="debug-simple.php">Debug simple</a> | 
-                <a href="../">Portail</a>
-            </p>
-        </div>
     </div>
 </body>
 </html>
