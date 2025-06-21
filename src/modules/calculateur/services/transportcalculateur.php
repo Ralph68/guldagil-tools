@@ -639,7 +639,7 @@ class Transport
         $stmt->execute([':carrier' => $this->taxNames[$carrier]]);
         $result = $stmt->fetch();
 
-        return $result && $result['surcharge_gasoil'] ? (float)$result['surcharge_gasoil'] / 100 : 0;
+        return $result && $result['surcharge_gasoil'] ? (float)$result['surcharge_gasoil'] : 0;
     }
 
     /**
