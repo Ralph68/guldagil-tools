@@ -105,7 +105,7 @@ if ($_POST) {
         'poids' => floatval($_POST['poids'] ?? 0),
         'type' => strtolower(trim($_POST['type'] ?? 'colis')),
         'adr' => ($_POST['adr'] ?? 'non') === 'oui' ? 'oui' : 'non',
-        'service_livraison' => trim($_POST['service_livraison'] ?? 'standard'),
+        'option_sup' => trim($_POST['option_sup'] ?? 'standard'),
         'enlevement' => isset($_POST['enlevement']),
         'palettes' => max(0, intval($_POST['palettes'] ?? 0))
     ];
@@ -237,10 +237,10 @@ if ($_POST) {
                     
                     <div class="form-group">
                         <label for="service_livraison">Service:</label>
-                        <select id="service_livraison" name="service_livraison">
-                            <option value="standard" <?= ($_POST['service_livraison'] ?? 'standard') === 'standard' ? 'selected' : '' ?>>Standard</option>
-                            <option value="rdv" <?= ($_POST['service_livraison'] ?? '') === 'rdv' ? 'selected' : '' ?>>Prise de RDV</option>
-                            <option value="premium13" <?= ($_POST['service_livraison'] ?? '') === 'premium13' ? 'selected' : '' ?>>Premium 13h</option>
+                         <select id="service_livraison" name="option_sup">
+                            <option value="standard" <?= ($_POST['option_sup'] ?? 'standard') === 'standard' ? 'selected' : '' ?>>Standard</option>
+                            <option value="rdv" <?= ($_POST['option_sup'] ?? '') === 'rdv' ? 'selected' : '' ?>>Prise de RDV</option>
+                            <option value="premium13" <?= ($_POST['option_sup'] ?? '') === 'premium13' ? 'selected' : '' ?>>Premium 13h</option>
                         </select>
                     </div>
                     
