@@ -108,11 +108,11 @@ $debug_mode = isset($_GET['debug']) || (defined('DEBUG') && DEBUG);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
     <!-- CSS - Architecture modulaire -->
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/base.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/progressive-form.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/results.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/components.css">
+    <link rel="stylesheet" href="assets/css/modules/calculateur/base.css">
+    <link rel="stylesheet" href="assets/css/modules/calculateur/layout.css">
+    <link rel="stylesheet" href="assets/css/modules/calculateur/progressive-form.css">
+    <link rel="stylesheet" href="assets/css/modules/calculateur/results.css">
+    <link rel="stylesheet" href="assets/css/modules/calculateur/components.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="../assets/img/favicon.png">
