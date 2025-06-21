@@ -100,20 +100,25 @@ function formatResults($results) {
 
 // TRAITEMENT DU FORMULAIRE
 if ($_POST) {
-    $adr = (isset($_POST['adr']) && $_POST['adr'] === 'oui');
     $start_time = microtime(true);
     
     $params = [
-        'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
-        'poids' => floatval($_POST['poids'] ?? 0),
-        'type' => strtolower(trim($_POST['type'] ?? 'colis')),
-        'adr' => ($_POST['adr'] ?? 'non') === 'oui', // ← BOOL au lieu de string
-        'service_livraison' => trim($_POST['service_livraison'] ?? 'standard'),
-        'enlevement' => isset($_POST['enlevement']) && $_POST['enlevement'],
-        'palettes' => max(0, intval($_POST['palettes'] ?? 0))
-    ];
-    
+    'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
+    'poids' => floatval($_POST['poids'] ?? 0),
+    'type' => strtolower(trim($_POST['type'] ?? 'colis')),
+    'adr' => ($_POST['adr'] ?? 'non') === 'oui' ? 'oui' : 'non', // ← Garder string pour validation
+    'service_livraison' => trim($_POST['service_livraison'] ?? 'standard'),
+    'enlevement' => isset($_POST['enlevement']),
+    'palettes' => max(0, intval($_POST['palettes'] ?? 0))
+];
+
     $validation_errors = validateCalculatorData($params);
+
+// Puis convertir après validation :
+    if (empty($validation_errors)) {
+        $params['adr'] = ($params['adr'] === 'oui'); // ← Convertir en bool ici
+        // ... continuer avec Transport
+    }
     
     if (empty($validation_errors)) {
         try {
