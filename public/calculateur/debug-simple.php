@@ -33,8 +33,7 @@ echo "<h2>3. Test Fichiers</h2>";
 $files_to_check = [
     __DIR__ . '/../../config/version.php',
     __DIR__ . '/ajax-calculate.php',
-    __DIR__ . '/../../lib/Transport.php',
-    __DIR__ . '/../../src/modules/calculateur/services/Transport.php'
+    __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php'
 ];
 
 foreach ($files_to_check as $file) {
@@ -66,14 +65,18 @@ if ($_POST) {
     // Test direct sans AJAX
     try {
         // Essayer de charger Transport
-        if (file_exists(__DIR__ . '/../../lib/Transport.php')) {
-            require_once __DIR__ . '/../../lib/Transport.php';
+        if (file_exists(__DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php')) {
+            require_once __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
             $transport = new Transport($db);
-            echo "✅ Classe Transport chargée depuis lib/<br>";
-        } elseif (file_exists(__DIR__ . '/../../src/modules/calculateur/services/Transport.php')) {
-            require_once __DIR__ . '/../../src/modules/calculateur/services/Transport.php';
-            $transport = new Transport($db);
-            echo "✅ Classe Transport chargée depuis src/<br>";
+            echo "✅ Classe Transport chargée depuis transportcalculateur.php<br>";
+            
+            // Test simple de calcul
+            $test_results = $transport->calculateAll($params);
+            echo "✅ Calcul exécuté<br>";
+            echo "<pre>";
+            print_r($test_results);
+            echo "</pre>";
+            
         } else {
             echo "❌ Classe Transport non trouvée<br>";
         }
