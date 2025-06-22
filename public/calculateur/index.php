@@ -494,5 +494,23 @@ if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
         }
     }
     </script>
+    <!-- Initialisation du contrôleur après chargement du DOM et des modules -->
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        // Attendre que CalculateurConfig soit défini
+        const checkReady = () => {
+            if (typeof window.CalculateurConfig !== 'undefined' &&
+                typeof window.FormController !== 'undefined') {
+                window.formController = new FormController();
+            } else {
+                // Réessaie après un petit délai si ce n'est pas prêt
+                setTimeout(checkReady, 50);
+            }
+        };
+
+        checkReady();
+    });
+</script>
+
 </body>
 </html>
