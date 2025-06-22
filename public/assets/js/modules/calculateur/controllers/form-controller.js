@@ -529,4 +529,4 @@ class FormController {
 }
 
 // Export global
-window.formController = new FormController();
+//window.formController = new FormController();
