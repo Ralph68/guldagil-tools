@@ -103,7 +103,6 @@ if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
     <title><?= htmlspecialchars($page_title) ?> - Gul Transport</title>
     
     <!-- Styles CSS -->
-    <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/base.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/components.css">
