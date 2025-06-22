@@ -18,7 +18,7 @@ class FormController {
         this.handleInput = this.handleInput.bind(this);
         this.handleFieldChange = this.handleFieldChange.bind(this);
         this.validateField = this.validateField.bind(this);
-        this.advanceStep = this.advanceStep.bind(this);
+        this.autoAdvanceStep = this.autoAdvanceStep.bind(this);
     }
 
     init() {
