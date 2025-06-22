@@ -20,9 +20,9 @@ try {
 
 // Test Transport
 try {
-    if (file_exists(__DIR__ . '/../../lib/Transport.php')) {
+    if (file_exists(__DIR__ . '/../../require_once __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php')) {
         echo "<br>Transport existe";
-        require_once __DIR__ . '/../../lib/Transport.php';
+        require_once __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
         echo "<br>Transport chargé";
     } else {
         echo "<br>Transport manquant";
