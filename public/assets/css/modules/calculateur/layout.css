@@ -19,6 +19,16 @@
     --layout-gap-mobile: 1rem;
 }
 
+/* ===== CORRECTION CLASSE BODY ===== */
+.calculator-page {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f8fafc;
+    color: #1f2937;
+    line-height: 1.6;
+}
+
 /* ===== CONTENEUR PRINCIPAL ===== */
 .calculateur-container {
     max-width: var(--layout-max-width);
@@ -30,7 +40,7 @@
 /* ===== LAYOUT GRID PRINCIPAL (comme dans les images) ===== */
 .calculator-layout {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1fr 380px; /* Largeur fixe pour résultats */
     gap: 2rem;
     max-width: 1400px;
     margin: 2rem auto;
@@ -120,10 +130,11 @@
     color: white;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+    width: 380px; /* Largeur fixe */
     position: sticky;
     top: 2rem;
-    min-height: 400px;
+    max-height: calc(100vh - 4rem);
 }
 
 .results-header {
@@ -150,19 +161,23 @@
 
 /* ===== ZONE D'ATTENTE CALCUL ===== */
 .calculation-waiting {
-    padding: 3rem;
+    padding: 3rem 2rem;
     text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 2rem;
+    border-radius: 8px;
+    min-height: 200px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 200px;
 }
 
 .waiting-icon {
     font-size: 3rem;
     margin-bottom: 1rem;
     animation: float 2s ease-in-out infinite;
+    opacity: 0.8;
 }
 
 @keyframes float {
@@ -172,13 +187,15 @@
 
 .waiting-text {
     font-size: 1.125rem;
-    font-weight: 500;
+    font-weight: 6500;
     margin-bottom: 0.5rem;
 }
 
 .waiting-subtext {
+    font-size: 0.9rem;
     opacity: 0.8;
     font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 /* ===== GRILLE CHAMPS (2 colonnes dans chaque step) ===== */
@@ -196,6 +213,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    margin-bottom: 1.5rem;
 }
 
 .form-field.full-width {
@@ -388,10 +406,11 @@
 
 /* ===== LABELS ===== */
 .form-label {
-    font-weight: 500;
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
     color: #374151;
     font-size: 0.9rem;
-    margin-bottom: 0.5rem;
 }
 
 .form-label.required::after {
@@ -704,8 +723,10 @@
     
     /* Section résultats mobile */
     .results-section {
+        width: 100%;
         position: static;
         order: -1; /* Mettre les résultats en haut sur mobile */
+        max-height: none;
     }
     
     .results-header {
@@ -769,8 +790,13 @@
     
     .form-input,
     .form-select {
-        font-size: 16px; /* Évite le zoom iOS */
-        min-height: 44px;
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        background: white;
     }
     
     .option-button,
