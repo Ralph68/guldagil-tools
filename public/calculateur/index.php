@@ -48,7 +48,8 @@ function getVersionInfo() {
     return [
         'version' => '0.5.0-beta',
         'build' => date('Ymd') . '-' . substr(md5(__FILE__), 0, 6),
-        'timestamp' => date('Y-m-d H:i:s')
+        'timestamp' => date('Y-m-d H:i:s'),
+        'formatted_date' => date('d/m/Y H:i')
     ];
 }
 
@@ -104,7 +105,7 @@ if (!empty($preset_data['type']) && in_array($preset_data['type'], ['colis', 'pa
 <body class="calculateur-page">
     
     <!-- Header -->
-    <?php include __DIR__ . '//views/partials/header.php'; ?>
+    <?php include __DIR__ . '/views/partials/header.php'; ?>
 
     <!-- Container principal -->
     <div class="calculateur-container">
