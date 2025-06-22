@@ -502,7 +502,6 @@ if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
         const checkReady = () => {
             if (typeof window.CalculateurConfig !== 'undefined' &&
                 typeof window.FormController !== 'undefined') {
-                window.formController = new FormController();
             } else {
                 // Réessaie après un petit délai si ce n'est pas prêt
                 setTimeout(checkReady, 50);
