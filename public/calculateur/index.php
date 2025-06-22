@@ -104,10 +104,11 @@ if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
     
     <!-- Styles CSS -->
     <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/base.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/forms.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/components.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/results.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/responsive.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/progressive-form.css">
     
     <!-- Meta SEO -->
     <meta name="description" content="Calculateur de frais de port - Comparez les tarifs des transporteurs">
@@ -394,17 +395,18 @@ if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
     </script>
     
     <!-- Scripts JS dans l'ordre de dépendance -->
+    <script src="../assets/js/modules/calculateur/core/state-manager.js"></script>
     <script src="../assets/js/modules/calculateur/core/calculateur-config.js"></script>
-    <script src="../assets/js/modules/calculateur/core/state.js"></script>
-    <script src="../assets/js/modules/calculateur/services/api.js"></script>
+    <script src="../assets/js/modules/calculateur/core/api-service.js"></script>
     <script src="../assets/js/modules/calculateur/models/form-data.js"></script>
     <script src="../assets/js/modules/calculateur/models/validation.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/form.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/calculation.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/ui.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/form-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/calculation-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/ui-controller.js"></script>
     <script src="../assets/js/modules/calculateur/views/progressive-form.js"></script>
     <script src="../assets/js/modules/calculateur/views/results-display.js"></script>
     <script src="../assets/js/modules/calculateur/main.js"></script>
+    
     
     <!-- Initialisation -->
     <script>
