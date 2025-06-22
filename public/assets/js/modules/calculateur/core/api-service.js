@@ -23,7 +23,10 @@ class ApiService {
         
         CalculateurConfig.log('info', 'Service API initialisé');
     }
-    
+
+    init() {
+        console.log('API Service initialisé');
+    }
     /**
      * Calculer les frais de port
      * @param {object} formData - Données du formulaire
