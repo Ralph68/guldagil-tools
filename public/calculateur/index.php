@@ -91,11 +91,11 @@ if (!empty($preset_data['type']) && in_array($preset_data['type'], ['colis', 'pa
     <title><?= htmlspecialchars($page_title) ?> - Gul Transport</title>
     
     <!-- Styles CSS -->
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/base.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/components.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/results.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/progressive-form.css">
+    <link rel="stylesheet" href="/assets/css/modules/calculateur/base.css">
+    <link rel="stylesheet" href="/assets/css/modules/calculateur/layout.css">
+    <link rel="stylesheet" href="/assets/css/modules/calculateur/components.css">
+    <link rel="stylesheet" href="/assets/css/modules/calculateur/results.css">
+    <link rel="stylesheet" href="/assets/css/modules/calculateur/progressive-form.css">
     
     <!-- Meta SEO -->
     <meta name="description" content="Calculateur de frais de port - Comparez les tarifs des transporteurs">
@@ -104,7 +104,7 @@ if (!empty($preset_data['type']) && in_array($preset_data['type'], ['colis', 'pa
 <body class="calculateur-page">
     
     <!-- Header -->
-    <?php include __DIR__ . '/../views/partials/header.php'; ?>
+    <?php include __DIR__ . '//views/partials/header.php'; ?>
 
     <!-- Container principal -->
     <div class="calculateur-container">
@@ -316,7 +316,7 @@ if (!empty($preset_data['type']) && in_array($preset_data['type'], ['colis', 'pa
     </div>
 
     <!-- Footer -->
-    <?php include __DIR__ . '/../views/partials/footer.php'; ?>
+    <?php include __DIR__ . '/views/partials/footer.php'; ?>
 
     <!-- Configuration JavaScript -->
     <script>
@@ -336,28 +336,28 @@ if (!empty($preset_data['type']) && in_array($preset_data['type'], ['colis', 'pa
     <!-- Scripts JavaScript - ORDRE CRITIQUE POUR LA CORRECTION -->
     
     <!-- 1. Module de boot AVANT tout le reste -->
-    <script src="../assets/js/modules/calculateur/core/module-boot.js"></script>
+    <script src="/assets/js/modules/calculateur/core/module-boot.js"></script>
     
     <!-- 2. Configuration et core -->
-    <script src="../assets/js/modules/calculateur/core/calculateur-config.js"></script>
-    <script src="../assets/js/modules/calculateur/core/state-manager.js"></script>
-    <script src="../assets/js/modules/calculateur/core/api-service.js"></script>
+    <script src="/assets/js/modules/calculateur/core/calculateur-config.js"></script>
+    <script src="/assets/js/modules/calculateur/core/state-manager.js"></script>
+    <script src="/assets/js/modules/calculateur/core/api-service.js"></script>
     
     <!-- 3. Models -->
-    <script src="../assets/js/modules/calculateur/models/form-data.js"></script>
-    <script src="../assets/js/modules/calculateur/models/validation.js"></script>
+    <script src="/assets/js/modules/calculateur/models/form-data.js"></script>
+    <script src="/assets/js/modules/calculateur/models/validation.js"></script>
     
     <!-- 4. Controllers -->
-    <script src="../assets/js/modules/calculateur/controllers/form-controller.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/calculation-controller.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/ui-controller.js"></script>
+    <script src="/assets/js/modules/calculateur/controllers/form-controller.js"></script>
+    <script src="/assets/js/modules/calculateur/controllers/calculation-controller.js"></script>
+    <script src="/assets/js/modules/calculateur/controllers/ui-controller.js"></script>
     
     <!-- 5. Views -->
-    <script src="../assets/js/modules/calculateur/views/progressive-form.js"></script>
-    <script src="../assets/js/modules/calculateur/views/results-display.js"></script>
+    <script src="/assets/js/modules/calculateur/views/progressive-form.js"></script>
+    <script src="/assets/js/modules/calculateur/views/results-display.js"></script>
     
     <!-- 6. Application principale -->
-    <script src="../assets/js/modules/calculateur/main.js"></script>
+    <script src="/assets/js/modules/calculateur/main.js"></script>
     
     <!-- Script de fallback et correction -->
     <script>
