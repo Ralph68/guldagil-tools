@@ -396,10 +396,10 @@ if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
     <!-- Scripts JS dans l'ordre de dépendance -->
     <script src="../assets/js/modules/calculateur/core/calculateur-config.js"></script>
     <script src="../assets/js/modules/calculateur/core/state-manager.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/form-controller.js"></script>
     <script src="../assets/js/modules/calculateur/core/api-service.js"></script>
     <script src="../assets/js/modules/calculateur/models/form-data.js"></script>
     <script src="../assets/js/modules/calculateur/models/validation.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/form-controller.js"></script>
     <script src="../assets/js/modules/calculateur/controllers/calculation-controller.js"></script>
     <script src="../assets/js/modules/calculateur/controllers/ui-controller.js"></script>
     <script src="../assets/js/modules/calculateur/views/progressive-form.js"></script>
