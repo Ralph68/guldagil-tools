@@ -394,7 +394,7 @@ if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
     </script>
     
     <!-- Scripts JS dans l'ordre de dépendance -->
-    <script src="../assets/js/modules/calculateur/core/config.js"></script>
+    <script src="../assets/js/modules/calculateur/core/calculateur-config.js"></script>
     <script src="../assets/js/modules/calculateur/core/state.js"></script>
     <script src="../assets/js/modules/calculateur/services/api.js"></script>
     <script src="../assets/js/modules/calculateur/models/form-data.js"></script>
