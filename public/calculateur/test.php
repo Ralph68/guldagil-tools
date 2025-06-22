@@ -7,9 +7,9 @@ echo "PHP fonctionne";
 
 // Test config
 try {
-    if (file_exists(__DIR__ . '/../../config.php')) {
+    if (file_exists(__DIR__ . '/../../config/config.php')) {
         echo "<br>Config existe";
-        require_once __DIR__ . '/../../config.php';
+        require_once __DIR__ . '/../../config/config.php';
         echo "<br>Config chargé";
     } else {
         echo "<br>Config manquant";
