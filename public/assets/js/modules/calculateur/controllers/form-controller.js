@@ -530,3 +530,5 @@ class FormController {
 
 // Export global
 //window.formController = new FormController();
+window.FormController = FormController;
+
