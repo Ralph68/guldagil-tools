@@ -114,7 +114,7 @@ if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
     <meta name="description" content="Calculateur de frais de port - Comparez les tarifs des transporteurs">
     <meta name="robots" content="index,follow">
 </head>
-<body class="calculateur-page">
+<body class="calculator-page">
     
     <!-- Header -->
     <?php include __DIR__ . '/views/partials/header.php'; ?>
