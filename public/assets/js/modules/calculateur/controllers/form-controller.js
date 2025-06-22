@@ -1,3 +1,5 @@
+console.log("Chargement de FormController...");
+
 /**
  * Titre: Contrôleur formulaire progressif
  * Chemin: /public/assets/js/modules/calculateur/controllers/form-controller.js
