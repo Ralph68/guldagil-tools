@@ -1,517 +1,354 @@
 <?php
 /**
- * Titre: Module Calculateur - Interface progressive
+ * Titre: Module Calculateur - Interface MVC v2.0
  * Chemin: /public/calculateur/index.php
- * Version: 0.5 beta + build
- * 
- * Interface calculateur progressive avec architecture MVC
+ * Version: 2.0.0 - Build 20250624-001
  */
 
-// =========================================================================
-// CONFIGURATION ET SÉCURITÉ
-// =========================================================================
-
-// Chargement configuration
+// Bootstrap
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/version.php';
-require_once __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
+require_once __DIR__ . '/../../src/controllers/CalculateurController.php';
 
-// Définir BASE_PATH si pas défini
-if (!defined('BASE_PATH')) {
-    define('BASE_PATH', dirname(__DIR__, 2));
-}
-
-// Démarrage session si nécessaire
+// Session sécurisée
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    session_start([
+        'cookie_httponly' => true,
+        'cookie_secure' => isset($_SERVER['HTTPS']),
+        'use_strict_mode' => true
+    ]);
 }
 
-// Vérification accès module (si système d'authentification activé)
-if (function_exists('hasModuleAccess') && !hasModuleAccess('calculateur')) {
-    header('Location: ../');
-    exit('Module calculateur non disponible');
-}
-
-// Mode debug
-$debug_mode = defined('DEBUG') && DEBUG === true;
-
-// =========================================================================
-// RÉCUPÉRATION DES DONNÉES
-// =========================================================================
-
+// Controller MVC
 try {
-    // Options de service depuis BDD
-    $options_service = [];
-    $stmt = $db->query("
-        SELECT DISTINCT transporteur, code_option, libelle, montant 
-        FROM gul_options_supplementaires 
-        WHERE actif = 1 
-        ORDER BY transporteur, libelle
-    ");
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $options_service[] = $row;
+    $controller = new CalculateurController($db);
+    
+    // Routing simple
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_calculate'])) {
+        // AJAX calculation
+        header('Content-Type: application/json');
+        echo json_encode($controller->calculate($_POST));
+        exit;
     }
     
-    // Départements avec restrictions (pour validation côté client)
-    $dept_restrictions = [];
-    $stmt = $db->query("
-        SELECT transporteur, departements_blacklistes 
-        FROM gul_taxes_transporteurs 
-        WHERE departements_blacklistes IS NOT NULL AND departements_blacklistes != ''
-    ");
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        if ($row['departements_blacklistes']) {
-            $dept_restrictions[$row['transporteur']] = explode(',', $row['departements_blacklistes']);
-        }
-    }
+    // Page view
+    $viewData = $controller->index($_GET);
     
 } catch (Exception $e) {
-    // Fallback en cas d'erreur BDD
-    $options_service = [
-        ['transporteur' => 'Tous', 'code_option' => 'standard', 'libelle' => 'Livraison standard', 'montant' => 0],
-        ['transporteur' => 'Tous', 'code_option' => 'rdv', 'libelle' => 'Prise de RDV', 'montant' => 15]
+    error_log("Erreur calculateur: " . $e->getMessage());
+    $viewData = [
+        'error' => true,
+        'message' => 'Service temporairement indisponible',
+        'preset_data' => [],
+        'options_service' => [],
+        'dept_restrictions' => []
     ];
-    $dept_restrictions = [];
-    error_log("Erreur récupération données calculateur: " . $e->getMessage());
 }
 
-// Variables d'affichage
+// Extract view data
+extract($viewData);
 $page_title = 'Calculateur de frais de port';
 $version_info = getVersionInfo();
-
-// Présets depuis URL ou session
-$preset_data = [
-    'departement' => $_GET['dept'] ?? ($_GET['departement'] ?? ($_SESSION['calc_dept'] ?? '')),
-    'poids' => $_GET['poids'] ?? ($_SESSION['calc_poids'] ?? ''),
-    'type' => $_GET['type'] ?? ($_SESSION['calc_type'] ?? ''),
-    'adr' => $_GET['adr'] ?? ($_SESSION['calc_adr'] ?? ''),
-    'options' => $_GET['options'] ?? ($_SESSION['calc_options'] ?? []),
-    'palettes' => $_GET['palettes'] ?? ($_SESSION['calc_palettes'] ?? ''),
-    'enlevement' => isset($_GET['enlevement']) || ($_SESSION['calc_enlevement'] ?? false)
-];
-
-// Sauvegarde en session
-if (!empty($preset_data['departement'])) $_SESSION['calc_dept'] = $preset_data['departement'];
-if (!empty($preset_data['poids'])) $_SESSION['calc_poids'] = $preset_data['poids'];
-if (!empty($preset_data['type'])) $_SESSION['calc_type'] = $preset_data['type'];
-
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?> - Gul Transport</title>
+    <title><?= htmlspecialchars($page_title) ?> - Guldagil</title>
     
-    <!-- Styles CSS -->
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/base.css">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS modulaire -->
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/reset.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/variables.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/components.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/forms.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/results.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/progressive-form.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/responsive.css">
     
-    <!-- Meta SEO -->
-    <meta name="description" content="Calculateur de frais de port - Comparez les tarifs des transporteurs">
-    <meta name="robots" content="index,follow">
+    <!-- Meta -->
+    <meta name="description" content="Calculateur frais de port - Comparaison XPO, Heppner, Kuehne+Nagel">
+    <meta name="theme-color" content="#1e40af">
+    <link rel="icon" href="../assets/img/favicon.png">
 </head>
-<body class="calculator-page">
+
+<body class="calculateur-app">
     
     <!-- Header -->
-    <?php include __DIR__ . '/views/partials/header.php'; ?>
-    
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="calculateur-container">
-            
-            <!-- Hero Section -->
-            <section class="hero-section">
-                <div class="hero-content">
-                    <h1 class="hero-title">
-                        🧮 Calculateur de frais de port
-                    </h1>
-                    <p class="hero-subtitle">
-                        Comparez instantanément les tarifs des transporteurs
-                    </p>
+    <header class="app-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="brand">
+                    <img src="../assets/img/logo_guldagil.png" alt="Guldagil" class="brand-logo">
+                    <div class="brand-info">
+                        <h1 class="brand-title">Calculateur Frais de Port</h1>
+                        <p class="brand-subtitle">Comparaison transporteurs</p>
+                    </div>
                 </div>
-            </section>
-            
-            <!-- Layout principal -->
-            <div class="calculator-layout">
+                <div class="version-info">
+                    <span>v<?= $version_info['version'] ?></span>
+                    <small>Build <?= $version_info['build'] ?></small>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Alert système -->
+    <?php if (isset($error) && $error): ?>
+    <div class="system-alert error">
+        <div class="container">
+            <span class="alert-icon">⚠️</span>
+            <span><?= htmlspecialchars($message) ?></span>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Main content -->
+    <main class="app-main">
+        <div class="container">
+            <div class="calc-layout">
                 
-                <!-- Section paramètres -->
-                <section class="parameters-section">
-                    <div class="parameters-header">
-                        <h2>
-                            📦 Paramètres d'expédition
-                        </h2>
-                        <p>Renseignez les informations de votre envoi</p>
+                <!-- Formulaire -->
+                <section class="form-panel">
+                    <div class="panel-header">
+                        <h2><span class="icon">📦</span> Paramètres d'expédition</h2>
+                        <p>Configurez votre envoi pour comparer les tarifs</p>
                     </div>
                     
-                    <div class="form-steps">
-                        <form id="calculator-form" method="post" action="ajax-calculate.php">
-                            
-                            <!-- Étape 1: Destination -->
-                            <div class="form-step" id="step-1">
-                                <div class="step-header">
-                                    <div class="step-number">1</div>
-                                    <h3 class="step-title">Destination</h3>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="departement" class="form-label">
-                                        📍 Département de livraison
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        id="departement" 
-                                        name="departement" 
-                                        class="form-control" 
-                                        placeholder="Ex: 75"
-                                        value="<?= htmlspecialchars($preset_data['departement']) ?>"
-                                        pattern="^(0[1-9]|[1-8][0-9]|9[0-5])$"
-                                        maxlength="2"
-                                        required
-                                    >
-                                    <div class="field-help">
-                                        Saisissez le numéro de département (01 à 95)
-                                    </div>
-                                </div>
-                                
-                                <div class="step-summary" id="summary-step-1" style="display: none;">
-                                    <div class="summary-title">Destination</div>
-                                    <div class="summary-content" id="summary-content-1"></div>
+                    <form id="calc-form" class="calc-form" method="post">
+                        
+                        <!-- Step 1: Destination -->
+                        <div class="form-step" data-step="1">
+                            <div class="step-header">
+                                <span class="step-number">1</span>
+                                <div class="step-info">
+                                    <h3>Destination</h3>
+                                    <p>Où souhaitez-vous livrer ?</p>
                                 </div>
                             </div>
                             
-                            <!-- Étape 2: Caractéristiques -->
-                            <div class="form-step" id="step-2">
-                                <div class="step-header">
-                                    <div class="step-number">2</div>
-                                    <h3 class="step-title">Caractéristiques</h3>
-                                </div>
-                                
-                                <!-- Poids -->
-                                <div class="form-group">
-                                    <label for="poids" class="form-label">
-                                        ⚖️ Poids total (kg)
-                                    </label>
-                                    <input 
-                                        type="number" 
-                                        id="poids" 
-                                        name="poids" 
-                                        class="form-control" 
-                                        placeholder="Ex: 25.5"
-                                        value="<?= htmlspecialchars($preset_data['poids']) ?>"
-                                        min="0.1"
-                                        max="3500"
-                                        step="0.1"
-                                        required
-                                    >
-                                    <div class="field-help">
-                                        Poids total de votre envoi (0.1 à 3500 kg)
-                                    </div>
-                                </div>
-                                
-                                <!-- Type d'envoi -->
-                                <div class="form-group">
-                                    <label class="form-label">
-                                        📦 Type d'envoi
-                                    </label>
-                                    <div class="radio-group">
-                                        <label class="radio-option">
-                                            <input 
-                                                type="radio" 
-                                                name="type" 
-                                                value="colis" 
-                                                <?= ($preset_data['type'] === 'colis' || empty($preset_data['type'])) ? 'checked' : '' ?>
-                                            >
-                                            <span class="radio-label">🎁 Colis</span>
-                                        </label>
-                                        <label class="radio-option">
-                                            <input 
-                                                type="radio" 
-                                                name="type" 
-                                                value="palette" 
-                                                <?= $preset_data['type'] === 'palette' ? 'checked' : '' ?>
-                                            >
-                                            <span class="radio-label">🏗️ Palette</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                
-                                <!-- Nombre de palettes (conditionnel) -->
-                                <div class="form-group" id="field-palettes" style="display: <?= $preset_data['type'] === 'palette' ? 'block' : 'none' ?>;">
-                                    <label for="palettes" class="form-label">
-                                        🏗️ Nombre de palettes EUR
-                                    </label>
-                                    <input 
-                                        type="number" 
-                                        id="palettes" 
-                                        name="palettes" 
-                                        class="form-control" 
-                                        placeholder="Ex: 2"
-                                        value="<?= htmlspecialchars($preset_data['palettes']) ?>"
-                                        min="1"
-                                        max="26"
-                                    >
-                                    <div class="field-help">
-                                        Nombre de palettes Europe (1 à 26)
-                                    </div>
-                                </div>
-                                
-                                <!-- Matières dangereuses -->
-                                <div class="form-group">
-                                    <label class="form-label">
-                                        ⚠️ Matières dangereuses (ADR)
-                                    </label>
-                                    <div class="radio-group">
-                                        <label class="radio-option">
-                                            <input 
-                                                type="radio" 
-                                                name="adr" 
-                                                value="non" 
-                                                <?= ($preset_data['adr'] === 'non' || empty($preset_data['adr'])) ? 'checked' : '' ?>
-                                            >
-                                            <span class="radio-label">✅ Non</span>
-                                        </label>
-                                        <label class="radio-option">
-                                            <input 
-                                                type="radio" 
-                                                name="adr" 
-                                                value="oui" 
-                                                <?= $preset_data['adr'] === 'oui' ? 'checked' : '' ?>
-                                            >
-                                            <span class="radio-label">⚠️ Oui</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                
-                                <div class="step-summary" id="summary-step-2" style="display: none;">
-                                    <div class="summary-title">Caractéristiques</div>
-                                    <div class="summary-content" id="summary-content-2"></div>
+                            <div class="form-field">
+                                <label for="departement" class="field-label required">
+                                    <span class="label-icon">📍</span>
+                                    Département de livraison
+                                </label>
+                                <select id="departement" name="departement" class="form-control" required>
+                                    <option value="">Sélectionnez</option>
+                                    <?php for($i = 1; $i <= 95; $i++): 
+                                        $dept = sprintf('%02d', $i);
+                                        $selected = ($preset_data['departement'] === $dept) ? 'selected' : '';
+                                    ?>
+                                    <option value="<?= $dept ?>" <?= $selected ?>><?= $dept ?></option>
+                                    <?php endfor; ?>
+                                    <option value="971" <?= ($preset_data['departement'] === '971') ? 'selected' : '' ?>>971 - Guadeloupe</option>
+                                    <option value="972" <?= ($preset_data['departement'] === '972') ? 'selected' : '' ?>>972 - Martinique</option>
+                                    <option value="973" <?= ($preset_data['departement'] === '973') ? 'selected' : '' ?>>973 - Guyane</option>
+                                    <option value="974" <?= ($preset_data['departement'] === '974') ? 'selected' : '' ?>>974 - Réunion</option>
+                                    <option value="976" <?= ($preset_data['departement'] === '976') ? 'selected' : '' ?>>976 - Mayotte</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 2: Caractéristiques -->
+                        <div class="form-step" data-step="2">
+                            <div class="step-header">
+                                <span class="step-number">2</span>
+                                <div class="step-info">
+                                    <h3>Caractéristiques</h3>
+                                    <p>Décrivez votre envoi</p>
                                 </div>
                             </div>
                             
-                            <!-- Étape 3: Options -->
-                            <div class="form-step" id="step-3">
-                                <div class="step-header">
-                                    <div class="step-number">3</div>
-                                    <h3 class="step-title">Options de service</h3>
-                                </div>
-                                
-                                <!-- Options supplémentaires -->
-                                <div class="form-group">
-                                    <label class="form-label">
-                                        ⚙️ Options supplémentaires
+                            <div class="form-field">
+                                <label for="poids" class="field-label required">
+                                    <span class="label-icon">⚖️</span>
+                                    Poids total (kg)
+                                </label>
+                                <input type="number" id="poids" name="poids" 
+                                       class="form-control" placeholder="Ex: 25" 
+                                       min="1" max="32000" step="0.1"
+                                       value="<?= htmlspecialchars($preset_data['poids']) ?>" required>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label class="field-label required">
+                                    <span class="label-icon">📋</span>
+                                    Type d'envoi
+                                </label>
+                                <div class="radio-group">
+                                    <label class="radio-option">
+                                        <input type="radio" name="type" value="colis" 
+                                               <?= ($preset_data['type'] === 'colis' || empty($preset_data['type'])) ? 'checked' : '' ?>>
+                                        <span class="radio-content">
+                                            <span class="radio-icon">📦</span>
+                                            <span class="radio-text">Colis</span>
+                                        </span>
                                     </label>
-                                    <div class="checkbox-group">
-                                        <?php foreach ($options_service as $option): ?>
-                                        <label class="checkbox-option">
-                                            <input 
-                                                type="checkbox" 
-                                                name="options[]" 
-                                                value="<?= htmlspecialchars($option['code_option']) ?>"
-                                                <?= in_array($option['code_option'], (array)$preset_data['options']) ? 'checked' : '' ?>
-                                            >
-                                            <span class="checkbox-label">
-                                                <?= htmlspecialchars($option['libelle']) ?>
-                                                <?php if ($option['montant'] > 0): ?>
-                                                <span class="option-price">+<?= number_format($option['montant'], 2) ?>€</span>
-                                                <?php endif; ?>
-                                            </span>
-                                        </label>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                                
-                                <!-- Enlèvement -->
-                                <div class="form-group">
-                                    <label class="checkbox-option checkbox-primary">
-                                        <input 
-                                            type="checkbox" 
-                                            name="enlevement" 
-                                            value="1"
-                                            <?= $preset_data['enlevement'] ? 'checked' : '' ?>
-                                        >
-                                        <span class="checkbox-label">
-                                            🚚 Enlèvement à domicile
+                                    <label class="radio-option">
+                                        <input type="radio" name="type" value="palette" 
+                                               <?= ($preset_data['type'] === 'palette') ? 'checked' : '' ?>>
+                                        <span class="radio-content">
+                                            <span class="radio-icon">🏗️</span>
+                                            <span class="radio-text">Palette</span>
                                         </span>
                                     </label>
                                 </div>
-                                
-                                <div class="step-summary" id="summary-step-3" style="display: none;">
-                                    <div class="summary-title">Options sélectionnées</div>
-                                    <div class="summary-content" id="summary-content-3"></div>
+                            </div>
+                            
+                            <div class="form-field" id="field-palettes" style="display: none;">
+                                <label for="palettes" class="field-label">
+                                    <span class="label-icon">🏗️</span>
+                                    Nombre de palettes
+                                </label>
+                                <input type="number" id="palettes" name="palettes" 
+                                       class="form-control" placeholder="Ex: 2" 
+                                       min="1" max="20"
+                                       value="<?= htmlspecialchars($preset_data['palettes']) ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Step 3: Options -->
+                        <div class="form-step" data-step="3">
+                            <div class="step-header">
+                                <span class="step-number">3</span>
+                                <div class="step-info">
+                                    <h3>Options</h3>
+                                    <p>Personnalisez votre livraison</p>
                                 </div>
                             </div>
                             
-                            <!-- Navigation cachée (gérée par JS) -->
-                            <div class="step-navigation auto-advance-nav">
-                                <button type="button" class="nav-btn secondary" id="btn-previous">
-                                    ← Précédent
-                                </button>
-                                <button type="button" class="nav-btn primary" id="btn-next">
-                                    Suivant →
-                                </button>
+                            <div class="form-field">
+                                <label class="field-label">
+                                    <span class="label-icon">⚠️</span>
+                                    Matières dangereuses (ADR)
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="adr" value="1" 
+                                           <?= ($preset_data['adr']) ? 'checked' : '' ?>>
+                                    <span class="checkbox-content">Transport ADR requis</span>
+                                </label>
                             </div>
                             
-                        </form>
-                    </div>
+                            <div class="form-field">
+                                <label class="field-label">
+                                    <span class="label-icon">🚚</span>
+                                    Options de service
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="enlevement" value="1" 
+                                           <?= ($preset_data['enlevement']) ? 'checked' : '' ?>>
+                                    <span class="checkbox-content">Enlèvement à domicile</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" id="reset-btn">
+                                <span class="btn-icon">🔄</span>
+                                Réinitialiser
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="calc-btn">
+                                <span class="btn-icon">🧮</span>
+                                Calculer
+                            </button>
+                        </div>
+                        
+                        <input type="hidden" name="ajax_calculate" value="1">
+                    </form>
                 </section>
                 
-                <!-- Section résultats -->
-                <section class="results-section">
-                    <?php include __DIR__ . '/views/components/results-panel.php'; ?>
+                <!-- Résultats -->
+                <section class="results-panel">
+                    <div class="panel-header">
+                        <h2><span class="icon">💰</span> Comparaison des tarifs</h2>
+                        <p>Résultats en temps réel</p>
+                    </div>
+                    
+                    <div class="results-content">
+                        <div id="results-waiting" class="result-state active">
+                            <div class="state-content">
+                                <div class="state-icon">⏳</div>
+                                <h3>En attente</h3>
+                                <p>Remplissez le formulaire pour comparer les tarifs</p>
+                            </div>
+                        </div>
+                        
+                        <div id="results-loading" class="result-state">
+                            <div class="state-content">
+                                <div class="loading-spinner"></div>
+                                <h3>Calcul en cours...</h3>
+                                <p>Comparaison des transporteurs</p>
+                            </div>
+                        </div>
+                        
+                        <div id="results-display" class="result-state">
+                            <!-- Injecté par JS -->
+                        </div>
+                        
+                        <div id="results-error" class="result-state">
+                            <div class="state-content">
+                                <div class="state-icon error">❌</div>
+                                <h3>Erreur de calcul</h3>
+                                <p>Veuillez réessayer</p>
+                                <button class="btn btn-primary" onclick="location.reload()">Recharger</button>
+                            </div>
+                        </div>
+                    </div>
                 </section>
                 
             </div>
         </div>
     </main>
 
-    <!-- Actions flottantes -->
-    <div class="floating-actions">
-        <button type="button" class="floating-btn" id="btn-reset" title="Nouveau calcul">
-            🔄
-        </button>
-        <?php if ($debug_mode): ?>
-        <button type="button" class="floating-btn debug" id="btn-debug" title="Debug">
-            🐛
-        </button>
-        <?php endif; ?>
-    </div>
-
     <!-- Footer -->
-    <?php include __DIR__ . '/views/partials/footer.php'; ?>
+    <footer class="app-footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>&copy; <?= COPYRIGHT_YEAR ?> Guldagil - Transport et Logistique</p>
+                <div class="footer-version">
+                    <?= renderVersionFooter() ?>
+                </div>
+            </div>
+        </div>
+    </footer>
 
-    <!-- Scripts JavaScript - Ordre d'importation critique -->
+    <!-- Configuration JS -->
     <script>
-    // Configuration serveur pour le JS
-    window.CalculateurServerConfig = {
-        presetData: <?= json_encode($preset_data) ?>,
-        optionsService: <?= json_encode($options_service) ?>,
-        deptRestrictions: <?= json_encode($dept_restrictions) ?>,
-        debugMode: <?= $debug_mode ? 'true' : 'false' ?>
+    window.CalculateurConfig = {
+        preset: <?= json_encode($preset_data ?? []) ?>,
+        options: <?= json_encode($options_service ?? []) ?>,
+        restrictions: <?= json_encode($dept_restrictions ?? []) ?>,
+        debug: <?= json_encode(defined('DEBUG') && DEBUG) ?>,
+        urls: {
+            calculate: window.location.href,
+            admin: '../admin/'
+        },
+        version: '<?= $version_info['version'] ?>',
+        build: '<?= $version_info['build'] ?>'
     };
     </script>
     
-    <!-- Scripts JS dans l'ordre de dépendance -->
-    <script src="../assets/js/modules/calculateur/core/calculateur-config.js"></script>
-    <script src="../assets/js/modules/calculateur/core/state-manager.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/form-controller.js"></script>
-    <script src="../assets/js/modules/calculateur/core/api-service.js"></script>
-    <script src="../assets/js/modules/calculateur/models/form-data.js"></script>
-    <script src="../assets/js/modules/calculateur/models/validation.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/calculation-controller.js"></script>
-    <script src="../assets/js/modules/calculateur/controllers/ui-controller.js"></script>
-    <script src="../assets/js/modules/calculateur/views/progressive-form.js"></script>
-    <script src="../assets/js/modules/calculateur/views/results-display.js"></script>
-    <script src="../assets/js/modules/calculateur/main.js"></script>
+    <!-- JS modulaire -->
+    <script src="../assets/js/modules/calculateur/config.js"></script>
+    <script src="../assets/js/modules/calculateur/state-manager.js"></script>
+    <script src="../assets/js/modules/calculateur/form-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/api-service.js"></script>
+    <script src="../assets/js/modules/calculateur/results-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/app.js"></script>
     
-    
-    <!-- Initialisation -->
+    <!-- Init -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Vérification des dépendances
-        if (typeof CalculateurApp === 'undefined') {
-            console.error('❌ Module principal CalculateurApp non chargé');
-            return;
+        if (typeof CalculateurApp !== 'undefined') {
+            new CalculateurApp().init(window.CalculateurConfig);
         }
-        
-        // Initialisation de l'application
-        const app = new CalculateurApp();
-        app.init(window.CalculateurServerConfig)
-            .then(() => {
-                console.log('✅ Calculateur initialisé avec succès');
-            })
-            .catch(error => {
-                console.error('❌ Erreur initialisation calculateur:', error);
-                
-                // Fallback simple en cas d'erreur
-                initFallbackMode();
-            });
     });
-    
-    // Mode fallback simple
-    function initFallbackMode() {
-        console.log('🔄 Activation du mode fallback...');
-        
-        // Gestion simple du type d'envoi
-        const typeRadios = document.querySelectorAll('input[name="type"]');
-        const palettesField = document.getElementById('field-palettes');
-        
-        typeRadios.forEach(radio => {
-            radio.addEventListener('change', function() {
-                if (palettesField) {
-                    palettesField.style.display = this.value === 'palette' ? 'block' : 'none';
-                }
-            });
-        });
-        
-        // Soumission du formulaire
-        const form = document.getElementById('calculator-form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Collecte des données
-                const formData = new FormData(this);
-                
-                // Affichage loading
-                const resultsPanel = document.querySelector('.results-content');
-                if (resultsPanel) {
-                    resultsPanel.innerHTML = '<div class="loading">🔄 Calcul en cours...</div>';
-                }
-                
-                // Envoi AJAX
-                fetch('ajax-calculate.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && resultsPanel) {
-                        // Affichage des résultats (simplifié)
-                        let html = '<div class="results-success">';
-                        html += '<h3>🎯 Meilleur tarif</h3>';
-                        if (data.best) {
-                            html += `<div class="best-result">`;
-                            html += `<strong>${data.best.transporteur}</strong><br>`;
-                            html += `<span class="price">${data.best.prix_total}€</span>`;
-                            html += `</div>`;
-                        }
-                        html += '</div>';
-                        resultsPanel.innerHTML = html;
-                    } else {
-                        resultsPanel.innerHTML = '<div class="error">❌ Erreur de calcul</div>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Erreur:', error);
-                    if (resultsPanel) {
-                        resultsPanel.innerHTML = '<div class="error">❌ Erreur de connexion</div>';
-                    }
-                });
-            });
-        }
-    }
     </script>
-    <!-- Initialisation du contrôleur après chargement du DOM et des modules -->
-<script>
-    window.addEventListener('DOMContentLoaded', () => {
-        // Attendre que CalculateurConfig soit défini
-        const checkReady = () => {
-            if (typeof window.CalculateurConfig !== 'undefined' &&
-                typeof window.FormController !== 'undefined') {
-                window.formController = new window.FormController();
-            } else {
-                // Réessaie après un petit délai si ce n'est pas prêt
-                setTimeout(checkReady, 50);
-            }
-        };
-
-        checkReady();
-    });
-</script>
-
 </body>
 </html>
