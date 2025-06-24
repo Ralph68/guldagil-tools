@@ -62,14 +62,7 @@ $version_info = getVersionInfo();
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- CSS modulaire -->
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/reset.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/variables.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/layout.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/components.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/forms.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/results.css">
-    <link rel="stylesheet" href="../assets/css/modules/calculateur/responsive.css">
+   <link rel="stylesheet" href="../assets/css/modules/calculateur/calculateur-complete.css">
     
     <!-- Meta -->
     <meta name="description" content="Calculateur frais de port - Comparaison XPO, Heppner, Kuehne+Nagel">
