@@ -1,8 +1,8 @@
 <?php
 /**
- * Titre: Controller MVC Calculateur
+ * Titre: Controller MVC Calculateur - CORRIGÉ
  * Chemin: /src/controllers/CalculateurController.php
- * Version: 0.5.0 - Build 20250624-001
+ * Version: 0.5 beta - Build 20250624-002
  */
 
 class CalculateurController {
@@ -11,7 +11,15 @@ class CalculateurController {
     
     public function __construct($database) {
         $this->db = $database;
-        $this->transportService = new TransportCalculateur($database);
+        
+        // CORRECTION : Charger la classe Transport existante
+        $transportPath = __DIR__ . '/../modules/calculateur/services/transportcalculateur.php';
+        if (file_exists($transportPath)) {
+            require_once $transportPath;
+            $this->transportService = new Transport($database);
+        } else {
+            throw new Exception('Service Transport non trouvé: ' . $transportPath);
+        }
     }
 
     /**
@@ -63,8 +71,8 @@ class CalculateurController {
             // Sauvegarde en session
             $this->saveToSession($calculationData);
 
-            // Calcul via le service transport
-            $results = $this->transportService->calculateAll($calculationData);
+            // CORRECTION : Adapter selon la signature de la classe Transport existante
+            $results = $this->callTransportService($calculationData);
 
             // Formatage de la réponse
             return $this->formatCalculationResponse($results, $calculationData);
@@ -75,8 +83,43 @@ class CalculateurController {
             return [
                 'error' => true,
                 'message' => 'Erreur lors du calcul des tarifs',
-                'details' => DEBUG ? $e->getMessage() : null
+                'details' => defined('DEBUG') && DEBUG ? $e->getMessage() : null
             ];
+        }
+    }
+
+    /**
+     * Appel du service Transport avec gestion des différentes signatures
+     */
+    private function callTransportService($data) {
+        try {
+            // Essayer d'abord avec la signature array (nouvelle)
+            if (method_exists($this->transportService, 'calculateAll')) {
+                $reflection = new ReflectionMethod($this->transportService, 'calculateAll');
+                $params = $reflection->getParameters();
+                
+                // Si un seul paramètre, c'est la signature array
+                if (count($params) === 1) {
+                    return $this->transportService->calculateAll($data);
+                }
+                
+                // Sinon signature ancienne (paramètres séparés)
+                return $this->transportService->calculateAll(
+                    $data['type'],
+                    $data['adr'] ? 'oui' : 'non',
+                    $data['poids'],
+                    $data['service_livraison'] ?? 'standard',
+                    $data['departement'],
+                    $data['palettes'],
+                    $data['enlevement']
+                );
+            }
+            
+            throw new Exception('Méthode calculateAll non trouvée');
+            
+        } catch (Exception $e) {
+            error_log("Erreur transport service: " . $e->getMessage());
+            throw $e;
         }
     }
 
@@ -212,7 +255,8 @@ class CalculateurController {
             'adr' => isset($data['adr']) && $data['adr'] == '1',
             'palettes' => isset($data['palettes']) ? intval($data['palettes']) : 1,
             'enlevement' => isset($data['enlevement']) && $data['enlevement'] == '1',
-            'options' => isset($data['options']) ? (array)$data['options'] : []
+            'options' => isset($data['options']) ? (array)$data['options'] : [],
+            'service_livraison' => $data['service_livraison'] ?? 'standard'
         ];
     }
 
@@ -258,9 +302,19 @@ class CalculateurController {
             ]
         ];
 
-        // Traitement des résultats
+        // Traitement des résultats (compatible ancien et nouveau format)
         $validResults = [];
-        $carrierResults = isset($results['results']) ? $results['results'] : $results;
+        
+        // Si nouveau format avec 'results'
+        if (is_array($results) && isset($results['results'])) {
+            $carrierResults = $results['results'];
+            if (isset($results['debug'])) {
+                $response['debug'] = $results['debug'];
+            }
+        } else {
+            // Ancien format direct
+            $carrierResults = $results;
+        }
 
         foreach ($carrierResults as $carrier => $price) {
             $name = $carrierNames[$carrier] ?? strtoupper($carrier);
@@ -298,11 +352,6 @@ class CalculateurController {
             ];
         }
 
-        // Debug info si activé
-        if (DEBUG && isset($results['debug'])) {
-            $response['debug'] = $results['debug'];
-        }
-
         return $response;
     }
 
@@ -322,49 +371,5 @@ class CalculateurController {
         }
 
         return $savings;
-    }
-
-    /**
-     * Statistiques d'utilisation (pour admin)
-     */
-    public function getUsageStats() {
-        try {
-            $stats = [];
-
-            // Calculs aujourd'hui
-            $stmt = $this->db->query("
-                SELECT COUNT(*) as count 
-                FROM gul_adr_expeditions 
-                WHERE DATE(date_creation) = CURDATE()
-            ");
-            $stats['calculations_today'] = $stmt->fetchColumn() ?: 0;
-
-            // Départements les plus demandés
-            $stmt = $this->db->query("
-                SELECT departement_destination, COUNT(*) as count
-                FROM gul_adr_expeditions 
-                WHERE date_creation >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                GROUP BY departement_destination 
-                ORDER BY count DESC 
-                LIMIT 10
-            ");
-            $stats['top_departments'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Moyennes de poids
-            $stmt = $this->db->query("
-                SELECT AVG(poids_total) as avg_weight, 
-                       MIN(poids_total) as min_weight,
-                       MAX(poids_total) as max_weight
-                FROM gul_adr_expeditions 
-                WHERE date_creation >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-            ");
-            $stats['weight_stats'] = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            return $stats;
-
-        } catch (Exception $e) {
-            error_log("Erreur stats: " . $e->getMessage());
-            return [];
-        }
     }
 }
