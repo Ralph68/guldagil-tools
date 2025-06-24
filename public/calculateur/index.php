@@ -328,7 +328,6 @@ $version_info = getVersionInfo();
     </script>
     
     <!-- JS modulaire -->
-    <script src="../assets/js/modules/calculateur/config.js"></script>
     <script src="../assets/js/modules/calculateur/state-manager.js"></script>
     <script src="../assets/js/modules/calculateur/form-controller.js"></script>
     <script src="../assets/js/modules/calculateur/api-service.js"></script>
