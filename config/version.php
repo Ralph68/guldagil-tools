@@ -2,7 +2,7 @@
 // config/version.php - Gestion centralisée des versions et builds
 
 // Version actuelle de l'application
-define('APP_VERSION', '2.0.0');
+define('APP_VERSION', '0.5 beta');
 
 // Numéro de build (format: YYYYMMDDNNN)
 define('BUILD_NUMBER', '20250620001');
