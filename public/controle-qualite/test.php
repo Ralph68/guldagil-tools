@@ -15,20 +15,20 @@ echo "Document root : " . $_SERVER['DOCUMENT_ROOT'] . "\n";
 // 3. Test fichiers requis
 echo "\n3. FICHIERS REQUIS :\n";
 $fichiers = [
-    '../config/config.php',
-    '../config/version.php',
+    '../../config/config.php',
+    '../../config/version.php',
     '../assets/css/style.css'
 ];
 
 foreach ($fichiers as $fichier) {
     $chemin = __DIR__ . '/' . $fichier;
-    echo "$fichier : " . (file_exists($chemin) ? "OK" : "MANQUANT") . "\n";
+    echo "$fichier : " . (file_exists($chemin) ? "OK" : "MANQUANT - $chemin") . "\n";
 }
 
 // 4. Test inclusion config
 echo "\n4. TEST CONFIG :\n";
 try {
-    require_once '../config/config.php';
+    require_once '../../config/config.php';
     echo "config.php : OK\n";
     echo "Base : " . (isset($pdo) ? "PDO OK" : "PDO manquant") . "\n";
 } catch (Exception $e) {
@@ -37,7 +37,7 @@ try {
 
 // 5. Test version
 try {
-    require_once '../config/version.php';
+    require_once '../../config/version.php';
     echo "version.php : OK\n";
     echo "Function renderVersionFooter : " . (function_exists('renderVersionFooter') ? "OK" : "MANQUANT") . "\n";
 } catch (Exception $e) {
@@ -56,11 +56,6 @@ if (isset($pdo)) {
 } else {
     echo "PDO non disponible\n";
 }
-
-// 7. Test permissions
-echo "\n6. PERMISSIONS :\n";
-echo "Dossier lisible : " . (is_readable(__DIR__) ? "OK" : "NON") . "\n";
-echo "Dossier inscriptible : " . (is_writable(__DIR__) ? "OK" : "NON") . "\n";
 
 echo "\n=== FIN DIAGNOSTIC ===\n";
 ?>
