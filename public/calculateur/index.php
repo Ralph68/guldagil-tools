@@ -25,6 +25,7 @@ $user_authenticated = true; // Simplifié pour développement
     <title><?= htmlspecialchars($page_title) ?> - Guldagil</title>
     
     <!-- CSS modulaires séparés -->
+<link rel="stylesheet" href="..assets/css/modules/calculateur/modern-interface.css>
     <link rel="stylesheet" href="../assets/css/modules/calculateur/calculateur-complete.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/ux-improvements.css">
     
