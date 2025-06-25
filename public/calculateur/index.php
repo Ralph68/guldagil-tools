@@ -93,70 +93,86 @@ require_once __DIR__ . '/../../lib/Transport.php';
                             </div>
                         </section>
 
-                        <!-- Section ADR améliorée -->
-                        <section class="adr-section">
-                            <div class="adr-toggle-container">
-                                <div class="adr-label">
-                                    ⚠️ Marchandises dangereuses (ADR)
-                                    <span class="adr-indicator inactive" id="adr-indicator">NON</span>
-                                </div>
-                                <div class="adr-toggle" id="adr-toggle"></div>
-                            </div>
-                            <div class="adr-info" id="adr-info">
-                                Aucun supplément matières dangereuses
-                            </div>
-                            <input type="hidden" id="adr_hidden" name="adr" value="non">
-                        </section>
+                        <!-- Section ADR claire - remplace la section ADR actuelle -->
+<div class="form-field">
+    <label class="field-label">
+        ⚠️ Marchandises dangereuses (ADR)
+    </label>
+    <div class="radio-buttons">
+        <label class="radio-btn">
+            <input type="radio" name="adr" value="non" checked class="auto-calc">
+            <div class="radio-content">
+                <span>❌ Non</span>
+            </div>
+        </label>
+        <label class="radio-btn">
+            <input type="radio" name="adr" value="oui" class="auto-calc">
+            <div class="radio-content">
+                <span>⚠️ Oui</span>
+                <small>+62€ HT</small>
+            </div>
+        </label>
+    </div>
+    <div class="field-help">
+        ADR : transport de marchandises dangereuses par route
+    </div>
+</div>
 
-                        <!-- Section Options mutuellement exclusives -->
-                        <section class="options-section">
-                            <h3 class="options-title">
-                                🚀 Options de livraison
-                                <span class="options-subtitle">(une seule sélection possible)</span>
-                            </h3>
-                            <div class="options-grid">
-                                <div class="option-card" data-option="standard">
-                                    <div class="option-title">Standard</div>
-                                    <div class="option-description">Livraison standard 24-48h</div>
-                                    <div class="option-impact neutral">Tarif de base</div>
-                                </div>
+                       <!-- Section Options transport - remplace la section options actuelle -->
+<div class="form-field">
+    <label class="field-label">
+        🚀 Options de livraison
+        <small>(sélection unique)</small>
+    </label>
+    <div class="options-grid">
+        <label class="radio-btn">
+            <input type="radio" name="service_livraison" value="standard" checked class="auto-calc">
+            <div class="radio-content">
+                <strong>Standard</strong>
+                <small>24-48h</small>
+            </div>
+        </label>
+        
+        <label class="radio-btn">
+            <input type="radio" name="service_livraison" value="premium13" class="auto-calc">
+            <div class="radio-content">
+                <strong>Premium 13h</strong>
+                <small>Calculé</small>
+            </div>
+        </label>
+        
+        <label class="radio-btn">
+            <input type="radio" name="service_livraison" value="premium18" class="auto-calc">
+            <div class="radio-content">
+                <strong>Premium 18h</strong>
+                <small>Calculé</small>
+            </div>
+        </label>
+        
+        <label class="radio-btn">
+            <input type="radio" name="service_livraison" value="rdv" class="auto-calc">
+            <div class="radio-content">
+                <strong>RDV</strong>
+                <small>Calculé</small>
+            </div>
+        </label>
+    </div>
+</div>
 
-                                <div class="option-card" data-option="priority">
-                                    <div class="option-title">Prioritaire</div>
-                                    <div class="option-description">Livraison prioritaire sous 24h</div>
-                                    <div class="option-impact positive">Impact calculé</div>
-                                </div>
-
-                                <div class="option-card" data-option="date">
-                                    <div class="option-title">Date fixe</div>
-                                    <div class="option-description">Livraison à date imposée</div>
-                                    <div class="option-impact positive">Impact calculé</div>
-                                </div>
-
-                                <div class="option-card" data-option="rdv">
-                                    <div class="option-title">Prise de RDV</div>
-                                    <div class="option-description">Rendez-vous obligatoire</div>
-                                    <div class="option-impact positive">Impact calculé</div>
-                                </div>
-                            </div>
-                            <input type="hidden" id="option_selected" name="option" value="standard">
-                        </section>
-
-                        <!-- Section Enlèvement séparée -->
-                        <section class="enlevement-section" id="enlevement-section">
-                            <div class="enlevement-toggle">
-                                <input type="checkbox" 
-                                       id="enlevement" 
-                                       name="enlevement" 
-                                       class="enlevement-checkbox">
-                                <label for="enlevement" class="enlevement-label">
-                                    🏭 Enlèvement sur site expéditeur
-                                </label>
-                            </div>
-                            <div class="enlevement-info" id="enlevement-info">
-                                Cochez pour ajouter l'enlèvement sur site expéditeur
-                            </div>
-                        </section>
+<!-- Section Enlèvement - NOUVELLE, séparée des options -->
+<div class="form-field enlevement-section" id="enlevement-section">
+    <div class="checkbox-container">
+        <label class="checkbox-label">
+            <input type="checkbox" name="enlevement" value="oui" class="auto-calc" id="enlevement-checkbox">
+            <span class="label-text">
+                🏭 Enlèvement sur site expéditeur
+            </span>
+        </label>
+    </div>
+    <div class="field-help" id="enlevement-help">
+        Disponible uniquement avec livraison standard
+    </div>
+</div>
                     </form>
                 </div>
 
