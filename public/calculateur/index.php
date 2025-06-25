@@ -1,8 +1,7 @@
 <?php
 /**
- * Interface UX optimisée - Auto-progression et calcul permanent
+ * Interface UX corrigée - Compatible avec backend existant
  * Chemin: /public/calculateur/index.php
- * Version: 2.1.0 - Build 20250624002
  */
 
 require_once __DIR__ . '/../../config/config.php';
@@ -57,7 +56,6 @@ $version_info = getVersionInfo();
     <link rel="stylesheet" href="../assets/css/modules/calculateur/calculateur-complete.css">
     
     <style>
-    /* UX Améliorations spécifiques */
     .calc-layout-optimized {
         display: grid;
         grid-template-columns: 1fr 400px;
@@ -157,7 +155,6 @@ $version_info = getVersionInfo();
         font-size: 0.9rem;
     }
     
-    /* Results sticky */
     .results-sticky {
         position: sticky;
         top: 100px;
@@ -198,16 +195,13 @@ $version_info = getVersionInfo();
             grid-template-columns: 1fr;
             gap: 1rem;
         }
-        
         .results-sticky {
             position: static;
         }
-        
         .field-inline {
             grid-template-columns: 1fr;
             text-align: center;
         }
-        
         .options-grid {
             grid-template-columns: 1fr;
         }
@@ -239,11 +233,9 @@ $version_info = getVersionInfo();
         <div class="container">
             <div class="calc-layout-optimized">
                 
-                <!-- Formulaire fluide -->
                 <section class="form-section">
                     <form id="calc-form" class="form-flow">
                         
-                        <!-- Département -->
                         <div class="field-inline" id="field-dept">
                             <label class="field-label-inline">
                                 📍 Département
@@ -256,7 +248,6 @@ $version_info = getVersionInfo();
                                    value="<?= htmlspecialchars($preset_data['departement']) ?>">
                         </div>
                         
-                        <!-- Poids -->
                         <div class="field-inline" id="field-poids">
                             <label class="field-label-inline">
                                 ⚖️ Poids (kg)
@@ -268,7 +259,6 @@ $version_info = getVersionInfo();
                                    value="<?= htmlspecialchars($preset_data['poids']) ?>">
                         </div>
                         
-                        <!-- Type auto-détecté -->
                         <div class="field-inline" id="field-type">
                             <label class="field-label-inline">
                                 📦 Type
@@ -279,7 +269,6 @@ $version_info = getVersionInfo();
                             </div>
                         </div>
                         
-                        <!-- Options service -->
                         <div class="field-section">
                             <h3 style="margin-bottom: 1rem;">🚀 Options de livraison</h3>
                             <div class="options-grid">
@@ -320,7 +309,6 @@ $version_info = getVersionInfo();
                             </div>
                         </div>
                         
-                        <!-- Options spéciales -->
                         <div class="field-section">
                             <h3 style="margin-bottom: 1rem;">⚙️ Options spéciales</h3>
                             <div class="options-grid">
@@ -347,7 +335,6 @@ $version_info = getVersionInfo();
                     </form>
                 </section>
                 
-                <!-- Résultats permanents -->
                 <section class="results-sticky">
                     <div class="results-always-visible">
                         <div id="results-content">
@@ -367,7 +354,6 @@ $version_info = getVersionInfo();
                                         📊 Voir détail calcul
                                     </button>
                                     <div id="detail-content" style="display: none; margin-top: 1rem;">
-                                        <!-- Détail injecté ici -->
                                     </div>
                                 </div>
                             </div>
@@ -391,6 +377,7 @@ $version_info = getVersionInfo();
     </footer>
 
     <script>
+    // Configuration compatible backend existant
     window.CalculateurConfig = {
         preset: <?= json_encode($preset_data ?? []) ?>,
         options: <?= json_encode($options_service ?? []) ?>,
@@ -401,7 +388,6 @@ $version_info = getVersionInfo();
         build: '<?= $version_info['build'] ?>'
     };
     
-    // Auto-progression et calcul permanent
     document.addEventListener('DOMContentLoaded', function() {
         const deptInput = document.getElementById('departement');
         const poidsInput = document.getElementById('poids');
@@ -429,7 +415,7 @@ $version_info = getVersionInfo();
                 if (poids > 60) {
                     typeDisplay.textContent = '🏗️ Palette (auto-détecté > 60kg)';
                     typeHidden.value = 'palette';
-                    palettesHidden.value = '1'; // 1 palette EUR par défaut
+                    palettesHidden.value = '1';
                 } else {
                     typeDisplay.textContent = '📦 Colis (auto-détecté ≤ 60kg)';
                     typeHidden.value = 'colis';
@@ -444,12 +430,10 @@ $version_info = getVersionInfo();
         document.querySelectorAll('.option-card').forEach(card => {
             card.addEventListener('click', function() {
                 if (this.dataset.value) {
-                    // Radio options
                     document.querySelectorAll('.option-card[data-value]').forEach(c => c.classList.remove('selected'));
                     this.classList.add('selected');
                     this.querySelector('input').checked = true;
                 } else if (this.dataset.checkbox) {
-                    // Checkbox options
                     const checkbox = this.querySelector('input');
                     checkbox.checked = !checkbox.checked;
                     this.classList.toggle('selected', checkbox.checked);
@@ -458,31 +442,57 @@ $version_info = getVersionInfo();
             });
         });
         
-        // Calcul automatique
         function triggerCalc() {
             clearTimeout(calcTimeout);
             calcTimeout = setTimeout(performCalculation, 500);
         }
         
         async function performCalculation() {
-            const dept = deptInput.value;
+            const dept = deptInput.value.trim();
             const poids = poidsInput.value;
             const type = typeHidden.value;
             
-            if (!dept || !poids || !type) return;
+            if (!dept || !poids || !type || dept.length < 2) return;
             
             try {
-                const formData = new FormData(document.getElementById('calc-form'));
+                // Assurer format département sur 2 chiffres
+                const deptFormatted = dept.padStart(2, '0');
+                
+                const formData = new FormData();
+                formData.append('departement', deptFormatted);
+                formData.append('poids', poids);
+                formData.append('type', type);
+                formData.append('palettes', palettesHidden.value);
+                formData.append('ajax_calculate', '1');
+                
+                // Service livraison
+                const serviceLivraison = document.querySelector('input[name="service_livraison"]:checked');
+                if (serviceLivraison) {
+                    formData.append('service_livraison', serviceLivraison.value);
+                }
+                
+                // Options spéciales
+                const adr = document.querySelector('input[name="adr"]:checked');
+                if (adr) formData.append('adr', '1');
+                
+                const enlevement = document.querySelector('input[name="enlevement"]:checked');
+                if (enlevement) formData.append('enlevement', '1');
+                
+                console.log('🔄 Envoi calcul:', Object.fromEntries(formData));
+                
                 const response = await fetch(window.location.href, {
                     method: 'POST',
                     body: formData
                 });
                 
                 const data = await response.json();
+                console.log('📨 Réponse:', data);
+                
                 displayResults(data);
                 
             } catch (error) {
-                console.error('Erreur calcul:', error);
+                console.error('❌ Erreur calcul:', error);
+                showError('Erreur de calcul');
             }
         }
         
@@ -492,11 +502,36 @@ $version_info = getVersionInfo();
             const comparisonEl = document.getElementById('comparison-mini');
             const detailEl = document.getElementById('calc-detail');
             
+            if (data.error) {
+                showError(data.message || 'Erreur de calcul');
+                return;
+            }
+            
             if (data.best_rate) {
                 bestPriceEl.textContent = data.best_rate.formatted;
                 bestCarrierEl.textContent = data.best_rate.carrier_name;
                 
                 // Comparaison mini
+                if (data.carriers) {
+                    Object.entries(data.carriers).forEach(([carrier, info]) => {
+                        const el = document.getElementById(`carrier-${carrier}`);
+                        if (el) {
+                            el.textContent = `${info.name}: ${info.formatted}`;
+                        }
+                    });
+                }
+                
+                comparisonEl.style.display = 'flex';
+                detailEl.style.display = 'block';
+                
+                // Stocker détail
+                window.calcDetail = data.debug;
+                
+            } else if (data.carriers) {
+                // Pas de meilleur tarif mais résultats disponibles
+                bestPriceEl.textContent = 'Voir détail';
+                bestCarrierEl.textContent = 'Comparaison disponible';
+                
                 Object.entries(data.carriers).forEach(([carrier, info]) => {
                     const el = document.getElementById(`carrier-${carrier}`);
                     if (el) {
@@ -505,17 +540,22 @@ $version_info = getVersionInfo();
                 });
                 
                 comparisonEl.style.display = 'flex';
-                detailEl.style.display = 'block';
-                
-                // Stocker détail pour affichage
-                window.calcDetail = data.debug;
                 
             } else {
-                bestPriceEl.textContent = 'Non disponible';
-                bestCarrierEl.textContent = 'Aucun transporteur disponible';
-                comparisonEl.style.display = 'none';
-                detailEl.style.display = 'none';
+                showError('Aucun transporteur disponible');
             }
+        }
+        
+        function showError(message) {
+            const bestPriceEl = document.getElementById('best-price');
+            const bestCarrierEl = document.getElementById('best-carrier');
+            const comparisonEl = document.getElementById('comparison-mini');
+            const detailEl = document.getElementById('calc-detail');
+            
+            bestPriceEl.textContent = 'Erreur';
+            bestCarrierEl.textContent = message;
+            comparisonEl.style.display = 'none';
+            detailEl.style.display = 'none';
         }
         
         function markFieldCompleted(fieldId) {
@@ -528,6 +568,11 @@ $version_info = getVersionInfo();
             markFieldCompleted('field-poids');
             poidsInput.dispatchEvent(new Event('input'));
         }
+        
+        // Initialiser options cochées
+        document.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+            cb.closest('.option-card').classList.add('selected');
+        });
         
         // Trigger initial calc si données preset
         if (deptInput.value && poidsInput.value) {
@@ -548,6 +593,8 @@ $version_info = getVersionInfo();
     }
     
     function formatDetailHtml(debug) {
+        if (!debug) return '<p>Aucun détail disponible</p>';
+        
         let html = '';
         Object.entries(debug).forEach(([carrier, details]) => {
             if (!details.error && details.detail_calcul) {
@@ -561,7 +608,7 @@ $version_info = getVersionInfo();
                 </div>`;
             }
         });
-        return html;
+        return html || '<p>Détail non disponible</p>';
     }
     
     function formatPrice(price) {
