@@ -1,46 +1,79 @@
 <?php
 // /public/controle-qualite/index.php
-// Routeur principal du module
-
 require_once '../config/config.php';
 require_once '../config/version.php';
-require_once 'config.php';
 
-// Routage simple
-$controller = $_GET['controller'] ?? 'accueil';
-$action = $_GET['action'] ?? 'index';
+session_start();
 
-// Sécurité : liste blanche des contrôleurs
-$controllers_autorisés = ['accueil', 'pompe-doseuse', 'recherche', 'admin'];
-
-if (!in_array($controller, $controllers_autorisés)) {
-    $controller = 'accueil';
+// Stats rapides (sans model pour l'instant)
+try {
+    $stats_today = $pdo->query("SELECT COUNT(*) FROM gul_controles WHERE DATE(date_controle) = CURDATE()")->fetchColumn();
+} catch (Exception $e) {
+    $stats_today = 0;
 }
 
-// Charger le contrôleur
-$controller_file = "controllers/" . ucfirst($controller) . "Controller.php";
-
-if (file_exists($controller_file)) {
-    require_once $controller_file;
-    $controller_class = ucfirst($controller) . "Controller";
-    
-    if (class_exists($controller_class)) {
-        $ctrl = new $controller_class($pdo);
-        
-        // Exécuter l'action
-        if (method_exists($ctrl, $action)) {
-            $ctrl->$action();
-        } else {
-            $ctrl->index();
-        }
-    } else {
-        // Erreur contrôleur
-        header('Location: index.php');
-        exit;
-    }
-} else {
-    // Contrôleur par défaut
-    require_once 'controllers/AccueilController.php';
-    $ctrl = new AccueilController($pdo);
-    $ctrl->index();
+try {
+    $stats_en_cours = $pdo->query("SELECT COUNT(*) FROM gul_controles WHERE statut = 'en_cours'")->fetchColumn();
+} catch (Exception $e) {
+    $stats_en_cours = 0;
 }
+
+try {
+    $stats_termines = $pdo->query("SELECT COUNT(*) FROM gul_controles WHERE statut = 'termine' AND DATE(date_controle) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)")->fetchColumn();
+} catch (Exception $e) {
+    $stats_termines = 0;
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Contrôle Qualité - Guldagil</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/modules/controle-qualite.css">
+</head>
+<body>
+    <div class="container">
+        <header class="cq-header">
+            <img src="../assets/img/logo_guldagil.png" alt="Guldagil" class="logo">
+            <div>
+                <h1>🔍 Contrôle Qualité</h1>
+                <p>Module de contrôle et validation des équipements</p>
+            </div>
+            <div class="version"><?= renderVersionFooter() ?></div>
+        </header>
+
+        <main>
+            <div class="cq-actions">
+                <a href="nouveau.php" class="btn btn-primary">➕ Nouveau Contrôle</a>
+                <a href="recherche.php" class="btn btn-secondary">🔍 Rechercher</a>
+            </div>
+
+            <div class="cq-stats">
+                <div class="stat-card">
+                    <div class="stat-value"><?= $stats_today ?></div>
+                    <div class="stat-label">Aujourd'hui</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value"><?= $stats_en_cours ?></div>
+                    <div class="stat-label">En cours</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value"><?= $stats_termines ?></div>
+                    <div class="stat-label">Terminés (7j)</div>
+                </div>
+            </div>
+
+            <div class="cq-recent">
+                <h2>Module en cours de développement</h2>
+                <p>Le module contrôle qualité sera bientôt disponible.</p>
+            </div>
+        </main>
+
+        <footer class="cq-footer">
+            <div>© <?= date('Y') ?> Guldagil</div>
+            <div><?= renderVersionFooter() ?></div>
+        </footer>
+    </div>
+</body>
+</html>
