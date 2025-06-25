@@ -1,149 +1,307 @@
+<?php
+/**
+ * public/calculateur/index.php
+ * Interface calculateur - Architecture MVC respectée
+ * Version: 0.5 beta + build
+ */
+
+// Chargement configuration
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/version.php';
+
+// Informations de version
+$version_info = getVersionInfo();
+$page_title = 'Calculateur de Frais de Port';
+
+// Session et authentification (développement)
+session_start();
+$user_authenticated = true; // Simplifié pour développement
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculateur Frais de Port - Amélioré</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        
-        /* Amélioration ADR */
-        .adr-options { display: flex; gap: 10px; margin-bottom: 10px; }
-        .adr-option { display: flex; align-items: center; gap: 5px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; }
-        .adr-option:hover { border-color: #007cba; }
-        .adr-option input:checked + label { background: #f0f7ff; }
-        
-        /* Amélioration Options */
-        .options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 10px; }
-        .option-card { padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; text-align: center; }
-        .option-card:hover { border-color: #007cba; }
-        .option-card.selected { border-color: #007cba; background: #f0f7ff; }
-        
-        /* Amélioration Enlèvement */
-        .enlevement-section { padding: 15px; background: #f8f8f8; border-radius: 4px; margin-bottom: 20px; }
-        .enlevement-section.disabled { opacity: 0.6; background: #f5f5f5; }
-        .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        
-        .results { margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 4px; }
-        .best-price { font-size: 24px; color: #28a745; font-weight: bold; text-align: center; margin-bottom: 20px; }
-        .carrier-result { display: flex; justify-content: space-between; padding: 10px; margin: 5px 0; background: white; border-radius: 4px; }
-    </style>
+    <title><?= htmlspecialchars($page_title) ?> - Guldagil</title>
+    
+    <!-- CSS modulaires séparés -->
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/calculateur-complete.css">
+    <link rel="stylesheet" href="../assets/css/modules/calculateur/ux-improvements.css">
+    
+    <!-- Meta tags -->
+    <meta name="description" content="Calculateur de frais de port pour transporteurs XPO, Heppner et Kuehne+Nagel">
+    <meta name="author" content="Guldagil">
 </head>
-<body>
-    <h1>🚛 Calculateur de Frais de Port</h1>
+<body class="calculateur-app">
     
-    <form id="calc-form">
-        <!-- Champs de base -->
-        <div class="form-group">
-            <label for="departement">Département de destination</label>
-            <input type="number" id="departement" name="departement" placeholder="Ex: 75" required>
-        </div>
-        
-        <div class="form-group">
-            <label for="poids">Poids total (kg)</label>
-            <input type="number" id="poids" name="poids" step="0.1" placeholder="Ex: 25.5" required>
-        </div>
-        
-        <div class="form-group">
-            <label for="type">Type d'envoi</label>
-            <select id="type" name="type" required>
-                <option value="">Sélectionner...</option>
-                <option value="colis">Colis</option>
-                <option value="palette">Palette</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label for="palettes">Nombre de palettes EUR</label>
-            <input type="number" id="palettes" name="palettes" min="0" value="0">
-        </div>
-        
-        <!-- Section ADR améliorée -->
-        <div class="form-group">
-            <label>⚠️ Marchandises dangereuses (ADR)</label>
-            <div class="adr-options">
-                <div class="adr-option">
-                    <input type="radio" id="adr-non" name="adr" value="non" checked>
-                    <label for="adr-non">❌ Non</label>
+    <!-- Header modulaire -->
+    <?php include __DIR__ . '/views/partials/header.php'; ?>
+    
+    <!-- Contenu principal -->
+    <main class="app-main">
+        <div class="container">
+            <div class="calc-layout">
+                
+                <!-- Formulaire principal -->
+                <div class="form-panel">
+                    <form id="calc-form" class="calc-form" autocomplete="off">
+                        
+                        <!-- Section informations de base -->
+                        <section class="form-section">
+                            <h2 class="section-title">📍 Informations de base</h2>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="departement" class="field-label">Département destination</label>
+                                    <input type="number" 
+                                           id="departement" 
+                                           name="departement" 
+                                           class="form-control auto-calc" 
+                                           min="1" 
+                                           max="99" 
+                                           placeholder="Ex: 75" 
+                                           required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="poids" class="field-label">Poids total (kg)</label>
+                                    <input type="number" 
+                                           id="poids" 
+                                           name="poids" 
+                                           class="form-control auto-calc" 
+                                           min="0.1" 
+                                           step="0.1" 
+                                           placeholder="Ex: 25.5" 
+                                           required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="type" class="field-label">Type d'envoi</label>
+                                    <select id="type" 
+                                            name="type" 
+                                            class="form-control auto-calc" 
+                                            required>
+                                        <option value="">Sélectionner...</option>
+                                        <option value="colis">Colis</option>
+                                        <option value="palette">Palette</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="palettes" class="field-label">Nombre palettes EUR</label>
+                                    <input type="number" 
+                                           id="palettes" 
+                                           name="palettes" 
+                                           class="form-control auto-calc" 
+                                           min="0" 
+                                           value="0" 
+                                           placeholder="0">
+                                </div>
+                            </div>
+                        </section>
+                        
+                        <!-- Section ADR améliorée -->
+                        <section class="form-section adr-section">
+                            <h3 class="section-title">⚠️ Marchandises dangereuses (ADR)</h3>
+                            <div class="radio-buttons">
+                                <label class="radio-btn">
+                                    <input type="radio" name="adr" value="non" checked class="auto-calc">
+                                    <div class="radio-content">
+                                        <span>❌ Non</span>
+                                    </div>
+                                </label>
+                                <label class="radio-btn">
+                                    <input type="radio" name="adr" value="oui" class="auto-calc">
+                                    <div class="radio-content">
+                                        <span>⚠️ Oui</span>
+                                        <small>+62€ HT</small>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="field-help">
+                                ADR : transport de marchandises dangereuses par route
+                            </div>
+                        </section>
+                        
+                        <!-- Section Options mutuellement exclusives -->
+                        <section class="form-section options-section">
+                            <h3 class="section-title">🚀 Options de livraison</h3>
+                            <p class="section-subtitle">Sélection unique - Impact calculé dynamiquement</p>
+                            <div class="options-grid">
+                                <div class="option-card selected" data-option="standard">
+                                    <div class="option-title">Standard</div>
+                                    <div class="option-description">24-48h</div>
+                                    <div class="option-impact">Tarif de base</div>
+                                </div>
+                                
+                                <div class="option-card" data-option="premium13">
+                                    <div class="option-title">Premium 13h</div>
+                                    <div class="option-description">Avant 13h</div>
+                                    <div class="option-impact">Impact calculé</div>
+                                </div>
+                                
+                                <div class="option-card" data-option="premium18">
+                                    <div class="option-title">Premium 18h</div>
+                                    <div class="option-description">Avant 18h</div>
+                                    <div class="option-impact">Impact calculé</div>
+                                </div>
+                                
+                                <div class="option-card" data-option="rdv">
+                                    <div class="option-title">RDV</div>
+                                    <div class="option-description">Prise RDV</div>
+                                    <div class="option-impact">Impact calculé</div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="service_livraison" value="standard">
+                        </section>
+                        
+                        <!-- Section Enlèvement séparée -->
+                        <section class="form-section enlevement-section" id="enlevement-section">
+                            <div class="checkbox-container">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" 
+                                           name="enlevement" 
+                                           value="oui" 
+                                           class="auto-calc" 
+                                           id="enlevement-checkbox">
+                                    <span class="label-text">
+                                        🏭 Enlèvement sur site expéditeur
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="field-help" id="enlevement-help">
+                                Disponible uniquement avec livraison standard
+                            </div>
+                        </section>
+                        
+                    </form>
                 </div>
-                <div class="adr-option">
-                    <input type="radio" id="adr-oui" name="adr" value="oui">
-                    <label for="adr-oui">⚠️ Oui (+62€)</label>
+                
+                <!-- Panneau résultats -->
+                <div class="results-panel">
+                    <div class="results-container" id="results-container">
+                        <div class="results-header">
+                            <h2>📊 Comparaison des tarifs</h2>
+                            <div class="calculation-status" id="calculation-status">
+                                Saisissez vos critères pour voir les tarifs
+                            </div>
+                        </div>
+                        
+                        <div class="results-content" id="results-content">
+                            <div class="results-placeholder">
+                                <div class="placeholder-icon">🧮</div>
+                                <p>Les tarifs s'afficheront automatiquement lors de la saisie</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                
             </div>
         </div>
-        
-        <!-- Section Options mutuellement exclusives -->
-        <div class="form-group">
-            <label>🚀 Options de livraison (une seule sélection)</label>
-            <div class="options-grid">
-                <div class="option-card selected" data-option="standard">
-                    <strong>Standard</strong><br>
-                    <small>24-48h</small>
-                </div>
-                <div class="option-card" data-option="premium13">
-                    <strong>Premium 13h</strong><br>
-                    <small>Calculé</small>
-                </div>
-                <div class="option-card" data-option="premium18">
-                    <strong>Premium 18h</strong><br>
-                    <small>Calculé</small>
-                </div>
-                <div class="option-card" data-option="rdv">
-                    <strong>RDV</strong><br>
-                    <small>Calculé</small>
-                </div>
-            </div>
-            <input type="hidden" id="service_livraison" name="service_livraison" value="standard">
-        </div>
-        
-        <!-- Section Enlèvement séparée -->
-        <div class="enlevement-section" id="enlevement-section">
-            <div class="checkbox-label">
-                <input type="checkbox" id="enlevement" name="enlevement" value="oui">
-                <span>🏭 Enlèvement sur site expéditeur</span>
-            </div>
-            <small id="enlevement-help">Disponible uniquement avec livraison standard</small>
-        </div>
-        
-        <button type="submit" style="width: 100%; padding: 15px; background: #007cba; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;">
-            🧮 Calculer les frais de port
-        </button>
-    </form>
+    </main>
     
-    <div id="results" class="results" style="display: none;">
-        <!-- Résultats affichés ici -->
-    </div>
+    <!-- Footer modulaire -->
+    <?php include __DIR__ . '/views/partials/footer.php'; ?>
     
+    <!-- JavaScript modulaires séparés -->
+    
+    <!-- 1. Configuration et utilitaires -->
+    <script src="../assets/js/modules/calculateur/core/calculateur-config.js"></script>
+    <script src="../assets/js/modules/calculateur/utils/helpers.js"></script>
+    
+    <!-- 2. Services -->
+    <script src="../assets/js/modules/calculateur/core/api-service.js"></script>
+    
+    <!-- 3. Modèles -->
+    <script src="../assets/js/modules/calculateur/models/form-data-model.js"></script>
+    <script src="../assets/js/modules/calculateur/models/validation-model.js"></script>
+    
+    <!-- 4. Contrôleurs -->
+    <script src="../assets/js/modules/calculateur/controllers/form-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/calculation-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/ui-controller.js"></script>
+    
+    <!-- 5. Vues -->
+    <script src="../assets/js/modules/calculateur/views/progressive-form-view.js"></script>
+    <script src="../assets/js/modules/calculateur/views/results-display-view.js"></script>
+    
+    <!-- 6. Bootstrap du module -->
+    <script src="../assets/js/modules/calculateur/core/module-boot.js"></script>
+    
+    <!-- 7. Logique UX spécifique -->
+    <script src="../assets/js/modules/calculateur/ux-enlevement.js"></script>
+    
+    <!-- 8. Initialisation -->
     <script>
-        // Variables globales
-        let selectedOption = 'standard';
-        
-        // Gestion des options mutuellement exclusives
-        document.querySelectorAll('.option-card').forEach(card => {
-            card.addEventListener('click', () => {
-                // Désélectionner toutes
-                document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-                
-                // Sélectionner cliquée
-                card.classList.add('selected');
-                selectedOption = card.dataset.option;
-                document.getElementById('service_livraison').value = selectedOption;
-                
-                // Gérer enlèvement
-                updateEnlevementState();
-                
-                // Calculer si formulaire complet
-                if (isFormValid()) calculateRates();
-            });
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Initialisation calculateur MVC');
+            
+            // Configuration initiale
+            if (typeof CalculateurConfig !== 'undefined') {
+                CalculateurConfig.log('info', 'Configuration chargée');
+            }
+            
+            // Boot du module si disponible
+            if (window.CalculateurModuleBoot) {
+                window.CalculateurModuleBoot.init().then(() => {
+                    console.log('✅ Module calculateur initialisé');
+                }).catch(error => {
+                    console.error('❌ Erreur initialisation:', error);
+                    // Mode de secours
+                    initFallbackMode();
+                });
+            } else {
+                // Mode de secours simple
+                initFallbackMode();
+            }
         });
         
-        // Gestion enlèvement = standard uniquement
-        function updateEnlevementState() {
-            const enlevementCheckbox = document.getElementById('enlevement');
+        /**
+         * Mode de secours si modules avancés non disponibles
+         */
+        function initFallbackMode() {
+            console.log('🔄 Mode de secours activé');
+            
+            // Gestion basique du formulaire
+            const form = document.getElementById('calc-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    calculateSimple();
+                });
+                
+                // Auto-calcul basique
+                form.addEventListener('input', debounce(calculateSimple, 800));
+                form.addEventListener('change', debounce(calculateSimple, 800));
+            }
+            
+            // Gestion options/enlèvement
+            setupBasicOptionLogic();
+        }
+        
+        /**
+         * Logique basique options/enlèvement
+         */
+        function setupBasicOptionLogic() {
+            // Options mutuellement exclusives
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    document.querySelector('input[name="service_livraison"]').value = this.dataset.option;
+                    updateEnlevementBasic();
+                });
+            });
+            
+            // Enlèvement = standard uniquement
+            updateEnlevementBasic();
+        }
+        
+        /**
+         * Mise à jour enlèvement basique
+         */
+        function updateEnlevementBasic() {
+            const selectedOption = document.querySelector('.option-card.selected')?.dataset.option;
+            const enlevementCheckbox = document.getElementById('enlevement-checkbox');
             const enlevementSection = document.getElementById('enlevement-section');
             
             if (selectedOption === 'standard') {
@@ -156,39 +314,16 @@
             }
         }
         
-        // Calcul automatique lors des changements
-        ['departement', 'poids', 'type', 'palettes'].forEach(fieldId => {
-            const field = document.getElementById(fieldId);
-            field.addEventListener('input', () => {
-                if (isFormValid()) calculateRates();
-            });
-            field.addEventListener('change', () => {
-                if (isFormValid()) calculateRates();
-            });
-        });
-        
-        document.querySelectorAll('input[name="adr"]').forEach(radio => {
-            radio.addEventListener('change', () => {
-                if (isFormValid()) calculateRates();
-            });
-        });
-        
-        document.getElementById('enlevement').addEventListener('change', () => {
-            if (isFormValid()) calculateRates();
-        });
-        
-        // Validation formulaire
-        function isFormValid() {
-            const dept = document.getElementById('departement').value;
-            const poids = document.getElementById('poids').value;
-            const type = document.getElementById('type').value;
-            
-            return dept && poids > 0 && type;
-        }
-        
-        // Calcul des tarifs
-        async function calculateRates() {
+        /**
+         * Calcul simple
+         */
+        async function calculateSimple() {
             const formData = new FormData(document.getElementById('calc-form'));
+            
+            // Validation basique
+            if (!formData.get('departement') || !formData.get('poids') || !formData.get('type')) {
+                return;
+            }
             
             try {
                 const response = await fetch('ajax-calculate.php', {
@@ -197,53 +332,61 @@
                 });
                 
                 const result = await response.json();
-                displayResults(result);
+                displayResultsSimple(result);
                 
             } catch (error) {
                 console.error('Erreur calcul:', error);
-                document.getElementById('results').innerHTML = 
-                    '<div style="color: red;">❌ Erreur de calcul. Veuillez réessayer.</div>';
-                document.getElementById('results').style.display = 'block';
+                displayError('Erreur de calcul');
             }
         }
         
-        // Affichage des résultats
-        function displayResults(result) {
-            const resultsDiv = document.getElementById('results');
+        /**
+         * Affichage résultats simple
+         */
+        function displayResultsSimple(result) {
+            const container = document.getElementById('results-content');
             
             if (result.success && result.best_rate) {
-                let html = `<div class="best-price">🏆 Meilleur tarif : ${result.best_rate.formatted}</div>`;
-                
-                html += '<h3>📊 Comparaison des transporteurs</h3>';
-                
-                Object.entries(result.carriers).forEach(([carrier, data]) => {
-                    const isBest = carrier === result.best_rate.carrier;
-                    const style = isBest ? 'style="border-left: 4px solid #28a745; background: #f8fff8;"' : '';
-                    
-                    html += `
-                        <div class="carrier-result" ${style}>
-                            <span>${isBest ? '🏆 ' : ''}${data.name}</span>
-                            <span><strong>${data.formatted}</strong></span>
-                        </div>
-                    `;
-                });
-                
-                resultsDiv.innerHTML = html;
+                container.innerHTML = `
+                    <div class="best-rate">
+                        <h3>🏆 Meilleur tarif</h3>
+                        <div class="best-price">${result.best_rate.formatted}</div>
+                        <div class="best-carrier">${result.best_rate.carrier_name}</div>
+                    </div>
+                    <div class="comparison">
+                        ${Object.entries(result.carriers).map(([carrier, data]) => `
+                            <div class="carrier-row ${carrier === result.best_rate.carrier ? 'best' : ''}">
+                                <span>${data.name}</span>
+                                <span>${data.formatted}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
             } else {
-                resultsDiv.innerHTML = `<div style="color: red;">❌ ${result.message || 'Aucun tarif disponible'}</div>`;
+                displayError(result.message || 'Aucun tarif disponible');
             }
-            
-            resultsDiv.style.display = 'block';
         }
         
-        // Soumission formulaire
-        document.getElementById('calc-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            calculateRates();
-        });
+        /**
+         * Affichage erreur
+         */
+        function displayError(message) {
+            document.getElementById('results-content').innerHTML = `
+                <div class="error-message">❌ ${message}</div>
+            `;
+        }
         
-        // Initialisation
-        updateEnlevementState();
+        /**
+         * Debounce utilitaire
+         */
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
     </script>
+    
 </body>
 </html>
