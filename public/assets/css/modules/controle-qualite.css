@@ -1,0 +1,359 @@
+/* /public/assets/css/modules/controle-qualite.css */
+
+:root {
+    --cq-primary: #1e40af;
+    --cq-secondary: #0891b2;
+    --cq-success: #059669;
+    --cq-warning: #d97706;
+    --cq-error: #dc2626;
+}
+
+/* Container principal */
+.cq-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.cq-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 2px solid var(--cq-primary);
+    margin-bottom: 2rem;
+}
+
+.logo {
+    height: 50px;
+}
+
+.cq-nav {
+    display: flex;
+    gap: 1rem;
+}
+
+.cq-nav a {
+    padding: 0.5rem 1rem;
+    background: var(--cq-primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background 0.2s;
+}
+
+.cq-nav a:hover {
+    background: var(--cq-secondary);
+}
+
+/* Main content */
+.cq-main {
+    flex: 1;
+}
+
+/* Dashboard */
+.cq-dashboard h1 {
+    color: var(--cq-primary);
+    margin-bottom: 0.5rem;
+}
+
+.cq-actions {
+    display: flex;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.cq-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-left: 4px solid var(--cq-primary);
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--cq-primary);
+}
+
+.stat-label {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Contrôles récents */
+.cq-recent {
+    margin: 2rem 0;
+}
+
+.controls-list {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.control-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.control-item:last-child {
+    border-bottom: none;
+}
+
+.control-item:hover {
+    background: #f8f9fa;
+}
+
+.control-info {
+    flex: 1;
+}
+
+.control-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-en_cours { background: rgba(217, 119, 6, 0.1); color: var(--cq-warning); }
+.status-termine { background: rgba(5, 150, 105, 0.1); color: var(--cq-success); }
+.status-valide { background: rgba(5, 150, 105, 0.1); color: var(--cq-success); }
+.status-non_conforme { background: rgba(220, 38, 38, 0.1); color: var(--cq-error); }
+
+/* Formulaires */
+.cq-form-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 2rem;
+}
+
+.cq-form fieldset {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.cq-form legend {
+    background: var(--cq-primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--cq-primary);
+    box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.1);
+}
+
+/* Checklist */
+.cq-checklist {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 0.75rem;
+}
+
+.cq-checklist label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.cq-checklist label:hover {
+    background: #f8f9fa;
+}
+
+.cq-checklist input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+/* Boutons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--cq-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--cq-secondary);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+/* Actions formulaire */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding-top: 2rem;
+    border-top: 1px solid #eee;
+}
+
+/* Alertes */
+.alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.alert-error {
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--cq-error);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.alert-success {
+    background: rgba(5, 150, 105, 0.1);
+    color: var(--cq-success);
+    border: 1px solid rgba(5, 150, 105, 0.2);
+}
+
+/* Footer */
+.cq-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 0;
+    border-top: 1px solid #eee;
+    margin-top: 2rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.no-data {
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .cq-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .cq-nav {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .cq-actions {
+        flex-direction: column;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .cq-checklist {
+        grid-template-columns: 1fr;
+    }
+    
+    .control-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .cq-footer {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+}
