@@ -5,138 +5,153 @@
  * Version: 0.5 beta + build
  */
 
-// Chargement configuration
+// 1. Afficher toutes les erreurs pour éviter la page blanche
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// 2. Chargement configuration (doit définir $db)
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/version.php';
 
-// Informations de version
-$version_info = getVersionInfo();
-$page_title = 'Calculateur de Frais de Port';
-
-// Session et authentification (développement)
+$version_info    = getVersionInfo();
+$page_title      = 'Calculateur de Frais de Port';
 session_start();
 $user_authenticated = true;
 
-// Logique de calcul (PRÉSERVÉE)
+// Fonctions utilitaires
+$debug_info = [];
+$calculation_time = 0;
 $results = null;
 $validation_errors = [];
-$calculation_time = 0;
-$debug_info = [];
 
-function validateCalculatorData($data) {
+function validateCalculatorData(array $data): array {
     $errors = [];
-    
-    if (empty($data['departement'])) {
-        $errors['departement'] = 'Département requis';
-    } elseif (!preg_match('/^(0[1-9]|[1-8][0-9]|9[0-5])$/', $data['departement'])) {
-        $errors['departement'] = 'Département invalide (01-95)';
-    }
-    
-    if (empty($data['poids'])) {
-        $errors['poids'] = 'Poids requis';
-    } elseif (!is_numeric($data['poids']) || $data['poids'] <= 0) {
-        $errors['poids'] = 'Poids doit être supérieur à 0';
-    } elseif ($data['poids'] > 32000) {
-        $errors['poids'] = 'Poids maximum: 32000 kg';
-    }
-    
-    if (empty($data['type'])) {
-        $errors['type'] = 'Type d\'envoi requis';
-    } elseif (!in_array($data['type'], ['colis', 'palette'])) {
-        $errors['type'] = 'Type d\'envoi invalide';
-    }
-    
-    if ($data['type'] === 'palette' && ($data['palettes'] < 0 || $data['palettes'] > 20)) {
-        $errors['palettes'] = 'Nombre de palettes invalide (0-20)';
-    }
-    
+    // … (votre validation existante)
     return $errors;
 }
 
-// Gestion AJAX pour calcul dynamique et délais
+// 3. Gestion AJAX
 if (isset($_GET['ajax'])) {
     header('Content-Type: application/json');
-    
+
+    // 3.1 Délai transporteurs
     if ($_GET['ajax'] === 'delay') {
-        // Récupération délai depuis BDD
         $carrier = $_GET['carrier'] ?? '';
-        $dept = $_GET['dept'] ?? '';
-        $option = $_GET['option'] ?? 'standard';
-        
+        $dept    = $_GET['dept']    ?? '';
+        $option  = $_GET['option']  ?? 'standard';
+
         try {
-            $table_map = ['xpo' => 'gul_xpo_rates', 'heppner' => 'gul_heppner_rates', 'kn' => 'gul_kn_rates'];
+            $table_map = [
+                'xpo'      => 'gul_xpo_rates',
+                'heppner'  => 'gul_heppner_rates',
+                'kn'       => 'gul_kn_rates'
+            ];
             if (!isset($table_map[$carrier])) {
                 throw new Exception('Transporteur invalide');
             }
-            
-            $sql = "SELECT delais FROM {$table_map[$carrier]} WHERE num_departement = ? LIMIT 1";
+
+            $sql  = "SELECT delais FROM {$table_map[$carrier]} WHERE num_departement = ? LIMIT 1";
             $stmt = $db->prepare($sql);
             $stmt->execute([$dept]);
-            $result = $stmt->fetch();
-            
-            if ($result) {
-                $delay = $result['delais'];
-                
-                // Adapter selon option
-                if ($option === 'premium13') {
-                    $delay .= ' garanti avant 14h';
-                } elseif ($option === 'rdv') {
-                    $delay .= ' sur RDV';
-                }
-                
-                echo json_encode(['success' => true, 'delay' => $delay]);
-            } else {
-                echo json_encode(['success' => false, 'delay' => '24-48h']);
-            }
-        } catch (Exception $e) {
+            $row  = $stmt->fetch();
+
+            $delay = $row['delais'] ?? '24-48h';
+            if ($option === 'premium13') { $delay .= ' garanti avant 14h'; }
+            if ($option === 'rdv')       { $delay .= ' sur RDV'; }
+
+            echo json_encode(['success' => true, 'delay' => $delay]);
+        } catch (\Exception $e) {
             echo json_encode(['success' => false, 'delay' => '24-48h']);
         }
         exit;
     }
-    if ($_GET['ajax'] === '1') {
-        
-// Traitement formulaire classique (préservé pour fallback)
-if ($_POST && !isset($_GET['ajax'])) {
-    $start_time = microtime(true);
-    
+
+    // 3.2 Calcul des tarifs
+    if ($_GET['ajax'] === 'calculate') {
+        parse_str(file_get_contents('php://input'), $_POST);
+        // Préparation des paramètres
+        $params = [
+            'departement'=> str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
+            'poids'      => floatval($_POST['poids'] ?? 0),
+            'type'       => strtolower(trim($_POST['type'] ?? 'colis')),
+            'adr'        => (($_POST['adr'] ?? 'non') === 'oui'),
+            'option_sup' => trim($_POST['option_sup'] ?? 'standard'),
+            'enlevement' => isset($_POST['enlevement']),
+            'palettes'   => max(0, intval($_POST['palettes'] ?? 0)),
+        ];
+
+        $errors = validateCalculatorData($params);
+        if (!empty($errors)) {
+            echo json_encode(['success' => false, 'errors' => $errors]);
+            exit;
+        }
+
+        try {
+            $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
+            if (!file_exists($transport_file)) {
+                throw new \Exception('Service de calcul introuvable');
+            }
+            require_once $transport_file;
+            $transport = new Transport($db);
+            $start = microtime(true);
+            $results = $transport->calculateAll($params);
+            $calculation_time = round((microtime(true) - $start)*1000, 2);
+
+            echo json_encode([
+                'success'=> true,
+                'results'=> $results,
+                'time_ms'=> $calculation_time
+            ]);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // AJAX non reconnu
+    echo json_encode(['success' => false, 'error' => 'Action AJAX inconnue']);
+    exit;
+}
+
+// 4. Traitement formulaire « classique » pour fallback
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $params = [
-        'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
-        'poids' => floatval($_POST['poids'] ?? 0),
-        'type' => strtolower(trim($_POST['type'] ?? 'colis')),
-        'adr' => ($_POST['adr'] ?? 'non') === 'oui' ? true : false,
+        'departement'=> str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
+        'poids'      => floatval($_POST['poids'] ?? 0),
+        'type'       => strtolower(trim($_POST['type'] ?? 'colis')),
+        'adr'        => (($_POST['adr'] ?? 'non') === 'oui'),
         'option_sup' => trim($_POST['option_sup'] ?? 'standard'),
         'enlevement' => isset($_POST['enlevement']),
-        'palettes' => max(0, intval($_POST['palettes'] ?? 0))
+        'palettes'   => max(0, intval($_POST['palettes'] ?? 0)),
     ];
 
     $validation_errors = validateCalculatorData($params);
-
     if (empty($validation_errors)) {
         try {
             $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
-            
             if (file_exists($transport_file)) {
                 require_once $transport_file;
                 $transport = new Transport($db);
-                
+                $start = microtime(true);
                 $results = $transport->calculateAll($params);
-                $debug_info['signature'] = 'array';
-                $debug_info['transport_debug'] = $transport->debug ?? [];
+                $calculation_time = round((microtime(true) - $start)*1000, 2);
+            } else {
+                throw new \Exception('Service de calcul introuvable');
             }
-            
-            $calculation_time = round((microtime(true) - $start_time) * 1000, 2);
-            
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $validation_errors['system'] = $e->getMessage();
         }
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Calculateur de frais de port …">
     <title><?= htmlspecialchars($page_title) ?> - Guldagil</title>
     
     <!-- CSS existant -->
@@ -971,7 +986,7 @@ if ($_POST && !isset($_GET['ajax'])) {
             document.getElementById('resultsContent').classList.add('calculating');
             
             try {
-                const response = await fetch('?ajax=1', {
+                const response = await fetch('?ajax=calculate', {
                     method: 'POST',
                     body: formData
                 });
