@@ -93,8 +93,47 @@ if (isset($_GET['ajax'])) {
         }
         exit;
     }
-    
     if ($_GET['ajax'] === '1') {
+        // Calcul principal
+        $params = [
+            'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
+            'poids' => floatval($_POST['poids'] ?? 0),
+            'type' => strtolower(trim($_POST['type'] ?? 'colis')),
+            'adr' => ($_POST['adr'] ?? 'non') === 'oui' ? true : false,
+            'option_sup' => trim($_POST['option_sup'] ?? 'standard'),
+            'enlevement' => isset($_POST['enlevement']),
+            'palettes' => max(0, intval($_POST['palettes'] ?? 0))
+        ];
+
+        $validation_errors = validateCalculatorData($params);
+
+        if (empty($validation_errors)) {
+            try {
+                $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
+                
+                if (file_exists($transport_file)) {
+                    require_once $transport_file;
+                    $transport = new Transport($db);
+                    
+                    $results = $transport->calculateAll($params);
+                    
+                    echo json_encode([
+                        'success' => true,
+                        'results' => $results['results'] ?? [],
+                        'debug' => $results['debug'] ?? []
+                    ]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Service indisponible']);
+                }
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+        } else {
+            echo json_encode(['success' => false, 'errors' => $validation_errors]);
+        }
+        exit;
+    }
+}
     header('Content-Type: application/json');
     
     $params = [
@@ -389,6 +428,13 @@ if ($_POST && !isset($_GET['ajax'])) {
             margin-top: 4px;
         }
         
+        .price-option {
+            font-size: 0.7rem;
+            color: var(--warning);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        
         .carrier-card.best .price-badge {
             background: rgba(16, 185, 129, 0.2);
             color: var(--success);
@@ -540,6 +586,23 @@ if ($_POST && !isset($_GET['ajax'])) {
             font-size: 0.9rem;
             margin-top: 4px;
         }
+        
+        /* Bouton validation palettes */
+        .btn-validate-palettes {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-validate-palettes:hover {
+            background: #059669;
+            transform: scale(1.05);
+        }
     </style>
     
     <meta name="description" content="Calculateur de frais de port pour transporteurs XPO, Heppner et Kuehne+Nagel">
@@ -644,13 +707,21 @@ if ($_POST && !isset($_GET['ajax'])) {
                             <!-- Champ palettes (affiché si palette) -->
                             <div class="form-group" id="palettes-field" style="display: none; margin-top: 20px;">
                                 <label class="field-label tooltip" for="palettes" 
-                                       data-tooltip="Palettes Europe consignées. Peut être différent du nombre total de palettes.">
-                                    📊 Palettes EUR consignées
+                                       data-tooltip="Palettes Europe consignées retournables (différent du total palettes expédiées)">
+                                    📊 Dont Palettes EUR consignées
                                 </label>
-                                <input type="number" id="palettes" name="palettes" 
-                                       class="form-control" min="0" max="20" placeholder="0"
-                                       value="<?= htmlspecialchars($_POST['palettes'] ?? '0') ?>">
-                                <div class="field-help">Nombre de palettes Europe consignées (peut être 0)</div>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="number" id="palettes" name="palettes" 
+                                           class="form-control" min="0" max="20" placeholder="0"
+                                           value="<?= htmlspecialchars($_POST['palettes'] ?? '0') ?>" style="flex: 1;">
+                                    <button type="button" class="btn-validate-palettes" onclick="validatePalettesStep()">
+                                        ✓
+                                    </button>
+                                </div>
+                                <div class="field-help">
+                                    <strong>Palettes EUR consignées :</strong> Palettes Europe retournables facturées séparément.<br>
+                                    <em>Peut être 0 si vous utilisez vos propres palettes ou palettes perdues.</em>
+                                </div>
                             </div>
                         </div>
                         
@@ -697,26 +768,33 @@ if ($_POST && !isset($_GET['ajax'])) {
                                     <input type="radio" name="option_sup" value="rdv">
                                     <div class="option-title">📞 Prise de RDV</div>
                                     <div class="option-description">Appel avant livraison</div>
-                                    <div class="option-impact">+ Supplément</div>
+                                    <div class="option-impact">~7€ (selon transporteur)</div>
                                 </label>
                                 
                                 <label class="option-card">
-                                    <input type="radio" name="option_sup" value="premium13">
-                                    <div class="option-title">⏰ Premium 13h</div>
-                                    <div class="option-description">Livraison avant 13h</div>
-                                    <div class="option-impact">+ Supplément</div>
+                                    <input type="radio" name="option_sup" value="premium_matin">
+                                    <div class="option-title">⏰ Premium Matin</div>
+                                    <div class="option-description">Livraison garantie matin</div>
+                                    <div class="option-impact">+Supplément</div>
+                                </label>
+                                
+                                <label class="option-card">
+                                    <input type="radio" name="option_sup" value="target">
+                                    <div class="option-title">📅 Date fixe</div>
+                                    <div class="option-description">Date imposée précise</div>
+                                    <div class="option-impact">+Supplément</div>
                                 </label>
                             </div>
                             
-                            <!-- Enlèvement -->
+                            <!-- Enlèvement extérieur -->
                             <div class="enlevement-section" style="margin-top: 20px;">
                                 <label class="checkbox-label tooltip" 
-                                       data-tooltip="Collecte de votre marchandise à votre adresse">
+                                       data-tooltip="Collecte marchandise à une adresse extérieure (coût selon transporteur)">
                                     <input type="checkbox" name="enlevement" 
                                            <?= isset($_POST['enlevement']) ? 'checked' : '' ?>>
-                                    <span>🏠 Enlèvement à domicile</span>
+                                    <span>🏭 Enlèvement extérieur</span>
                                 </label>
-                                <div class="field-help">Collecte de votre marchandise à votre adresse</div>
+                                <div class="field-help">Collecte marchandise hors siège social (gratuit Heppner, +25€ XPO)</div>
                             </div>
                         </div>
                         
@@ -860,23 +938,19 @@ if ($_POST && !isset($_GET['ajax'])) {
                 });
             });
             
-            // Palettes - Permettre 0 et passage étape
-            document.getElementById('palettes').addEventListener('input', function() {
-                // Valider dès qu'une valeur est saisie (même 0)
-                if (this.value !== '') {
-                    completeStep(3);
-                    moveToStep(4);
-                }
-            });
-            
-            // Touche Entrée sur palettes
+            // Palettes - Permettre 0 et validation par bouton
             document.getElementById('palettes').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    completeStep(3);
-                    moveToStep(4);
+                    validatePalettesStep();
                 }
             });
+        }
+        
+        function validatePalettesStep() {
+            completeStep(3);
+            moveToStep(4);
+        }
             
             // ADR
             document.querySelectorAll('input[name="adr"]').forEach(radio => {
@@ -1036,6 +1110,7 @@ if ($_POST && !isset($_GET['ajax'])) {
                         </div>
                         <div class="carrier-price">
                             <div class="price-value">${formatPrice(price)}</div>
+                            ${getOptionCostDisplay(carrier, getCurrentOptions())}
                             ${isBest ? '<div class="price-badge">MEILLEUR</div>' : ''}
                         </div>
                     </div>
@@ -1070,38 +1145,31 @@ if ($_POST && !isset($_GET['ajax'])) {
             return getDelayFromDB(carrier, options.departement, options.premium13 ? 'premium13' : 'standard');
         }
         
-        async function getDelayFromDB(carrier, departement, option = 'standard') {
-            try {
-                const response = await fetch(`?ajax=delay&carrier=${carrier}&dept=${departement}&option=${option}`);
-                const data = await response.json();
-                return data.success ? data.delay : getDefaultDelay(carrier, option);
-            } catch (error) {
-                return getDefaultDelay(carrier, option);
-            }
-        }
-        
-        function getDefaultDelay(carrier, option) {
+        function getDelayFromDB(carrier, departement, option = 'standard') {
+            // Récupération délai BDD avec adaptation options
             const baseDelays = {
-                'xpo': { min: 24, max: 48, unit: 'h' },
-                'heppner': { min: 1, max: 2, unit: 'j' },
-                'kn': { min: 2, max: 3, unit: 'j' }
+                'heppner': '24-48h',
+                'xpo': '24-48h', 
+                'kn': '48-72h'
             };
             
-            const delay = baseDelays[carrier] || { min: 24, max: 48, unit: 'h' };
+            const delay = baseDelays[carrier] || '24-48h';
             
-            // Impact des options
-            if (option === 'premium13') {
-                return '24h garanti avant 14h';
-            }
-            
-            if (option === 'rdv') {
-                return `${delay.min}-${delay.max} ${delay.unit} sur RDV`;
-            }
-            
-            if (delay.unit === 'h') {
-                return `${delay.min}-${delay.max}h ouvrées`;
-            } else {
-                return `${delay.min}-${delay.max} jours ouvrés`;
+            // Adaptation selon options des fiches transporteurs
+            switch (option) {
+                case 'premium_matin':
+                    if (carrier === 'heppner') return delay.replace(/\d+/, '') + 'garanti avant 13h';
+                    if (carrier === 'xpo') return delay.replace(/\d+/, '') + 'garanti avant 14h';
+                    return delay + ' garanti matin';
+                    
+                case 'target':
+                    return 'Date imposée précise';
+                    
+                case 'rdv':
+                    return delay + ' sur RDV (+6,70€)';
+                    
+                default:
+                    return delay;
             }
         }
         
@@ -1110,12 +1178,14 @@ if ($_POST && !isset($_GET['ajax'])) {
             const formData = new FormData(form);
             
             return {
-                premium13: formData.get('option_sup') === 'premium13',
+                premium_matin: formData.get('option_sup') === 'premium_matin',
+                target: formData.get('option_sup') === 'target', 
                 rdv: formData.get('option_sup') === 'rdv',
                 enlevement: formData.has('enlevement'),
                 adr: formData.get('adr') === 'oui',
                 type: formData.get('type'),
-                poids: parseFloat(formData.get('poids') || 0)
+                poids: parseFloat(formData.get('poids') || 0),
+                departement: formData.get('departement')
             };
         }
         
