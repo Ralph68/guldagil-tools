@@ -134,47 +134,6 @@ if (isset($_GET['ajax'])) {
         exit;
     }
 }
-    header('Content-Type: application/json');
-    
-    $params = [
-        'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
-        'poids' => floatval($_POST['poids'] ?? 0),
-        'type' => strtolower(trim($_POST['type'] ?? 'colis')),
-        'adr' => ($_POST['adr'] ?? 'non') === 'oui' ? true : false,
-        'option_sup' => trim($_POST['option_sup'] ?? 'standard'),
-        'enlevement' => isset($_POST['enlevement']),
-        'palettes' => max(0, intval($_POST['palettes'] ?? 0))
-    ];
-
-    $validation_errors = validateCalculatorData($params);
-
-    if (empty($validation_errors)) {
-        try {
-            $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
-            
-            if (file_exists($transport_file)) {
-                require_once $transport_file;
-                $transport = new Transport($db);
-                
-                $results = $transport->calculateAll($params);
-                
-                echo json_encode([
-                    'success' => true,
-                    'results' => $results['results'] ?? [],
-                    'debug' => $results['debug'] ?? []
-                ]);
-            } else {
-                echo json_encode(['success' => false, 'error' => 'Service indisponible']);
-            }
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        }
-    } else {
-        echo json_encode(['success' => false, 'errors' => $validation_errors]);
-    }
-    exit;
-}
-
 // Traitement formulaire classique (préservé pour fallback)
 if ($_POST && !isset($_GET['ajax'])) {
     $start_time = microtime(true);
