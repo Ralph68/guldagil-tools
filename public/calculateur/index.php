@@ -28,8 +28,8 @@ function validateCalculatorData($data) {
     
     if (empty($data['departement'])) {
         $errors['departement'] = 'Département requis';
-    } elseif (!preg_match('/^(0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/', $data['departement'])) {
-        $errors['departement'] = 'Département invalide';
+    } elseif (!preg_match('/^(0[1-9]|[1-8][0-9]|9[0-5])$/', $data['departement'])) {
+        $errors['departement'] = 'Département invalide (01-95)';
     }
     
     if (empty($data['poids'])) {
@@ -150,13 +150,18 @@ if ($_POST && !isset($_GET['ajax'])) {
         /* Couleurs plus vivantes */
         :root {
             --primary: #2563eb;
-            --primary-light: #3b82f6;
+            --primary-light: #60a5fa;
             --success: #10b981;
             --warning: #f59e0b;
             --info: #06b6d4;
             --purple: #8b5cf6;
             --pink: #ec4899;
             --orange: #f97316;
+            
+            /* Nouvelles couleurs transporteurs */
+            --xpo-color: #e11d48;
+            --heppner-color: #10b981;
+            --kn-color: #3b82f6;
         }
         
         /* Étapes progressives */
@@ -276,6 +281,150 @@ if ($_POST && !isset($_GET['ajax'])) {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Améliorations UX - Étape 2 */
+        .carrier-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .carrier-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .carrier-card.best {
+            border-color: var(--success);
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+        
+        .carrier-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .carrier-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--gray-800);
+        }
+        
+        .carrier-delay {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .carrier-price {
+            text-align: right;
+        }
+        
+        .price-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .carrier-card.best .price-value {
+            color: var(--success);
+        }
+        
+        .price-badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: var(--gray-100);
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+        
+        .carrier-card.best .price-badge {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+        
+        /* Transporteur colors */
+        .carrier-card[data-carrier="xpo"] {
+            border-left: 4px solid var(--xpo-color);
+        }
+        
+        .carrier-card[data-carrier="heppner"] {
+            border-left: 4px solid var(--heppner-color);
+        }
+        
+        .carrier-card[data-carrier="kn"] {
+            border-left: 4px solid var(--kn-color);
+        }
+        
+        /* Smart hints */
+        .smart-hint {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 1px solid var(--warning);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            color: #92400e;
+            display: none;
+        }
+        
+        .smart-hint.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Validation states */
+        .form-control.valid {
+            border-color: var(--success);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+        
+        .form-control.invalid {
+            border-color: var(--error);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+        
+        /* Option cards enhanced */
+        .option-card {
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .option-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s;
+        }
+        
+        .option-card:hover::before {
+            left: 100%;
+        }
+        
+        .option-card.selected {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%);
+        }
     </style>
     
     <meta name="description" content="Calculateur de frais de port pour transporteurs XPO, Heppner et Kuehne+Nagel">
@@ -324,13 +473,13 @@ if ($_POST && !isset($_GET['ajax'])) {
                             
                             <div class="form-group">
                                 <label class="field-label tooltip" for="departement" 
-                                       data-tooltip="Département français métropolitain (01-95) ou DOM-TOM (971-976)">
+                                       data-tooltip="Département français métropolitain (01-95)">
                                     📍 Département de destination
                                 </label>
                                 <input type="text" id="departement" name="departement" 
-                                       class="form-control" placeholder="Ex: 67, 75, 13..." maxlength="3"
+                                       class="form-control" placeholder="Ex: 67, 75, 13..." maxlength="2"
                                        value="<?= htmlspecialchars($_POST['departement'] ?? '') ?>" required>
-                                <div class="field-help">Saisissez le code département (2 ou 3 chiffres)</div>
+                                <div class="field-help">Saisissez le code département (2 chiffres)</div>
                             </div>
                         </div>
                         
@@ -456,6 +605,13 @@ if ($_POST && !isset($_GET['ajax'])) {
                             </div>
                         </div>
                         
+                        <!-- Bouton Reset -->
+                        <div class="form-section" style="text-align: center; padding: 20px;">
+                            <button type="button" class="btn-reset" onclick="resetForm()">
+                                🔄 Recommencer le calcul
+                            </button>
+                        </div>
+                        
                     </form>
                 </div>
                 
@@ -515,34 +671,49 @@ if ($_POST && !isset($_GET['ajax'])) {
         function setupEventListeners() {
             // Département
             document.getElementById('departement').addEventListener('input', function() {
-                if (this.value.length >= 2 && /^(0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/.test(this.value)) {
+                if (this.value.length >= 2 && /^(0[1-9]|[1-8][0-9]|9[0-5])$/.test(this.value)) {
+                    this.classList.add('valid');
+                    this.classList.remove('invalid');
                     completeStep(1);
                     moveToStep(2);
+                } else if (this.value.length >= 2) {
+                    this.classList.add('invalid');
+                    this.classList.remove('valid');
+                } else {
+                    this.classList.remove('valid', 'invalid');
                 }
             });
             
-            // Poids
+            // Poids avec validation
             document.getElementById('poids').addEventListener('input', function() {
                 const poids = parseFloat(this.value);
                 
-                // Suggestion automatique palette si > 60kg
-                const suggestion = document.getElementById('weightSuggestion');
-                if (poids > 60) {
-                    suggestion.textContent = '💡 Suggestion: Expédition en palette recommandée (>60kg)';
-                    suggestion.classList.add('show');
-                    
-                    // Auto-sélection palette
-                    document.querySelector('input[name="type"][value="palette"]').checked = true;
-                    showPalettesField();
-                } else {
-                    suggestion.classList.remove('show');
-                    document.querySelector('input[name="type"][value="colis"]').checked = true;
-                    hidePalettesField();
-                }
-                
                 if (poids > 0) {
+                    this.classList.add('valid');
+                    this.classList.remove('invalid');
+                    
+                    // Suggestion automatique palette si > 60kg
+                    const suggestion = document.getElementById('weightSuggestion');
+                    if (poids > 60) {
+                        suggestion.textContent = '💡 Suggestion: Expédition en palette recommandée (>60kg)';
+                        suggestion.classList.add('show');
+                        
+                        // Auto-sélection palette
+                        document.querySelector('input[name="type"][value="palette"]').checked = true;
+                        showPalettesField();
+                    } else {
+                        suggestion.classList.remove('show');
+                        document.querySelector('input[name="type"][value="colis"]').checked = true;
+                        hidePalettesField();
+                    }
+                    
                     completeStep(2);
                     moveToStep(3);
+                } else if (this.value !== '') {
+                    this.classList.add('invalid');
+                    this.classList.remove('valid');
+                } else {
+                    this.classList.remove('valid', 'invalid');
                 }
             });
             
@@ -551,12 +722,32 @@ if ($_POST && !isset($_GET['ajax'])) {
                 radio.addEventListener('change', function() {
                     if (this.value === 'palette') {
                         showPalettesField();
+                        // Auto-focus sur palettes EUR pour validation rapide
+                        setTimeout(() => document.getElementById('palettes').focus(), 100);
                     } else {
                         hidePalettesField();
+                        completeStep(3);
+                        moveToStep(4);
                     }
+                });
+            });
+            
+            // Palettes - Permettre 0 et passage étape
+            document.getElementById('palettes').addEventListener('input', function() {
+                // Valider dès qu'une valeur est saisie (même 0)
+                if (this.value !== '') {
                     completeStep(3);
                     moveToStep(4);
-                });
+                }
+            });
+            
+            // Touche Entrée sur palettes
+            document.getElementById('palettes').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    completeStep(3);
+                    moveToStep(4);
+                }
             });
             
             // ADR
@@ -698,22 +889,107 @@ if ($_POST && !isset($_GET['ajax'])) {
                     <h3>🏆 Meilleur tarif</h3>
                     <div class="best-price">${formatPrice(bestResult[1])}</div>
                     <div class="best-carrier">${bestResult[0].toUpperCase()}</div>
+                    <div class="carrier-delay" style="margin-top: 8px; color: #065f46;">
+                        ⏰ ${getDeliveryDelay(bestResult[0], getCurrentOptions())}
+                    </div>
                 </div>
                 <div class="comparison">
             `;
             
             validResults.forEach(([carrier, price]) => {
                 const isBest = carrier === bestResult[0];
+                const delay = getDeliveryDelay(carrier, getCurrentOptions());
+                
                 html += `
-                    <div class="carrier-row ${isBest ? 'best' : ''}">
-                        <span>${carrier.toUpperCase()}</span>
-                        <strong>${formatPrice(price)}</strong>
+                    <div class="carrier-card ${isBest ? 'best' : ''}" data-carrier="${carrier}">
+                        <div class="carrier-info">
+                            <div class="carrier-name">${carrier.toUpperCase()}</div>
+                            <div class="carrier-delay">⏰ ${delay}</div>
+                        </div>
+                        <div class="carrier-price">
+                            <div class="price-value">${formatPrice(price)}</div>
+                            ${isBest ? '<div class="price-badge">MEILLEUR</div>' : ''}
+                        </div>
                     </div>
                 `;
             });
             
             html += '</div>';
+            
+            // Ajouter conseils smart
+            html += generateSmartHints(validResults, getCurrentOptions());
+            
             document.getElementById('resultsContent').innerHTML = html;
+        }
+        
+        function getDeliveryDelay(carrier, options) {
+            const baseDelays = {
+                'xpo': { min: 24, max: 48, unit: 'h' },
+                'heppner': { min: 1, max: 2, unit: 'j' },
+                'kn': { min: 2, max: 3, unit: 'j' }
+            };
+            
+            const delay = baseDelays[carrier] || { min: 24, max: 48, unit: 'h' };
+            
+            // Impact des options
+            if (options.premium13) {
+                return '24h garanti avant 14h';
+            }
+            
+            if (options.rdv) {
+                return `${delay.min}-${delay.max} ${delay.unit} sur RDV`;
+            }
+            
+            if (delay.unit === 'h') {
+                return `${delay.min}-${delay.max}h ouvrées`;
+            } else {
+                return `${delay.min}-${delay.max} jours ouvrés`;
+            }
+        }
+        
+        function getCurrentOptions() {
+            const form = document.getElementById('calc-form');
+            const formData = new FormData(form);
+            
+            return {
+                premium13: formData.get('option_sup') === 'premium13',
+                rdv: formData.get('option_sup') === 'rdv',
+                enlevement: formData.has('enlevement'),
+                adr: formData.get('adr') === 'oui',
+                type: formData.get('type'),
+                poids: parseFloat(formData.get('poids') || 0)
+            };
+        }
+        
+        function generateSmartHints(results, options) {
+            let hints = [];
+            
+            // Conseil économie
+            const prices = results.map(([, price]) => price).sort((a, b) => a - b);
+            if (prices.length > 1) {
+                const saving = prices[1] - prices[0];
+                if (saving > 5) {
+                    hints.push(`💡 Économie de ${formatPrice(saving)} avec le transporteur le moins cher`);
+                }
+            }
+            
+            // Conseil délai
+            if (options.premium13) {
+                hints.push(`⚡ Option Premium sélectionnée : livraison garantie avant 14h`);
+            }
+            
+            // Conseil poids
+            if (options.poids > 100 && options.type === 'colis') {
+                hints.push(`📦 Pour ${options.poids}kg, considérez l'expédition en palette pour plus de sécurité`);
+            }
+            
+            if (hints.length === 0) return '';
+            
+            return `
+                <div class="smart-hint show">
+                    ${hints.join('<br>')}
+                </div>
+            `;
         }
         
         function formatPrice(price) {
@@ -763,9 +1039,10 @@ if ($_POST && !isset($_GET['ajax'])) {
             const type = document.querySelector('input[name="type"]:checked');
             const adr = document.querySelector('input[name="adr"]:checked');
             
-            if (dept && /^(0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/.test(dept)) {
+            if (dept && /^(0[1-9]|[1-8][0-9]|9[0-5])$/.test(dept)) {
                 completeStep(1);
                 currentStep = Math.max(currentStep, 2);
+                document.getElementById('departement').classList.add('valid');
             }
             
             if (poids && parseFloat(poids) > 0) {
