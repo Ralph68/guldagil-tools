@@ -400,7 +400,7 @@ $user_authenticated = true; // Simplifié pour développement
                     };
                     
                     // Appel API
-                    const response = await fetch('ajax-calculate.php', {
+                    const response = await fetch('./ajax-calculate.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
