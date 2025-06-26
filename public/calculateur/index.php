@@ -94,46 +94,7 @@ if (isset($_GET['ajax'])) {
         exit;
     }
     if ($_GET['ajax'] === '1') {
-        // Calcul principal
-        $params = [
-            'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
-            'poids' => floatval($_POST['poids'] ?? 0),
-            'type' => strtolower(trim($_POST['type'] ?? 'colis')),
-            'adr' => ($_POST['adr'] ?? 'non') === 'oui' ? true : false,
-            'option_sup' => trim($_POST['option_sup'] ?? 'standard'),
-            'enlevement' => isset($_POST['enlevement']),
-            'palettes' => max(0, intval($_POST['palettes'] ?? 0))
-        ];
-
-        $validation_errors = validateCalculatorData($params);
-
-        if (empty($validation_errors)) {
-            try {
-                $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
-                
-                if (file_exists($transport_file)) {
-                    require_once $transport_file;
-                    $transport = new Transport($db);
-                    
-                    $results = $transport->calculateAll($params);
-                    
-                    echo json_encode([
-                        'success' => true,
-                        'results' => $results['results'] ?? [],
-                        'debug' => $results['debug'] ?? []
-                    ]);
-                } else {
-                    echo json_encode(['success' => false, 'error' => 'Service indisponible']);
-                }
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-            }
-        } else {
-            echo json_encode(['success' => false, 'errors' => $validation_errors]);
-        }
-        exit;
-    }
-}
+        
 // Traitement formulaire classique (préservé pour fallback)
 if ($_POST && !isset($_GET['ajax'])) {
     $start_time = microtime(true);
@@ -864,11 +825,15 @@ if ($_POST && !isset($_GET['ajax'])) {
                         suggestion.classList.add('show');
                         
                         // Auto-sélection palette
-                        document.querySelector('input[name="type"][value="palette"]').checked = true;
+                         const paletteRadio = document.querySelector('input[name="type"][value="palette"]');
+                        paletteRadio.checked = true;
+                        paletteRadio.dispatchEvent(new Event('change'));
                         showPalettesField();
                     } else {
                         suggestion.classList.remove('show');
-                        document.querySelector('input[name="type"][value="colis"]').checked = true;
+                        const colisRadio = document.querySelector('input[name="type"][value="colis"]');
+                        colisRadio.checked = true;
+                        colisRadio.dispatchEvent(new Event('change'));
                         hidePalettesField();
                     }
                     
@@ -904,7 +869,6 @@ if ($_POST && !isset($_GET['ajax'])) {
                     validatePalettesStep();
                 }
             });
-        }
         
         function validatePalettesStep() {
             completeStep(3);
@@ -1261,6 +1225,67 @@ if ($_POST && !isset($_GET['ajax'])) {
             
             // Mettre à jour l'affichage des étapes
             moveToStep(currentStep);
+        }
+
+        // Historique des calculs basique
+        const calcHistory = [];
+
+        function toggleHistory() {
+            const content = document.getElementById('historyContent');
+            const toggle = document.getElementById('historyToggle');
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.textContent = '▼';
+            } else {
+                content.classList.add('expanded');
+                toggle.textContent = '▲';
+            }
+        }
+
+        function getCurrentFormData() {
+            return Object.fromEntries(new FormData(document.getElementById('calc-form')).entries());
+        }
+
+        function saveToHistory(formData, results) {
+            const best = Object.entries(results).reduce((min, curr) => curr[1] < min[1] ? curr : min);
+            calcHistory.unshift({ time: new Date(), formData, best });
+            if (calcHistory.length > 10) calcHistory.pop();
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyContent');
+            if (calcHistory.length === 0) {
+                container.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--gray-500);">Aucun calcul récent</div>';
+                return;
+            }
+
+            container.innerHTML = calcHistory.map(entry => `
+                <div class="history-item">
+                    <div class="history-time">${entry.time.toLocaleString()}</div>
+                    <div class="history-details">
+                        ${entry.formData.poids}kg ${entry.formData.type} → ${entry.formData.departement} | ${entry.best[0].toUpperCase()} ${formatPrice(entry.best[1])}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getOptionCostDisplay(carrier, options) {
+            let cost = 0;
+            if (options.rdv) {
+                const rdvCosts = { heppner: 6.5, xpo: 7, kn: 8 };
+                cost += rdvCosts[carrier] || 7;
+            }
+            if (options.premium_matin) {
+                cost += 25;
+            }
+            if (options.target) {
+                cost += 30;
+            }
+            if (options.enlevement && carrier === 'xpo') {
+                cost += 25;
+            }
+            return cost > 0 ? `<div class="price-option">+${cost.toFixed(2)}€ options</div>` : '';
         }
     </script>
 
