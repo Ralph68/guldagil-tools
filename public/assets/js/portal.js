@@ -1,917 +1,894 @@
 /**
- * assets/js/portal.js - JavaScript spécifique au portail principal
+ * assets/js/portal.js - JavaScript professionnel pour le portail
  * Chemin: /public/assets/js/portal.js
- * Dépendances: app.min.js
+ * Architecture: Module ES6 avec Design Patterns
  */
 
+'use strict';
+
 // =============================================================================
-// NAMESPACE PORTAL
+// PORTAL MAIN MODULE
 // =============================================================================
 
-const Portal = {
+const Portal = (() => {
+    
     // Configuration
-    config: {
-        searchMinLength: 2,
-        searchDelay: 300,
-        statsUpdateInterval: 30000, // 30 secondes
-        healthCheckInterval: 60000,  // 1 minute
-        animationDuration: 300
-    },
+    const CONFIG = {
+        animations: {
+            duration: 300,
+            easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+        },
+        metrics: {
+            updateInterval: 30000, // 30 secondes
+            animationDelay: 100
+        },
+        notifications: {
+            autoHideDelay: 5000,
+            slideOutDuration: 300
+        }
+    };
     
-    // État
-    state: {
+    // État du module
+    const state = {
         initialized: false,
-        searchTimeout: null,
-        lastSearch: '',
-        statsTimer: null,
-        healthTimer: null
-    },
+        metricsTimer: null,
+        activeNotifications: new Set()
+    };
+    
+    // Cache des éléments DOM
+    const elements = {
+        modules: null,
+        notifications: null,
+        metrics: null,
+        quickActions: null
+    };
     
     /**
-     * Initialisation du portail
+     * Initialisation principale
      */
-    init() {
-        if (this.state.initialized) return;
+    function init() {
+        if (state.initialized) return;
         
-        console.log('🏠 Initialisation du portail Guldagil...');
+        console.log('🏠 Initialisation Portal Enterprise...');
         
-        // Initialiser les composants
-        this.initSearch();
-        this.initModuleCards();
-        this.initQuickActions();
-        this.initKeyboardShortcuts();
-        this.initStatsUpdates();
-        this.initHealthChecks();
-        this.initAnimations();
+        // Cache des éléments
+        cacheElements();
         
-        this.state.initialized = true;
-        console.log('✅ Portail initialisé avec succès');
+        // Initialisation des composants
+        initModules();
+        initNotifications();
+        initMetrics();
+        initQuickActions();
+        initKeyboardShortcuts();
+        initAnimations();
         
-        // Notifier l'initialisation
-        this.showWelcomeMessage();
-    },
+        // Démarrage des services
+        startServices();
+        
+        state.initialized = true;
+        console.log('✅ Portal Enterprise initialisé');
+        
+        // Événement personnalisé
+        document.dispatchEvent(new CustomEvent('portal:ready', {
+            detail: { timestamp: Date.now() }
+        }));
+    }
     
     /**
-     * Afficher un message de bienvenue
+     * Cache des éléments DOM pour optimiser les performances
      */
-    showWelcomeMessage() {
-        if (window.Notifications) {
-            setTimeout(() => {
-                Notifications.success('Portail Guldagil chargé avec succès!', 2000);
-            }, 1000);
-        }
-    },
+    function cacheElements() {
+        elements.modules = document.querySelectorAll('.module-card');
+        elements.notifications = document.querySelectorAll('.notification');
+        elements.metrics = document.querySelectorAll('.metric-item');
+        elements.quickActions = document.querySelectorAll('.quick-action');
+    }
     
     /**
-     * Initialiser la recherche
+     * Initialisation des modules
      */
-    initSearch() {
-        const searchInput = document.getElementById('quickSearchInput');
-        if (!searchInput) return;
+    function initModules() {
+        if (!elements.modules) return;
         
-        // Événements de recherche
-        searchInput.addEventListener('input', (e) => {
-            this.handleSearchInput(e.target.value);
-        });
-        
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.performSearch(e.target.value);
-            }
-        });
-        
-        // Placeholder dynamique
-        this.initSearchPlaceholder(searchInput);
-    },
-    
-    /**
-     * Placeholder dynamique pour la recherche
-     */
-    initSearchPlaceholder(input) {
-        const placeholders = [
-            'Rechercher un module...',
-            'Trouver une fonctionnalité...',
-            'Recherche rapide...',
-            'Que cherchez-vous ?'
-        ];
-        
-        let currentIndex = 0;
-        
-        setInterval(() => {
-            if (input !== document.activeElement) {
-                input.placeholder = placeholders[currentIndex];
-                currentIndex = (currentIndex + 1) % placeholders.length;
-            }
-        }, 3000);
-    },
-    
-    /**
-     * Gérer la saisie de recherche
-     */
-    handleSearchInput(value) {
-        // Annuler la recherche précédente
-        if (this.state.searchTimeout) {
-            clearTimeout(this.state.searchTimeout);
-        }
-        
-        // Nouvelle recherche après délai
-        this.state.searchTimeout = setTimeout(() => {
-            if (value.length >= this.config.searchMinLength) {
-                this.performAutoSearch(value);
-            }
-        }, this.config.searchDelay);
-    },
-    
-    /**
-     * Effectuer une recherche automatique
-     */
-    performAutoSearch(query) {
-        if (query === this.state.lastSearch) return;
-        this.state.lastSearch = query;
-        
-        console.log('🔍 Recherche automatique:', query);
-        
-        // Mettre en évidence les modules correspondants
-        this.highlightMatchingModules(query);
-    },
-    
-    /**
-     * Effectuer une recherche complète
-     */
-    performSearch(query) {
-        if (!query || query.length < this.config.searchMinLength) {
-            this.showSearchError('Veuillez saisir au moins 2 caractères');
-            return;
-        }
-        
-        console.log('🔍 Recherche complète:', query);
-        
-        // Simuler une recherche
-        this.showSearchResults(query);
-    },
-    
-    /**
-     * Mettre en évidence les modules correspondants
-     */
-    highlightMatchingModules(query) {
-        const moduleCards = document.querySelectorAll('.module-card');
-        const queryLower = query.toLowerCase();
-        
-        moduleCards.forEach(card => {
-            const title = card.querySelector('.module-title')?.textContent.toLowerCase() || '';
-            const description = card.querySelector('.module-description')?.textContent.toLowerCase() || '';
-            const features = Array.from(card.querySelectorAll('.feature-tag'))
-                .map(tag => tag.textContent.toLowerCase()).join(' ');
+        elements.modules.forEach((module, index) => {
+            // Animation d'entrée échelonnée
+            module.style.animationDelay = `${index * CONFIG.metrics.animationDelay}ms`;
             
-            const matches = title.includes(queryLower) || 
-                          description.includes(queryLower) || 
-                          features.includes(queryLower);
+            // Gestion des interactions
+            initModuleInteractions(module);
             
-            if (matches) {
-                card.style.transform = 'scale(1.02)';
-                card.style.boxShadow = '0 8px 25px rgba(37, 99, 235, 0.15)';
-                card.style.borderColor = 'var(--primary-color)';
-            } else {
-                card.style.opacity = '0.6';
+            // Métriques par module
+            initModuleMetrics(module);
+        });
+    }
+    
+    /**
+     * Interactions avancées pour un module
+     */
+    function initModuleInteractions(module) {
+        const iconWrapper = module.querySelector('.module-icon-wrapper');
+        const icon = module.querySelector('.module-icon');
+        
+        // Effet de survol sophistiqué
+        module.addEventListener('mouseenter', () => {
+            module.style.transform = 'translateY(-4px) scale(1.02)';
+            
+            if (iconWrapper) {
+                iconWrapper.style.transform = 'scale(1.1) rotate(5deg)';
             }
-        });
-        
-        // Restaurer après 3 secondes
-        setTimeout(() => {
-            this.resetModuleHighlight();
-        }, 3000);
-    },
-    
-    /**
-     * Restaurer l'apparence des modules
-     */
-    resetModuleHighlight() {
-        const moduleCards = document.querySelectorAll('.module-card');
-        
-        moduleCards.forEach(card => {
-            card.style.transform = '';
-            card.style.boxShadow = '';
-            card.style.borderColor = '';
-            card.style.opacity = '';
-        });
-    },
-    
-    /**
-     * Afficher les résultats de recherche
-     */
-    showSearchResults(query) {
-        // Simuler des résultats
-        const results = this.getSearchResults(query);
-        
-        if (results.length === 0) {
-            this.showSearchError(`Aucun résultat pour "${query}"`);
-            return;
-        }
-        
-        // Afficher dans une modal ou rediriger
-        const firstResult = results[0];
-        if (firstResult.url) {
-            if (confirm(`Aller vers "${firstResult.title}" ?`)) {
-                window.location.href = firstResult.url;
-            }
-        }
-    },
-    
-    /**
-     * Obtenir les résultats de recherche simulés
-     */
-    getSearchResults(query) {
-        const searchData = [
-            { title: 'Calculateur frais de port', url: 'calculateur/', keywords: ['calcul', 'tarif', 'transport', 'prix'] },
-            { title: 'Gestion ADR', url: 'adr/', keywords: ['adr', 'dangereuses', 'marchandises', 'déclaration'] },
-            { title: 'Contrôle qualité', url: 'controle-qualite/', keywords: ['contrôle', 'qualité', 'pompe', 'équipement'] },
-            { title: 'Administration', url: 'admin/', keywords: ['admin', 'configuration', 'gestion', 'paramètres'] },
-            { title: 'Nouveau contrôle pompe', url: 'controle-qualite/?controller=pompe-doseuse&action=nouveau', keywords: ['nouveau', 'contrôle', 'pompe', 'doseuse'] },
-            { title: 'Gestion des tarifs', url: 'admin/rates.php', keywords: ['tarifs', 'prix', 'transporteur'] },
-            { title: 'Import/Export', url: 'admin/import-export.php', keywords: ['import', 'export', 'données'] }
-        ];
-        
-        const queryLower = query.toLowerCase();
-        
-        return searchData.filter(item => 
-            item.title.toLowerCase().includes(queryLower) ||
-            item.keywords.some(keyword => keyword.includes(queryLower))
-        );
-    },
-    
-    /**
-     * Afficher une erreur de recherche
-     */
-    showSearchError(message) {
-        if (window.Notifications) {
-            Notifications.warning(message, 2000);
-        } else {
-            alert(message);
-        }
-    },
-    
-    /**
-     * Initialiser les cartes de modules
-     */
-    initModuleCards() {
-        const moduleCards = document.querySelectorAll('.module-card');
-        
-        moduleCards.forEach(card => {
-            // Animation au survol
-            card.addEventListener('mouseenter', () => {
-                this.animateModuleCard(card, 'enter');
-            });
             
-            card.addEventListener('mouseleave', () => {
-                this.animateModuleCard(card, 'leave');
-            });
-            
-            // Clic sur la carte
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('.btn')) {
-                    const link = card.querySelector('.btn');
-                    if (link) {
-                        link.click();
-                    }
-                }
-            });
-        });
-    },
-    
-    /**
-     * Animer une carte de module
-     */
-    animateModuleCard(card, action) {
-        const icon = card.querySelector('.module-icon');
-        
-        if (action === 'enter') {
+            // Animation de l'icône
             if (icon) {
-                icon.style.transform = 'scale(1.1) rotate(5deg)';
-                icon.style.transition = 'transform 0.3s ease';
+                icon.style.transform = 'scale(1.1)';
             }
-        } else {
+        });
+        
+        module.addEventListener('mouseleave', () => {
+            module.style.transform = '';
+            
+            if (iconWrapper) {
+                iconWrapper.style.transform = '';
+            }
+            
             if (icon) {
                 icon.style.transform = '';
             }
-        }
-    },
+        });
+        
+        // Clic sur la carte entière
+        module.addEventListener('click', (e) => {
+            // Éviter le double clic si on clique sur un bouton
+            if (e.target.closest('.btn')) return;
+            
+            const primaryLink = module.querySelector('.btn--primary');
+            if (primaryLink) {
+                // Animation de feedback
+                module.style.transform = 'scale(0.98)';
+                setTimeout(() => {
+                    module.style.transform = '';
+                    primaryLink.click();
+                }, 150);
+            }
+        });
+        
+        // Accessibilité clavier
+        module.setAttribute('tabindex', '0');
+        module.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                module.click();
+            }
+        });
+    }
     
     /**
-     * Initialiser les actions rapides
+     * Métriques par module
      */
-    initQuickActions() {
-        const quickLinks = document.querySelectorAll('.quick-link');
+    function initModuleMetrics(module) {
+        const metricNumber = module.querySelector('.metric-number');
+        if (!metricNumber) return;
         
-        quickLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                // Animation de clic
-                const icon = link.querySelector('.quick-link-icon');
+        // Animation de comptage au chargement
+        const finalValue = parseInt(metricNumber.textContent) || 0;
+        animateCounter(metricNumber, 0, finalValue, 1500);
+    }
+    
+    /**
+     * Animation de compteur
+     */
+    function animateCounter(element, start, end, duration) {
+        const startTime = performance.now();
+        const range = end - start;
+        
+        function updateCounter(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Fonction d'easing
+            const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+            const current = Math.floor(start + (range * easeOutQuart));
+            
+            element.textContent = current.toLocaleString();
+            
+            if (progress < 1) {
+                requestAnimationFrame(updateCounter);
+            } else {
+                element.textContent = end.toLocaleString();
+            }
+        }
+        
+        requestAnimationFrame(updateCounter);
+    }
+    
+    /**
+     * Initialisation des notifications
+     */
+    function initNotifications() {
+        if (!elements.notifications) return;
+        
+        elements.notifications.forEach(notification => {
+            initNotificationBehavior(notification);
+        });
+    }
+    
+    /**
+     * Comportement d'une notification
+     */
+    function initNotificationBehavior(notification) {
+        const dismissBtn = notification.querySelector('.notification-dismiss');
+        
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', () => {
+                dismissNotification(notification);
+            });
+        }
+        
+        // Auto-hide pour certains types
+        if (notification.classList.contains('notification--info')) {
+            setTimeout(() => {
+                dismissNotification(notification);
+            }, CONFIG.notifications.autoHideDelay);
+        }
+        
+        // Animation d'entrée
+        notification.style.transform = 'translateX(-100%)';
+        notification.style.opacity = '0';
+        
+        setTimeout(() => {
+            notification.style.transition = `all ${CONFIG.notifications.slideOutDuration}ms ${CONFIG.animations.easing}`;
+            notification.style.transform = 'translateX(0)';
+            notification.style.opacity = '1';
+        }, 100);
+    }
+    
+    /**
+     * Fermeture d'une notification
+     */
+    function dismissNotification(notification) {
+        notification.style.transform = 'translateX(-100%)';
+        notification.style.opacity = '0';
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, CONFIG.notifications.slideOutDuration);
+    }
+    
+    /**
+     * Initialisation des métriques
+     */
+    function initMetrics() {
+        if (!elements.metrics) return;
+        
+        // Animation d'entrée des métriques
+        elements.metrics.forEach((metric, index) => {
+            const value = metric.querySelector('.metric-value');
+            if (!value) return;
+            
+            // Délai d'animation échelonné
+            setTimeout(() => {
+                const finalValue = parseInt(value.textContent) || 0;
+                animateCounter(value, 0, finalValue, 2000);
+            }, index * 200);
+        });
+    }
+    
+    /**
+     * Initialisation des actions rapides
+     */
+    function initQuickActions() {
+        if (!elements.quickActions) return;
+        
+        elements.quickActions.forEach(action => {
+            // Effet de clic avec feedback tactile
+            action.addEventListener('click', (e) => {
+                const icon = action.querySelector('.action-icon');
+                
                 if (icon) {
                     icon.style.transform = 'scale(1.2)';
                     setTimeout(() => {
                         icon.style.transform = '';
                     }, 150);
                 }
+                
+                // Analytics (si nécessaire)
+                trackAction(action.dataset.action);
+            });
+            
+            // Animation de survol
+            action.addEventListener('mouseenter', () => {
+                action.style.transform = 'translateY(-4px) scale(1.02)';
+            });
+            
+            action.addEventListener('mouseleave', () => {
+                action.style.transform = '';
             });
         });
-    },
+    }
     
     /**
-     * Initialiser les raccourcis clavier
+     * Raccourcis clavier professionnels
      */
-    initKeyboardShortcuts() {
+    function initKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
-            // Ctrl+K ou Cmd+K pour la recherche
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                const searchInput = document.getElementById('quickSearchInput');
-                if (searchInput) {
-                    searchInput.focus();
-                    searchInput.select();
-                }
-                return;
-            }
+            // Éviter les conflits avec les champs de saisie
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             
-            // Raccourcis numériques pour les modules (Alt+1, Alt+2, etc.)
+            // Alt + chiffre pour accès direct aux modules
             if (e.altKey && e.key >= '1' && e.key <= '4') {
                 e.preventDefault();
                 const moduleIndex = parseInt(e.key) - 1;
-                const moduleCards = document.querySelectorAll('.module-card');
-                if (moduleCards[moduleIndex]) {
-                    const link = moduleCards[moduleIndex].querySelector('.btn');
+                const module = elements.modules[moduleIndex];
+                
+                if (module) {
+                    const link = module.querySelector('.btn--primary');
                     if (link) {
-                        link.click();
+                        // Feedback visuel
+                        module.style.outline = '2px solid var(--color-primary)';
+                        setTimeout(() => {
+                            module.style.outline = '';
+                            link.click();
+                        }, 200);
                     }
                 }
                 return;
             }
             
-            // Escape pour réinitialiser
+            // Ctrl/Cmd + K pour recherche (futur)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                showSearchModal();
+                return;
+            }
+            
+            // Escape pour fermer les notifications
             if (e.key === 'Escape') {
-                this.resetSearchAndHighlights();
+                dismissAllNotifications();
             }
         });
-    },
+    }
     
     /**
-     * Réinitialiser la recherche et les surbrillances
+     * Initialisation des animations
      */
-    resetSearchAndHighlights() {
-        const searchInput = document.getElementById('quickSearchInput');
-        if (searchInput && searchInput === document.activeElement) {
-            searchInput.value = '';
-            searchInput.blur();
-        }
-        
-        this.resetModuleHighlight();
-        this.state.lastSearch = '';
-    },
-    
-    /**
-     * Initialiser les mises à jour des statistiques
-     */
-    initStatsUpdates() {
-        if (!window.PortalConfig?.debug) {
-            this.state.statsTimer = setInterval(() => {
-                this.updateStats();
-            }, this.config.statsUpdateInterval);
-        }
-    },
-    
-    /**
-     * Mettre à jour les statistiques
-     */
-    async updateStats() {
-        try {
-            console.log('📊 Mise à jour des statistiques...');
-            
-            // Simuler une mise à jour (remplacer par un appel API réel)
-            const statElements = document.querySelectorAll('.stat-value, .stat-number, .stat-big');
-            
-            statElements.forEach(element => {
-                const currentValue = parseInt(element.textContent) || 0;
-                const variation = Math.floor(Math.random() * 3) - 1; // -1, 0, ou 1
-                const newValue = Math.max(0, currentValue + variation);
-                
-                if (newValue !== currentValue) {
-                    this.animateStatUpdate(element, newValue);
-                }
+    function initAnimations() {
+        // Observer d'intersection pour les animations au scroll
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-in');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '50px'
             });
             
-        } catch (error) {
-            console.warn('⚠️ Erreur mise à jour stats:', error);
+            // Observer les sections
+            document.querySelectorAll('.modules-section, .quick-actions-section').forEach(section => {
+                observer.observe(section);
+            });
         }
-    },
+        
+        // Animation de chargement de la page
+        document.body.classList.add('page-loaded');
+    }
     
     /**
-     * Animer la mise à jour d'une statistique
+     * Démarrage des services
      */
-    animateStatUpdate(element, newValue) {
-        element.style.transition = 'all 0.3s ease';
+    function startServices() {
+        // Mise à jour périodique des métriques
+        if (window.PortalConfig && !window.PortalConfig.debug) {
+            state.metricsTimer = setInterval(updateMetrics, CONFIG.metrics.updateInterval);
+        }
+        
+        // Vérification de santé périodique
+        setTimeout(checkSystemHealth, 5000);
+    }
+    
+    /**
+     * Mise à jour des métriques
+     */
+    async function updateMetrics() {
+        try {
+            // Simulation d'un appel API
+            const response = await fetch('/api/metrics', {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                updateMetricsDisplay(data);
+            }
+        } catch (error) {
+            console.warn('⚠️ Erreur mise à jour métriques:', error);
+            // Fallback avec simulation
+            simulateMetricsUpdate();
+        }
+    }
+    
+    /**
+     * Mise à jour de l'affichage des métriques
+     */
+    function updateMetricsDisplay(data) {
+        elements.metrics.forEach(metric => {
+            const value = metric.querySelector('.metric-value');
+            const label = metric.querySelector('.metric-label').textContent.toLowerCase();
+            
+            if (value && data[label]) {
+                const currentValue = parseInt(value.textContent.replace(/,/g, '')) || 0;
+                const newValue = data[label];
+                
+                if (newValue !== currentValue) {
+                    animateMetricUpdate(value, currentValue, newValue);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Animation de mise à jour d'une métrique
+     */
+    function animateMetricUpdate(element, oldValue, newValue) {
         element.style.transform = 'scale(1.1)';
-        element.style.color = 'var(--success-color)';
+        element.style.color = newValue > oldValue ? 'var(--color-success)' : 'var(--color-warning)';
         
         setTimeout(() => {
-            element.textContent = newValue;
+            animateCounter(element, oldValue, newValue, 800);
             
             setTimeout(() => {
                 element.style.transform = '';
                 element.style.color = '';
-            }, 150);
-        }, 150);
-    },
+            }, 800);
+        }, 100);
+    }
     
     /**
-     * Initialiser les vérifications de santé
+     * Simulation de mise à jour des métriques
      */
-    initHealthChecks() {
-        if (!window.PortalConfig?.debug) {
-            this.state.healthTimer = setInterval(() => {
-                this.checkSystemHealth();
-            }, this.config.healthCheckInterval);
-        }
-    },
+    function simulateMetricsUpdate() {
+        elements.metrics.forEach(metric => {
+            const value = metric.querySelector('.metric-value');
+            if (!value) return;
+            
+            const currentValue = parseInt(value.textContent.replace(/,/g, '')) || 0;
+            const variation = Math.floor(Math.random() * 5) - 2; // -2 à +2
+            const newValue = Math.max(0, currentValue + variation);
+            
+            if (newValue !== currentValue) {
+                animateMetricUpdate(value, currentValue, newValue);
+            }
+        });
+    }
     
     /**
-     * Vérifier la santé du système
+     * Vérification de santé système
      */
-    async checkSystemHealth() {
+    async function checkSystemHealth() {
         try {
-            console.log('🩺 Vérification santé système...');
+            const healthChecks = [
+                checkConnectivity(),
+                checkPerformance(),
+                checkModulesStatus()
+            ];
             
-            // Vérifier la connectivité
-            const isOnline = navigator.onLine;
-            
-            // Vérifier la performance
-            const performanceData = this.getPerformanceMetrics();
-            
-            // Mettre à jour l'indicateur de statut
-            this.updateStatusIndicator(isOnline, performanceData);
+            const results = await Promise.allSettled(healthChecks);
+            updateSystemStatus(results);
             
         } catch (error) {
             console.warn('⚠️ Erreur vérification santé:', error);
+            updateSystemStatus([{ status: 'rejected' }]);
         }
-    },
+    }
     
     /**
-     * Obtenir les métriques de performance
+     * Vérification de connectivité
      */
-    getPerformanceMetrics() {
-        if (!window.performance) return {};
+    async function checkConnectivity() {
+        if (!navigator.onLine) {
+            throw new Error('Hors ligne');
+        }
+        
+        // Test ping vers le serveur
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        try {
+            const response = await fetch('/api/ping', {
+                method: 'HEAD',
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            return response.ok;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+        }
+    }
+    
+    /**
+     * Vérification des performances
+     */
+    function checkPerformance() {
+        if (!window.performance || !performance.navigation) {
+            return { loadTime: 0 };
+        }
         
         const navigation = performance.getEntriesByType('navigation')[0];
+        const loadTime = navigation ? navigation.loadEventEnd - navigation.loadEventStart : 0;
         
         return {
-            loadTime: navigation ? navigation.loadEventEnd - navigation.loadEventStart : 0,
-            domContentLoaded: navigation ? navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart : 0,
+            loadTime,
             memory: performance.memory ? {
                 used: performance.memory.usedJSHeapSize,
-                total: performance.memory.totalJSHeapSize,
-                limit: performance.memory.jsHeapSizeLimit
+                total: performance.memory.totalJSHeapSize
             } : null
         };
-    },
+    }
     
     /**
-     * Mettre à jour l'indicateur de statut
+     * Vérification du statut des modules
      */
-    updateStatusIndicator(isOnline, performanceData) {
-        const statusIndicator = document.querySelector('.status-indicator');
+    async function checkModulesStatus() {
+        const modules = Array.from(elements.modules);
+        const statusChecks = modules.map(async (module) => {
+            const moduleId = module.dataset.module;
+            const path = module.querySelector('.btn--primary')?.getAttribute('href');
+            
+            if (!path) return { module: moduleId, status: 'unknown' };
+            
+            try {
+                const response = await fetch(path, { method: 'HEAD' });
+                return {
+                    module: moduleId,
+                    status: response.ok ? 'active' : 'error'
+                };
+            } catch (error) {
+                return { module: moduleId, status: 'error' };
+            }
+        });
+        
+        return Promise.allSettled(statusChecks);
+    }
+    
+    /**
+     * Mise à jour du statut système
+     */
+    function updateSystemStatus(healthResults) {
+        const statusIndicator = document.querySelector('.system-status');
         const statusDot = document.querySelector('.status-dot');
         const statusText = document.querySelector('.status-text');
         
         if (!statusIndicator || !statusDot || !statusText) return;
         
-        // Déterminer le statut
-        let status = 'operational';
-        let statusMessage = 'Système opérationnel';
+        const hasErrors = healthResults.some(result => result.status === 'rejected');
+        const newStatus = hasErrors ? 'degraded' : 'optimal';
         
-        if (!isOnline) {
-            status = 'error';
-            statusMessage = 'Hors ligne';
-        } else if (performanceData.loadTime > 3000) {
-            status = 'partial';
-            statusMessage = 'Performance dégradée';
-        }
-        
-        // Mettre à jour l'interface
-        statusIndicator.className = `status-indicator ${status}`;
-        statusText.textContent = statusMessage;
+        // Mise à jour visuelle
+        statusIndicator.dataset.status = newStatus;
+        statusText.textContent = newStatus === 'optimal' ? 'Système optimal' : 'Performance dégradée';
         
         // Animation du point de statut
         statusDot.style.animation = 'none';
+        statusDot.style.background = newStatus === 'optimal' ? '#10b981' : '#f59e0b';
+        
         setTimeout(() => {
             statusDot.style.animation = 'pulse 2s infinite';
-        }, 10);
-    },
+        }, 100);
+    }
     
     /**
-     * Initialiser les animations
+     * Recherche modale (placeholder)
      */
-    initAnimations() {
-        // Observer pour les animations au scroll
-        if ('IntersectionObserver' in window) {
-            this.initScrollAnimations();
-        }
+    function showSearchModal() {
+        console.log('🔍 Recherche - Fonctionnalité à implémenter');
         
-        // Animations de chargement
-        this.initLoadingAnimations();
-    },
+        // Notification temporaire
+        showNotification('Recherche en cours de développement', 'info');
+    }
     
     /**
-     * Initialiser les animations au scroll
+     * Fermeture de toutes les notifications
      */
-    initScrollAnimations() {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('animate-in');
-                }
-            });
-        }, {
-            threshold: 0.1,
-            rootMargin: '50px'
+    function dismissAllNotifications() {
+        document.querySelectorAll('.notification').forEach(notification => {
+            dismissNotification(notification);
         });
+    }
+    
+    /**
+     * Affichage d'une notification dynamique
+     */
+    function showNotification(message, type = 'info', duration = 4000) {
+        const notificationsBar = document.querySelector('.notifications-bar');
+        if (!notificationsBar) return;
         
-        // Observer les sections
-        const sections = document.querySelectorAll('.modules-section, .activity-section, .quick-links-section');
-        sections.forEach(section => {
-            section.classList.add('animate-ready');
-            observer.observe(section);
-        });
-    },
-    
-    /**
-     * Initialiser les animations de chargement
-     */
-    initLoadingAnimations() {
-        // Animation des cartes de modules
-        const moduleCards = document.querySelectorAll('.module-card');
-        moduleCards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'all 0.5s ease';
-            
+        const notification = document.createElement('div');
+        notification.className = `notification notification--${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span class="notification-message">${message}</span>
+            </div>
+            <button class="notification-dismiss" aria-label="Fermer">×</button>
+        `;
+        
+        // Insertion
+        const container = notificationsBar.querySelector('.notifications-container') || notificationsBar;
+        container.appendChild(notification);
+        
+        // Initialisation du comportement
+        initNotificationBehavior(notification);
+        
+        // Auto-hide
+        if (duration > 0) {
             setTimeout(() => {
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, 100 + (index * 100));
-        });
-        
-        // Animation des statistiques
-        setTimeout(() => {
-            this.animateStatsCountUp();
-        }, 500);
-    },
-    
-    /**
-     * Animation de comptage des statistiques
-     */
-    animateStatsCountUp() {
-        const statNumbers = document.querySelectorAll('.stat-value, .stat-number, .stat-big');
-        
-        statNumbers.forEach(element => {
-            const finalValue = parseInt(element.textContent) || 0;
-            if (finalValue === 0) return;
-            
-            let currentValue = 0;
-            const increment = Math.ceil(finalValue / 30);
-            const duration = 1000;
-            const stepTime = duration / (finalValue / increment);
-            
-            element.textContent = '0';
-            
-            const timer = setInterval(() => {
-                currentValue += increment;
-                if (currentValue >= finalValue) {
-                    currentValue = finalValue;
-                    clearInterval(timer);
-                }
-                element.textContent = currentValue;
-            }, stepTime);
-        });
-    },
-    
-    /**
-     * Recherche globale dans le portail
-     */
-    performGlobalSearch(query) {
-        console.log('🔍 Recherche globale:', query);
-        
-        // Ici on pourrait implémenter une recherche réelle
-        // Pour l'instant, on simule
-        const results = this.getSearchResults(query);
-        
-        if (results.length > 0) {
-            this.displaySearchModal(query, results);
-        } else {
-            this.showSearchError(`Aucun résultat trouvé pour "${query}"`);
-        }
-    },
-    
-    /**
-     * Afficher la modal de résultats de recherche
-     */
-    displaySearchModal(query, results) {
-        // Créer la modal si elle n'existe pas
-        let modal = document.getElementById('search-results-modal');
-        if (!modal) {
-            modal = this.createSearchModal();
+                dismissNotification(notification);
+            }, duration);
         }
         
-        // Remplir avec les résultats
-        const resultsContainer = modal.querySelector('.search-results');
-        resultsContainer.innerHTML = '';
+        return notification;
+    }
+    
+    /**
+     * Tracking des actions (Analytics)
+     */
+    function trackAction(action) {
+        if (!action) return;
         
-        results.forEach(result => {
-            const resultElement = document.createElement('div');
-            resultElement.className = 'search-result-item';
-            resultElement.innerHTML = `
-                <div class="result-title">${result.title}</div>
-                <div class="result-url">${result.url}</div>
-            `;
-            
-            resultElement.addEventListener('click', () => {
-                window.location.href = result.url;
+        console.log(`📊 Action: ${action}`);
+        
+        // Intégration future avec Google Analytics, Mixpanel, etc.
+        if (window.gtag) {
+            gtag('event', 'portal_action', {
+                action_type: action,
+                timestamp: Date.now()
             });
-            
-            resultsContainer.appendChild(resultElement);
+        }
+    }
+    
+    /**
+     * Nettoyage et destruction
+     */
+    function destroy() {
+        if (state.metricsTimer) {
+            clearInterval(state.metricsTimer);
+            state.metricsTimer = null;
+        }
+        
+        state.initialized = false;
+        state.activeNotifications.clear();
+        
+        // Nettoyage des event listeners
+        elements.modules?.forEach(module => {
+            module.replaceWith(module.cloneNode(true));
         });
         
-        // Afficher la modal
-        modal.style.display = 'flex';
-        modal.classList.add('active');
+        console.log('🏠 Portal nettoyé');
+    }
+    
+    /**
+     * API publique
+     */
+    return {
+        init,
+        destroy,
+        showNotification,
+        updateMetrics,
+        checkSystemHealth,
+        
+        // Getters pour l'état
+        get isInitialized() { return state.initialized; },
+        get config() { return { ...CONFIG }; }
+    };
+    
+})();
+
+// =============================================================================
+// MODULE UTILITIES
+// =============================================================================
+
+const PortalUtils = {
+    
+    /**
+     * Formatage des nombres
+     */
+    formatNumber(num) {
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        }
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'k';
+        }
+        return num.toLocaleString();
     },
     
     /**
-     * Créer la modal de recherche
+     * Debounce pour optimiser les performances
      */
-    createSearchModal() {
-        const modal = document.createElement('div');
-        modal.id = 'search-results-modal';
-        modal.className = 'search-modal';
-        modal.innerHTML = `
-            <div class="modal-backdrop"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Résultats de recherche</h3>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="search-results"></div>
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    },
+    
+    /**
+     * Throttle pour limiter les appels
+     */
+    throttle(func, limit) {
+        let inThrottle;
+        return function() {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    },
+    
+    /**
+     * Vérification de support des fonctionnalités
+     */
+    hasSupport: {
+        intersectionObserver: 'IntersectionObserver' in window,
+        customElements: 'customElements' in window,
+        webAnimations: 'animate' in document.createElement('div'),
+        serviceWorker: 'serviceWorker' in navigator
+    }
+};
+
+// =============================================================================
+// COMPOSANT NOTIFICATIONS AVANCÉ
+// =============================================================================
+
+class NotificationManager {
+    constructor() {
+        this.container = null;
+        this.notifications = new Map();
+        this.init();
+    }
+    
+    init() {
+        this.createContainer();
+    }
+    
+    createContainer() {
+        if (document.querySelector('.notification-manager')) return;
+        
+        this.container = document.createElement('div');
+        this.container.className = 'notification-manager';
+        this.container.style.cssText = `
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 400px;
+            pointer-events: none;
+        `;
+        
+        document.body.appendChild(this.container);
+    }
+    
+    show(message, type = 'info', options = {}) {
+        const id = `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const notification = this.createElement(message, type, options);
+        
+        notification.id = id;
+        this.notifications.set(id, notification);
+        this.container.appendChild(notification);
+        
+        // Animation d'entrée
+        requestAnimationFrame(() => {
+            notification.style.transform = 'translateX(0)';
+            notification.style.opacity = '1';
+        });
+        
+        // Auto-hide
+        if (options.autoHide !== false) {
+            setTimeout(() => {
+                this.hide(id);
+            }, options.duration || 4000);
+        }
+        
+        return id;
+    }
+    
+    createElement(message, type, options) {
+        const element = document.createElement('div');
+        element.className = `notification notification--${type}`;
+        element.style.cssText = `
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 12px;
+            padding: 16px;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: auto;
+            border-left: 4px solid var(--color-${type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info'});
+        `;
+        
+        element.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="flex: 1; font-weight: 500;">${message}</span>
+                <button style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px;" onclick="notifications.hide('${element.id}')">×</button>
             </div>
         `;
         
-        // Événements de fermeture
-        modal.querySelector('.modal-close').addEventListener('click', () => {
-            this.closeSearchModal(modal);
-        });
-        
-        modal.querySelector('.modal-backdrop').addEventListener('click', () => {
-            this.closeSearchModal(modal);
-        });
-        
-        document.body.appendChild(modal);
-        
-        // Styles inline pour la modal
-        const style = document.createElement('style');
-        style.textContent = `
-            .search-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                z-index: 1000;
-                display: none;
-                align-items: center;
-                justify-content: center;
-            }
-            
-            .modal-backdrop {
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-            }
-            
-            .modal-content {
-                position: relative;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-                max-width: 600px;
-                width: 90%;
-                max-height: 80vh;
-                overflow: hidden;
-            }
-            
-            .modal-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 1rem 1.5rem;
-                border-bottom: 1px solid var(--border-color);
-            }
-            
-            .modal-close {
-                background: none;
-                border: none;
-                font-size: 1.5rem;
-                cursor: pointer;
-                color: var(--text-secondary);
-            }
-            
-            .search-results {
-                max-height: 400px;
-                overflow-y: auto;
-                padding: 1rem;
-            }
-            
-            .search-result-item {
-                padding: 1rem;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: background-color 0.2s ease;
-                border-bottom: 1px solid var(--border-color);
-            }
-            
-            .search-result-item:hover {
-                background: var(--bg-secondary);
-            }
-            
-            .result-title {
-                font-weight: 600;
-                color: var(--text-primary);
-                margin-bottom: 0.25rem;
-            }
-            
-            .result-url {
-                font-size: 0.875rem;
-                color: var(--text-secondary);
-            }
-        `;
-        
-        document.head.appendChild(style);
-        
-        return modal;
-    },
+        return element;
+    }
     
-    /**
-     * Fermer la modal de recherche
-     */
-    closeSearchModal(modal) {
-        modal.classList.remove('active');
+    hide(id) {
+        const notification = this.notifications.get(id);
+        if (!notification) return;
+        
+        notification.style.transform = 'translateX(100%)';
+        notification.style.opacity = '0';
+        
         setTimeout(() => {
-            modal.style.display = 'none';
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+            this.notifications.delete(id);
         }, 300);
-    },
-    
-    /**
-     * Vérifier la santé des modules
-     */
-    async checkModulesHealth() {
-        const modules = window.PortalConfig?.modules || [];
-        
-        for (const module of modules) {
-            try {
-                // Simuler une vérification de santé
-                const isHealthy = Math.random() > 0.1; // 90% de chance d'être OK
-                
-                console.log(`${isHealthy ? '✅' : '❌'} Module ${module}: ${isHealthy ? 'OK' : 'Erreur'}`);
-                
-                // Mettre à jour l'interface si nécessaire
-                if (!isHealthy) {
-                    this.markModuleAsUnhealthy(module);
-                }
-                
-            } catch (error) {
-                console.warn(`⚠️ Erreur vérification module ${module}:`, error);
-            }
-        }
-    },
-    
-    /**
-     * Marquer un module comme non opérationnel
-     */
-    markModuleAsUnhealthy(moduleName) {
-        const moduleCards = document.querySelectorAll('.module-card');
-        
-        moduleCards.forEach(card => {
-            const title = card.querySelector('.module-title')?.textContent.toLowerCase();
-            if (title && title.includes(moduleName.toLowerCase())) {
-                // Ajouter un indicateur d'erreur
-                let errorIndicator = card.querySelector('.module-error');
-                if (!errorIndicator) {
-                    errorIndicator = document.createElement('div');
-                    errorIndicator.className = 'module-error';
-                    errorIndicator.innerHTML = '⚠️ Service temporairement indisponible';
-                    errorIndicator.style.cssText = `
-                        background: rgba(239, 68, 68, 0.1);
-                        color: var(--error-color);
-                        padding: 0.5rem;
-                        border-radius: 6px;
-                        font-size: 0.875rem;
-                        margin-top: 1rem;
-                        text-align: center;
-                    `;
-                    card.appendChild(errorIndicator);
-                }
-            }
-        });
-    },
-    
-    /**
-     * Nettoyer les ressources
-     */
-    destroy() {
-        if (this.state.statsTimer) {
-            clearInterval(this.state.statsTimer);
-        }
-        
-        if (this.state.healthTimer) {
-            clearInterval(this.state.healthTimer);
-        }
-        
-        if (this.state.searchTimeout) {
-            clearTimeout(this.state.searchTimeout);
-        }
-        
-        this.state.initialized = false;
-        console.log('🏠 Portail nettoyé');
-    }
-};
-
-// =============================================================================
-// FONCTIONS GLOBALES
-// =============================================================================
-
-/**
- * Fonction globale pour la recherche rapide
- */
-window.handleQuickSearch = function(event) {
-    if (event) event.preventDefault();
-    
-    const input = document.getElementById('quickSearchInput');
-    if (!input) return false;
-    
-    const query = input.value.trim();
-    
-    if (query.length < Portal.config.searchMinLength) {
-        Portal.showSearchError(`Veuillez saisir au moins ${Portal.config.searchMinLength} caractères`);
-        return false;
     }
     
-    Portal.performSearch(query);
-    return false;
-};
-
-/**
- * Définir une recherche prédéfinie
- */
-window.setQuickSearch = function(value) {
-    const searchInput = document.getElementById('quickSearchInput');
-    if (searchInput) {
-        searchInput.value = value;
-        searchInput.focus();
-        
-        // Animation de mise en évidence
-        searchInput.style.background = '#e0f2fe';
-        setTimeout(() => {
-            searchInput.style.background = '';
-        }, 500);
+    clear() {
+        this.notifications.forEach((_, id) => this.hide(id));
     }
-};
-
-/**
- * Afficher les résultats de recherche
- */
-window.showSearchResults = function(query) {
-    Portal.performGlobalSearch(query);
-};
-
-// =============================================================================
-// ENREGISTREMENT DU MODULE
-// =============================================================================
-
-// Enregistrer le module Portal dans le gestionnaire de modules
-if (window.ModuleManager) {
-    ModuleManager.register('portal', Portal);
 }
 
-// Auto-initialisation si le DOM est déjà chargé
+// =============================================================================
+// INITIALISATION GLOBALE
+// =============================================================================
+
+// Instance globale du gestionnaire de notifications
+window.notifications = new NotificationManager();
+
+// Auto-initialisation
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => Portal.init());
+    document.addEventListener('DOMContentLoaded', () => {
+        Portal.init();
+    });
 } else {
     Portal.init();
 }
 
 // Nettoyage avant déchargement
-window.addEventListener('beforeunload', () => Portal.destroy());
+window.addEventListener('beforeunload', () => {
+    Portal.destroy();
+});
+
+// Gestion des erreurs JavaScript
+window.addEventListener('error', (event) => {
+    console.error('Erreur JavaScript:', event.error);
+    
+    if (window.PortalConfig?.debug) {
+        window.notifications?.show(
+            `Erreur JavaScript: ${event.error.message}`,
+            'error'
+        );
+    }
+});
 
 // Export pour utilisation en module
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Portal;
+    module.exports = { Portal, PortalUtils, NotificationManager };
 }
+
+// Exposition globale pour compatibilité
+window.Portal = Portal;
+window.PortalUtils = PortalUtils;
