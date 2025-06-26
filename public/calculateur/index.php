@@ -53,8 +53,48 @@ function validateCalculatorData($data) {
     return $errors;
 }
 
-// Gestion AJAX pour calcul dynamique
-if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+// Gestion AJAX pour calcul dynamique et délais
+if (isset($_GET['ajax'])) {
+    header('Content-Type: application/json');
+    
+    if ($_GET['ajax'] === 'delay') {
+        // Récupération délai depuis BDD
+        $carrier = $_GET['carrier'] ?? '';
+        $dept = $_GET['dept'] ?? '';
+        $option = $_GET['option'] ?? 'standard';
+        
+        try {
+            $table_map = ['xpo' => 'gul_xpo_rates', 'heppner' => 'gul_heppner_rates', 'kn' => 'gul_kn_rates'];
+            if (!isset($table_map[$carrier])) {
+                throw new Exception('Transporteur invalide');
+            }
+            
+            $sql = "SELECT delais FROM {$table_map[$carrier]} WHERE num_departement = ? LIMIT 1";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$dept]);
+            $result = $stmt->fetch();
+            
+            if ($result) {
+                $delay = $result['delais'];
+                
+                // Adapter selon option
+                if ($option === 'premium13') {
+                    $delay .= ' garanti avant 14h';
+                } elseif ($option === 'rdv') {
+                    $delay .= ' sur RDV';
+                }
+                
+                echo json_encode(['success' => true, 'delay' => $delay]);
+            } else {
+                echo json_encode(['success' => false, 'delay' => '24-48h']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'delay' => '24-48h']);
+        }
+        exit;
+    }
+    
+    if ($_GET['ajax'] === '1') {
     header('Content-Type: application/json');
     
     $params = [
@@ -425,6 +465,81 @@ if ($_POST && !isset($_GET['ajax'])) {
         .option-card.selected {
             background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%);
         }
+        
+        /* Bouton ADR */
+        .btn-adr {
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .btn-adr:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+            text-decoration: none;
+            color: white;
+        }
+        
+        /* Historique */
+        .history-section {
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .history-header {
+            background: var(--gray-100);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--gray-200);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .history-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .history-content.expanded {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--gray-100);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .history-item:hover {
+            background: var(--gray-50);
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .history-time {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+        
+        .history-details {
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
     </style>
     
     <meta name="description" content="Calculateur de frais de port pour transporteurs XPO, Heppner et Kuehne+Nagel">
@@ -628,6 +743,19 @@ if ($_POST && !isset($_GET['ajax'])) {
                         <div class="results-placeholder">
                             <div class="placeholder-icon">🧮</div>
                             <p>Complétez le formulaire pour voir les tarifs</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Historique -->
+                    <div class="history-section">
+                        <div class="history-header" onclick="toggleHistory()">
+                            <span>📜 Historique</span>
+                            <span id="historyToggle">▼</span>
+                        </div>
+                        <div class="history-content" id="historyContent">
+                            <div style="padding: 16px; text-align: center; color: var(--gray-500);">
+                                Aucun calcul récent
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -916,13 +1044,43 @@ if ($_POST && !isset($_GET['ajax'])) {
             
             html += '</div>';
             
+            // Bouton ADR si ADR = oui
+            if (getCurrentOptions().adr) {
+                html += `
+                    <div style="margin-top: 20px; text-align: center;">
+                        <a href="../adr/create-expedition.php" class="btn-adr" target="_blank">
+                            ⚠️ Créer déclaration ADR
+                        </a>
+                    </div>
+                `;
+            }
+            
             // Ajouter conseils smart
             html += generateSmartHints(validResults, getCurrentOptions());
             
             document.getElementById('resultsContent').innerHTML = html;
+            
+            // Sauvegarder dans l'historique
+            saveToHistory(getCurrentFormData(), validResults);
+        }
         }
         
         function getDeliveryDelay(carrier, options) {
+            // Récupération depuis BDD via AJAX pour délais précis
+            return getDelayFromDB(carrier, options.departement, options.premium13 ? 'premium13' : 'standard');
+        }
+        
+        async function getDelayFromDB(carrier, departement, option = 'standard') {
+            try {
+                const response = await fetch(`?ajax=delay&carrier=${carrier}&dept=${departement}&option=${option}`);
+                const data = await response.json();
+                return data.success ? data.delay : getDefaultDelay(carrier, option);
+            } catch (error) {
+                return getDefaultDelay(carrier, option);
+            }
+        }
+        
+        function getDefaultDelay(carrier, option) {
             const baseDelays = {
                 'xpo': { min: 24, max: 48, unit: 'h' },
                 'heppner': { min: 1, max: 2, unit: 'j' },
@@ -932,11 +1090,11 @@ if ($_POST && !isset($_GET['ajax'])) {
             const delay = baseDelays[carrier] || { min: 24, max: 48, unit: 'h' };
             
             // Impact des options
-            if (options.premium13) {
+            if (option === 'premium13') {
                 return '24h garanti avant 14h';
             }
             
-            if (options.rdv) {
+            if (option === 'rdv') {
                 return `${delay.min}-${delay.max} ${delay.unit} sur RDV`;
             }
             
