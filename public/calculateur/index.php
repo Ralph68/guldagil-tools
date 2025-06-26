@@ -2,7 +2,7 @@
 /**
  * public/calculateur/index.php
  * Interface calculateur - Architecture MVC respectée
- * Version: 0.5 beta + build - CORRIGÉ
+ * Version: 0.5 beta + build
  */
 
 // Chargement configuration
@@ -17,18 +17,21 @@ $page_title = 'Calculateur de Frais de Port';
 session_start();
 $user_authenticated = true; // Simplifié pour développement
 
-// Fonction de validation (reprise du fichier validation-test.php)
+// AJOUT: Logique de calcul (reprise de validation-test.php)
+$results = null;
+$validation_errors = [];
+$calculation_time = 0;
+$debug_info = [];
+
 function validateCalculatorData($data) {
     $errors = [];
     
-    // Département obligatoire et valide
     if (empty($data['departement'])) {
         $errors['departement'] = 'Département requis';
     } elseif (!preg_match('/^(0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/', $data['departement'])) {
-        $errors['departement'] = 'Département invalide (01-95, 971-976)';
+        $errors['departement'] = 'Département invalide';
     }
     
-    // Poids obligatoire et dans les limites
     if (empty($data['poids'])) {
         $errors['poids'] = 'Poids requis';
     } elseif (!is_numeric($data['poids']) || $data['poids'] <= 0) {
@@ -37,14 +40,12 @@ function validateCalculatorData($data) {
         $errors['poids'] = 'Poids maximum: 32000 kg';
     }
     
-    // Type obligatoire
     if (empty($data['type'])) {
         $errors['type'] = 'Type d\'envoi requis';
     } elseif (!in_array($data['type'], ['colis', 'palette'])) {
         $errors['type'] = 'Type d\'envoi invalide';
     }
     
-    // Palettes pour type palette
     if ($data['type'] === 'palette' && ($data['palettes'] <= 0 || $data['palettes'] > 20)) {
         $errors['palettes'] = 'Nombre de palettes requis (1-20)';
     }
@@ -52,16 +53,9 @@ function validateCalculatorData($data) {
     return $errors;
 }
 
-// Traitement du formulaire
-$results = null;
-$validation_errors = [];
-$calculation_time = 0;
-$debug_info = [];
-
 if ($_POST) {
     $start_time = microtime(true);
     
-    // Préparer les paramètres
     $params = [
         'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
         'poids' => floatval($_POST['poids'] ?? 0),
@@ -72,19 +66,16 @@ if ($_POST) {
         'palettes' => max(0, intval($_POST['palettes'] ?? 0))
     ];
 
-    // Validation
     $validation_errors = validateCalculatorData($params);
 
     if (empty($validation_errors)) {
         try {
-            // Charger la classe Transport
             $transport_file = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
             
             if (file_exists($transport_file)) {
                 require_once $transport_file;
                 $transport = new Transport($db);
                 
-                // Calculer avec la nouvelle signature
                 $results = $transport->calculateAll($params);
                 $debug_info['signature'] = 'array';
                 $debug_info['transport_debug'] = $transport->debug ?? [];
@@ -105,38 +96,6 @@ if ($_POST) {
         }
     }
 }
-
-// Fonction pour formater les résultats
-function formatResults($results) {
-    if (!$results || !isset($results['results'])) {
-        return [];
-    }
-    
-    $formatted = [];
-    $valid_results = array_filter($results['results'], fn($price) => $price !== null);
-    
-    foreach ($valid_results as $carrier => $price) {
-        $formatted[$carrier] = [
-            'carrier' => strtoupper($carrier),
-            'price' => $price,
-            'formatted' => number_format($price, 2, ',', ' ') . ' €'
-        ];
-    }
-    
-    // Ajouter le meilleur tarif
-    if (!empty($valid_results)) {
-        $best_carrier = array_keys($valid_results, min($valid_results))[0];
-        $formatted['best'] = [
-            'carrier' => strtoupper($best_carrier),
-            'price' => $valid_results[$best_carrier],
-            'formatted' => number_format($valid_results[$best_carrier], 2, ',', ' ') . ' €'
-        ];
-    }
-    
-    return $formatted;
-}
-
-$formatted_results = formatResults($results);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -145,7 +104,7 @@ $formatted_results = formatResults($results);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?> - Guldagil</title>
     
-    <!-- CSS modulaires corrigés -->
+    <!-- CSS modulaires séparés - CORRIGÉ -->
     <link rel="stylesheet" href="../assets/css/modules/calculateur/modern-interface.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/calculateur-complete.css">
     <link rel="stylesheet" href="../assets/css/modules/calculateur/ux-improvements.css">
@@ -153,228 +112,255 @@ $formatted_results = formatResults($results);
     <!-- Meta tags -->
     <meta name="description" content="Calculateur de frais de port pour transporteurs XPO, Heppner et Kuehne+Nagel">
     <meta name="author" content="Guldagil">
-    
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .section { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .form-section { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: white; }
-        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; }
-        input.error { border-color: #ef4444; }
-        .field-error { color: #fecaca; font-size: 0.9em; margin-top: 5px; }
-        button { background: #059669; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #047857; }
-        .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
-        .result-card { background: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; }
-        .result-card.best { border-left-color: #059669; background: #ecfdf5; }
-        .result-price { font-size: 1.5em; font-weight: bold; color: #1e40af; }
-        .result-card.best .result-price { color: #059669; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-top: 15px; }
-        .stat-item { text-align: center; padding: 10px; background: #e5e7eb; border-radius: 8px; }
-        .stat-value { font-size: 1.2em; font-weight: bold; color: #1e40af; }
-        .stat-label { font-size: 0.9em; color: #6b7280; margin-top: 5px; }
-        .debug-section { background: #1f2937; color: #f9fafb; }
-        .debug-content { background: #111827; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; overflow-x: auto; }
-    </style>
 </head>
 <body class="calculateur-app">
     
-    <!-- Header modulaire -->
+    <!-- Header modulaire - CORRIGÉ -->
     <header class="app-header">
         <div class="container">
-            <h1>🧮 <?= htmlspecialchars($page_title) ?></h1>
-            <div class="version-info">Version <?= $version_info['version'] ?> - Build <?= $version_info['build'] ?></div>
+            <div class="header-content">
+                <div class="brand">
+                    <img src="../assets/img/logo_guldagil.png" alt="Guldagil" class="brand-logo">
+                    <div>
+                        <h1 class="brand-title">🧮 <?= htmlspecialchars($page_title) ?></h1>
+                        <p class="brand-subtitle">Comparateur transporteurs professionnels</p>
+                    </div>
+                </div>
+                <div class="version-info">
+                    <div>Version <?= $version_info['version'] ?></div>
+                    <div>Build <?= $version_info['build'] ?></div>
+                </div>
+            </div>
         </div>
     </header>
 
-    <div class="container">
-        
-        <!-- Section formulaire -->
-        <div class="section form-section">
-            <h2>📦 Paramètres de calcul</h2>
-            <form method="POST" action="">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="departement">Département:</label>
-                        <input type="text" id="departement" name="departement" 
-                               class="<?= isset($validation_errors['departement']) ? 'error' : '' ?>"
-                               value="<?= htmlspecialchars($_POST['departement'] ?? '67') ?>" 
-                               placeholder="67" maxlength="3" required>
-                        <?php if (isset($validation_errors['departement'])): ?>
-                            <div class="field-error"><?= htmlspecialchars($validation_errors['departement']) ?></div>
+    <main class="app-main">
+        <div class="container">
+            <div class="calc-layout">
+                
+                <!-- Panneau formulaire -->
+                <div class="form-panel">
+                    
+                    <!-- Section informations -->
+                    <div class="form-section">
+                        <h2 class="section-title">📦 Informations de l'envoi</h2>
+                        <p class="section-subtitle">Renseignez les caractéristiques de votre expédition</p>
+                        
+                        <form method="POST" action="" id="calc-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="field-label" for="departement">
+                                        📍 Département de destination
+                                    </label>
+                                    <input type="text" id="departement" name="departement" 
+                                           class="form-control" placeholder="67" maxlength="3"
+                                           value="<?= htmlspecialchars($_POST['departement'] ?? '') ?>" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="field-label" for="poids">
+                                        ⚖️ Poids total (kg)
+                                    </label>
+                                    <input type="number" id="poids" name="poids" 
+                                           class="form-control" step="0.1" min="0.1" max="32000"
+                                           value="<?= htmlspecialchars($_POST['poids'] ?? '') ?>" required>
+                                </div>
+                            </div>
+                        
+                    </div>
+                    
+                    <!-- Section type d'envoi -->
+                    <div class="form-section">
+                        <h2 class="section-title">📋 Type d'envoi</h2>
+                        
+                        <div class="radio-buttons">
+                            <label class="radio-btn">
+                                <input type="radio" name="type" value="colis" <?= ($_POST['type'] ?? 'colis') === 'colis' ? 'checked' : '' ?>>
+                                <div class="radio-content">
+                                    <strong>📦 Colis</strong>
+                                    <small>Envoi standard</small>
+                                </div>
+                            </label>
+                            <label class="radio-btn">
+                                <input type="radio" name="type" value="palette" <?= ($_POST['type'] ?? '') === 'palette' ? 'checked' : '' ?>>
+                                <div class="radio-content">
+                                    <strong>🚛 Palette</strong>
+                                    <small>Expédition palettisée</small>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label class="field-label" for="palettes">
+                                📊 Nombre de palettes EUR
+                            </label>
+                            <input type="number" id="palettes" name="palettes" 
+                                   class="form-control" min="0" max="20"
+                                   value="<?= htmlspecialchars($_POST['palettes'] ?? '0') ?>">
+                        </div>
+                    </div>
+                    
+                    <!-- Section ADR -->
+                    <div class="form-section adr-section">
+                        <h2 class="section-title">⚠️ Matières dangereuses (ADR)</h2>
+                        
+                        <div class="radio-buttons">
+                            <label class="radio-btn">
+                                <input type="radio" name="adr" value="non" <?= ($_POST['adr'] ?? 'non') === 'non' ? 'checked' : '' ?>>
+                                <div class="radio-content">
+                                    <strong>✅ Non ADR</strong>
+                                    <small>Marchandise normale</small>
+                                </div>
+                            </label>
+                            <label class="radio-btn">
+                                <input type="radio" name="adr" value="oui" <?= ($_POST['adr'] ?? '') === 'oui' ? 'checked' : '' ?>>
+                                <div class="radio-content">
+                                    <strong>⚠️ ADR</strong>
+                                    <small>Matières dangereuses</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Section options -->
+                    <div class="form-section">
+                        <h2 class="section-title">⚙️ Options de livraison</h2>
+                        
+                        <div class="options-grid">
+                            <label class="option-card <?= ($_POST['option_sup'] ?? 'standard') === 'standard' ? 'selected' : '' ?>">
+                                <input type="radio" name="option_sup" value="standard" 
+                                       <?= ($_POST['option_sup'] ?? 'standard') === 'standard' ? 'checked' : '' ?>>
+                                <div class="option-title">🚚 Standard</div>
+                                <div class="option-description">Livraison normale</div>
+                                <div class="option-impact">Inclus</div>
+                            </label>
+                            
+                            <label class="option-card <?= ($_POST['option_sup'] ?? '') === 'rdv' ? 'selected' : '' ?>">
+                                <input type="radio" name="option_sup" value="rdv" 
+                                       <?= ($_POST['option_sup'] ?? '') === 'rdv' ? 'checked' : '' ?>>
+                                <div class="option-title">📞 Prise de RDV</div>
+                                <div class="option-description">Appel avant livraison</div>
+                                <div class="option-impact">+ Supplément</div>
+                            </label>
+                            
+                            <label class="option-card <?= ($_POST['option_sup'] ?? '') === 'premium13' ? 'selected' : '' ?>">
+                                <input type="radio" name="option_sup" value="premium13" 
+                                       <?= ($_POST['option_sup'] ?? '') === 'premium13' ? 'checked' : '' ?>>
+                                <div class="option-title">⏰ Premium 13h</div>
+                                <div class="option-description">Livraison avant 13h</div>
+                                <div class="option-impact">+ Supplément</div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Section enlèvement -->
+                    <div class="form-section enlevement-section <?= isset($_POST['enlevement']) ? 'enabled' : '' ?>">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="enlevement" <?= isset($_POST['enlevement']) ? 'checked' : '' ?>>
+                            <span>🏠 Enlèvement à domicile</span>
+                        </label>
+                        <div class="field-help">Collecte de votre marchandise à votre adresse</div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <button type="submit" class="btn-primary">
+                            🚀 Calculer les tarifs
+                        </button>
+                    </div>
+                        </form>
+                </div>
+                
+                <!-- Panneau résultats sticky -->
+                <div class="results-panel">
+                    <div class="results-header">
+                        <h2>💰 Tarifs</h2>
+                        <?php if ($_POST): ?>
+                            <div class="calculation-status">
+                                <?php if (!empty($validation_errors)): ?>
+                                    ❌ Erreurs de validation
+                                <?php elseif ($results): ?>
+                                    ✅ Calcul terminé (<?= $calculation_time ?> ms)
+                                <?php else: ?>
+                                    ⏳ Calcul en cours...
+                                <?php endif; ?>
+                            </div>
                         <?php endif; ?>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="poids">Poids (kg):</label>
-                        <input type="number" id="poids" name="poids" 
-                               class="<?= isset($validation_errors['poids']) ? 'error' : '' ?>"
-                               value="<?= htmlspecialchars($_POST['poids'] ?? '25') ?>" 
-                               step="0.1" min="0.1" max="32000" required>
-                        <?php if (isset($validation_errors['poids'])): ?>
-                            <div class="field-error"><?= htmlspecialchars($validation_errors['poids']) ?></div>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="type">Type d'envoi:</label>
-                        <select id="type" name="type" required>
-                            <option value="colis" <?= ($_POST['type'] ?? 'colis') === 'colis' ? 'selected' : '' ?>>Colis</option>
-                            <option value="palette" <?= ($_POST['type'] ?? '') === 'palette' ? 'selected' : '' ?>>Palette</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="adr">ADR:</label>
-                        <select id="adr" name="adr">
-                            <option value="non" <?= ($_POST['adr'] ?? 'non') === 'non' ? 'selected' : '' ?>>Non</option>
-                            <option value="oui" <?= ($_POST['adr'] ?? '') === 'oui' ? 'selected' : '' ?>>Oui</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="option_sup">Service:</label>
-                        <select id="option_sup" name="option_sup">
-                            <option value="standard" <?= ($_POST['option_sup'] ?? 'standard') === 'standard' ? 'selected' : '' ?>>Standard</option>
-                            <option value="rdv" <?= ($_POST['option_sup'] ?? '') === 'rdv' ? 'selected' : '' ?>>Prise de RDV</option>
-                            <option value="premium13" <?= ($_POST['option_sup'] ?? '') === 'premium13' ? 'selected' : '' ?>>Premium 13h</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="palettes">Palettes:</label>
-                        <input type="number" id="palettes" name="palettes" 
-                               value="<?= htmlspecialchars($_POST['palettes'] ?? '0') ?>" 
-                               min="0" max="20">
-                        <?php if (isset($validation_errors['palettes'])): ?>
-                            <div class="field-error"><?= htmlspecialchars($validation_errors['palettes']) ?></div>
+                    <div class="results-content">
+                        <?php if (!$_POST): ?>
+                            <div class="results-placeholder">
+                                <div class="placeholder-icon">🧮</div>
+                                <p>Remplissez le formulaire pour voir les tarifs</p>
+                            </div>
+                        <?php elseif (!empty($validation_errors)): ?>
+                            <div class="error-message">
+                                <strong>❌ Données invalides</strong>
+                                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                                    <?php foreach ($validation_errors as $field => $error): ?>
+                                        <li><?= htmlspecialchars($error) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        <?php elseif ($results && isset($results['results'])): ?>
+                            <?php 
+                            $valid_results = array_filter($results['results'], fn($price) => $price !== null);
+                            if (!empty($valid_results)):
+                                $best_carrier = array_keys($valid_results, min($valid_results))[0];
+                                $best_price = $valid_results[$best_carrier];
+                            ?>
+                                <div class="best-rate">
+                                    <h3>🏆 Meilleur tarif</h3>
+                                    <div class="best-price"><?= number_format($best_price, 2, ',', ' ') ?> €</div>
+                                    <div class="best-carrier"><?= strtoupper($best_carrier) ?></div>
+                                </div>
+                                
+                                <div class="comparison">
+                                    <?php foreach ($valid_results as $carrier => $price): ?>
+                                        <div class="carrier-row <?= $carrier === $best_carrier ? 'best' : '' ?>">
+                                            <span><?= strtoupper($carrier) ?></span>
+                                            <strong><?= number_format($price, 2, ',', ' ') ?> €</strong>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="error-message">
+                                    ❌ Aucun tarif disponible pour ces critères
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>
                 
-                <div class="form-group" style="margin-top: 20px;">
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" name="enlevement" <?= isset($_POST['enlevement']) ? 'checked' : '' ?>>
-                        Enlèvement à domicile
-                    </label>
-                </div>
-                
-                <button type="submit" style="margin-top: 20px;">🚀 Calculer les tarifs</button>
-            </form>
-        </div>
-
-        <?php if ($_POST): ?>
-        
-        <!-- Section erreurs -->
-        <?php if (!empty($validation_errors)): ?>
-        <div class="section" style="border-left: 4px solid #ef4444;">
-            <h2>❌ Erreurs de validation</h2>
-            <ul>
-                <?php foreach ($validation_errors as $field => $error): ?>
-                    <li><strong><?= ucfirst($field) ?>:</strong> <?= htmlspecialchars($error) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-        <?php endif; ?>
-
-        <!-- Section résultats -->
-        <?php if (!empty($formatted_results) && empty($validation_errors)): ?>
-        <div class="section">
-            <h2>📊 Résultats de calcul</h2>
-            
-            <?php if (isset($formatted_results['best'])): ?>
-            <div class="result-card best">
-                <h3>🏆 Meilleur tarif</h3>
-                <div class="result-price"><?= $formatted_results['best']['formatted'] ?></div>
-                <div>Transporteur: <?= $formatted_results['best']['carrier'] ?></div>
-            </div>
-            <?php endif; ?>
-            
-            <div class="results-grid">
-                <?php foreach ($formatted_results as $carrier => $data): ?>
-                    <?php if ($carrier !== 'best'): ?>
-                    <div class="result-card">
-                        <h4><?= $data['carrier'] ?></h4>
-                        <div class="result-price"><?= $data['formatted'] ?></div>
-                    </div>
-                    <?php endif; ?>
-                <?php endforeach; ?>
             </div>
         </div>
-        <?php endif; ?>
-
-        <!-- Section statistiques -->
-        <?php if ($_POST): ?>
-        <div class="section">
-            <h2>📈 Statistiques</h2>
-            <div class="stats">
-                <div class="stat-item">
-                    <div class="stat-value"><?= count($validation_errors) ?></div>
-                    <div class="stat-label">Erreurs validation</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value"><?= $calculation_time ?> ms</div>
-                    <div class="stat-label">Temps calcul</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value"><?= count($formatted_results) - (isset($formatted_results['best']) ? 1 : 0) ?></div>
-                    <div class="stat-label">Transporteurs</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value"><?= $debug_info['signature'] ?? 'N/A' ?></div>
-                    <div class="stat-label">Signature API</div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Section debug (développement) -->
-        <?php if ($_POST && (defined('DEBUG') && DEBUG)): ?>
-        <div class="section debug-section">
-            <h2>🔧 Informations de debug</h2>
-            <div class="debug-content"><?= htmlspecialchars(json_encode([
-                'POST' => $_POST,
-                'params' => $params ?? [],
-                'results' => $results,
-                'debug_info' => $debug_info
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></div>
-        </div>
-        <?php endif; ?>
-
-        <?php endif; ?>
-
-    </div>
+    </main>
 
     <!-- Footer -->
-    <footer style="text-align: center; margin-top: 40px; padding: 20px; background: #1f2937; color: white;">
-        <p>&copy; <?= date('Y') ?> Guldagil - Version <?= $version_info['version'] ?> (<?= $version_info['build'] ?>)</p>
-        <p>Horodatage: <?= $version_info['timestamp'] ?></p>
+    <footer class="app-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div>&copy; <?= date('Y') ?> Guldagil - Version <?= $version_info['version'] ?></div>
+                <div>Build <?= $version_info['build'] ?> - <?= $version_info['timestamp'] ?></div>
+            </div>
+        </div>
     </footer>
 
-    <!-- Scripts -->
+    <!-- Scripts JS existants -->
+    <script src="../assets/js/modules/calculateur/controllers/calculation-controller.js"></script>
+    <script src="../assets/js/modules/calculateur/controllers/ui-controller.js"></script>
+    
+    <!-- Debug conditionnel -->
+    <?php if ($_POST && defined('DEBUG') && DEBUG): ?>
     <script>
-        // Auto-focus sur le premier champ avec erreur
-        document.addEventListener('DOMContentLoaded', function() {
-            const errorField = document.querySelector('input.error');
-            if (errorField) {
-                errorField.focus();
-                errorField.select();
-            }
+        console.log('Debug calculateur:', {
+            'POST': <?= json_encode($_POST, JSON_HEX_TAG) ?>,
+            'params': <?= json_encode($params ?? [], JSON_HEX_TAG) ?>,
+            'results': <?= json_encode($results, JSON_HEX_TAG) ?>,
+            'debug_info': <?= json_encode($debug_info, JSON_HEX_TAG) ?>
         });
-        
-        // Soumission automatique en mode développement (optionnel)
-        <?php if (defined('DEBUG') && DEBUG): ?>
-        setTimeout(function() {
-            if (document.querySelector('form') && !document.querySelector('.results-grid')) {
-                // Auto-submit pour les tests seulement si pas encore de résultats
-                // document.querySelector('form').submit();
-            }
-        }, 1000);
-        <?php endif; ?>
     </script>
+    <?php endif; ?>
 
 </body>
 </html>
