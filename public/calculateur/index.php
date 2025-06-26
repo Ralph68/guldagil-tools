@@ -932,7 +932,6 @@ if ($_POST && !isset($_GET['ajax'])) {
             document.getElementById('palettes').addEventListener('input', function() {
                 scheduleCalculation();
             });
-        }
         
         function moveToStep(step) {
             if (step <= currentStep) return;
@@ -1096,7 +1095,6 @@ if ($_POST && !isset($_GET['ajax'])) {
             
             // Sauvegarder dans l'historique
             saveToHistory(getCurrentFormData(), validResults);
-        }
         }
         
         function getDeliveryDelay(carrier, options) {
