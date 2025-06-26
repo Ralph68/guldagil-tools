@@ -1,0 +1,779 @@
+/**
+ * Titre: CSS Calculateur Unifié - Version corrigée
+ * Chemin: /public/assets/css/modules/calculateur/calculateur-unified.css
+ * Version: 0.5 beta + build
+ * 
+ * CSS unique consolidé pour résoudre les problèmes de design
+ */
+
+/* =====================================================================
+   VARIABLES CSS UNIFIÉES - THÈME BLEU EAU
+===================================================================== */
+:root {
+    /* Couleurs principales - Secteur traitement de l'eau */
+    --primary: #1e40af;
+    --primary-light: #3b82f6;
+    --primary-dark: #1e3a8a;
+    --secondary: #0ea5e9;
+    --accent: #06b6d4;
+    
+    /* Couleurs système */
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #3b82f6;
+    
+    /* Couleurs neutres */
+    --white: #ffffff;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+    
+    /* Espacements - Système 8pt */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    
+    /* Layout */
+    --container-max: 1400px;
+    --header-height: 80px;
+    --footer-height: 60px;
+    
+    /* Rayons */
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    
+    /* Ombres */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    
+    /* Transitions */
+    --transition: all 0.2s ease;
+    --transition-fast: all 0.15s ease;
+    
+    /* Z-index */
+    --z-header: 100;
+    --z-modal: 200;
+    --z-tooltip: 300;
+    
+    /* Typographie */
+    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* =====================================================================
+   RESET ET BASE
+===================================================================== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    line-height: 1.6;
+    color: var(--gray-800);
+    background: var(--gray-50);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* =====================================================================
+   STRUCTURE PRINCIPALE
+===================================================================== */
+
+/* Application calculateur */
+.calculateur-app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Container */
+.container {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 0 var(--space-4);
+    width: 100%;
+}
+
+/* Header */
+.app-header, .calculator-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    padding: var(--space-4) 0;
+    box-shadow: var(--shadow-lg);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+}
+
+/* Marque */
+.header-brand, .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.brand-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+}
+
+.brand-link:hover {
+    transform: scale(1.02);
+}
+
+.brand-logo {
+    height: 48px;
+    width: auto;
+    border-radius: var(--radius);
+}
+
+.brand-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.brand-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.brand-subtitle {
+    font-size: 0.875rem;
+    margin: 0;
+    opacity: 0.9;
+    line-height: 1.2;
+}
+
+/* Status et navigation */
+.header-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.header-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius);
+    color: white;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.header-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.875rem;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 4px var(--success);
+}
+
+.version-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+/* =====================================================================
+   LAYOUT PRINCIPAL
+===================================================================== */
+
+/* Main content */
+.app-main {
+    flex: 1;
+    padding: var(--space-8) 0;
+}
+
+/* Layout calculateur en grille */
+.calc-layout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: var(--space-8);
+    align-items: start;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* =====================================================================
+   FORMULAIRE
+===================================================================== */
+
+.form-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.form-section {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.section-title {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+    color: white;
+    padding: var(--space-4) var(--space-6);
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.form-content {
+    padding: var(--space-6);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--space-4);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.field-label {
+    font-weight: 600;
+    color: var(--gray-700);
+    font-size: 0.875rem;
+}
+
+.form-control {
+    padding: var(--space-3) var(--space-4);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 1rem;
+    transition: var(--transition);
+    background: var(--white);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+}
+
+.form-control:invalid {
+    border-color: var(--error);
+}
+
+/* Select personnalisé */
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right var(--space-3) center;
+    background-size: 16px;
+    padding-right: calc(var(--space-4) + 20px);
+}
+
+/* =====================================================================
+   SECTION ADR
+===================================================================== */
+
+.adr-section {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #f59e0b;
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+}
+
+.adr-title {
+    color: #92400e;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.adr-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+.adr-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.adr-option:hover {
+    border-color: var(--warning);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.adr-option.selected {
+    border-color: var(--warning);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.adr-radio {
+    margin: 0;
+    accent-color: var(--warning);
+}
+
+.adr-label {
+    font-weight: 600;
+    color: var(--gray-800);
+    cursor: pointer;
+}
+
+.adr-description {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    margin-top: var(--space-1);
+}
+
+/* =====================================================================
+   OPTIONS DE LIVRAISON
+===================================================================== */
+
+.delivery-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+}
+
+.delivery-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-4);
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    transition: var(--transition);
+    cursor: pointer;
+    text-align: center;
+}
+
+.delivery-option:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.delivery-option.selected {
+    border-color: var(--primary);
+    background: rgba(30, 64, 175, 0.05);
+}
+
+.option-icon {
+    font-size: 2rem;
+    margin-bottom: var(--space-2);
+}
+
+.option-title {
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: var(--space-1);
+}
+
+.option-subtitle {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    margin-bottom: var(--space-2);
+}
+
+.option-description {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+}
+
+/* =====================================================================
+   PANEL RÉSULTATS
+===================================================================== */
+
+.results-panel {
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-4));
+}
+
+.results-container {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.results-header {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+    color: white;
+    padding: var(--space-4) var(--space-6);
+    text-align: center;
+}
+
+.results-title {
+    margin: 0 0 var(--space-2);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.results-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.results-content {
+    padding: var(--space-6);
+}
+
+/* Meilleur tarif */
+.best-rate {
+    background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+    color: white;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    margin-bottom: var(--space-6);
+}
+
+.best-rate-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+}
+
+.best-rate-price {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: var(--space-1);
+}
+
+.best-rate-carrier {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+/* Comparaison transporteurs */
+.carriers-results {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.carrier-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    transition: var(--transition);
+}
+
+.carrier-card.best-price {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.carrier-card.unavailable {
+    opacity: 0.6;
+    border-color: var(--gray-300);
+}
+
+.carrier-info h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 var(--space-1);
+    color: var(--gray-800);
+}
+
+.carrier-info p {
+    font-size: 0.875rem;
+    color: var(--gray-500);
+    margin: 0;
+}
+
+.carrier-price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.carrier-price.unavailable {
+    color: var(--gray-400);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.best-price-badge {
+    background: var(--success);
+    color: white;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: var(--space-2);
+}
+
+/* États de chargement */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8);
+    color: var(--gray-500);
+}
+
+.loading::before {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--gray-300);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    margin-right: var(--space-3);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =====================================================================
+   FOOTER
+===================================================================== */
+
+.app-footer {
+    background: var(--gray-800);
+    color: var(--gray-300);
+    padding: var(--space-4) 0;
+    margin-top: auto;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+/* =====================================================================
+   RESPONSIVE
+===================================================================== */
+
+@media (max-width: 1024px) {
+    .calc-layout {
+        grid-template-columns: 1fr;
+        gap: var(--space-6);
+    }
+    
+    .results-panel {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: var(--space-4);
+        text-align: center;
+    }
+    
+    .header-brand {
+        justify-content: center;
+    }
+    
+    .brand-title {
+        font-size: 1.25rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .delivery-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .adr-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .app-main {
+        padding: var(--space-4) 0;
+    }
+    
+    .footer-content {
+        flex-direction: column;
+        gap: var(--space-2);
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 var(--space-3);
+    }
+    
+    .form-content {
+        padding: var(--space-4);
+    }
+    
+    .results-content {
+        padding: var(--space-4);
+    }
+    
+    .brand-logo {
+        height: 40px;
+    }
+    
+    .brand-title {
+        font-size: 1.1rem;
+    }
+    
+    .best-rate-price {
+        font-size: 1.5rem;
+    }
+}
+
+/* =====================================================================
+   UTILITAIRES
+===================================================================== */
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.font-weight-bold { font-weight: 700; }
+.text-muted { color: var(--gray-500); }
+.mb-0 { margin-bottom: 0; }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mt-4 { margin-top: var(--space-4); }
+
+/* États d'interaction */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--gray-200);
+    color: var(--gray-700);
+}
+
+.btn-secondary:hover {
+    background: var(--gray-300);
+}
+
+/* Alertes */
+.alert {
+    padding: var(--space-4);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-4);
+}
+
+.alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--error);
+    color: #991b1b;
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--success);
+    color: #065f46;
+}
+
+.alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid var(--warning);
+    color: #92400e;
+}
