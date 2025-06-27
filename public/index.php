@@ -1,62 +1,97 @@
 <?php
 /**
- * public/index.php - Portail principal Guldagil
+ * Titre: Page d'accueil du portail Guldagil
  * Chemin: /public/index.php
- * Version: 0.5 beta - Architecture MVC modulaire
+ * Version: 0.5 beta + build auto
  */
 
-// Chargement de la configuration
-require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../config/version.php';
+// Configuration et sécurité
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Configuration des modules (MVC)
+// Vérifier et charger la configuration
+if (!file_exists(__DIR__ . '/../config/config.php')) {
+    die('<h1>❌ Erreur Configuration</h1><p>Le fichier config.php est manquant dans /config/</p>');
+}
+
+if (!file_exists(__DIR__ . '/../config/version.php')) {
+    die('<h1>❌ Erreur Version</h1><p>Le fichier version.php est manquant dans /config/</p>');
+}
+
+try {
+    require_once __DIR__ . '/../config/config.php';
+    require_once __DIR__ . '/../config/version.php';
+} catch (Exception $e) {
+    die('<h1>❌ Erreur de chargement</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>');
+}
+
+// Vérifier connexion base de données
+if (!isset($db) || !($db instanceof PDO)) {
+    die('<h1>❌ Erreur Base de données</h1><p>Connexion à la base de données non disponible</p>');
+}
+
+// Définition des modules - TOUS en version 0.5 beta
 $modules = [
     'calculateur' => [
-        'name' => 'Calculateur frais de port',
-        'description' => 'Comparaison et calcul des tarifs de transport multimodaux',
+        'name' => 'Calculateur de frais',
+        'description' => 'Calcul et comparaison des tarifs de transport',
         'icon' => 'calculator',
         'color' => 'blue',
+        'status' => 'active',
         'path' => 'calculateur/',
-        'features' => ['Comparaison transporteurs', 'Calcul temps réel', 'Export devis'],
-        'status' => 'active'
+        'features' => ['Comparaison multi-transporteurs', 'Calculs automatisés', 'Export PDF']
     ],
     'adr' => [
         'name' => 'Gestion ADR',
-        'description' => 'Déclarations et conformité marchandises dangereuses',
-        'icon' => 'shield-alert',
-        'color' => 'amber',
+        'description' => 'Transport de marchandises dangereuses',
+        'icon' => 'warning',
+        'color' => 'orange',
+        'status' => 'active',
         'path' => 'adr/',
-        'features' => ['Déclarations automatisées', 'Base réglementaire', 'Traçabilité'],
-        'status' => 'active'
+        'features' => ['Déclarations ADR', 'Gestion quotas', 'Suivi réglementaire']
+    ],
+    'epi' => [
+        'name' => 'Équipements EPI',
+        'description' => 'Gestion des équipements de protection',
+        'icon' => 'shield',
+        'color' => 'green',
+        'status' => 'development',
+        'path' => 'epi/',
+        'features' => ['Catalogue EPI', 'Suivi dotations', 'Maintenance']
+    ],
+    'outillages' => [
+        'name' => 'Outillages',
+        'description' => 'Gestion des outils et équipements',
+        'icon' => 'tool',
+        'color' => 'purple',
+        'status' => 'development',
+        'path' => 'outillages/',
+        'features' => ['Inventaire', 'Maintenance', 'Réservations']
     ],
     'controle-qualite' => [
         'name' => 'Contrôle qualité',
-        'description' => 'Validation et certification des équipements techniques',
-        'icon' => 'clipboard-check',
-        'color' => 'emerald',
+        'description' => 'Suivi et contrôle de la qualité',
+        'icon' => 'check',
+        'color' => 'teal',
+        'status' => 'active',
         'path' => 'controle-qualite/',
-        'features' => ['Contrôles normalisés', 'Rapports certifiés', 'Planification'],
-        'status' => 'active'
+        'features' => ['Plans de contrôle', 'Rapports qualité', 'Non-conformités']
     ],
     'admin' => [
         'name' => 'Administration',
-        'description' => 'Configuration système et gestion des données',
-        'icon' => 'cog',
-        'color' => 'slate',
+        'description' => 'Gestion du système et configuration',
+        'icon' => 'settings',
+        'color' => 'gray',
+        'status' => 'active',
         'path' => 'admin/',
-        'features' => ['Paramétrage', 'Import/Export', 'Analytics'],
-        'status' => 'active'
+        'features' => ['Configuration', 'Utilisateurs', 'Maintenance']
     ]
 ];
 
-// Authentification (mode développement)
-session_start();
-$auth_enabled = false;
-$user_info = ['username' => 'Développeur', 'role' => 'admin'];
-
-// Récupération des métriques
+// Statistiques du système (simulation ou vraies données)
 try {
-    $calculations_today = $db->query("SELECT COUNT(*) FROM gul_adr_expeditions WHERE DATE(date_creation) = CURDATE()")->fetchColumn() ?: rand(85, 156);
+    // Ici vous pouvez ajouter de vraies requêtes vers votre base
+    $calculations_today = rand(85, 156);
     $controles_today = rand(12, 28);
     $declarations_pending = rand(3, 11);
     
@@ -86,6 +121,9 @@ if ($stats['declarations_pending'] > 8) {
         'count' => $stats['declarations_pending']
     ];
 }
+
+// Définir la navigation actuelle
+$current_path = $_SERVER['REQUEST_URI'] ?? '/';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -108,51 +146,79 @@ if ($stats['declarations_pending'] > 8) {
     <link rel="stylesheet" href="assets/css/portal.css">
     
     <!-- Meta tags -->
-    <meta name="description" content="Plateforme Guldagil : calculateur de frais de port, gestion ADR, contrôle qualité et administration centralisée">
+    <meta name="description" content="<?= APP_DESCRIPTION ?>">
     <meta name="keywords" content="transport,logistique,ADR,contrôle qualité,frais de port,Guldagil">
     <meta name="author" content="<?= APP_AUTHOR ?>">
     <meta name="robots" content="noindex,nofollow">
 </head>
 <body class="portal-layout">
     
-    <?php include 'includes/header.php'; ?>
-
-    <!-- Navigation & Metrics -->
-    <nav class="portal-nav" role="navigation">
-        <div class="nav-container">
-            <div class="metrics-bar">
-                <div class="metric-group">
-                    <div class="metric-item" data-metric="primary">
-                        <span class="metric-value"><?= number_format($stats['calculations_today']) ?></span>
-                        <span class="metric-label">Calculs traités</span>
-                        <span class="metric-period">aujourd'hui</span>
-                    </div>
-                    <div class="metric-item" data-metric="success">
-                        <span class="metric-value"><?= $stats['controles_today'] ?></span>
-                        <span class="metric-label">Contrôles validés</span>
-                        <span class="metric-period">24h</span>
-                    </div>
-                    <div class="metric-item" data-metric="warning">
-                        <span class="metric-value"><?= $stats['declarations_pending'] ?></span>
-                        <span class="metric-label">Déclarations</span>
-                        <span class="metric-period">en attente</span>
-                    </div>
-                    <div class="metric-item" data-metric="info">
-                        <span class="metric-value"><?= $stats['modules_active'] ?></span>
-                        <span class="metric-label">Modules</span>
-                        <span class="metric-period">actifs</span>
-                    </div>
-                </div>
+    <!-- Header principal -->
+    <header class="portal-header" role="banner">
+        <div class="header-container">
+            <!-- Brand -->
+            <div class="brand-section">
+                <h1 class="brand-title">
+                    <span class="brand-icon">🌊</span>
+                    <?= APP_NAME ?>
+                </h1>
+                <p class="brand-subtitle"><?= APP_DESCRIPTION ?></p>
+            </div>
+            
+            <!-- Navigation principale -->
+            <nav class="main-navigation" role="navigation" aria-label="Navigation principale">
+                <a href="./" class="nav-link <?= $current_path === '/' ? 'active' : '' ?>">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Accueil</span>
+                </a>
+                
+                <a href="calculateur/" class="nav-link <?= strpos($current_path, 'calculateur') !== false ? 'active' : '' ?>">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-text">Frais de port</span>
+                </a>
+                
+                <a href="adr/" class="nav-link <?= strpos($current_path, 'adr') !== false ? 'active' : '' ?>">
+                    <span class="nav-icon">⚠️</span>
+                    <span class="nav-text">ADR</span>
+                </a>
+                
+                <a href="epi/" class="nav-link <?= strpos($current_path, 'epi') !== false ? 'active' : '' ?>">
+                    <span class="nav-icon">🦺</span>
+                    <span class="nav-text">EPI</span>
+                </a>
+                
+                <a href="outillages/" class="nav-link <?= strpos($current_path, 'outillages') !== false ? 'active' : '' ?>">
+                    <span class="nav-icon">🔧</span>
+                    <span class="nav-text">Outillages</span>
+                </a>
+                
+                <a href="controle-qualite/" class="nav-link <?= strpos($current_path, 'controle-qualite') !== false ? 'active' : '' ?>">
+                    <span class="nav-icon">✅</span>
+                    <span class="nav-text">Contrôle qualité</span>
+                </a>
+                
+                <a href="admin/" class="nav-link admin-link <?= strpos($current_path, 'admin') !== false ? 'active' : '' ?>">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Administration</span>
+                </a>
+            </nav>
+            
+            <!-- Métadonnées header -->
+            <div class="header-meta">
+                <span class="build-info">Build #<?= substr(BUILD_NUMBER, -8) ?></span>
+                <?php if (DEBUG): ?>
+                <span class="debug-badge">🐛 Debug</span>
+                <?php endif; ?>
             </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Notifications -->
     <?php if (!empty($notifications)): ?>
-    <aside class="notifications-bar" role="alert">
+    <aside class="notifications-bar" role="complementary">
         <div class="notifications-container">
             <?php foreach ($notifications as $notification): ?>
-            <div class="notification notification--<?= $notification['type'] ?>">
+            <div class="notification notification-<?= $notification['type'] ?>" role="alert">
                 <div class="notification-content">
                     <span class="notification-message"><?= htmlspecialchars($notification['message']) ?></span>
                     <?php if (isset($notification['count'])): ?>
@@ -170,6 +236,41 @@ if ($stats['declarations_pending'] > 8) {
     <main class="portal-main" role="main">
         <div class="main-container">
             
+            <!-- Stats Section -->
+            <section class="stats-section" aria-labelledby="stats-title">
+                <h2 id="stats-title" class="section-title sr-only">Statistiques du système</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <div class="stat-value"><?= $stats['calculations_today'] ?></div>
+                            <div class="stat-label">Calculs aujourd'hui</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <div class="stat-value"><?= $stats['controles_today'] ?></div>
+                            <div class="stat-label">Contrôles effectués</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-content">
+                            <div class="stat-value"><?= $stats['declarations_pending'] ?></div>
+                            <div class="stat-label">Déclarations en attente</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🟢</div>
+                        <div class="stat-content">
+                            <div class="stat-value"><?= $stats['modules_active'] ?></div>
+                            <div class="stat-label">Modules actifs</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
             <!-- Modules Section -->
             <section class="modules-section" aria-labelledby="modules-title">
                 <header class="section-header">
@@ -182,9 +283,19 @@ if ($stats['declarations_pending'] > 8) {
                     <article class="module-card" data-module="<?= $moduleId ?>" data-color="<?= $module['color'] ?>">
                         <div class="module-header">
                             <div class="module-icon-wrapper">
-                                <svg class="module-icon" data-icon="<?= $module['icon'] ?>">
-                                    <use href="assets/icons/sprite.svg#<?= $module['icon'] ?>"></use>
-                                </svg>
+                                <span class="module-icon" data-icon="<?= $module['icon'] ?>">
+                                    <?php 
+                                    $icons = [
+                                        'calculator' => '🧮',
+                                        'warning' => '⚠️',
+                                        'shield' => '🛡️',
+                                        'tool' => '🔧',
+                                        'check' => '✅',
+                                        'settings' => '⚙️'
+                                    ];
+                                    echo $icons[$module['icon']] ?? '📋';
+                                    ?>
+                                </span>
                             </div>
                             <div class="module-meta">
                                 <h3 class="module-title"><?= htmlspecialchars($module['name']) ?></h3>
@@ -192,65 +303,26 @@ if ($stats['declarations_pending'] > 8) {
                             </div>
                             <div class="module-status" data-status="<?= $module['status'] ?>">
                                 <span class="status-indicator"></span>
+                                <span class="status-text"><?= ucfirst($module['status']) ?></span>
                             </div>
                         </div>
                         
-                        <div class="module-features">
-                            <ul class="features-list">
+                        <div class="module-content">
+                            <ul class="module-features">
                                 <?php foreach ($module['features'] as $feature): ?>
-                                <li class="feature-item">
-                                    <svg class="feature-icon"><use href="assets/icons/sprite.svg#check"></use></svg>
-                                    <span><?= htmlspecialchars($feature) ?></span>
-                                </li>
+                                <li class="feature-item"><?= htmlspecialchars($feature) ?></li>
                                 <?php endforeach; ?>
                             </ul>
                         </div>
                         
-                        <div class="module-actions">
-                            <a href="<?= $module['path'] ?>" class="btn btn--primary btn--module">
-                                <span class="btn-text">Accéder</span>
-                                <svg class="btn-icon"><use href="assets/icons/sprite.svg#arrow-right"></use></svg>
+                        <div class="module-footer">
+                            <div class="module-version">v<?= APP_VERSION ?></div>
+                            <?php if ($module['status'] === 'active'): ?>
+                            <a href="<?= $module['path'] ?>" class="module-button">
+                                Accéder <span class="button-arrow">→</span>
                             </a>
-                            
-                            <?php if ($moduleId === 'calculateur'): ?>
-                            <a href="<?= $module['path'] ?>?demo=1" class="btn btn--secondary btn--sm">
-                                <svg class="btn-icon"><use href="assets/icons/sprite.svg#play"></use></svg>
-                                <span class="btn-text">Démo</span>
-                            </a>
-                            <?php elseif ($moduleId === 'controle-qualite'): ?>
-                            <a href="<?= $module['path'] ?>?controller=pompe-doseuse&action=nouveau" class="btn btn--secondary btn--sm">
-                                <svg class="btn-icon"><use href="assets/icons/sprite.svg#plus"></use></svg>
-                                <span class="btn-text">Nouveau</span>
-                            </a>
-                            <?php elseif ($moduleId === 'adr'): ?>
-                            <a href="<?= $module['path'] ?>declaration/create.php" class="btn btn--secondary btn--sm">
-                                <svg class="btn-icon"><use href="assets/icons/sprite.svg#file-plus"></use></svg>
-                                <span class="btn-text">Déclarer</span>
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                        
-                        <div class="module-metrics">
-                            <?php if ($moduleId === 'calculateur'): ?>
-                            <div class="metric-display">
-                                <span class="metric-number"><?= number_format($stats['calculations_today']) ?></span>
-                                <span class="metric-text">calculs / jour</span>
-                            </div>
-                            <?php elseif ($moduleId === 'controle-qualite'): ?>
-                            <div class="metric-display">
-                                <span class="metric-number"><?= $stats['controles_today'] ?></span>
-                                <span class="metric-text">contrôles / 24h</span>
-                            </div>
-                            <?php elseif ($moduleId === 'adr'): ?>
-                            <div class="metric-display">
-                                <span class="metric-number"><?= $stats['declarations_pending'] ?></span>
-                                <span class="metric-text">en attente</span>
-                            </div>
                             <?php else: ?>
-                            <div class="metric-display">
-                                <span class="metric-number">●</span>
-                                <span class="metric-text">opérationnel</span>
-                            </div>
+                            <span class="module-button disabled">En développement</span>
                             <?php endif; ?>
                         </div>
                     </article>
@@ -258,36 +330,44 @@ if ($stats['declarations_pending'] > 8) {
                 </div>
             </section>
             
-            <!-- Quick Actions -->
-            <section class="quick-actions-section" aria-labelledby="actions-title">
+            <!-- Quick Access Section -->
+            <section class="quick-access-section" aria-labelledby="quick-title">
                 <header class="section-header">
-                    <h2 id="actions-title" class="section-title">Actions rapides</h2>
+                    <h2 id="quick-title" class="section-title">Accès rapide</h2>
+                    <p class="section-subtitle">Actions fréquemment utilisées</p>
                 </header>
                 
                 <div class="quick-actions-grid">
-                    <a href="calculateur/" class="quick-action" data-action="calculate">
-                        <div class="action-icon">
-                            <svg><use href="assets/icons/sprite.svg#calculator"></use></svg>
+                    <a href="calculateur/" class="quick-action">
+                        <div class="action-icon">🚚</div>
+                        <div class="action-content">
+                            <div class="action-title">Nouveau calcul</div>
+                            <div class="action-description">Calculer les frais de transport</div>
                         </div>
-                        <span class="action-text">Nouveau calcul</span>
                     </a>
-                    <a href="controle-qualite/?controller=pompe-doseuse&action=nouveau" class="quick-action" data-action="control">
-                        <div class="action-icon">
-                            <svg><use href="assets/icons/sprite.svg#clipboard-check"></use></svg>
+                    
+                    <a href="adr/" class="quick-action">
+                        <div class="action-icon">📋</div>
+                        <div class="action-content">
+                            <div class="action-title">Déclaration ADR</div>
+                            <div class="action-description">Nouvelle déclaration transport</div>
                         </div>
-                        <span class="action-text">Contrôle qualité</span>
                     </a>
-                    <a href="adr/declaration/create.php" class="quick-action" data-action="declare">
-                        <div class="action-icon">
-                            <svg><use href="assets/icons/sprite.svg#shield-alert"></use></svg>
+                    
+                    <a href="controle-qualite/" class="quick-action">
+                        <div class="action-icon">🔍</div>
+                        <div class="action-content">
+                            <div class="action-title">Plan de contrôle</div>
+                            <div class="action-description">Nouveau contrôle qualité</div>
                         </div>
-                        <span class="action-text">Déclaration ADR</span>
                     </a>
-                    <a href="admin/" class="quick-action" data-action="admin">
-                        <div class="action-icon">
-                            <svg><use href="assets/icons/sprite.svg#cog"></use></svg>
+                    
+                    <a href="admin/" class="quick-action">
+                        <div class="action-icon">📊</div>
+                        <div class="action-content">
+                            <div class="action-title">Rapports</div>
+                            <div class="action-description">Consulter les statistiques</div>
                         </div>
-                        <span class="action-text">Administration</span>
                     </a>
                 </div>
             </section>
@@ -295,28 +375,48 @@ if ($stats['declarations_pending'] > 8) {
         </div>
     </main>
 
-   <?php
-<?php include 'includes/footer.php'; ?>
+    <!-- Footer -->
+    <footer class="portal-footer" role="contentinfo">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="footer-title"><?= APP_NAME ?></span>
+                    <span class="footer-description"><?= APP_DESCRIPTION ?></span>
+                </div>
+                
+                <div class="footer-info">
+                    <span class="copyright">&copy; <?= COPYRIGHT_YEAR ?> <?= APP_AUTHOR ?></span>
+                    <div class="version-info">
+                        <?= renderVersionFooter() ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
 
-    <!-- JavaScript Structure MVC -->
+    <!-- Scripts -->
     <script src="assets/js/app.min.js"></script>
-    <script src="assets/js/portal.js"></script>
-    
-    <!-- Configuration JS finale -->
     <script>
-        window.PortalConfig = {
-            version: '<?= APP_VERSION ?>',
-            build: '<?= BUILD_NUMBER ?>',
-            buildShort: '<?= substr(BUILD_NUMBER, -8) ?>',
-            debug: <?= DEBUG ? 'true' : 'false' ?>,
-            modules: <?= json_encode(array_keys($modules ?? [])) ?>,
-            metrics: <?= json_encode($stats ?? []) ?>
-        };
-        
-        // Log version pour développement
-        if (window.PortalConfig.debug) {
-            console.info('🏷️ ' + window.PortalConfig.version + ' (Build #' + window.PortalConfig.buildShort + ')');
-        }
+        // Configuration du portail
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🌊 Portail Guldagil v<?= APP_VERSION ?> - Build #<?= BUILD_NUMBER ?>');
+            
+            // Initialisation des modules JavaScript si nécessaire
+            if (typeof window.PortalApp !== 'undefined') {
+                window.PortalApp.init({
+                    debug: <?= DEBUG ? 'true' : 'false' ?>,
+                    version: '<?= APP_VERSION ?>',
+                    build: '<?= BUILD_NUMBER ?>'
+                });
+            }
+            
+            // Gestion notifications dismissible
+            document.querySelectorAll('.notification-dismiss').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.notification').style.display = 'none';
+                });
+            });
+        });
     </script>
 </body>
 </html>
