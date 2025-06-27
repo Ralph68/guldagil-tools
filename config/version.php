@@ -32,6 +32,7 @@ function generateBuildNumber(): array {
         __DIR__ . '/../public/index.php',
         __DIR__ . '/../public/calculateur/index.php',
         __DIR__ . '/../public/admin/index.php',
+        __DIR__ . '/../public/controle-qualite/index.php',
         __FILE__ // Ce fichier lui-même
     ];
     
@@ -81,11 +82,26 @@ function getVersionInfo(): array {
 function renderVersionFooter(): string {
     $info = getVersionInfo();
     return sprintf(
-        '<span class="version">v%s</span><span class="build">Build #%s</span><span class="date">%s</span>',
+        '<div class="version-footer">
+            <span class="version">v%s</span>
+            <span class="build">Build #%s</span>
+            <span class="date">%s</span>
+            <span class="copyright">© %s %s</span>
+        </div>',
         $info['version'],
         $info['short_build'],
-        $info['formatted_date']
+        $info['formatted_date'],
+        COPYRIGHT_YEAR,
+        APP_AUTHOR
     );
+}
+
+/**
+ * Version compacte pour header/menu
+ */
+function renderVersionCompact(): string {
+    $info = getVersionInfo();
+    return sprintf('v%s', $info['version']);
 }
 
 /**
@@ -116,6 +132,21 @@ function isNewBuild(): bool {
     return false;
 }
 
+/**
+ * Version pour les assets (cache busting)
+ */
+function getAssetVersion(): string {
+    return substr(BUILD_NUMBER, -6); // 6 derniers chiffres
+}
+
+/**
+ * URL avec version pour cache busting
+ */
+function versionedUrl(string $url): string {
+    $separator = strpos($url, '?') !== false ? '&' : '?';
+    return $url . $separator . 'v=' . getAssetVersion();
+}
+
 // Debug info si mode développement
 if (DEBUG && php_sapi_name() === 'cli') {
     $info = getVersionInfo();
@@ -123,4 +154,5 @@ if (DEBUG && php_sapi_name() === 'cli') {
     echo "🔨 Build: #{$info['build']}\n";
     echo "📅 Date: {$info['formatted_date']}\n";
     echo "🆔 Build court: #{$info['short_build']}\n";
+    echo "🔧 Environnement: {$info['environment']}\n";
 }
