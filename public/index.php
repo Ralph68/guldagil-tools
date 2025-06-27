@@ -115,38 +115,7 @@ if ($stats['declarations_pending'] > 8) {
 </head>
 <body class="portal-layout">
     
-    <!-- Header Enterprise -->
-    <header class="portal-header" role="banner">
-        <div class="header-container">
-            <div class="header-brand">
-                <div class="brand-logo">
-                    <img src="assets/img/logo_guldagil.png" alt="Guldagil" class="logo-image">
-                </div>
-                <div class="brand-identity">
-                    <h1 class="brand-title"><?= APP_NAME ?></h1>
-                    <p class="brand-tagline"><?= APP_DESCRIPTION ?></p>
-                </div>
-            </div>
-            
-            <div class="header-controls">
-                <div class="system-status" data-status="<?= $stats['system_health'] ?>">
-                    <div class="status-indicator">
-                        <div class="status-dot"></div>
-                        <span class="status-text">
-                            <?= $stats['system_health'] === 'optimal' ? 'Système optimal' : 'Opérationnel' ?>
-                        </span>
-                    </div>
-                </div>
-                
-                <?php if (!$auth_enabled): ?>
-                <div class="dev-badge">
-                    <span class="dev-icon">🛠</span>
-                    <span class="dev-text">Mode développement</span>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-    </header>
+    <?php include 'includes/header.php'; ?>
 
     <!-- Navigation & Metrics -->
     <nav class="portal-nav" role="navigation">
@@ -327,31 +296,7 @@ if ($stats['declarations_pending'] > 8) {
     </main>
 
    <?php
-/**
- * Mise à jour du footer dans public/index.php
- * Remplacer la section footer existante par cette version corrigée
- */
-?>
-
-    <!-- Footer principal -->
-    <footer class="portal-footer">
-        <div class="footer-container">
-            <div class="footer-copyright">
-                <p>© <?= date('Y') ?> Guldagil - Solutions transport & logistique</p>
-                <p class="footer-author">Développé par <?= APP_AUTHOR ?></p>
-            </div>
-            <div class="footer-meta">
-                <div class="version-info"><?= renderVersionFooter() ?></div>
-                <div class="footer-links">
-                    <a href="admin/" class="footer-link">Administration</a>
-                    <a href="admin/maintenance.php" class="footer-link">Maintenance</a>
-                    <?php if (DEBUG): ?>
-                    <a href="?debug=1" class="footer-link footer-link--debug">Debug</a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </footer>
+<?php include 'includes/footer.php'; ?>
 
     <!-- JavaScript Structure MVC -->
     <script src="assets/js/app.min.js"></script>
