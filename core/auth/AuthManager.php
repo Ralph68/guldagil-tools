@@ -1,5 +1,5 @@
 <?php
-// === guldagil_new/core/auth/AuthManager.php ===
+// === /core/auth/AuthManager.php ===
 /**
  * Gestionnaire d'authentification centralisé Guldagil
  * Chemin: /core/auth/AuthManager.php
