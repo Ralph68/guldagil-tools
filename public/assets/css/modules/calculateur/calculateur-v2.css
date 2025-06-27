@@ -1,0 +1,656 @@
+/**
+ * CSS User-Friendly - Interface moderne pour calculateur v2.0
+ * Chemin: /public/assets/css/modules/calculateur/calculateur-v2.css
+ * AJOUT au CSS existant pour interface user-friendly
+ */
+
+/* =====================================================================
+   AMÉLIORATIONS USER-FRIENDLY
+===================================================================== */
+
+/* Interface compacte */
+.calc-form-compact {
+    padding: var(--space-6);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+    max-width: 600px;
+}
+
+/* Champs de formulaire améliorés */
+.form-field {
+    position: relative;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 600;
+    margin-bottom: var(--space-3);
+    color: var(--gray-700);
+    font-size: 0.95rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: var(--space-4);
+    border: 2px solid var(--gray-300);
+    border-radius: var(--radius-lg);
+    font-size: 1rem;
+    background: white;
+    transition: var(--transition);
+    min-height: 52px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+    transform: translateY(-1px);
+}
+
+.form-control:valid {
+    border-color: var(--success);
+}
+
+/* Radio buttons modernisés */
+.radio-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.radio-btn {
+    display: block;
+    cursor: pointer;
+    position: relative;
+}
+
+.radio-btn input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.radio-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 2px solid var(--gray-300);
+    border-radius: var(--radius-lg);
+    background: white;
+    transition: var(--transition);
+    min-height: 60px;
+    font-weight: 500;
+}
+
+.radio-btn:hover .radio-content {
+    border-color: var(--primary-light);
+    background: var(--gray-50);
+    transform: translateY(-1px);
+}
+
+.radio-btn input:checked + .radio-content {
+    border-color: var(--primary);
+    background: rgba(30, 64, 175, 0.08);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.radio-icon {
+    font-size: 1.5rem;
+}
+
+/* Toggle switches modernes */
+.toggle-switches {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    cursor: pointer;
+    padding: var(--space-3);
+    border-radius: var(--radius);
+    transition: var(--transition);
+}
+
+.toggle-switch:hover {
+    background: var(--gray-50);
+}
+
+.toggle-slider {
+    position: relative;
+    width: 48px;
+    height: 24px;
+    background: var(--gray-300);
+    border-radius: 12px;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--primary);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(24px);
+}
+
+.toggle-label {
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+/* Options avancées */
+.toggle-advanced {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    background: var(--gray-100);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    font-weight: 500;
+    color: var(--gray-700);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.toggle-advanced:hover {
+    background: var(--gray-200);
+    border-color: var(--primary-light);
+}
+
+.toggle-arrow {
+    transition: transform 0.2s ease;
+    font-size: 0.8rem;
+}
+
+.advanced-options {
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-200);
+}
+
+/* Loading animations améliorées */
+.loading-animation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.loading-dots {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.loading-dots span {
+    width: 8px;
+    height: 8px;
+    background: var(--primary);
+    border-radius: 50%;
+    animation: loading-bounce 1.4s ease-in-out infinite both;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes loading-bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+/* Tips et astuces */
+.tips {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}
+
+.tip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: rgba(30, 64, 175, 0.05);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    color: var(--gray-600);
+}
+
+/* États des résultats améliorés */
+.result-state {
+    padding: var(--space-8);
+    text-align: center;
+    min-height: 300px;
+    display: none;
+}
+
+.result-state.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.state-content {
+    max-width: 400px;
+}
+
+.state-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-4);
+    opacity: 0.8;
+}
+
+/* Résultats avec détail Excel */
+.results-display {
+    padding: var(--space-6);
+}
+
+.best-rate-card {
+    background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+    color: white;
+    padding: var(--space-6);
+    border-radius: var(--radius-xl);
+    margin-bottom: var(--space-6);
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+}
+
+.best-rate-amount {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: var(--space-2) 0;
+}
+
+.best-rate-carrier {
+    font-size: 1.125rem;
+    opacity: 0.9;
+}
+
+.savings-info {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+}
+
+/* Comparaison transporteurs */
+.carriers-comparison {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.carrier-result {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    transition: var(--transition);
+    position: relative;
+}
+
+.carrier-result:hover {
+    border-color: var(--primary-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.carrier-result.best-option {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.03);
+}
+
+.carrier-result.best-option::before {
+    content: '🏆 Meilleur prix';
+    position: absolute;
+    top: -8px;
+    left: var(--space-4);
+    background: var(--success);
+    color: white;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.carrier-result.unavailable {
+    opacity: 0.6;
+    border-color: var(--gray-300);
+    background: var(--gray-50);
+}
+
+.carrier-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.carrier-logo {
+    width: 40px;
+    height: 40px;
+    background: var(--gray-100);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--gray-600);
+}
+
+.carrier-details h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 var(--space-1);
+    color: var(--gray-800);
+}
+
+.carrier-details p {
+    font-size: 0.875rem;
+    color: var(--gray-500);
+    margin: 0;
+}
+
+.carrier-price {
+    text-align: right;
+}
+
+.price-amount {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0;
+}
+
+.price-detail {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+    margin-top: var(--space-1);
+}
+
+.price-unavailable {
+    color: var(--gray-400);
+    font-style: italic;
+    font-size: 1rem;
+}
+
+/* Détail du calcul Excel */
+.calculation-detail {
+    margin-top: var(--space-6);
+    padding: var(--space-4);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-200);
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+    cursor: pointer;
+}
+
+.detail-title {
+    font-weight: 600;
+    color: var(--gray-700);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.detail-toggle {
+    background: none;
+    border: none;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.detail-content {
+    display: none;
+}
+
+.detail-content.show {
+    display: block;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.calculation-breakdown {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.calc-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-200);
+}
+
+.calc-line.subtotal {
+    border-color: var(--primary-light);
+    background: rgba(30, 64, 175, 0.03);
+    font-weight: 600;
+}
+
+.calc-line.total {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.calc-label {
+    color: var(--gray-700);
+}
+
+.calc-value {
+    font-weight: 500;
+    color: var(--gray-800);
+}
+
+/* Actions d'erreur */
+.error-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: center;
+    margin-top: var(--space-4);
+}
+
+/* Améliorations responsive */
+@media (max-width: 768px) {
+    .form-grid {
+        max-width: none;
+    }
+    
+    .radio-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .radio-content {
+        min-height: 52px;
+        padding: var(--space-3);
+    }
+    
+    .toggle-switches {
+        gap: var(--space-2);
+    }
+    
+    .carrier-result {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--space-3);
+    }
+    
+    .carrier-info {
+        justify-content: center;
+    }
+    
+    .best-rate-amount {
+        font-size: 2rem;
+    }
+    
+    .calc-line {
+        padding: var(--space-2);
+        font-size: 0.9rem;
+    }
+    
+    .error-actions {
+        flex-direction: column;
+    }
+}
+
+/* Animation d'entrée pour les résultats */
+.results-display {
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Indicateurs de validation en temps réel */
+.form-control.valid {
+    border-color: var(--success);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2310b981' d='m2.3 6.73.94-.94 2.94 2.94 1.25-1.25L3.66 3.72z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+}
+
+.form-control.invalid {
+    border-color: var(--error);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23ef4444'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.5 5.5 1 1m0 0 1 1m-1-1 1-1m-1 1-1 1'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+}
+
+/* Micro-interactions */
+.btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+/* Amélioration du loading button */
+.btn.loading {
+    pointer-events: none;
+    position: relative;
+}
+
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: auto;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+/* Notification toast pour feedback */
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--success);
+    color: white;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    z-index: 1000;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+}
+
+.toast-notification.show {
+    transform: translateX(0);
+}
+
+.toast-notification.error {
+    background: var(--error);
+}
+
+.toast-notification.warning {
+    background: var(--warning);
+}

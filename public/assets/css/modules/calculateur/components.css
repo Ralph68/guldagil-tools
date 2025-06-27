@@ -1,0 +1,197 @@
+/* =====================================================================
+   components.css - Composants réutilisables
+   Chemin: /public/assets/css/modules/calculateur/components.css
+===================================================================== */
+
+/* Panneaux */
+.form-panel,
+.results-panel {
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.panel-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    padding: var(--space-6);
+    text-align: center;
+}
+
+.panel-header h2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    font-size: 1.375rem;
+    font-weight: 600;
+    margin: 0 0 var(--space-2);
+}
+
+.panel-header .icon {
+    font-size: 1.5rem;
+}
+
+.panel-header p {
+    margin: 0;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+/* Boutons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    min-height: 44px;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-secondary {
+    background: var(--gray-500);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: var(--gray-600);
+}
+
+.btn-icon {
+    font-size: 1rem;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--gray-200);
+    border-top: 3px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* States des résultats */
+.result-state {
+    display: none;
+    padding: var(--space-8);
+    text-align: center;
+    min-height: 200px;
+}
+
+.result-state.active {
+    display: block;
+}
+
+.state-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.state-icon {
+    font-size: 3rem;
+    opacity: 0.7;
+}
+
+.state-icon.error {
+    color: var(--error);
+}
+
+.state-content h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin: 0;
+}
+
+.state-content p {
+    color: var(--gray-500);
+    margin: 0;
+}
+
+/* Résultats des transporteurs */
+.carriers-results {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-6);
+}
+
+.carrier-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    transition: var(--transition);
+}
+
+.carrier-card.best-price {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.carrier-card.unavailable {
+    opacity: 0.6;
+    border-color: var(--gray-300);
+}
+
+.carrier-info h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 var(--space-1);
+    color: var(--gray-800);
+}
+
+.carrier-info p {
+    font-size: 0.875rem;
+    color: var(--gray-500);
+    margin: 0;
+}
+
+.carrier-price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.carrier-price.unavailable {
+    color: var(--gray-400);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.best-price-badge {
+    background: var(--success);
+    color: white;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: var(--space-2);
+}

@@ -1,0 +1,247 @@
+/* =====================================================================
+   responsive.css - Styles responsive
+   Chemin: /public/assets/css/modules/calculateur/responsive.css
+===================================================================== */
+
+/* Tablette */
+@media (max-width: 1024px) {
+    .calc-layout {
+        grid-template-columns: 1fr;
+        gap: var(--space-6);
+    }
+    
+    .results-panel {
+        order: -1;
+    }
+    
+    .radio-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        justify-content: stretch;
+    }
+    
+    .form-actions .btn {
+        flex: 1;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    :root {
+        --container-padding: var(--space-3);
+        --space-6: var(--space-4);
+        --space-8: var(--space-6);
+    }
+    
+    .app-header {
+        height: 60px;
+    }
+    
+    .brand-title {
+        font-size: 1.25rem;
+    }
+    
+    .brand-subtitle {
+        display: none;
+    }
+    
+    .version-info {
+        display: none;
+    }
+    
+    .calc-layout {
+        gap: var(--space-4);
+    }
+    
+    .panel-header {
+        padding: var(--space-4);
+    }
+    
+    .panel-header h2 {
+        font-size: 1.125rem;
+    }
+    
+    .calc-form {
+        padding: var(--space-4);
+        gap: var(--space-4);
+    }
+    
+    .form-step {
+        padding: var(--space-4);
+    }
+    
+    .step-header {
+        gap: var(--space-3);
+        margin-bottom: var(--space-4);
+    }
+    
+    .step-number {
+        width: 28px;
+        height: 28px;
+        font-size: 0.8rem;
+    }
+    
+    .step-info h3 {
+        font-size: 1rem;
+    }
+    
+    .radio-content {
+        padding: var(--space-3);
+        min-height: 52px;
+    }
+    
+    .radio-icon {
+        font-size: 1.25rem;
+    }
+    
+    .result-state {
+        padding: var(--space-6);
+        min-height: 150px;
+    }
+    
+    .state-icon {
+        font-size: 2.5rem;
+    }
+    
+    .carriers-results {
+        padding: var(--space-4);
+        gap: var(--space-3);
+    }
+    
+    .carrier-card {
+        padding: var(--space-3);
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-2);
+        text-align: center;
+    }
+    
+    .carrier-price {
+        font-size: 1.125rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+    
+    .footer-content {
+        flex-direction: column;
+        gap: var(--space-2);
+        text-align: center;
+    }
+}
+
+/* Très petit mobile */
+@media (max-width: 480px) {
+    .container {
+        padding: 0 var(--space-2);
+    }
+    
+    .brand {
+        gap: var(--space-2);
+    }
+    
+    .brand-logo {
+        height: 36px;
+    }
+    
+    .brand-title {
+        font-size: 1.125rem;
+    }
+    
+    .calc-form,
+    .panel-header,
+    .form-step,
+    .result-state,
+    .carriers-results {
+        padding: var(--space-3);
+    }
+    
+    .form-control,
+    .radio-content,
+    .checkbox-option,
+    .btn {
+        min-height: 48px;
+    }
+    
+    .state-content h3 {
+        font-size: 1.125rem;
+    }
+}
+
+/* Écrans hautes résolutions */
+@media (min-width: 1400px) {
+    .calc-layout {
+        grid-template-columns: 1fr 480px;
+        gap: var(--space-12);
+    }
+    
+    .panel-header {
+        padding: var(--space-8);
+    }
+    
+    .calc-form {
+        padding: var(--space-8);
+    }
+    
+    .form-step {
+        padding: var(--space-8);
+    }
+}
+
+/* Mode sombre - Support système */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --gray-50: #0f172a;
+        --gray-100: #1e293b;
+        --gray-200: #334155;
+        --gray-300: #475569;
+        --gray-800: #f1f5f9;
+        --gray-900: #f8fafc;
+    }
+}
+
+/* Réduction de mouvement */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .loading-spinner {
+        animation: none;
+        border: 3px solid var(--gray-300);
+        border-top: 3px solid var(--primary);
+    }
+}
+
+/* Mode impression */
+@media print {
+    .app-header,
+    .app-footer,
+    .form-actions {
+        display: none;
+    }
+    
+    .calc-layout {
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
+    }
+    
+    .form-panel,
+    .results-panel {
+        box-shadow: none;
+        border: 1px solid var(--gray-300);
+    }
+    
+    .panel-header {
+        background: var(--gray-100) !important;
+        color: var(--gray-800) !important;
+    }
+}
