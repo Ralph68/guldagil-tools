@@ -88,7 +88,7 @@ $page_title = $page_title ?? 'Portail Guldagil';
                     <span class="nav-text">Outillages</span>
                 </a>
                 
-                <a href="qualite/" class="nav-link <?= strpos($current_path, 'qualite') !== false ? 'active' : '' ?>">
+                <a href="controle-qualite/" class="nav-link <?= strpos($current_path, 'controle-qualite') !== false ? 'active' : '' ?>">
                     <span class="nav-icon">✅</span>
                     <span class="nav-text">Contrôle qualité</span>
                 </a>
