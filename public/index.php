@@ -326,11 +326,18 @@ if ($stats['declarations_pending'] > 8) {
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="portal-footer" role="contentinfo">
+   <?php
+/**
+ * Mise à jour du footer dans public/index.php
+ * Remplacer la section footer existante par cette version corrigée
+ */
+?>
+
+    <!-- Footer principal -->
+    <footer class="portal-footer">
         <div class="footer-container">
-            <div class="footer-info">
-                <p class="footer-copyright">&copy; <?= COPYRIGHT_YEAR ?> Guldagil. Tous droits réservés.</p>
+            <div class="footer-copyright">
+                <p>© <?= date('Y') ?> Guldagil - Solutions transport & logistique</p>
                 <p class="footer-author">Développé par <?= APP_AUTHOR ?></p>
             </div>
             <div class="footer-meta">
@@ -350,15 +357,21 @@ if ($stats['declarations_pending'] > 8) {
     <script src="assets/js/app.min.js"></script>
     <script src="assets/js/portal.js"></script>
     
-    <!-- Configuration -->
+    <!-- Configuration JS finale -->
     <script>
         window.PortalConfig = {
             version: '<?= APP_VERSION ?>',
             build: '<?= BUILD_NUMBER ?>',
+            buildShort: '<?= substr(BUILD_NUMBER, -8) ?>',
             debug: <?= DEBUG ? 'true' : 'false' ?>,
-            modules: <?= json_encode(array_keys($modules)) ?>,
-            metrics: <?= json_encode($stats) ?>
+            modules: <?= json_encode(array_keys($modules ?? [])) ?>,
+            metrics: <?= json_encode($stats ?? []) ?>
         };
+        
+        // Log version pour développement
+        if (window.PortalConfig.debug) {
+            console.info('🏷️ ' + window.PortalConfig.version + ' (Build #' + window.PortalConfig.buildShort + ')');
+        }
     </script>
 </body>
 </html>
