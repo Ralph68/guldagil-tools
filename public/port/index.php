@@ -91,6 +91,35 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             throw new Exception('Méthode calculateAll non trouvée');
         }
         
+        // Test avec debug détaillé pour chaque transporteur
+        $debug_info['individual_tests'] = [];
+        foreach (['xpo', 'heppner'] as $carrier) {
+            $debug_info['individual_tests'][$carrier] = [];
+            
+            // Test requête directe BDD
+            try {
+                $table = $carrier === 'xpo' ? 'gul_xpo_rates' : 'gul_heppner_rates';
+                $sql = "SELECT COUNT(*) as count, MIN(prix_colis) as min_prix, MAX(prix_colis) as max_prix 
+                        FROM {$table} WHERE num_departement = ?";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$params['departement']]);
+                $test_result = $stmt->fetch();
+                
+                $debug_info['individual_tests'][$carrier]['db_test'] = $test_result;
+                
+                // Test avec quelques enregistrements
+                $sql = "SELECT * FROM {$table} WHERE num_departement = ? LIMIT 3";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$params['departement']]);
+                $sample_records = $stmt->fetchAll();
+                
+                $debug_info['individual_tests'][$carrier]['sample_records'] = $sample_records;
+                
+            } catch (Exception $e) {
+                $debug_info['individual_tests'][$carrier]['db_error'] = $e->getMessage();
+            }
+        }
+        
         $results = $transport->calculateAll($params);
         $calc_time = round((microtime(true) - $start_time) * 1000, 2);
         
