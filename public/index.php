@@ -5,6 +5,17 @@
  * Version: 0.5 beta + build auto
  */
 
+<?php
+// [Gardez votre en-tête existant]
+
+// AJOUT AUTHENTIFICATION - à insérer après vos includes existants
+require_once __DIR__ . '/../includes/auth.php';
+$auth = new Auth();
+$auth->requireAuth(); // Redirige vers login si non connecté
+$current_user = $auth->getCurrentUser(); // Info utilisateur connecté
+
+// [Continuez avec votre code existant...]
+
 // Configuration et sécurité
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
