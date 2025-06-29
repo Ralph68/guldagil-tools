@@ -5,14 +5,15 @@
  * Version : 0.5 beta
  */
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/auth_database.php';
 
 class Auth {
     private $db;
     private $config;
     
     public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+        AuthDatabase::getInstance(); // Initialise les tables auth
+        $this->db = getDB(); // Utilise votre connexion existante
         $this->config = require __DIR__ . '/../config/auth.php';
         $this->initSession();
     }
@@ -36,7 +37,7 @@ class Auth {
         try {
             $stmt = $this->db->prepare("
                 SELECT id, username, password, role, session_duration, is_active 
-                FROM users 
+                FROM auth_users 
                 WHERE username = :username AND is_active = 1
             ");
             $stmt->execute(['username' => $username]);
@@ -51,7 +52,7 @@ class Auth {
             $expiresAt = $this->calculateExpiration($user['session_duration']);
             
             $stmt = $this->db->prepare("
-                INSERT INTO sessions (id, user_id, expires_at) 
+                INSERT INTO auth_sessions (id, user_id, expires_at) 
                 VALUES (:id, :user_id, :expires_at)
             ");
             $stmt->execute([
@@ -61,7 +62,7 @@ class Auth {
             ]);
             
             // Mettre à jour last_login
-            $stmt = $this->db->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = :id");
+            $stmt = $this->db->prepare("UPDATE auth_users SET last_login = CURRENT_TIMESTAMP WHERE id = :id");
             $stmt->execute(['id' => $user['id']]);
             
             // Définir les variables de session
@@ -81,7 +82,7 @@ class Auth {
     
     public function logout() {
         if (isset($_SESSION['session_id'])) {
-            $stmt = $this->db->prepare("DELETE FROM sessions WHERE id = :id");
+            $stmt = $this->db->prepare("DELETE FROM auth_sessions WHERE id = :id");
             $stmt->execute(['id' => $_SESSION['session_id']]);
         }
         
@@ -96,7 +97,7 @@ class Auth {
         
         // Vérifier la session en base
         $stmt = $this->db->prepare("
-            SELECT expires_at FROM sessions 
+            SELECT expires_at FROM auth_sessions 
             WHERE id = :id AND user_id = :user_id
         ");
         $stmt->execute([
@@ -109,8 +110,8 @@ class Auth {
             return false;
         }
         
-        // Vérifier l'expiration (0 = illimitée pour dev)
-        if ($session['expires_at'] !== '0' && strtotime($session['expires_at']) < time()) {
+        // Vérifier l'expiration (NULL = illimitée pour dev)
+        if ($session['expires_at'] !== NULL && strtotime($session['expires_at']) < time()) {
             $this->logout();
             return false;
         }
@@ -180,7 +181,7 @@ class Auth {
     }
     
     private function calculateExpiration($duration) {
-        return $duration === 0 ? '0' : date('Y-m-d H:i:s', time() + $duration);
+        return $duration === 0 ? NULL : date('Y-m-d H:i:s', time() + $duration);
     }
     
     public function getCurrentUser() {
