@@ -239,10 +239,14 @@ a:hover {
     margin: 0;
 }
 
+.header-actions {
+  position: relative;
+}
+
 .header-actions,
 .user-dropdown-container {
   position: relative !important;
-  display: flex;
+  display: inline-block;
   align-items: center;
   z-index: 20;
   /*gap: var(--spacing-lg);*/
