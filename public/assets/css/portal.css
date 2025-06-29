@@ -792,12 +792,11 @@ a:hover {
     }
 }
 
-/* --- Menu utilisateur déroulant (ajouté le 29/06/2025, JTR/ChatGPT) --- */
-.header-actions {
+/* --- Menu utilisateur déroulant, header Guldagil --- */
+.user-dropdown-container {
   position: relative;
   display: flex;
   align-items: center;
-  z-index: 20;
 }
 
 .user-section {
@@ -809,16 +808,31 @@ a:hover {
   color: #fff;
   padding: 0.5em 1.2em;
   border-radius: 8px;
-  background: rgba(40,60,150,0.25);
+  background: rgba(40,60,150,0.12);
   transition: background 0.15s;
-  position: relative;
 }
 
 .user-section:hover,
 .user-section:focus {
-  background: rgba(40,60,150,0.45);
+  background: rgba(40,60,150,0.26);
 }
 
+.user-section:active .user-dropdown {
+  transform: rotate(180deg);
+}
+
+.user-dropdown {
+  font-size: 1.2em;
+  transition: transform 0.2s;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.user-dropdown.open {
+  transform: rotate(180deg);
+}
+
+/* --- Dropdown menu --- */
 .user-dropdown-menu {
   position: absolute;
   top: 100%;
@@ -834,39 +848,47 @@ a:hover {
   border: 1px solid #dde1f1;
 }
 
+.user-dropdown-menu a,
 .user-dropdown-menu .dropdown-item {
+  color: #223366 !important;
+  text-decoration: none !important;
+  background: none;
+  font-weight: 500;
   display: flex;
   align-items: center;
   gap: 0.7em;
   padding: 0.7em 1.3em 0.7em 1.3em;
-  color: #223366;
-  text-decoration: none;
-  border: none;
-  background: none;
   font-size: 1em;
   cursor: pointer;
+  border: none;
   transition: background 0.15s, color 0.15s;
 }
 
+.user-dropdown-menu a:visited,
+.user-dropdown-menu .dropdown-item:visited {
+  color: #223366 !important;
+}
+
+.user-dropdown-menu a:hover,
 .user-dropdown-menu .dropdown-item:hover {
-  background: #eef2fc;
-  color: #294ed4;
+  background: #eef2fc !important;
+  color: #294ed4 !important;
+  text-decoration: underline;
 }
 
 .user-dropdown-menu .logout {
-  color: #c0392b;
+  color: #b71c1c !important;
   font-weight: bold;
 }
-
 .user-dropdown-menu .logout:hover {
-  background: #fbe9e7;
-  color: #922;
+  background: #fbe9e7 !important;
+  color: #922 !important;
 }
 
 .user-dropdown-menu .dropdown-divider {
   height: 1px;
   background: #dde1f1;
-  margin: 0.3em 0 0.3em 0;
+  margin: 0.3em 0;
 }
 
 @media (max-width: 600px) {
