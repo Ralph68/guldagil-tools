@@ -39,8 +39,7 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?></title>
-    <link rel="stylesheet" href="../assets/css/portal.css?v=<?= htmlspecialchars($build_number) ?>">
-    <link rel="stylesheet" href="../assets/css/calculateur.css?v=<?= htmlspecialchars($build_number) ?>">
+    <!-- CSS intégré car fichiers externes manquants -->>
     
     <!-- CSS critique responsive -->
     <style>
@@ -379,14 +378,15 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
         <div class="calc-form-content">
             <form id="calcForm">
                 <div class="calc-form-group">
-                    <label for="dept" class="calc-label">Département destination *</label>
-                    <input type="text" id="dept" class="calc-input" placeholder="Ex: 67" maxlength="2" required>
+                    <label for="departement" class="calc-label">Département destination *</label>
+                    <input type="text" id="departement" class="calc-input" placeholder="Ex: 67" maxlength="2" required>
                     <div class="calc-help">Code département français (01-95)</div>
                 </div>
                 
                 <div class="calc-form-group">
                     <label for="poids" class="calc-label">Poids total (kg) *</label>
                     <input type="number" id="poids" class="calc-input" placeholder="Ex: 25.5" min="0.1" step="0.1" required>
+                    <div class="calc-help">Auto-palette si > 60kg</div>
                 </div>
                 
                 <div class="calc-form-group">
@@ -397,18 +397,28 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
                     </select>
                 </div>
                 
-                <div class="calc-form-group" id="palettesGroup" style="display: none;">
+                <div class="calc-form-group" id="palettesGroup">
                     <label for="palettes" class="calc-label">Nombre de palettes</label>
                     <input type="number" id="palettes" class="calc-input" min="0" value="0">
                 </div>
                 
                 <div class="calc-form-group">
-                    <label class="calc-label">Options de service</label>
+                    <label class="calc-label">Matières dangereuses (ADR)</label>
                     <div class="calc-checkbox-group">
                         <div class="calc-checkbox-item">
-                            <input type="checkbox" id="adr" class="calc-checkbox">
-                            <label for="adr">⚠️ Matières dangereuses (ADR)</label>
+                            <input type="radio" id="adr_non" name="adr" value="non" class="calc-checkbox" checked>
+                            <label for="adr_non">Non - Envoi standard</label>
                         </div>
+                        <div class="calc-checkbox-item">
+                            <input type="radio" id="adr_oui" name="adr" value="oui" class="calc-checkbox">
+                            <label for="adr_oui">⚠️ Oui - Matières dangereuses</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="calc-form-group">
+                    <label class="calc-label">Options de service</label>
+                    <div class="calc-checkbox-group">
                         <div class="calc-checkbox-item">
                             <input type="checkbox" id="enlevement" class="calc-checkbox">
                             <label for="enlevement">🏭 Enlèvement extérieur</label>
@@ -417,11 +427,12 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
                 </div>
                 
                 <div class="calc-form-group">
-                    <label for="service" class="calc-label">Service supplémentaire</label>
-                    <select id="service" class="calc-select">
+                    <label for="option_sup" class="calc-label">Service supplémentaire</label>
+                    <select id="option_sup" class="calc-select">
                         <option value="standard">Standard</option>
                         <option value="premium13">Premium 13h</option>
                         <option value="rdv">Livraison sur RDV</option>
+                        <option value="express">Express</option>
                     </select>
                 </div>
                 
@@ -448,9 +459,8 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
     </div>
 </div>
 
-<script src="../assets/js/calculateur.js?v=<?= htmlspecialchars($build_number) ?>"></script>
 <script>
-// Version simplifiée intégrée
+// JavaScript intégré corrigé - IDs matchent maintenant
 const CalcSimple = {
     init() {
         this.form = document.getElementById('calcForm');
@@ -463,22 +473,39 @@ const CalcSimple = {
             this.calculate();
         });
         
-        document.getElementById('type').addEventListener('change', (e) => {
-            document.getElementById('palettesGroup').style.display = 
-                e.target.value === 'palette' ? 'block' : 'none';
+        // Gestion type palette automatique
+        document.getElementById('poids').addEventListener('input', (e) => {
+            const poids = parseFloat(e.target.value);
+            if (poids > 60) {
+                document.getElementById('type').value = 'palette';
+                this.togglePalettes();
+            }
+            this.autoCalc();
+        });
+        
+        document.getElementById('type').addEventListener('change', () => {
+            this.togglePalettes();
         });
         
         // Auto-calcul
-        ['dept', 'poids'].forEach(id => {
+        ['departement', 'poids'].forEach(id => {
             document.getElementById(id).addEventListener('input', () => {
                 clearTimeout(this.timeout);
                 this.timeout = setTimeout(() => this.autoCalc(), 800);
             });
         });
+        
+        this.togglePalettes();
+    },
+    
+    togglePalettes() {
+        const isPalette = document.getElementById('type').value === 'palette';
+        document.getElementById('palettesGroup').style.display = isPalette ? 'block' : 'none';
+        if (!isPalette) document.getElementById('palettes').value = '0';
     },
     
     autoCalc() {
-        const dept = document.getElementById('dept').value;
+        const dept = document.getElementById('departement').value;
         const poids = document.getElementById('poids').value;
         if (dept.length === 2 && poids > 0) {
             this.calculate();
@@ -486,15 +513,15 @@ const CalcSimple = {
     },
     
     async calculate() {
-        const formData = new FormData(this.form);
+        const adrChecked = document.querySelector('input[name="adr"]:checked');
         const data = {
-            departement: formData.get('dept') || document.getElementById('dept').value,
-            poids: formData.get('poids') || document.getElementById('poids').value,
+            departement: document.getElementById('departement').value,
+            poids: document.getElementById('poids').value,
             type: document.getElementById('type').value,
             palettes: document.getElementById('palettes').value || '0',
-            adr: document.getElementById('adr').checked ? 'oui' : 'non',
+            adr: adrChecked ? adrChecked.value : 'non',
             enlevement: document.getElementById('enlevement').checked,
-            option_sup: document.getElementById('service').value
+            option_sup: document.getElementById('option_sup').value
         };
         
         this.showLoading();
@@ -551,6 +578,7 @@ const CalcSimple = {
                             <span class="calc-detail-label">Service</span>
                             <span class="calc-detail-value">${this.getServiceLabel()}</span>
                         </div>
+                        ${this.getADRLabel()}
                     </div>
                 </div>`;
         });
@@ -568,9 +596,22 @@ const CalcSimple = {
     },
     
     getServiceLabel() {
-        const service = document.getElementById('service').value;
-        return service === 'premium13' ? 'Premium 13h' : 
-               service === 'rdv' ? 'Sur RDV' : 'Standard';
+        const service = document.getElementById('option_sup').value;
+        return {
+            'premium13': 'Premium 13h',
+            'rdv': 'Sur RDV',
+            'express': 'Express',
+            'standard': 'Standard'
+        }[service] || 'Standard';
+    },
+    
+    getADRLabel() {
+        const adr = document.querySelector('input[name="adr"]:checked')?.value;
+        return adr === 'oui' ? `
+            <div class="calc-detail">
+                <span class="calc-detail-label">ADR</span>
+                <span class="calc-detail-value">⚠️ Inclus</span>
+            </div>` : '';
     }
 };
 
