@@ -1,0 +1,176 @@
+/**
+ * Styles Authentification - Gul Calc Frais de port
+ * Chemin : /assets/css/auth.css
+ * Version : 0.5 beta
+ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #2c5282 0%, #3182ce 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.login-box {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    padding: 40px;
+    text-align: center;
+}
+
+.logo h1 {
+    color: #2c5282;
+    font-size: 2.2em;
+    margin-bottom: 10px;
+}
+
+.logo p {
+    color: #4a5568;
+    font-size: 1.1em;
+    margin-bottom: 30px;
+}
+
+.login-form {
+    text-align: left;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #2d3748;
+    font-weight: 500;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #3182ce;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.error-message {
+    background: #fed7d7;
+    color: #c53030;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #c53030;
+}
+
+.login-btn {
+    width: 100%;
+    background: #3182ce;
+    color: white;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.login-btn:hover {
+    background: #2c5282;
+}
+
+.login-btn:active {
+    transform: translateY(1px);
+}
+
+.dev-info {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border-left: 4px solid #3182ce;
+}
+
+.dev-info h3 {
+    color: #2c5282;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+}
+
+.dev-info ul {
+    list-style: none;
+    text-align: left;
+}
+
+.dev-info li {
+    margin-bottom: 8px;
+    color: #4a5568;
+    font-family: 'Courier New', monospace;
+}
+
+.dev-info li strong {
+    color: #2c5282;
+}
+
+.dev-info li em {
+    color: #718096;
+    font-size: 0.9em;
+}
+
+.auth-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    text-align: center;
+    padding: 15px;
+    font-size: 0.9em;
+}
+
+.auth-footer p {
+    margin: 2px 0;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .login-container {
+        padding: 10px;
+    }
+    
+    .login-box {
+        padding: 30px 20px;
+    }
+    
+    .logo h1 {
+        font-size: 1.8em;
+    }
+    
+    .dev-info {
+        font-size: 0.9em;
+    }
+}
