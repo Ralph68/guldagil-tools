@@ -86,7 +86,7 @@ $stats = [
     'modules_dev' => count(array_filter($modules, fn($m) => $m['status'] === 'development'))
 ];
 
-// Informations de version
+// Informations de version via config/version.php
 $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
     'version' => defined('APP_VERSION') ? APP_VERSION : '0.5 beta',
     'build' => defined('BUILD_NUMBER') ? BUILD_NUMBER : date('YmdHis'),
@@ -98,11 +98,11 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Portail Guldagil - Solutions intégrées pour transport, logistique et gestion des équipements">
+    <meta name="description" content="Portail d'outils Guldagil - Solutions intégrées pour transport, logistique et gestion des équipements">
     <meta name="author" content="Jean-Thomas RUNSER">
-    <title>Portail Guldagil - Achats et Logistique</title>
+    <title>Portail Guldagil - Outils professionnels</title>
     
-    <!-- Styles principaux -->
+    <!-- Styles principaux intégrés (évite les erreurs MIME) -->
     <style>
         /* Variables CSS */
         :root {
@@ -131,7 +131,7 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             --spacing-lg: 1.5rem;
             --spacing-xl: 2rem;
             --spacing-2xl: 3rem;
-            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             --font-size-sm: 0.875rem;
             --font-size-base: 1rem;
             --font-size-lg: 1.125rem;
@@ -181,11 +181,22 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             display: flex;
             align-items: center;
             gap: var(--spacing-lg);
+            cursor: pointer;
+            transition: var(--transition-normal);
+        }
+        .header-brand:hover {
+            transform: translateY(-2px);
         }
         .portal-logo {
             height: 60px;
             width: auto;
             object-fit: contain;
+            /* Amélioration contraste pour logo bleu sur fond bleu */
+            filter: brightness(1.2) contrast(1.1);
+            background: rgba(255, 255, 255, 0.1);
+            padding: var(--spacing-xs);
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(10px);
         }
         .brand-info {
             display: flex;
@@ -217,21 +228,22 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             font-size: var(--font-size-sm);
             font-weight: 500;
         }
-        .admin-link {
+        .user-area {
             display: flex;
             align-items: center;
-            gap: var(--spacing-xs);
-            color: white;
-            text-decoration: none;
+            gap: var(--spacing-sm);
             background: rgba(255, 255, 255, 0.1);
             padding: var(--spacing-sm) var(--spacing-md);
             border-radius: var(--radius-md);
-            transition: var(--transition-normal);
             border: 1px solid rgba(255, 255, 255, 0.2);
+            min-height: 44px; /* Zone tactile appropriée */
         }
-        .admin-link:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
+        .user-icon {
+            font-size: var(--font-size-lg);
+        }
+        .user-text {
+            font-size: var(--font-size-sm);
+            opacity: 0.9;
         }
         
         /* Navigation */
@@ -252,6 +264,16 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             color: var(--primary-blue);
             font-size: var(--font-size-sm);
             font-weight: 500;
+            cursor: pointer;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            transition: var(--transition-normal);
+            min-height: 44px; /* Zone tactile appropriée */
+            display: flex;
+            align-items: center;
+        }
+        .breadcrumb-item:hover {
+            background: var(--gray-100);
         }
         .nav-info {
             font-size: var(--font-size-sm);
@@ -325,6 +347,7 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             display: flex;
             flex-direction: column;
             cursor: pointer;
+            min-height: 56px; /* Zone tactile appropriée */
         }
         .module-card:hover {
             transform: translateY(-4px);
@@ -345,6 +368,7 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             gap: var(--spacing-md);
             background: var(--gray-50);
             border-bottom: 1px solid var(--gray-200);
+            min-height: 56px; /* Zone tactile appropriée */
         }
         .module-icon {
             width: 50px;
@@ -423,13 +447,14 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             align-items: center;
             justify-content: center;
             gap: var(--spacing-sm);
-            padding: var(--spacing-sm) var(--spacing-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
             border-radius: var(--radius-md);
             text-decoration: none;
             font-weight: 500;
             transition: var(--transition-normal);
             width: 100%;
             text-align: center;
+            min-height: 48px; /* Zone tactile appropriée */
         }
         .btn-primary {
             background: var(--primary-blue);
@@ -498,7 +523,7 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
         }
         .admin-btn {
             display: inline-block;
-            padding: var(--spacing-sm) var(--spacing-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
             background: var(--primary-blue);
             color: white;
             text-decoration: none;
@@ -506,6 +531,8 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             font-size: var(--font-size-sm);
             font-weight: 500;
             transition: var(--transition-normal);
+            min-height: 44px; /* Zone tactile appropriée */
+            line-height: 1.2;
         }
         .admin-btn:hover {
             background: var(--primary-blue-dark);
@@ -535,6 +562,7 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             display: flex;
             align-items: center;
             gap: var(--spacing-sm);
+            flex-wrap: wrap;
         }
         .version-label,
         .build-label {
@@ -620,17 +648,16 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
     
     <!-- Meta pour cache busting -->
     <meta name="build-version" content="<?= $version_info['version'] ?>">
-    <meta name="cache-control" content="no-cache">
 </head>
 <body>
     <!-- Header principal -->
     <header class="portal-header">
         <div class="header-container">
-            <div class="header-brand">
-                <img src="assets/img/logo.png" alt="Guldagil" class="portal-logo">
+            <div class="header-brand" onclick="goHome()">
+                <img src="/assets/img/logo.png" alt="Guldagil" class="portal-logo">
                 <div class="brand-info">
                     <h1 class="portal-title">Portail Guldagil</h1>
-                    <p class="portal-subtitle">Achats et Logistique</p>
+                    <p class="portal-subtitle">Portail d'outils professionnels</p>
                 </div>
             </div>
             
@@ -638,10 +665,10 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
                 <div class="version-badge">
                     <span class="version-text"><?= $version_info['version'] ?></span>
                 </div>
-                <a href="admin/" class="admin-link" title="Administration">
-                    <span class="admin-icon">⚙️</span>
-                    <span class="admin-text">Admin</span>
-                </a>
+                <div class="user-area">
+                    <span class="user-icon">👤</span>
+                    <span class="user-text">Connexion</span>
+                </div>
             </div>
         </div>
     </header>
@@ -650,7 +677,7 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
     <nav class="portal-nav">
         <div class="nav-container">
             <div class="nav-breadcrumb">
-                <span class="breadcrumb-item">🏠 Accueil</span>
+                <span class="breadcrumb-item" onclick="goHome()">🏠 Accueil</span>
             </div>
             <div class="nav-info">
                 <span class="nav-text"><?= $stats['modules_total'] ?> modules disponibles</span>
@@ -665,7 +692,7 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             <!-- Section de bienvenue -->
             <section class="welcome-section">
                 <div class="welcome-content">
-                    <h2 class="welcome-title">Solutions intégrées pour la gestion transport & logistique</h2>
+                    <h2 class="welcome-title">Solutions intégrées pour la gestion industrielle</h2>
                     <p class="welcome-description">
                         Plateforme centralisée pour la gestion des frais de port, marchandises dangereuses ADR, 
                         contrôle qualité, équipements EPI et outillages professionnels.
@@ -779,8 +806,18 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
         </div>
     </footer>
 
-    <!-- JavaScript intégré -->
+    <!-- JavaScript intégré (évite les erreurs de preload) -->
     <script>
+        // Fonction de retour à l'accueil
+        function goHome() {
+            if (window.location.pathname !== '/' && window.location.pathname !== '/index.php') {
+                window.location.href = '/';
+            } else {
+                // Scroll vers le haut si déjà sur l'accueil
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        
         // Gestionnaire de navigation vers les modules
         function navigateToModule(moduleId, path, status) {
             console.log(`Navigation vers ${moduleId} (${status})`);
@@ -802,8 +839,13 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
             }, 200);
         }
         
-        // Gestionnaire pour les liens admin avec confirmation
+        // Initialisation au chargement DOM
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Portail Guldagil v<?= $version_info['version'] ?> initialisé');
+            console.log('📦 Modules chargés:', <?= json_encode(array_keys($modules)) ?>);
+            console.log('📊 Stats:', <?= json_encode($stats) ?>);
+            
+            // Gestionnaire pour les liens admin avec confirmation
             const adminLinks = document.querySelectorAll('a[href*="maintenance"], a[href*="admin"]');
             
             adminLinks.forEach(link => {
@@ -816,16 +858,28 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
                 }
             });
             
-            // Animation au survol des cartes
+            // Animation au survol des cartes (optimisée pour tactile)
             const moduleCards = document.querySelectorAll('.module-card');
             moduleCards.forEach(card => {
+                // Survol souris
                 card.addEventListener('mouseenter', function() {
-                    if (this.classList.contains('module-active')) {
+                    if (this.classList.contains('module-active') && !('ontouchstart' in window)) {
                         this.style.transform = 'translateY(-8px)';
                     }
                 });
                 
                 card.addEventListener('mouseleave', function() {
+                    if (!('ontouchstart' in window)) {
+                        this.style.transform = '';
+                    }
+                });
+                
+                // Support tactile - feedback visuel au touch
+                card.addEventListener('touchstart', function() {
+                    this.style.transform = 'scale(0.98)';
+                });
+                
+                card.addEventListener('touchend', function() {
                     this.style.transform = '';
                 });
             });
@@ -846,13 +900,30 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
                             e.preventDefault();
                             window.location.href = 'admin/';
                             break;
+                        case 'h':
+                            e.preventDefault();
+                            goHome();
+                            break;
                     }
+                }
+                
+                // Échap pour revenir à l'accueil
+                if (e.key === 'Escape') {
+                    goHome();
                 }
             });
             
-            console.log('🚀 Portail Guldagil v<?= $version_info['version'] ?> initialisé');
-            console.log('📦 Modules chargés:', <?= json_encode(array_keys($modules)) ?>);
-            console.log('📊 Stats:', <?= json_encode($stats) ?>);
+            // Amélioration zone tactile pour mobile
+            if ('ontouchstart' in window) {
+                document.body.classList.add('touch-device');
+                
+                // Ajouter des marges supplémentaires aux boutons sur mobile
+                const buttons = document.querySelectorAll('.module-button, .admin-btn, .breadcrumb-item');
+                buttons.forEach(btn => {
+                    btn.style.minHeight = '48px';
+                    btn.style.padding = '12px 16px';
+                });
+            }
         });
         
         // Fonction de debug (en mode développement)
@@ -872,6 +943,12 @@ $version_info = function_exists('getVersionInfo') ? getVersionInfo() : [
                         .catch(error => {
                             console.warn(`${moduleId} inaccessible:`, error);
                         });
+                }
+            },
+            goToModule: function(moduleId) {
+                const module = this.modules[moduleId];
+                if (module) {
+                    window.location.href = module.path;
                 }
             }
         };
