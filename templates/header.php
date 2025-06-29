@@ -29,7 +29,8 @@ $breadcrumbs        = $breadcrumbs        ?? [
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="/assets/img/favicon.png">
 
-<style>
+<!--
+    <style>
 #user-menu {
   position: absolute !important;
   top: 100% !important;
@@ -55,6 +56,7 @@ $breadcrumbs        = $breadcrumbs        ?? [
   background: #f5f5f5 !important;
 }
 </style>
+    -->
     
   <!-- CSS principal -->
   <link rel="stylesheet" href="/assets/css/portal.css" />
@@ -81,7 +83,7 @@ $breadcrumbs        = $breadcrumbs        ?? [
 
       <!-- Section utilisateur -->
       <div class="header-actions">
-  <div class="user-dropdown-container" style="position: relative;">
+  <div class="user-dropdown-container">
     <div class="user-section">
       <?php if (!empty($current_user)): ?>
         <span class="user-icon">👤</span>
