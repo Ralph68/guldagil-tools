@@ -15,9 +15,11 @@ require_once __DIR__ . '/../core/middleware/AuthMiddleware.php';
 $auth = AuthManager::getInstance();
 $middleware = new AuthMiddleware();
 
-// Vérification de l'authentification (optionnelle pour l'accueil)
-$user_authenticated = $auth->isAuthenticated();
-$current_user = $user_authenticated ? $auth->getCurrentUser() : null;
+$current_user = $auth->isAuthenticated() ? $auth->getCurrentUser() : null;
+$user_authenticated = (bool)$current_user;
+
+// Protection optionnelle (décommenter pour forcer login)
+// if (!$user_authenticated) header('Location: /auth/login.php');
 
 // Obtenir les modules accessibles selon les droits utilisateur
 if ($user_authenticated) {
@@ -96,13 +98,6 @@ $breadcrumbs = [
 
 $nav_info = $stats['modules_total'] . ' modules disponibles';
 $show_admin_footer = $user_authenticated && $auth->hasPermission('admin');
-
-// Variables utilisateur pour le header
-if ($user_authenticated) {
-    $user_name = $current_user['name'];
-} else {
-    $user_name = null;
-}
 
 // Inclure le header modulaire
 include __DIR__ . '/../templates/header.php';
@@ -249,155 +244,6 @@ include __DIR__ . '/../templates/header.php';
     </div>
 </section>
 <?php endif; ?>
-
-<style>
-/* Styles additionnels pour l'authentification */
-.login-link {
-    color: var(--primary-blue);
-    text-decoration: none;
-    padding: var(--spacing-sm) var(--spacing-lg);
-    background: rgba(59, 130, 246, 0.1);
-    border-radius: var(--radius-md);
-    display: inline-block;
-    margin-top: var(--spacing-md);
-    transition: var(--transition-normal);
-}
-
-.login-link:hover {
-    background: rgba(59, 130, 246, 0.2);
-    transform: translateY(-1px);
-}
-
-.access-notice {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(79, 70, 229, 0.1));
-    border: 2px solid rgba(59, 130, 246, 0.2);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
-    text-align: center;
-}
-
-.notice-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-md);
-    flex-wrap: wrap;
-}
-
-.notice-icon {
-    font-size: var(--font-size-xl);
-}
-
-.notice-text {
-    color: var(--gray-700);
-    font-weight: 500;
-}
-
-.notice-btn {
-    background: var(--primary-blue);
-    color: white;
-    padding: var(--spacing-sm) var(--spacing-lg);
-    border-radius: var(--radius-md);
-    text-decoration: none;
-    font-weight: 600;
-    transition: var(--transition-normal);
-    min-height: var(--touch-target);
-    display: flex;
-    align-items: center;
-}
-
-.notice-btn:hover {
-    background: var(--primary-blue-dark);
-    transform: translateY(-1px);
-}
-
-/* Classes de statut pour les modules */
-.module-login-required {
-    border-left: 4px solid var(--color-warning);
-    opacity: 0.8;
-}
-
-.module-disabled {
-    border-left: 4px solid var(--gray-400);
-    opacity: 0.6;
-}
-
-.module-restriction {
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    border-radius: var(--radius-sm);
-    padding: var(--spacing-sm);
-    margin-top: var(--spacing-md);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
-
-.restriction-text {
-    font-size: var(--font-size-sm);
-    color: var(--color-warning);
-    font-weight: 500;
-}
-
-/* Boutons spécialisés */
-.btn-warning {
-    background: var(--color-warning);
-    color: white;
-    border: 1px solid var(--color-warning);
-}
-
-.btn-warning:hover {
-    background: #d97706;
-    border-color: #d97706;
-}
-
-/* Dashboard */
-.dashboard-section {
-    margin-top: var(--spacing-2xl);
-    padding-top: var(--spacing-xl);
-    border-top: 1px solid var(--gray-200);
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-lg);
-}
-
-.stat-card {
-    background: white;
-    padding: var(--spacing-lg);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    text-align: center;
-    border: 1px solid var(--gray-200);
-    transition: var(--transition-normal);
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.stat-icon {
-    font-size: 2rem;
-    margin-bottom: var(--spacing-sm);
-}
-
-.stat-number {
-    font-size: var(--font-size-2xl);
-    font-weight: 700;
-    color: var(--primary-blue);
-    margin-bottom: var(--spacing-xs);
-}
-
-.stat-label {
-    color: var(--gray-600);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-}
-</style>
 
 <script>
 // Configuration JavaScript avec données utilisateur
