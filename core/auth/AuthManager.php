@@ -1,22 +1,22 @@
 <?php
-// === /core/auth/AuthManager.php ===
 /**
- * Gestionnaire d'authentification centralisé Guldagil
+ * Titre: Gestionnaire d'authentification avec base de données
  * Chemin: /core/auth/AuthManager.php
+ * Version: 0.5 beta + build auto
  */
 
 class AuthManager {
     private static $instance = null;
-    private $users = [];
+    private $db;
     private $currentUser = null;
 
     // Configuration sécurité
-    const SESSION_TIMEOUT = 7200; // 2h
+    const SESSION_TIMEOUT = 7200; // 2h par défaut
     const MAX_LOGIN_ATTEMPTS = 3;
     const LOCKOUT_TIME = 900; // 15min
 
     public function __construct() {
-        $this->loadUsers();
+        $this->initDatabase();
         $this->initSession();
     }
 
@@ -28,36 +28,20 @@ class AuthManager {
     }
 
     /**
-     * Définition des utilisateurs et rôles
+     * Initialisation base de données
      */
-    private function loadUsers() {
-        $this->users = [
-            'user_guldagil' => [
-                'password' => password_hash('GulUser2025!', PASSWORD_DEFAULT),
-                'role' => 'user',
-                'name' => 'Utilisateur Guldagil',
-                'modules' => ['port'],
-                'permissions' => ['read']
-            ],
-            'admin_guldagil' => [
-                'password' => password_hash('GulAdmin2025!', PASSWORD_DEFAULT),
-                'role' => 'admin', 
-                'name' => 'Administrateur Guldagil',
-                'modules' => ['port', 'adr', 'admin'],
-                'permissions' => ['read', 'write', 'admin']
-            ],
-            'runser' => [
-                'password' => password_hash('RunserDev2025!', PASSWORD_DEFAULT),
-                'role' => 'dev',
-                'name' => 'Jean-Thomas RUNSER (Dev)',
-                'modules' => ['port', 'adr', 'quality', 'epi', 'tools', 'admin'],
-                'permissions' => ['read', 'write', 'admin', 'dev']
-            ]
-        ];
+    private function initDatabase() {
+        if (function_exists('getDB')) {
+            $this->db = getDB();
+        } else {
+            // Fallback si fonction pas disponible
+            require_once __DIR__ . '/../../config/database.php';
+            $this->db = getDB();
+        }
     }
 
     /**
-     * Tentative de connexion
+     * Tentative de connexion avec BDD
      */
     public function login($username, $password) {
         // Vérifier tentatives précédentes
@@ -65,39 +49,72 @@ class AuthManager {
             return ['success' => false, 'error' => 'Compte temporairement verrouillé'];
         }
 
-        if (!isset($this->users[$username])) {
-            $this->recordFailedAttempt($username);
-            return ['success' => false, 'error' => 'Identifiants incorrects'];
+        try {
+            // Récupérer utilisateur depuis BDD
+            $stmt = $this->db->prepare("
+                SELECT id, username, password, role, session_duration, is_active 
+                FROM auth_users 
+                WHERE username = ? AND is_active = 1
+            ");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user) {
+                $this->recordFailedAttempt($username);
+                return ['success' => false, 'error' => 'Identifiants incorrects'];
+            }
+
+            if (!password_verify($password, $user['password'])) {
+                $this->recordFailedAttempt($username);
+                return ['success' => false, 'error' => 'Identifiants incorrects'];
+            }
+
+            // Connexion réussie
+            $this->createSession($user);
+            $this->updateLastLogin($user['id']);
+            $this->clearFailedAttempts($username);
+            $this->logActivity('LOGIN', $username);
+
+            return ['success' => true, 'user' => $this->getCurrentUser()];
+
+        } catch (Exception $e) {
+            error_log('AuthManager login error: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'Erreur système'];
         }
-
-        if (!password_verify($password, $this->users[$username]['password'])) {
-            $this->recordFailedAttempt($username);
-            return ['success' => false, 'error' => 'Identifiants incorrects'];
-        }
-
-        // Connexion réussie
-        $this->createSession($username);
-        $this->clearFailedAttempts($username);
-        $this->logActivity('LOGIN', $username);
-
-        return ['success' => true, 'user' => $this->getCurrentUser()];
     }
 
     /**
      * Créer session utilisateur
      */
-    private function createSession($username) {
+    private function createSession($user) {
         session_regenerate_id(true);
+        
+        // Nettoyer anciennes sessions
+        $this->cleanupOldSessions($user['id']);
+        
+        // Créer nouvelle session
+        $session_id = session_id();
+        $session_duration = $user['session_duration'] ?: self::SESSION_TIMEOUT;
+        $expires_at = date('Y-m-d H:i:s', time() + $session_duration);
+        
+        $stmt = $this->db->prepare("
+            INSERT INTO auth_sessions (id, user_id, expires_at) 
+            VALUES (?, ?, ?)
+        ");
+        $stmt->execute([$session_id, $user['id'], $expires_at]);
+        
         $_SESSION['auth'] = [
             'logged_in' => true,
-            'username' => $username,
-            'role' => $this->users[$username]['role'],
+            'user_id' => $user['id'],
+            'username' => $user['username'],
+            'role' => $user['role'],
             'login_time' => time(),
             'last_activity' => time(),
+            'session_duration' => $session_duration,
             'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
         ];
-        $this->currentUser = $this->users[$username];
-        $this->currentUser['username'] = $username;
+        
+        $this->currentUser = $user;
     }
 
     /**
@@ -108,8 +125,24 @@ class AuthManager {
             return false;
         }
 
+        // Vérifier session en BDD
+        $session_id = session_id();
+        $stmt = $this->db->prepare("
+            SELECT user_id, expires_at 
+            FROM auth_sessions 
+            WHERE id = ? AND expires_at > NOW()
+        ");
+        $stmt->execute([$session_id]);
+        $session = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$session) {
+            $this->logout('expired');
+            return false;
+        }
+
         // Vérifier timeout
-        if (time() - $_SESSION['auth']['last_activity'] > self::SESSION_TIMEOUT) {
+        $session_duration = $_SESSION['auth']['session_duration'] ?? self::SESSION_TIMEOUT;
+        if (time() - $_SESSION['auth']['last_activity'] > $session_duration) {
             $this->logout('timeout');
             return false;
         }
@@ -117,6 +150,82 @@ class AuthManager {
         // Renouveler activité
         $_SESSION['auth']['last_activity'] = time();
         return true;
+    }
+
+    /**
+     * Obtenir utilisateur actuel
+     */
+    public function getCurrentUser() {
+        if ($this->currentUser) return $this->currentUser;
+        
+        if (!$this->isAuthenticated()) return null;
+        
+        try {
+            $stmt = $this->db->prepare("
+                SELECT id, username, role, session_duration, created_at, last_login
+                FROM auth_users 
+                WHERE id = ? AND is_active = 1
+            ");
+            $stmt->execute([$_SESSION['auth']['user_id']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($user) {
+                // Mapper vers format attendu
+                $this->currentUser = [
+                    'id' => $user['id'],
+                    'username' => $user['username'],
+                    'name' => $this->getUserDisplayName($user['username'], $user['role']),
+                    'role' => $user['role'],
+                    'modules' => $this->getUserModules($user['role']),
+                    'permissions' => $this->getUserPermissions($user['role'])
+                ];
+            }
+            
+            return $this->currentUser;
+            
+        } catch (Exception $e) {
+            error_log('AuthManager getCurrentUser error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Mappage des modules par rôle
+     */
+    private function getUserModules($role) {
+        $modules = [
+            'dev' => ['calculateur', 'adr', 'controle-qualite', 'epi', 'outillages', 'admin'],
+            'admin' => ['calculateur', 'adr', 'admin'],
+            'user' => ['calculateur']
+        ];
+        
+        return $modules[$role] ?? [];
+    }
+
+    /**
+     * Mappage des permissions par rôle
+     */
+    private function getUserPermissions($role) {
+        $permissions = [
+            'dev' => ['read', 'write', 'admin', 'dev'],
+            'admin' => ['read', 'write', 'admin'],
+            'user' => ['read']
+        ];
+        
+        return $permissions[$role] ?? [];
+    }
+
+    /**
+     * Nom d'affichage selon utilisateur
+     */
+    private function getUserDisplayName($username, $role) {
+        $names = [
+            'dev' => 'Développeur',
+            'admin' => 'Administrateur',
+            'user' => 'Utilisateur'
+        ];
+        
+        return $names[$role] ?? ucfirst($username);
     }
 
     /**
@@ -140,36 +249,68 @@ class AuthManager {
     }
 
     /**
-     * Obtenir utilisateur actuel
-     */
-    public function getCurrentUser() {
-        if ($this->currentUser) return $this->currentUser;
-        
-        if (!$this->isAuthenticated()) return null;
-        
-        $username = $_SESSION['auth']['username'];
-        $this->currentUser = $this->users[$username];
-        $this->currentUser['username'] = $username;
-        return $this->currentUser;
-    }
-
-    /**
      * Déconnexion
      */
     public function logout($reason = 'manual') {
         $username = $_SESSION['auth']['username'] ?? 'unknown';
         $this->logActivity('LOGOUT', $username, ['reason' => $reason]);
         
+        // Supprimer session en BDD
+        if (isset($_SESSION['auth']['user_id'])) {
+            $session_id = session_id();
+            $stmt = $this->db->prepare("DELETE FROM auth_sessions WHERE id = ?");
+            $stmt->execute([$session_id]);
+        }
+        
         unset($_SESSION['auth']);
         $this->currentUser = null;
         
-        if ($reason === 'timeout') {
+        if ($reason === 'timeout' || $reason === 'expired') {
             session_destroy();
         }
     }
 
     /**
-     * Gestion tentatives échouées
+     * Mise à jour dernière connexion
+     */
+    private function updateLastLogin($user_id) {
+        try {
+            $stmt = $this->db->prepare("UPDATE auth_users SET last_login = NOW() WHERE id = ?");
+            $stmt->execute([$user_id]);
+        } catch (Exception $e) {
+            error_log('AuthManager updateLastLogin error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Nettoyer anciennes sessions
+     */
+    private function cleanupOldSessions($user_id) {
+        try {
+            // Supprimer sessions expirées
+            $this->db->exec("DELETE FROM auth_sessions WHERE expires_at < NOW()");
+            
+            // Garder seulement la session la plus récente par utilisateur
+            $stmt = $this->db->prepare("
+                DELETE FROM auth_sessions 
+                WHERE user_id = ? 
+                AND id NOT IN (
+                    SELECT id FROM (
+                        SELECT id FROM auth_sessions 
+                        WHERE user_id = ? 
+                        ORDER BY created_at DESC 
+                        LIMIT 1
+                    ) AS latest
+                )
+            ");
+            $stmt->execute([$user_id, $user_id]);
+        } catch (Exception $e) {
+            error_log('AuthManager cleanupOldSessions error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Gestion tentatives échouées (en session)
      */
     private function recordFailedAttempt($username) {
         if (!isset($_SESSION['failed_attempts'])) {
@@ -200,7 +341,7 @@ class AuthManager {
     }
 
     /**
-     * Logging
+     * Logging des activités
      */
     private function logActivity($action, $username, $details = []) {
         $logEntry = [
@@ -215,6 +356,9 @@ class AuthManager {
         error_log('AUTH_' . $action . ': ' . json_encode($logEntry));
     }
 
+    /**
+     * Initialisation session
+     */
     private function initSession() {
         if (session_status() === PHP_SESSION_NONE) {
             ini_set('session.cookie_httponly', 1);
@@ -224,4 +368,3 @@ class AuthManager {
         }
     }
 }
-?>
