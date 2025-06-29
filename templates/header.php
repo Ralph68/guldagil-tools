@@ -122,3 +122,20 @@ $breadcrumbs        = $breadcrumbs        ?? [
     <?php endif; ?>
 
     <div class="main-container">
+
+        <script>
+document.addEventListener('DOMContentLoaded', function() {
+  var userSection = document.querySelector('.user-section');
+  var userMenu = document.getElementById('user-menu');
+  if(userSection && userMenu) {
+    userSection.addEventListener('click', function(e) {
+      e.stopPropagation();
+      userMenu.style.display = (userMenu.style.display === 'block') ? 'none' : 'block';
+    });
+    document.addEventListener('click', function() {
+      userMenu.style.display = 'none';
+    });
+  }
+});
+</script>
+
