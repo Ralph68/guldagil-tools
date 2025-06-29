@@ -1,148 +1,200 @@
 <?php
 /**
- * Titre: Calculateur de frais de port - Interface corrigée
+ * Titre: Calculateur de frais de port - Interface complète
  * Chemin: /public/port/index.php
  * Version: 0.5 beta + build auto
  */
 
-// 1. Afficher toutes les erreurs pour éviter la page blanche
 ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// 2. Chargement configuration (doit définir $db)
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/version.php';
 
 $version_info = getVersionInfo();
 $page_title = 'Calculateur de Frais de Port';
 session_start();
-$user_authenticated = true;
 
-// Fonctions utilitaires
-$debug_info = [];
-$calculation_time = 0;
-$results = null;
-$validation_errors = [];
+// DEBUG activé temporairement
+define('DEBUG_CALC', true);
 
-function validateCalculatorData(array $data): array {
-    $errors = [];
-    
-    if (empty($data['departement']) || !preg_match('/^(0[1-9]|[1-8][0-9]|9[0-5])$/', $data['departement'])) {
-        $errors['departement'] = 'Département invalide (01-95)';
-    }
-    
-    if (empty($data['poids']) || $data['poids'] <= 0 || $data['poids'] > 32000) {
-        $errors['poids'] = 'Poids invalide (0.1 - 32000 kg)';
-    }
-    
-    return $errors;
-}
-
-// 3. Gestion AJAX
-if (isset($_GET['ajax'])) {
+// Gestion AJAX avec debug
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
     header('Content-Type: application/json');
-
-    // 3.1 Calcul des tarifs
-    if ($_GET['ajax'] === 'calculate') {
-        parse_str(file_get_contents('php://input'), $_POST);
+    
+    $debug_info = [];
+    
+    try {
+        // Lecture des données POST
+        $input_data = file_get_contents('php://input');
+        parse_str($input_data, $post_data);
         
-        // Préparation des paramètres
+        $debug_info['input_raw'] = $input_data;
+        $debug_info['post_parsed'] = $post_data;
+        
+        // Paramètres normalisés
         $params = [
-            'departement' => str_pad(trim($_POST['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
-            'poids' => floatval($_POST['poids'] ?? 0),
-            'type' => strtolower(trim($_POST['type'] ?? 'colis')),
-            'adr' => (($_POST['adr'] ?? 'non') === 'oui'),
-            'option_sup' => trim($_POST['option_sup'] ?? 'standard'),
-            'enlevement' => isset($_POST['enlevement']),
-            'palettes' => max(0, intval($_POST['palettes'] ?? 0)),
+            'departement' => str_pad(trim($post_data['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
+            'poids' => floatval($post_data['poids'] ?? 0),
+            'type' => strtolower(trim($post_data['type'] ?? 'colis')),
+            'adr' => (($post_data['adr'] ?? 'non') === 'oui'),
+            'option_sup' => trim($post_data['option_sup'] ?? 'standard'),
+            'enlevement' => isset($post_data['enlevement']) && $post_data['enlevement'] === '1',
+            'palettes' => max(0, intval($post_data['palettes'] ?? 0)),
         ];
-
-        $errors = validateCalculatorData($params);
-        if (!empty($errors)) {
-            echo json_encode(['success' => false, 'errors' => $errors]);
-            exit;
+        
+        $debug_info['params_normalized'] = $params;
+        
+        // Validation
+        if (empty($params['departement']) || !preg_match('/^(0[1-9]|[1-8][0-9]|9[0-5])$/', $params['departement'])) {
+            throw new Exception('Département invalide: ' . $params['departement']);
         }
-
-        try {
-            // Charger la classe Transport depuis le bon chemin
-            $transport_file = __DIR__ . '/../../features/port/transport.php';
-            if (!file_exists($transport_file)) {
-                throw new \Exception('Service de calcul introuvable: ' . $transport_file);
-            }
-            require_once $transport_file;
-            
-            if (!class_exists('Transport')) {
-                throw new \Exception('Classe Transport non trouvée');
-            }
-            
-            $transport = new Transport($db);
-            $start = microtime(true);
-            $results = $transport->calculateAll($params);
-            $calculation_time = round((microtime(true) - $start) * 1000, 2);
-
-            // Format réponse compatible
-            $response = [
-                'success' => true,
-                'carriers' => [],
-                'time_ms' => $calculation_time
-            ];
-
-            // Noms des transporteurs
-            $carrier_names = [
-                'xpo' => 'XPO Logistics',
-                'heppner' => 'Heppner',
-                'kn' => 'Kuehne+Nagel'
-            ];
-
-            // Traitement des résultats selon structure
-            $carrier_results = [];
-            if (isset($results['results'])) {
-                $carrier_results = $results['results'];
-            } else {
-                $carrier_results = $results;
-            }
-
-            foreach ($carrier_results as $carrier => $price) {
-                if ($price !== null && $price > 0) {
-                    $response['carriers'][] = [
-                        'carrier_code' => $carrier,
-                        'carrier_name' => $carrier_names[$carrier] ?? strtoupper($carrier),
-                        'price' => $price,
-                        'price_display' => number_format($price, 2, ',', ' ') . '€',
-                        'options' => [
-                            'rdv_cost' => $this->getRDVCost($carrier),
-                            'enlevement_cost' => $this->getEnlevementCost($carrier),
-                            'premium_cost' => $this->getPremiumCost($carrier)
-                        ]
-                    ];
-                }
-            }
-
-            echo json_encode($response);
-        } catch (\Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        
+        if ($params['poids'] <= 0 || $params['poids'] > 32000) {
+            throw new Exception('Poids invalide: ' . $params['poids']);
         }
-        exit;
+        
+        // Chargement classe Transport
+        $transport_file = __DIR__ . '/../../features/port/transport.php';
+        $debug_info['transport_file'] = $transport_file;
+        $debug_info['transport_exists'] = file_exists($transport_file);
+        
+        if (!file_exists($transport_file)) {
+            throw new Exception('Fichier Transport non trouvé: ' . $transport_file);
+        }
+        
+        require_once $transport_file;
+        
+        if (!class_exists('Transport')) {
+            throw new Exception('Classe Transport non chargée');
+        }
+        
+        // Vérification DB
+        if (!isset($db) || !$db instanceof PDO) {
+            throw new Exception('Base de données non disponible');
+        }
+        
+        $debug_info['db_connected'] = true;
+        
+        // Test requête simple
+        $test_query = $db->query("SELECT COUNT(*) as count FROM gul_xpo_rates LIMIT 1");
+        $debug_info['db_test'] = $test_query ? $test_query->fetch()['count'] : 'erreur';
+        
+        // Calcul
+        $transport = new Transport($db);
+        $start_time = microtime(true);
+        
+        $debug_info['transport_created'] = true;
+        
+        // Test direct méthode
+        if (!method_exists($transport, 'calculateAll')) {
+            throw new Exception('Méthode calculateAll non trouvée');
+        }
+        
+        $results = $transport->calculateAll($params);
+        $calc_time = round((microtime(true) - $start_time) * 1000, 2);
+        
+        $debug_info['results_raw'] = $results;
+        $debug_info['transport_debug'] = $transport->debug ?? 'pas de debug';
+        
+        // Formatage réponse
+        $response = [
+            'success' => false,
+            'carriers' => [],
+            'time_ms' => $calc_time,
+            'debug' => DEBUG_CALC ? $debug_info : null
+        ];
+        
+        // Traitement résultats
+        $carrier_results = isset($results['results']) ? $results['results'] : $results;
+        $valid_count = 0;
+        
+        $carrier_names = [
+            'xpo' => 'XPO Logistics',
+            'heppner' => 'Heppner',
+            'kn' => 'Kuehne+Nagel'
+        ];
+        
+        foreach ($carrier_results as $carrier => $price) {
+            $debug_info['carrier_' . $carrier] = [
+                'raw_price' => $price,
+                'is_numeric' => is_numeric($price),
+                'is_positive' => $price > 0
+            ];
+            
+            if (is_numeric($price) && $price > 0) {
+                $valid_count++;
+                
+                // Récupération du délai depuis la BDD
+                $delay = getCarrierDelay($db, $carrier, $params['departement'], $params['option_sup']);
+                
+                $response['carriers'][] = [
+                    'carrier_code' => $carrier,
+                    'carrier_name' => $carrier_names[$carrier] ?? strtoupper($carrier),
+                    'price' => (float)$price,
+                    'price_display' => number_format($price, 2, ',', ' ') . '€',
+                    'delay' => $delay
+                ];
+            }
+        }
+        
+        $response['success'] = $valid_count > 0;
+        $response['message'] = $valid_count > 0 ? 
+            "$valid_count transporteur(s) disponible(s)" : 
+            'Aucun tarif disponible';
+        
+        echo json_encode($response, JSON_PRETTY_PRINT);
+        
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'debug' => DEBUG_CALC ? ($debug_info ?? []) : null
+        ], JSON_PRETTY_PRINT);
     }
-
-    echo json_encode(['success' => false, 'error' => 'Action AJAX inconnue']);
     exit;
 }
 
-// Méthodes pour coûts options
-function getRDVCost($carrier) {
-    $costs = ['heppner' => 6.70, 'xpo' => 7.00, 'kn' => 8.00];
-    return $costs[$carrier] ?? 7.00;
-}
-
-function getEnlevementCost($carrier) {
-    $costs = ['heppner' => 0.00, 'xpo' => 25.00, 'kn' => 20.00];
-    return $costs[$carrier] ?? 15.00;
-}
-
-function getPremiumCost($carrier) {
-    return 25.00; // Standard premium
+// Fonction pour récupérer le délai depuis la BDD
+function getCarrierDelay($db, $carrier, $departement, $option_sup) {
+    try {
+        $table_map = [
+            'xpo' => 'gul_xpo_rates',
+            'heppner' => 'gul_heppner_rates',
+            'kn' => 'gul_kn_rates'
+        ];
+        
+        if (!isset($table_map[$carrier])) {
+            return '24-48h';
+        }
+        
+        $sql = "SELECT delais FROM {$table_map[$carrier]} WHERE num_departement = ? LIMIT 1";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$departement]);
+        $row = $stmt->fetch();
+        
+        $delay = $row['delais'] ?? '24-48h';
+        
+        // Adaptation selon options
+        switch ($option_sup) {
+            case 'premium_matin':
+                if ($carrier === 'heppner') $delay .= ' avant 13h';
+                elseif ($carrier === 'xpo') $delay .= ' avant 14h';
+                else $delay .= ' matin';
+                break;
+            case 'target':
+                $delay = 'Date imposée';
+                break;
+            case 'rdv':
+                $delay .= ' sur RDV';
+                break;
+        }
+        
+        return $delay;
+        
+    } catch (Exception $e) {
+        return '24-48h';
+    }
 }
 
 ?>
@@ -154,7 +206,6 @@ function getPremiumCost($carrier) {
     <title><?= htmlspecialchars($page_title) ?> - Guldagil</title>
     
     <style>
-        /* Variables */
         :root {
             --primary: #2563eb;
             --success: #10b981;
@@ -162,12 +213,8 @@ function getPremiumCost($carrier) {
             --error: #ef4444;
             --gray: #6b7280;
             --light-gray: #f8fafc;
-            --xpo-color: #e11d48;
-            --heppner-color: #10b981;
-            --kn-color: #3b82f6;
         }
         
-        /* Reset */
         * { box-sizing: border-box; }
         body { 
             margin: 0; 
@@ -176,22 +223,15 @@ function getPremiumCost($carrier) {
             font-size: 14px;
         }
         
-        /* Layout compact */
-        .calc-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 1rem;
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 1.5rem;
-        }
-        
-        /* Header compact */
+        /* Header */
         .calc-header {
-            background: linear-gradient(135deg, var(--primary), #2563eb);
+            background: linear-gradient(135deg, var(--primary), #1d4ed8);
             color: white;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1rem;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .calc-header h1 {
@@ -205,154 +245,205 @@ function getPremiumCost($carrier) {
             opacity: 0.9;
         }
         
-        /* Formulaire compact */
-        .calc-form {
+        /* Layout principal */
+        .calc-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            padding: 2rem;
+            min-height: calc(100vh - 120px);
+        }
+        
+        /* Formulaire scrollable */
+        .calc-form-wrapper {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            height: fit-content;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            overflow: hidden;
         }
         
         .calc-form-header {
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary), #1d4ed8);
             color: white;
-            padding: 1rem;
-            border-radius: 8px 8px 0 0;
+            padding: 1.5rem;
         }
         
         .calc-form-header h2 {
             margin: 0;
-            font-size: 1rem;
+            font-size: 1.1rem;
         }
         
         .calc-form-content {
-            padding: 1rem;
+            padding: 2rem;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
         }
         
-        .calc-form-group {
-            margin-bottom: 1rem;
+        /* Résultats sticky */
+        .calc-results-wrapper {
+            position: sticky;
+            top: 120px;
+            height: fit-content;
+            max-height: calc(100vh - 140px);
         }
         
-        .calc-label {
+        .calc-results {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            overflow: hidden;
+        }
+        
+        .calc-results-header {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+            padding: 1.5rem;
+        }
+        
+        .calc-results-header h2 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+        
+        .calc-results-content {
+            padding: 1.5rem;
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+        
+        /* Champs formulaire */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
             display: block;
             font-weight: 600;
             margin-bottom: 0.5rem;
             color: #374151;
-            font-size: 0.875rem;
+            font-size: 0.9rem;
         }
         
-        .calc-input, .calc-select {
+        .form-input, .form-select {
             width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            font-size: 0.875rem;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
         }
         
-        .calc-input:focus, .calc-select:focus {
+        .form-input:focus, .form-select:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         
-        .calc-help {
-            font-size: 0.75rem;
+        .form-help {
+            font-size: 0.8rem;
             color: var(--gray);
             margin-top: 0.25rem;
         }
         
-        /* Options */
-        .calc-options {
+        /* Options radio */
+        .radio-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
+            gap: 0.75rem;
             margin-top: 0.5rem;
         }
         
-        .calc-option {
+        .radio-option {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.5rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            font-size: 0.8rem;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
         }
         
-        .calc-option:hover {
+        .radio-option:hover {
             background: #f8fafc;
+            border-color: var(--primary);
         }
         
-        /* Bouton */
+        .radio-option input:checked + span {
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        /* Checkbox */
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .checkbox-option:hover {
+            background: #f8fafc;
+            border-color: var(--primary);
+        }
+        
+        /* Bouton principal */
         .calc-button {
             width: 100%;
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary), #1d4ed8);
             color: white;
             border: none;
-            padding: 0.75rem;
-            border-radius: 4px;
-            font-size: 0.875rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 1rem;
+            transition: all 0.2s;
+            margin-top: 1.5rem;
         }
         
         .calc-button:hover {
-            background: #1d4ed8;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
         
         .calc-button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
         }
         
-        /* Résultats */
-        .calc-results {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .calc-results-header {
-            background: var(--primary);
-            color: white;
-            padding: 1rem;
-            border-radius: 8px 8px 0 0;
-        }
-        
-        .calc-results-header h2 {
-            margin: 0;
-            font-size: 1rem;
-        }
-        
-        .calc-results-content {
-            padding: 1rem;
-            min-height: 300px;
-        }
-        
-        .calc-empty-state {
+        /* États résultats */
+        .results-empty {
             text-align: center;
             color: var(--gray);
-            padding: 2rem 1rem;
+            padding: 3rem 1rem;
         }
         
-        .calc-empty-state .icon {
-            font-size: 2rem;
+        .results-empty .icon {
+            font-size: 3rem;
             margin-bottom: 1rem;
             opacity: 0.5;
         }
         
-        /* Loading */
-        .calc-loading {
+        .results-loading {
             text-align: center;
-            padding: 1.5rem;
+            padding: 2rem;
             color: var(--primary);
         }
         
-        .calc-spinner {
-            width: 30px;
-            height: 30px;
-            border: 3px solid #e5e7eb;
-            border-top: 3px solid var(--primary);
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 1rem;
@@ -364,96 +455,93 @@ function getPremiumCost($carrier) {
         }
         
         /* Cartes transporteurs */
-        .calc-result-card {
+        .carrier-card {
             background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .carrier-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .carrier-card.best {
+            border-color: var(--success);
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
             position: relative;
         }
         
-        .calc-result-card.best {
-            border-color: var(--success);
-            background: #f0fdf4;
+        .carrier-card.best::before {
+            content: '🏆 MEILLEUR';
+            position: absolute;
+            top: -8px;
+            right: 1rem;
+            background: var(--success);
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
         }
         
-        .calc-result-card[data-carrier="xpo"] {
-            border-left: 3px solid var(--xpo-color);
-        }
-        
-        .calc-result-card[data-carrier="heppner"] {
-            border-left: 3px solid var(--heppner-color);
-        }
-        
-        .calc-result-card[data-carrier="kn"] {
-            border-left: 3px solid var(--kn-color);
-        }
-        
-        .calc-result-header {
+        .carrier-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
         }
         
-        .calc-transporteur {
-            font-weight: 600;
-            font-size: 0.9rem;
+        .carrier-name {
+            font-weight: 700;
+            font-size: 1.1rem;
             color: #374151;
         }
         
-        .calc-price {
-            font-size: 1.1rem;
+        .carrier-price {
+            font-size: 1.3rem;
             font-weight: 700;
             color: var(--primary);
         }
         
-        .calc-result-card.best .calc-price {
+        .carrier-card.best .carrier-price {
             color: var(--success);
         }
         
-        .calc-details {
-            font-size: 0.8rem;
+        .carrier-details {
+            font-size: 0.85rem;
             color: var(--gray);
             line-height: 1.4;
         }
         
-        .calc-options-detail {
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid #e5e7eb;
-            font-size: 0.75rem;
-        }
-        
-        .calc-option-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.25rem;
-        }
-        
         /* Messages d'erreur */
-        .calc-error {
+        .error-message {
             background: #fef2f2;
-            border: 1px solid #fecaca;
+            border: 2px solid #fecaca;
             color: #dc2626;
-            padding: 0.75rem;
-            border-radius: 4px;
+            padding: 1rem;
+            border-radius: 8px;
             margin-bottom: 1rem;
-            font-size: 0.875rem;
         }
         
-        /* Badge meilleur prix */
-        .best-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: var(--success);
-            color: white;
-            font-size: 0.7rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 10px;
-            font-weight: 600;
+        /* Debug */
+        .debug-panel {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .debug-panel pre {
+            margin: 0;
+            white-space: pre-wrap;
         }
         
         /* Responsive */
@@ -461,8 +549,31 @@ function getPremiumCost($carrier) {
             .calc-container {
                 grid-template-columns: 1fr;
                 gap: 1rem;
-                padding: 0.5rem;
+                padding: 1rem;
             }
+            
+            .calc-results-wrapper {
+                position: static;
+                order: -1;
+            }
+            
+            .radio-group {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Section titres */
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #374151;
+            margin: 2rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .section-title:first-child {
+            margin-top: 0;
         }
     </style>
 </head>
@@ -471,116 +582,123 @@ function getPremiumCost($carrier) {
 <!-- Header -->
 <div class="calc-header">
     <h1><?= htmlspecialchars($page_title) ?></h1>
-    <p>Comparaison XPO, Heppner, Kuehne+Nagel</p>
+    <p>Comparaison instantanée XPO, Heppner, Kuehne+Nagel</p>
 </div>
 
-<!-- Interface principale -->
+<!-- Container principal -->
 <div class="calc-container">
-    <!-- Formulaire -->
-    <div class="calc-form">
+    
+    <!-- Formulaire scrollable -->
+    <div class="calc-form-wrapper">
         <div class="calc-form-header">
-            <h2>📋 Paramètres</h2>
+            <h2>📋 Paramètres d'expédition</h2>
         </div>
         
         <div class="calc-form-content">
             <form id="calcForm">
-                <div class="calc-form-group">
-                    <label for="departement" class="calc-label">Département *</label>
-                    <input type="text" id="departement" class="calc-input" placeholder="67" maxlength="2" required>
-                    <div class="calc-help">Code département (01-95)</div>
+                
+                <h3 class="section-title">📍 Destination</h3>
+                <div class="form-group">
+                    <label for="departement" class="form-label">Département de destination *</label>
+                    <input type="text" id="departement" class="form-input" 
+                           placeholder="Ex: 67, 75, 13..." maxlength="2" required>
+                    <div class="form-help">Code département français (01-95)</div>
                 </div>
                 
-                <div class="calc-form-group">
-                    <label for="poids" class="calc-label">Poids (kg) *</label>
-                    <input type="number" id="poids" class="calc-input" placeholder="25.5" min="0.1" step="0.1" required>
-                    <div class="calc-help">Poids total</div>
+                <h3 class="section-title">⚖️ Poids et conditionnement</h3>
+                <div class="form-group">
+                    <label for="poids" class="form-label">Poids total (kg) *</label>
+                    <input type="number" id="poids" class="form-input" 
+                           placeholder="Ex: 25.5" min="0.1" step="0.1" max="32000" required>
+                    <div class="form-help">Poids brut total incluant emballage</div>
                 </div>
                 
-                <div class="calc-form-group">
-                    <label for="type" class="calc-label">Type</label>
-                    <select id="type" class="calc-select">
-                        <option value="colis">Colis</option>
+                <div class="form-group">
+                    <label for="type" class="form-label">Type d'envoi</label>
+                    <select id="type" class="form-select">
+                        <option value="colis">Colis standard</option>
                         <option value="palette">Palette</option>
                     </select>
                 </div>
                 
-                <div class="calc-form-group" id="palettesGroup" style="display: none;">
-                    <label for="palettes" class="calc-label">Nb palettes EUR</label>
-                    <input type="number" id="palettes" class="calc-input" placeholder="1" min="0" max="10" value="0">
-                    <div class="calc-help">Palettes Europe consignées</div>
+                <div class="form-group" id="palettesGroup" style="display: none;">
+                    <label for="palettes" class="form-label">Nombre de palettes EUR consignées</label>
+                    <input type="number" id="palettes" class="form-input" 
+                           placeholder="0" min="0" max="20" value="0">
+                    <div class="form-help">Palettes Europe retournables (peut être 0)</div>
                 </div>
                 
-                <div class="calc-form-group">
-                    <label class="calc-label">Matières dangereuses</label>
-                    <div class="calc-options">
-                        <label class="calc-option">
+                <h3 class="section-title">⚠️ Matières dangereuses</h3>
+                <div class="form-group">
+                    <div class="radio-group">
+                        <label class="radio-option">
                             <input type="radio" name="adr" value="non" checked>
-                            <span>Non ADR</span>
+                            <span>✅ Non ADR</span>
                         </label>
-                        <label class="calc-option">
+                        <label class="radio-option">
                             <input type="radio" name="adr" value="oui">
-                            <span>ADR</span>
+                            <span>⚠️ ADR</span>
                         </label>
                     </div>
                 </div>
                 
-                <div class="calc-form-group">
-                    <label for="option_sup" class="calc-label">Service</label>
-                    <select id="option_sup" class="calc-select">
+                <h3 class="section-title">⚙️ Options de livraison</h3>
+                <div class="form-group">
+                    <label for="option_sup" class="form-label">Service de livraison</label>
+                    <select id="option_sup" class="form-select">
                         <option value="standard">Standard</option>
-                        <option value="rdv">Prise RDV</option>
-                        <option value="premium_matin">Premium matin</option>
-                        <option value="target">Date imposée</option>
+                        <option value="rdv">Prise de RDV (+6-8€)</option>
+                        <option value="premium_matin">Premium matin (+25€)</option>
+                        <option value="target">Date imposée (+30€)</option>
                     </select>
                 </div>
                 
-                <div class="calc-form-group">
-                    <label class="calc-option">
+                <div class="form-group">
+                    <label class="checkbox-option">
                         <input type="checkbox" id="enlevement">
-                        <span>Enlèvement extérieur</span>
+                        <span>🏭 Enlèvement extérieur (hors siège social)</span>
                     </label>
-                    <div class="calc-help">Collecte hors siège</div>
+                    <div class="form-help">Gratuit Heppner, +25€ XPO, +20€ Kuehne+Nagel</div>
                 </div>
                 
                 <button type="submit" class="calc-button" id="calculateBtn">
-                    🧮 Calculer
+                    🧮 Calculer les tarifs
                 </button>
+                
             </form>
         </div>
     </div>
     
-    <!-- Résultats -->
-    <div class="calc-results">
-        <div class="calc-results-header">
-            <h2>💰 Tarifs</h2>
-        </div>
-        
-        <div class="calc-results-content" id="resultsContent">
-            <div class="calc-empty-state">
-                <div class="icon">📊</div>
-                <p><strong>Prêt pour le calcul</strong></p>
-                <p>Remplissez le formulaire pour comparer les tarifs</p>
+    <!-- Résultats sticky -->
+    <div class="calc-results-wrapper">
+        <div class="calc-results">
+            <div class="calc-results-header">
+                <h2>💰 Comparaison des tarifs</h2>
+            </div>
+            
+            <div class="calc-results-content" id="resultsContent">
+                <div class="results-empty">
+                    <div class="icon">📊</div>
+                    <p><strong>Prêt pour le calcul</strong></p>
+                    <p>Remplissez le formulaire pour obtenir<br>une comparaison des tarifs transporteurs</p>
+                </div>
             </div>
         </div>
     </div>
+    
 </div>
 
-<!-- JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('calcForm');
-    const typeSelect = document.getElementById('type');
-    const palettesGroup = document.getElementById('palettesGroup');
     const calculateBtn = document.getElementById('calculateBtn');
     const resultsContent = document.getElementById('resultsContent');
+    const typeSelect = document.getElementById('type');
+    const palettesGroup = document.getElementById('palettesGroup');
     
     // Gestion palette
     typeSelect.addEventListener('change', function() {
-        if (this.value === 'palette') {
-            palettesGroup.style.display = 'block';
-        } else {
-            palettesGroup.style.display = 'none';
-        }
+        palettesGroup.style.display = this.value === 'palette' ? 'block' : 'none';
     });
     
     // Auto-palette si > 60kg
@@ -591,19 +709,69 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Validation département
+    // Validation département temps réel
     document.getElementById('departement').addEventListener('input', function() {
         this.value = this.value.replace(/\D/g, '');
+        if (this.value.length >= 2) {
+            // Calcul automatique si formulaire valide
+            setTimeout(checkAutoCalculate, 500);
+        }
     });
     
-    // Soumission
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const departement = document.getElementById('departement').value;
+    // Calcul automatique sur changement
+    ['poids', 'type', 'option_sup'].forEach(id => {
+        document.getElementById(id).addEventListener('change', function() {
+            setTimeout(checkAutoCalculate, 300);
+        });
+    });
+    
+    document.querySelectorAll('input[name="adr"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            setTimeout(checkAutoCalculate, 300);
+        });
+    });
+    
+    document.getElementById('enlevement').addEventListener('change', function() {
+        setTimeout(checkAutoCalculate, 300);
+    });
+    
+    function checkAutoCalculate() {
+        const dept = document.getElementById('departement').value;
         const poids = parseFloat(document.getElementById('poids').value);
         
-        if (!departement || departement.length !== 2) {
+        if (dept && dept.length === 2 && poids && poids > 0) {
+            calculateTariffs();
+        }
+    }
+    
+    // Soumission manuelle
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        calculateTariffs();
+    });
+    
+    function showError(message) {
+        resultsContent.innerHTML = `<div class="error-message">❌ ${message}</div>`;
+    }
+    
+    function showLoading() {
+        calculateBtn.disabled = true;
+        calculateBtn.textContent = 'Calcul en cours...';
+        
+        resultsContent.innerHTML = `
+            <div class="results-loading">
+                <div class="spinner"></div>
+                <p><strong>Calcul en cours...</strong></p>
+                <p>Interrogation des tarifs transporteurs</p>
+            </div>
+        `;
+    }
+    
+    function calculateTariffs() {
+        const dept = document.getElementById('departement').value;
+        const poids = parseFloat(document.getElementById('poids').value);
+        
+        if (!dept || dept.length !== 2) {
             showError('Département invalide (01-95)');
             return;
         }
@@ -613,35 +781,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        calculateTariffs();
-    });
-    
-    function showError(message) {
-        resultsContent.innerHTML = `<div class="calc-error">❌ ${message}</div>`;
-    }
-    
-    function showLoading() {
-        calculateBtn.disabled = true;
-        calculateBtn.textContent = 'Calcul...';
-        
-        resultsContent.innerHTML = `
-            <div class="calc-loading">
-                <div class="calc-spinner"></div>
-                <p>Calcul en cours...</p>
-            </div>
-        `;
-    }
-    
-    function calculateTariffs() {
         showLoading();
         
         const formData = new URLSearchParams();
-        formData.append('departement', document.getElementById('departement').value);
-        formData.append('poids', document.getElementById('poids').value);
+        formData.append('departement', dept);
+        formData.append('poids', poids.toString());
         formData.append('type', document.getElementById('type').value);
         formData.append('adr', document.querySelector('input[name="adr"]:checked').value);
         formData.append('option_sup', document.getElementById('option_sup').value);
         formData.append('palettes', document.getElementById('palettes').value);
+        
         if (document.getElementById('enlevement').checked) {
             formData.append('enlevement', '1');
         }
@@ -656,19 +805,32 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             calculateBtn.disabled = false;
-            calculateBtn.textContent = '🧮 Calculer';
+            calculateBtn.textContent = '🧮 Calculer les tarifs';
+            
+            console.log('Réponse API:', data);
             
             if (data.success && data.carriers && data.carriers.length > 0) {
                 displayResults(data);
             } else {
-                showError(data.error || 'Aucun tarif disponible');
+                showError(data.error || data.message || 'Aucun tarif disponible');
+                
+                // Afficher debug si disponible
+                if (data.debug) {
+                    const debugHtml = `
+                        <div class="debug-panel">
+                            <strong>Debug info:</strong>
+                            <pre>${JSON.stringify(data.debug, null, 2)}</pre>
+                        </div>
+                    `;
+                    resultsContent.innerHTML += debugHtml;
+                }
             }
         })
         .catch(error => {
             calculateBtn.disabled = false;
-            calculateBtn.textContent = '🧮 Calculer';
+            calculateBtn.textContent = '🧮 Calculer les tarifs';
             showError('Erreur de connexion');
-            console.error('Erreur:', error);
+            console.error('Erreur fetch:', error);
         });
     }
     
@@ -678,95 +840,57 @@ document.addEventListener('DOMContentLoaded', function() {
         
         carriers.forEach((carrier, index) => {
             const isBest = index === 0;
-            const options = getSelectedOptions();
             
             html += `
-                <div class="calc-result-card ${isBest ? 'best' : ''}" data-carrier="${carrier.carrier_code}">
-                    ${isBest ? '<div class="best-badge">🏆 MEILLEUR</div>' : ''}
-                    <div class="calc-result-header">
-                        <div class="calc-transporteur">${carrier.carrier_name}</div>
-                        <div class="calc-price">${carrier.price_display}</div>
+                <div class="carrier-card ${isBest ? 'best' : ''}">
+                    <div class="carrier-header">
+                        <div class="carrier-name">${carrier.carrier_name}</div>
+                        <div class="carrier-price">${carrier.price_display}</div>
                     </div>
-                    <div class="calc-details">
-                        Tarif TTC • Délai: ${getDelay(carrier.carrier_code, options)}
+                    <div class="carrier-details">
+                        Tarif TTC • Délai: ${carrier.delay || getDelay(carrier.carrier_code)}
+                        ${getOptionsText(carrier.carrier_code)}
                     </div>
-                    ${generateOptionsDetail(carrier, options)}
                 </div>
             `;
         });
         
+        // Métadonnées
+        const economy = carriers.length > 1 ? 
+            (carriers[carriers.length-1].price - carriers[0].price).toFixed(2) : '0.00';
+        
         html += `
-            <div style="text-align: center; margin-top: 1rem; font-size: 0.8rem; color: var(--gray);">
-                ⚡ Calcul: ${data.time_ms}ms • Économie: ${(carriers[carriers.length-1].price - carriers[0].price).toFixed(2)}€
+            <div style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 0.85rem; color: var(--gray);">
+                ⚡ Calcul: ${data.time_ms}ms • Économie max: ${economy}€
             </div>
         `;
         
         resultsContent.innerHTML = html;
     }
     
-    function getSelectedOptions() {
-        return {
-            service: document.getElementById('option_sup').value,
-            enlevement: document.getElementById('enlevement').checked,
-            adr: document.querySelector('input[name="adr"]:checked').value === 'oui'
-        };
-    }
-    
-    function getDelay(carrier, options) {
-        const baseDelays = {
+    function getDelay(carrier) {
+        const delays = {
             'xpo': '24-48h',
             'heppner': '24-48h', 
             'kn': '48-72h'
         };
-        
-        let delay = baseDelays[carrier] || '24-48h';
-        
-        if (options.service === 'rdv') delay += ' sur RDV';
-        if (options.service === 'premium_matin') delay += ' avant 13h';
-        if (options.service === 'target') delay = 'Date imposée';
-        
-        return delay;
+        return delays[carrier] || '24-48h';
     }
     
-    function generateOptionsDetail(carrier, options) {
-        const optionsCosts = [];
+    function getOptionsText(carrier) {
+        const service = document.getElementById('option_sup').value;
+        const enlevement = document.getElementById('enlevement').checked;
+        const options = [];
         
-        if (options.service === 'rdv') {
-            const costs = {'xpo': 7.00, 'heppner': 6.70, 'kn': 8.00};
-            optionsCosts.push(`RDV: +${costs[carrier.carrier_code]?.toFixed(2) || '7.00'}€`);
+        if (service === 'rdv') options.push('RDV');
+        if (service === 'premium_matin') options.push('Premium');
+        if (service === 'target') options.push('Date imposée');
+        if (enlevement) {
+            const costs = {'xpo': '+25€', 'heppner': 'Gratuit', 'kn': '+20€'};
+            options.push('Enlèvement ' + (costs[carrier] || '+15€'));
         }
         
-        if (options.service === 'premium_matin') {
-            optionsCosts.push('Premium: +25.00€');
-        }
-        
-        if (options.service === 'target') {
-            optionsCosts.push('Date imposée: +30.00€');
-        }
-        
-        if (options.enlevement) {
-            const costs = {'xpo': 25.00, 'heppner': 0.00, 'kn': 20.00};
-            const cost = costs[carrier.carrier_code] || 15.00;
-            if (cost > 0) {
-                optionsCosts.push(`Enlèvement: +${cost.toFixed(2)}€`);
-            } else {
-                optionsCosts.push('Enlèvement: Gratuit');
-            }
-        }
-        
-        if (options.adr) {
-            optionsCosts.push('ADR: Inclus');
-        }
-        
-        if (optionsCosts.length === 0) {
-            return '';
-        }
-        
-        return `
-            <div class="calc-options-detail">
-                ${optionsCosts.map(opt => `<div class="calc-option-item"><span>${opt}</span></div>`).join('')}
-            </div>
-        `;
+        return options.length > 0 ? ' • ' + options.join(' • ') : '';
     }
 });
 </script>
