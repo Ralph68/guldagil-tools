@@ -126,19 +126,26 @@ $breadcrumbs        = $breadcrumbs        ?? [
 
     <div class="main-container">
 
-        <script>
+       <script>
 document.addEventListener('DOMContentLoaded', function() {
   var userSection = document.querySelector('.user-section');
   var userMenu = document.getElementById('user-menu');
+  var dropdownArrow = userSection ? userSection.querySelector('.user-dropdown') : null;
+
   if(userSection && userMenu) {
     userSection.addEventListener('click', function(e) {
       e.stopPropagation();
+      // Toggle menu
       userMenu.style.display = (userMenu.style.display === 'block') ? 'none' : 'block';
+      // Ajoute une classe open sur la flèche si le menu est ouvert
+      if(dropdownArrow) {
+        dropdownArrow.classList.toggle('open', userMenu.style.display === 'block');
+      }
     });
     document.addEventListener('click', function() {
       userMenu.style.display = 'none';
+      if(dropdownArrow) dropdownArrow.classList.remove('open');
     });
   }
 });
 </script>
-
