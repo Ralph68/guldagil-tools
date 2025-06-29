@@ -77,7 +77,7 @@ $breadcrumbs        = $breadcrumbs        ?? [
           <span class="item-text">Paramètres</span>
         </a>
         <div class="dropdown-divider"></div>
-        <a href="/logout.php" class="dropdown-item logout">
+        <a href="/auth/logout.php" class="dropdown-item logout">
           <span class="item-icon">🚪</span>
           <span class="item-text">Déconnexion</span>
         </a>
