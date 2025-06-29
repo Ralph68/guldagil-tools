@@ -148,7 +148,7 @@ try {
     }
     
     // CHARGEMENT DE LA CLASSE TRANSPORT - CHEMIN CORRECT
-    $transport_class_path = __DIR__ . '/../../src/modules/calculateur/services/transportcalculateur.php';
+    $transport_class_path = __DIR__ . '/../transport.php';
     
     if (!file_exists($transport_class_path)) {
         throw new Exception('Classe Transport non trouvée: ' . $transport_class_path, 500);
