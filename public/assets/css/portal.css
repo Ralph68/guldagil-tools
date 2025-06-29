@@ -239,10 +239,13 @@ a:hover {
     margin: 0;
 }
 
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-lg);
+.header-actions,
+.user-dropdown-container {
+  position: relative !important;
+  display: flex;
+  align-items: center;
+  z-index: 20;
+  /*gap: var(--spacing-lg);*/
 }
 
 .version-badge {
