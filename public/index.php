@@ -216,8 +216,8 @@ if (file_exists(__DIR__ . '/../templates/header.php')) {
     <header class="portal-header">
         <div class="header-container container">
             <div class="header-brand">
-                <?php if (file_exists(__DIR__ . '/assets/img/logo-guldagil.png')): ?>
-                <img src="/assets/img/logo-guldagil.png" alt="Logo Guldagil" class="portal-logo">
+                <?php if (file_exists(__DIR__ . '/assets/img/logo.png')): ?>
+                <img src="/assets/img/logo.png" alt="Logo Guldagil" class="portal-logo">
                 <?php endif; ?>
                 
                 <div class="brand-info">
