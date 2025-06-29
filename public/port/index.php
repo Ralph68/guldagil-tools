@@ -99,21 +99,23 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             // Test requête directe BDD
             try {
                 $table = $carrier === 'xpo' ? 'gul_xpo_rates' : 'gul_heppner_rates';
-                $sql = "SELECT COUNT(*) as count, MIN(prix_colis) as min_prix, MAX(prix_colis) as max_prix 
-                        FROM {$table} WHERE num_departement = ?";
+                
+                // D'abord, découvrir les colonnes disponibles
+                $sql = "DESCRIBE {$table}";
                 $stmt = $db->prepare($sql);
-                $stmt->execute([$params['departement']]);
-                $test_result = $stmt->fetch();
+                $stmt->execute();
+                $columns = $stmt->fetchAll();
                 
-                $debug_info['individual_tests'][$carrier]['db_test'] = $test_result;
+                $debug_info['individual_tests'][$carrier]['table_structure'] = $columns;
                 
-                // Test avec quelques enregistrements
+                // Test simple avec SELECT *
                 $sql = "SELECT * FROM {$table} WHERE num_departement = ? LIMIT 3";
                 $stmt = $db->prepare($sql);
                 $stmt->execute([$params['departement']]);
                 $sample_records = $stmt->fetchAll();
                 
                 $debug_info['individual_tests'][$carrier]['sample_records'] = $sample_records;
+                $debug_info['individual_tests'][$carrier]['record_count'] = count($sample_records);
                 
             } catch (Exception $e) {
                 $debug_info['individual_tests'][$carrier]['db_error'] = $e->getMessage();
