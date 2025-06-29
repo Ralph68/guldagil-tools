@@ -127,24 +127,32 @@ $breadcrumbs        = $breadcrumbs        ?? [
     <div class="main-container">
 
        <script>
+// Fix pour templates/header.php - remplacer le script existant par :
 document.addEventListener('DOMContentLoaded', function() {
   var userSection = document.querySelector('.user-section');
   var userMenu = document.getElementById('user-menu');
-  
+  var dropdownArrow = userSection ? userSection.querySelector('.user-dropdown') : null;
+
   if(userSection && userMenu) {
     userSection.addEventListener('click', function(e) {
       e.stopPropagation();
-      // Toggle simple
-      if(userMenu.style.display === 'block') {
-        userMenu.style.display = 'none';
-      } else {
-        userMenu.style.display = 'block';
+      
+      // Toggle menu visibility
+      var isVisible = userMenu.style.display === 'block';
+      userMenu.style.display = isVisible ? 'none' : 'block';
+      
+      // Toggle arrow
+      if(dropdownArrow) {
+        dropdownArrow.classList.toggle('open', !isVisible);
       }
     });
-    
-    // Fermer en cliquant ailleurs
-    document.addEventListener('click', function() {
-      userMenu.style.display = 'none';
+
+    // Fermer le menu en cliquant ailleurs
+    document.addEventListener('click', function(e) {
+      if (!userSection.contains(e.target) && !userMenu.contains(e.target)) {
+        userMenu.style.display = 'none';
+        if(dropdownArrow) dropdownArrow.classList.remove('open');
+      }
     });
   }
 });
