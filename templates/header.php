@@ -29,6 +29,32 @@ $breadcrumbs        = $breadcrumbs        ?? [
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="/assets/img/favicon.png">
 
+    <style>
+#user-menu {
+  position: absolute !important;
+  top: 100% !important;
+  right: 0 !important;
+  background: white !important;
+  border: 1px solid #ddd !important;
+  border-radius: 8px !important;
+  padding: 8px 0 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  z-index: 1000 !important;
+  min-width: 180px !important;
+}
+
+#user-menu a {
+  display: flex !important;
+  align-items: center !important;
+  padding: 8px 16px !important;
+  color: #333 !important;
+  text-decoration: none !important;
+}
+
+#user-menu a:hover {
+  background: #f5f5f5 !important;
+}
+</style>
 
   <!-- CSS principal -->
   <link rel="stylesheet" href="/assets/css/portal.css" />
