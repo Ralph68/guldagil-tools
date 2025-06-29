@@ -766,6 +766,7 @@ a:hover {
         transform: rotate(360deg);
     }
 }
+.user-section { cursor: pointer; }
 
 /* Accessibilité - Respect des préférences utilisateur */
 @media (prefers-reduced-motion: reduce) {
