@@ -63,7 +63,7 @@ $breadcrumbs = $breadcrumbs ?? [
         <div class="header-container">
             <!-- Brand / Logo -->
             <div class="header-brand" onclick="goHome()" role="button" tabindex="0" aria-label="Retour à l'accueil">
-                <img src="/assets/img/logo.png" alt="Guldagil" class="portal-logo">
+                <img src="public/assets/img/logo.png" alt="Guldagil" class="portal-logo">
                 <div class="brand-info">
                     <h1 class="portal-title"><?= htmlspecialchars($page_title) ?></h1>
                     <p class="portal-subtitle"><?= htmlspecialchars($page_subtitle) ?></p>
