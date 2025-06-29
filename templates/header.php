@@ -2,7 +2,6 @@
 /**
  * Titre: Header modulaire du portail Guldagil
  * Chemin: /templates/header.php
- * Version: 0.5 beta
  */
 
 // Définitions par défaut
@@ -30,20 +29,12 @@ $breadcrumbs        = $breadcrumbs        ?? [
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="/assets/img/favicon.png">
 
-  <!-- Préchargement et inclusion du CSS principal -->
-  <link
-    rel="preload"
-    href="/public/assets/css/portal.css"
-    as="style"
-    onload="this.onload=null;this.rel='stylesheet'"
-  />
-  <noscript>
-    <link rel="stylesheet" href="/public/assets/css/portal.css" />
-  </noscript>
+  <!-- CSS principal -->
+  <link rel="stylesheet" href="/assets/css/portal.css" />
 
-  <!-- CSS spécifique au module -->
+  <!-- CSS spécifique au module si besoin -->
   <?php if (!empty($module_css)): ?>
-    <link rel="stylesheet" href="/public/assets/css/modules/<?= htmlspecialchars($current_module) ?>.css">
+    <link rel="stylesheet" href="/assets/css/modules/<?= htmlspecialchars($current_module) ?>.css">
   <?php endif; ?>
 </head>
 <body class="portal-body module-<?= htmlspecialchars($current_module) ?>" data-module="<?= htmlspecialchars($current_module) ?>">
