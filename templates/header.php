@@ -78,35 +78,36 @@ $breadcrumbs = $breadcrumbs ?? [
                 </div>
                 
                 <!-- Zone utilisateur -->
-                <div class="user-area" onclick="toggleUserMenu()" role="button" tabindex="0" aria-label="Menu utilisateur">
-                    <?php if ($user_authenticated): ?>
-                        <span class="user-icon">👤</span>
-                        <span class="user-text"><?= htmlspecialchars($user_name ?? 'Utilisateur') ?></span>
-                        <span class="user-dropdown">▼</span>
-                    <?php else: ?>
-                        <span class="user-icon">👤</span>
-                        <span class="user-text">Connexion</span>
-                    <?php endif; ?>
-                </div>
+                <div class="user-section">
+    <?php if (isset($current_user) && $current_user): ?>
+        <span class="user-icon">👤</span>
+        <span class="user-text"><?= htmlspecialchars($current_user['username']) ?></span>
+        <span class="user-role">(<?= $current_user['role'] ?>)</span>
+        <span class="user-dropdown">▼</span>
+    <?php else: ?>
+        <span class="user-icon">👤</span>
+        <span class="user-text">Connexion</span>
+    <?php endif; ?>
+</div>
                 
                 <!-- Menu utilisateur (caché par défaut) -->
-                <?php if ($user_authenticated): ?>
-                <div class="user-dropdown-menu" id="user-menu" style="display: none;">
-                    <a href="/profile" class="dropdown-item">
-                        <span class="item-icon">👤</span>
-                        <span class="item-text">Mon profil</span>
-                    </a>
-                    <a href="/settings" class="dropdown-item">
-                        <span class="item-icon">⚙️</span>
-                        <span class="item-text">Paramètres</span>
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a href="/logout" class="dropdown-item logout">
-                        <span class="item-icon">🚪</span>
-                        <span class="item-text">Déconnexion</span>
-                    </a>
-                </div>
-                <?php endif; ?>
+<?php if (isset($current_user) && $current_user): ?>
+<div class="user-dropdown-menu" id="user-menu" style="display: none;">
+    <a href="/profile" class="dropdown-item">
+        <span class="item-icon">👤</span>
+        <span class="item-text">Mon profil</span>
+    </a>
+    <a href="/settings" class="dropdown-item">
+        <span class="item-icon">⚙️</span>
+        <span class="item-text">Paramètres</span>
+    </a>
+    <div class="dropdown-divider"></div>
+    <a href="/logout.php" class="dropdown-item logout">
+        <span class="item-icon">🚪</span>
+        <span class="item-text">Déconnexion</span>
+    </a>
+</div>
+<?php endif; ?>
             </div>
         </div>
     </header>
