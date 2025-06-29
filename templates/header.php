@@ -54,35 +54,38 @@ $breadcrumbs        = $breadcrumbs        ?? [
 
       <!-- Section utilisateur -->
       <div class="header-actions">
-        <div class="user-section">
-          <?php if (!empty($current_user)): ?>
-            <span class="user-icon">👤</span>
-            <span class="user-text"><?= htmlspecialchars($current_user['username']) ?></span>
-            <span class="user-role">(<?= htmlspecialchars($current_user['role']) ?>)</span>
-            <span class="user-dropdown">▼</span>
-          <?php else: ?>
-            <span class="user-icon">👤</span>
-            <span class="user-text">Connexion</span>
-          <?php endif; ?>
-        </div>
-
-        <?php if (!empty($current_user)): ?>
-        <div class="user-dropdown-menu" id="user-menu" style="display:none;">
-          <a href="/profile" class="dropdown-item">
-            <span class="item-icon">👤</span>
-            <span class="item-text">Mon profil</span>
-          </a>
-          <a href="/settings" class="dropdown-item">
-            <span class="item-icon">⚙️</span>
-            <span class="item-text">Paramètres</span>
-          </a>
-          <div class="dropdown-divider"></div>
-          <a href="/logout.php" class="dropdown-item logout">
-            <span class="item-icon">🚪</span>
-            <span class="item-text">Déconnexion</span>
-          </a>
-        </div>
-        <?php endif; ?>
+  <div class="user-dropdown-container" style="position: relative;">
+    <div class="user-section">
+      <?php if (!empty($current_user)): ?>
+        <span class="user-icon">👤</span>
+        <span class="user-text"><?= htmlspecialchars($current_user['username']) ?></span>
+        <span class="user-role">(<?= htmlspecialchars($current_user['role']) ?>)</span>
+        <span class="user-dropdown">▼</span>
+      <?php else: ?>
+        <span class="user-icon">👤</span>
+        <span class="user-text">Connexion</span>
+      <?php endif; ?>
+    </div>
+    <?php if (!empty($current_user)): ?>
+      <div class="user-dropdown-menu" id="user-menu" style="display: none;">
+        <a href="/profile" class="dropdown-item">
+          <span class="item-icon">👤</span>
+          <span class="item-text">Mon profil</span>
+        </a>
+        <a href="/settings" class="dropdown-item">
+          <span class="item-icon">⚙️</span>
+          <span class="item-text">Paramètres</span>
+        </a>
+        <div class="dropdown-divider"></div>
+        <a href="/logout.php" class="dropdown-item logout">
+          <span class="item-icon">🚪</span>
+          <span class="item-text">Déconnexion</span>
+        </a>
+      </div>
+    <?php endif; ?>
+  </div>
+  <!-- Ici, tu peux mettre d'autres boutons header à droite si besoin -->
+</div>
 
       </div>
     </div>
