@@ -926,3 +926,16 @@ a:hover {
   background: #fbe9e7 !important;
   color: #922 !important;
 }
+/* Ajouter cette règle manquante : */
+.user-dropdown-container {
+  position: relative !important;
+  display: inline-block !important;
+}
+
+/* S'assurer que le menu est bien positionné : */
+.user-dropdown-menu {
+  position: absolute !important;
+  top: 100% !important;
+  right: 0 !important;
+  z-index: 1000 !important;
+}
