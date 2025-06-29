@@ -39,8 +39,8 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?></title>
-    <link rel="stylesheet" href="/public/assets/css/portal.css?v=<?= htmlspecialchars($build_number) ?>">
-    <link rel="stylesheet" href="/public/assets/css/calculateur.css?v=<?= htmlspecialchars($build_number) ?>">
+    <link rel="stylesheet" href="./assets/css/portal.css?v=<?= htmlspecialchars($build_number) ?>">
+    <link rel="stylesheet" href="./assets/css/calculateur.css?v=<?= htmlspecialchars($build_number) ?>">
     
     <!-- CSS critique responsive -->
     <style>
@@ -448,7 +448,7 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
     </div>
 </div>
 
-<script src="/public/assets/js/calculateur.js?v=<?= htmlspecialchars($build_number) ?>"></script>
+<script src="./assets/js/calculateur.js?v=<?= htmlspecialchars($build_number) ?>"></script>
 <script>
 // Version simplifiée intégrée
 const CalcSimple = {
