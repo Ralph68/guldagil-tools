@@ -297,21 +297,28 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
             margin-top: 0.25rem;
         }
         
-        /* Mobile responsive */
+        /* Mobile responsive - résultats restent visibles */
         @media (max-width: 768px) {
             .calc-container {
                 grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
                 gap: 1rem;
                 padding: 0.75rem;
+                height: calc(100vh - 140px);
             }
             
             .calc-form {
                 position: static;
                 order: 1;
+                height: auto;
             }
             
             .calc-results {
                 order: 2;
+                position: sticky;
+                top: 120px;
+                height: calc(100vh - 160px);
+                overflow-y: auto;
             }
             
             .calc-header-content {
