@@ -539,56 +539,58 @@ include __DIR__ . '/../../templates/header.php';
         </div>
         
         <!-- Navigation étapes -->
-        <nav class="steps-nav">
-            <button type="button" class="step-btn active" data-step="1">
-                📍 Destination
-            </button>
-            <button type="button" class="step-btn" data-step="2">
-                📦 Expédition
-            </button>
-            <button type="button" class="step-btn" data-step="3">
-                🚀 Options
-            </button>
-        </nav>
-        
-        <div class="form-content">
+        <!-- Navigation étapes -->
+<nav class="steps-nav">
+    <button type="button" class="step-btn active" data-step="1">📍 Destination</button>
+    <button type="button" class="step-btn" data-step="2">📦 Expédition</button>
+    <button type="button" class="step-btn" data-step="3">🚀 Options</button>
+</nav>
+
+<div class="form-content">
     <form id="calculatorForm">
-        <div class="form-group">
-            <label class="form-label" for="departement">Département de destination *</label>
-            <input type="text" id="departement" name="departement" class="form-input" 
-                   placeholder="Ex: 67, 75, 13..." maxlength="2">
-        </div>
-
-        <div class="form-group">
-            <label class="form-label" for="poids">Poids total (kg) *</label>
-            <input type="number" id="poids" name="poids" class="form-input" 
-                   min="1" max="10000" step="0.1" placeholder="Ex: 25.5">
-        </div>
-
-        <div class="form-group">
-            <label class="form-label" for="type">Type d'expédition *</label>
-            <select id="type" name="type" class="form-input">
-                <option value="colis">Colis</option>
-                <option value="palette">Palette(s) EUR</option>
-            </select>
-        </div>
-
-        <div class="form-group" id="palettesGroup" style="display: none;">
-            <label class="form-label" for="palettes">Nombre de palettes EUR</label>
-            <input type="number" id="palettes" name="palettes" class="form-input" 
-                   min="0" max="10" value="1" placeholder="0 à 10">
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">Transport ADR *</label>
-            <div class="toggle-group">
-                <button type="button" class="toggle-btn" data-adr="non">❌ Non</button>
-                <button type="button" class="toggle-btn" data-adr="oui">⚠️ Oui</button>
+        <!-- Étape 1: Destination -->
+        <div class="form-step active" data-step="1">
+            <div class="form-group">
+                <label class="form-label" for="departement">Département de destination *</label>
+                <input type="text" id="departement" name="departement" class="form-input" 
+                       placeholder="Ex: 67, 75, 13..." maxlength="2">
             </div>
-            <input type="hidden" id="adr" name="adr" value="">
         </div>
-                <!-- Étape 3: Options -->
-                <div class="form-step" data-step="3">
+
+        <!-- Étape 2: Expédition -->
+        <div class="form-step" data-step="2">
+            <div class="form-group">
+                <label class="form-label" for="poids">Poids total (kg) *</label>
+                <input type="number" id="poids" name="poids" class="form-input" 
+                       min="1" max="10000" step="0.1" placeholder="Ex: 25.5">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="type">Type d'expédition *</label>
+                <select id="type" name="type" class="form-input">
+                    <option value="colis">Colis</option>
+                    <option value="palette">Palette(s) EUR</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="palettesGroup" style="display: none;">
+                <label class="form-label" for="palettes">Nombre de palettes EUR</label>
+                <input type="number" id="palettes" name="palettes" class="form-input" 
+                       min="0" max="10" value="1">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Transport ADR *</label>
+                <div class="toggle-group">
+                    <button type="button" class="toggle-btn" data-adr="non">❌ Non</button>
+                    <button type="button" class="toggle-btn" data-adr="oui">⚠️ Oui</button>
+                </div>
+                <input type="hidden" id="adr" name="adr" value="">
+            </div>
+        </div>
+
+        <!-- Étape 3: Options -->
+        <div class="form-step" data-step="3">
                     <div class="form-group">
                         <label class="form-label">Service de livraison</label>
                         <div class="options-grid">
@@ -676,6 +678,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Configuration des événements
 function setupEventListeners() {
+    // Navigation étapes par clic
+    document.querySelectorAll('.step-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const step = parseInt(this.dataset.step);
+            goToStep(step);
+        });
+    });
+    
     // Validation temps réel avec auto-calcul
     document.getElementById('departement').addEventListener('input', handleFormChange);
     document.getElementById('poids').addEventListener('input', handleFormChange);
@@ -719,6 +729,20 @@ function setupEventListeners() {
             handleFormChange();
         });
     });
+}
+
+// Navigation entre étapes
+function goToStep(step) {
+    // Masquer toutes les étapes
+    document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.step-btn').forEach(s => s.classList.remove('active'));
+    
+    // Afficher l'étape cible
+    const targetStep = document.querySelector(`.form-step[data-step="${step}"]`);
+    const targetBtn = document.querySelector(`.step-btn[data-step="${step}"]`);
+    
+    if (targetStep) targetStep.classList.add('active');
+    if (targetBtn) targetBtn.classList.add('active');
 }
 
 // Gestion unifiée des changements
