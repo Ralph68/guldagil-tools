@@ -1,7 +1,0 @@
-<map id="Auth\getCurrentUser" name="Auth\getCurrentUser">
-<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,147,32"/>
-<area shape="rect" id="Node000002" href="$class_auth.html#ae85d51d32fe1cb4bc665e0cb5da9cc9e" title=" " alt="" coords="195,5,310,32"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="147,16,179,16,179,21,147,21"/>
-<area shape="rect" id="Node000003" href="$class_auth.html#acbbcb54916a234d1d816ec85e4a88d5e" title=" " alt="" coords="358,5,445,32"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="310,16,342,16,342,21,310,21"/>
-</map>

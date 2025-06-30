@@ -1,7 +1,0 @@
-<map id="Auth\canAccessPage" name="Auth\canAccessPage">
-<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,153,32"/>
-<area shape="rect" id="Node000002" href="$class_auth.html#ae85d51d32fe1cb4bc665e0cb5da9cc9e" title=" " alt="" coords="201,5,316,32"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="153,16,185,16,185,21,153,21"/>
-<area shape="rect" id="Node000003" href="$class_auth.html#acbbcb54916a234d1d816ec85e4a88d5e" title=" " alt="" coords="364,5,451,32"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="316,16,348,16,348,21,316,21"/>
-</map>

@@ -1,7 +1,0 @@
-<map id="Auth\requireAuth" name="Auth\requireAuth">
-<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,124,32"/>
-<area shape="rect" id="Node000002" href="$class_auth.html#ae85d51d32fe1cb4bc665e0cb5da9cc9e" title=" " alt="" coords="172,5,287,32"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="124,16,156,16,156,21,124,21"/>
-<area shape="rect" id="Node000003" href="$class_auth.html#acbbcb54916a234d1d816ec85e4a88d5e" title=" " alt="" coords="335,5,422,32"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="287,16,319,16,319,21,287,21"/>
-</map>
