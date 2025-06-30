@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Classe Transport - IMPLÉMENTATION COMPLÈTE
+ * Titre: Classe Transport - VERSION FINALE FONCTIONNELLE
  * Chemin: /features/port/transport.php
  * Version: 0.5 beta + build auto
  */
@@ -11,14 +11,12 @@ class Transport {
     
     private array $tables = [
         'xpo' => 'gul_xpo_rates',
-        'heppner' => 'gul_heppner_rates',
-        'kn' => 'gul_kn_rates'
+        'heppner' => 'gul_heppner_rates'
     ];
     
     private array $carrierNames = [
         'xpo' => 'XPO Logistics',
-        'heppner' => 'Heppner',
-        'kn' => 'Kuehne + Nagel'
+        'heppner' => 'Heppner'
     ];
     
     public function __construct(PDO $db) {
@@ -28,33 +26,26 @@ class Transport {
     
     /**
      * Calcule les tarifs pour tous les transporteurs
-     * SIGNATURE NOUVELLE - array de paramètres
      */
     public function calculateAll(array $params): array {
         $results = [];
-        $this->debug = [];
+        $this->debug = ['input' => $params];
         
-        // Log des paramètres reçus
-        $this->debug['input_params'] = $params;
-        
-        // Validation et normalisation
+        // Normalisation des paramètres
         $normalized = $this->normalizeParams($params);
-        $this->debug['normalized_params'] = $normalized;
+        $this->debug['normalized'] = $normalized;
         
         // Règle métier : poids > 60kg = forcément palette
         if ($normalized['poids'] > 60 && $normalized['type'] === 'colis') {
             $normalized['type'] = 'palette';
-            $this->debug['force_palette'] = "Poids {$normalized['poids']}kg > 60kg : forcé en palette";
+            $this->debug['rule_applied'] = "Poids {$normalized['poids']}kg > 60kg : forcé en palette";
         }
         
         // Calcul pour chaque transporteur
         foreach ($this->tables as $carrier => $table) {
             try {
-                $this->debug[$carrier] = [];
                 $price = $this->calculateForCarrier($carrier, $normalized);
                 $results[$carrier] = $price;
-                
-                $this->debug[$carrier]['final_price'] = $price;
                 
             } catch (Exception $e) {
                 $results[$carrier] = null;
@@ -62,24 +53,13 @@ class Transport {
             }
         }
         
-        // Recherche du meilleur tarif
-        $bestRate = $this->findBestRate($results);
-        
         return [
             'results' => $results,
             'debug' => $this->debug,
-            'best' => $bestRate,
-            'metadata' => [
-                'carrier_count' => count(array_filter($results)),
-                'calculation_type' => $normalized['type'],
-                'weight_processed' => $normalized['poids']
-            ]
+            'best' => $this->findBestRate($results)
         ];
     }
     
-    /**
-     * Normalise et valide les paramètres d'entrée
-     */
     private function normalizeParams(array $params): array {
         return [
             'departement' => str_pad(trim($params['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
@@ -92,73 +72,51 @@ class Transport {
         ];
     }
     
-    /**
-     * Calcul pour un transporteur spécifique
-     */
     private function calculateForCarrier(string $carrier, array $params): ?float {
-        // 1. Vérifications préliminaires
-        if (!$this->isCarrierAvailable($carrier, $params)) {
-            return null;
-        }
+        $this->debug[$carrier] = [];
         
-        // 2. Récupération du tarif de base
+        // 1. Récupération du tarif de base
         $baseTariff = $this->getBaseTariff($carrier, $params);
         if ($baseTariff === null) {
-            $this->debug[$carrier]['tarif_base'] = 'non trouvé';
+            $this->debug[$carrier]['result'] = 'Tarif de base non trouvé';
             return null;
         }
         
-        $this->debug[$carrier]['tarif_base'] = $baseTariff;
+        $this->debug[$carrier]['base_tariff'] = $baseTariff;
         
-        // 3. Calcul du prix selon le poids
-        $price = $this->calculateWeightPrice($carrier, $baseTariff, $params);
-        $this->debug[$carrier]['prix_poids'] = $price;
+        // 2. Calcul selon le poids
+        $price = $baseTariff;
         
-        // 4. Ajout des majorations
+        // Règle : poids > 100kg = tarification proportionnelle
+        if ($params['poids'] > 100) {
+            $ratio = $params['poids'] / 100;
+            $price = $baseTariff * $ratio;
+            $this->debug[$carrier]['weight_ratio'] = $ratio;
+        }
+        
+        $this->debug[$carrier]['price_after_weight'] = $price;
+        
+        // 3. Majorations
         $price = $this->addSurcharges($carrier, $price, $params);
         
         return round($price, 2);
     }
     
-    /**
-     * Vérifie si le transporteur peut traiter cette expédition
-     */
-    private function isCarrierAvailable(string $carrier, array $params): bool {
-        // Vérifier les restrictions par département
-        $restrictions = $this->getCarrierRestrictions($carrier);
-        if (in_array($params['departement'], $restrictions)) {
-            $this->debug[$carrier]['restriction'] = "Département {$params['departement']} non desservi";
-            return false;
-        }
-        
-        // Vérifier les limites de poids
-        $maxWeight = $this->getMaxWeight($carrier);
-        if ($params['poids'] > $maxWeight) {
-            $this->debug[$carrier]['restriction'] = "Poids {$params['poids']}kg > limite {$maxWeight}kg";
-            return false;
-        }
-        
-        return true;
-    }
-    
-    /**
-     * Récupère le tarif de base selon le poids et département
-     */
     private function getBaseTariff(string $carrier, array $params): ?float {
         $table = $this->tables[$carrier];
         $weight = $params['poids'];
         $dept = $params['departement'];
         
-        // Déterminer la colonne de tarif selon le poids
+        // Déterminer la colonne selon le poids
         $weightColumn = $this->getWeightColumn($carrier, $weight);
         if (!$weightColumn) {
-            $this->debug[$carrier]['weight_column'] = 'non trouvée pour ' . $weight . 'kg';
+            $this->debug[$carrier]['weight_column'] = 'Colonne non trouvée pour ' . $weight . 'kg';
             return null;
         }
         
         $this->debug[$carrier]['weight_column'] = $weightColumn;
         
-        // Requête pour récupérer le tarif
+        // Requête
         $sql = "SELECT {$weightColumn} as tarif FROM {$table} WHERE num_departement = ? LIMIT 1";
         
         try {
@@ -166,11 +124,14 @@ class Transport {
             $stmt->execute([$dept]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             
+            $this->debug[$carrier]['sql'] = $sql;
+            $this->debug[$carrier]['sql_params'] = [$dept];
+            
             if ($row && $row['tarif'] > 0) {
                 return (float)$row['tarif'];
             }
             
-            $this->debug[$carrier]['sql_result'] = 'tarif nul ou département non trouvé';
+            $this->debug[$carrier]['sql_result'] = 'Aucun tarif trouvé ou tarif = 0';
             return null;
             
         } catch (Exception $e) {
@@ -179,9 +140,6 @@ class Transport {
         }
     }
     
-    /**
-     * Détermine la colonne de tarif selon le poids et le transporteur
-     */
     private function getWeightColumn(string $carrier, float $weight): ?string {
         switch ($carrier) {
             case 'xpo':
@@ -193,7 +151,6 @@ class Transport {
                 return null;
                 
             case 'heppner':
-            case 'kn':
                 if ($weight <= 9) return 'tarif_0_9';
                 if ($weight <= 19) return 'tarif_10_19';
                 if ($weight <= 29) return 'tarif_20_29';
@@ -214,46 +171,20 @@ class Transport {
         return null;
     }
     
-    /**
-     * Calcule le prix selon le poids (règle proportionnelle > 100kg)
-     */
-    private function calculateWeightPrice(string $carrier, float $baseTariff, array $params): float {
-        $weight = $params['poids'];
-        
-        // Règle métier : au-delà de 100kg, tarification proportionnelle
-        if ($weight > 100) {
-            $ratio = $weight / 100;
-            $adjustedPrice = $baseTariff * $ratio;
-            
-            $this->debug[$carrier]['weight_calculation'] = [
-                'base_tariff' => $baseTariff,
-                'weight' => $weight,
-                'ratio' => $ratio,
-                'adjusted_price' => $adjustedPrice
-            ];
-            
-            return $adjustedPrice;
-        }
-        
-        return $baseTariff;
-    }
-    
-    /**
-     * Ajoute toutes les majorations applicables
-     */
     private function addSurcharges(string $carrier, float $basePrice, array $params): float {
         $finalPrice = $basePrice;
         $surcharges = [];
         
         // 1. Majoration ADR
         if ($params['adr']) {
-            $adrSurcharge = $this->getADRSurcharge($carrier, $basePrice);
+            $adrRate = $this->getADRRate($carrier);
+            $adrSurcharge = $basePrice * ($adrRate / 100);
             $finalPrice += $adrSurcharge;
             $surcharges['adr'] = $adrSurcharge;
         }
         
         // 2. Options de service
-        $serviceSurcharge = $this->getServiceSurcharge($carrier, $params['option_sup']);
+        $serviceSurcharge = $this->getServiceSurcharge($params['option_sup']);
         $finalPrice += $serviceSurcharge;
         $surcharges['service'] = $serviceSurcharge;
         
@@ -271,21 +202,13 @@ class Transport {
             $surcharges['palettes'] = $paletteSurcharge;
         }
         
-        // 5. Taxes diverses (gazole, etc.)
-        $taxes = $this->getVariousTaxes($carrier, $finalPrice, $params);
-        $finalPrice += $taxes;
-        $surcharges['taxes'] = $taxes;
-        
         $this->debug[$carrier]['surcharges'] = $surcharges;
-        $this->debug[$carrier]['final_price_with_surcharges'] = $finalPrice;
+        $this->debug[$carrier]['final_price'] = $finalPrice;
         
         return $finalPrice;
     }
     
-    /**
-     * Calcul majoration ADR
-     */
-    private function getADRSurcharge(string $carrier, float $basePrice): float {
+    private function getADRRate(string $carrier): float {
         try {
             $sql = "SELECT majoration_adr_taux FROM gul_taxes_transporteurs WHERE transporteur = ?";
             $stmt = $this->db->prepare($sql);
@@ -293,134 +216,36 @@ class Transport {
             $row = $stmt->fetch();
             
             if ($row && $row['majoration_adr_taux'] > 0) {
-                return $basePrice * ($row['majoration_adr_taux'] / 100);
+                return (float)$row['majoration_adr_taux'];
             }
-            
-            // Valeurs par défaut si pas en BDD
-            $defaultRates = ['xpo' => 20, 'heppner' => 25, 'kn' => 22];
-            $rate = $defaultRates[$carrier] ?? 20;
-            
-            return $basePrice * ($rate / 100);
-            
         } catch (Exception $e) {
-            return $basePrice * 0.20; // 20% par défaut
+            // Silence
         }
+        
+        // Valeurs par défaut
+        return $carrier === 'xpo' ? 20 : 25;
     }
     
-    /**
-     * Calcul majoration options de service
-     */
-    private function getServiceSurcharge(string $carrier, string $option): float {
-        $serviceCosts = [
+    private function getServiceSurcharge(string $option): float {
+        $costs = [
             'standard' => 0,
             'premium_matin' => 15,
             'rdv' => 12,
             'target' => 25
         ];
         
-        return $serviceCosts[$option] ?? 0;
+        return $costs[$option] ?? 0;
     }
     
-    /**
-     * Calcul frais d'enlèvement
-     */
     private function getPickupSurcharge(string $carrier): float {
-        $pickupCosts = [
-            'xpo' => 25,
-            'heppner' => 0, // Gratuit chez Heppner
-            'kn' => 20
-        ];
-        
-        return $pickupCosts[$carrier] ?? 15;
+        return $carrier === 'xpo' ? 25 : 0; // Heppner gratuit
     }
     
-    /**
-     * Calcul frais palettes
-     */
-    private function getPaletteSurcharge(string $carrier, int $nbPalettes): float {
-        $paletteCosts = [
-            'xpo' => 8,
-            'heppner' => 10,
-            'kn' => 12
-        ];
-        
-        $costPerPallet = $paletteCosts[$carrier] ?? 10;
-        return $costPerPallet * $nbPalettes;
+    private function getPaletteSurcharge(string $carrier, int $nb): float {
+        $costPerPallet = $carrier === 'xpo' ? 8 : 10;
+        return $costPerPallet * $nb;
     }
     
-    /**
-     * Calcul taxes diverses (gazole, etc.)
-     */
-    private function getVariousTaxes(string $carrier, float $currentPrice, array $params): float {
-        try {
-            $sql = "SELECT surcharge_gasoil, participation_transition_energetique, contribution_sanitaire 
-                    FROM gul_taxes_transporteurs WHERE transporteur = ?";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$carrier]);
-            $row = $stmt->fetch();
-            
-            $taxes = 0;
-            
-            if ($row) {
-                $taxes += (float)($row['surcharge_gasoil'] ?? 0);
-                $taxes += (float)($row['participation_transition_energetique'] ?? 0);
-                $taxes += (float)($row['contribution_sanitaire'] ?? 0);
-            }
-            
-            return $taxes;
-            
-        } catch (Exception $e) {
-            return 2.50; // Forfait par défaut
-        }
-    }
-    
-    /**
-     * Récupère les départements non desservis par un transporteur
-     */
-    private function getCarrierRestrictions(string $carrier): array {
-        try {
-            $sql = "SELECT departements_blacklistes FROM gul_taxes_transporteurs WHERE transporteur = ?";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$carrier]);
-            $row = $stmt->fetch();
-            
-            if ($row && $row['departements_blacklistes']) {
-                return explode(',', $row['departements_blacklistes']);
-            }
-            
-            return [];
-            
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-    
-    /**
-     * Récupère le poids maximum autorisé par transporteur
-     */
-    private function getMaxWeight(string $carrier): float {
-        try {
-            $sql = "SELECT poids_maximum FROM gul_taxes_transporteurs WHERE transporteur = ?";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$carrier]);
-            $row = $stmt->fetch();
-            
-            if ($row && $row['poids_maximum'] > 0) {
-                return (float)$row['poids_maximum'];
-            }
-            
-            // Valeurs par défaut
-            $defaultLimits = ['xpo' => 3000, 'heppner' => 2000, 'kn' => 1999];
-            return $defaultLimits[$carrier] ?? 2000;
-            
-        } catch (Exception $e) {
-            return 2000; // Par défaut
-        }
-    }
-    
-    /**
-     * Trouve le meilleur tarif parmi les résultats
-     */
     private function findBestRate(array $results): ?array {
         $validResults = array_filter($results, function($price) {
             return $price !== null && $price > 0;
