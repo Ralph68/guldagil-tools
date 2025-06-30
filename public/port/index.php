@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Calculateur de frais de port - Interface complète
+ * Titre: Calculateur de frais de port - Interface complète CORRIGÉE
  * Chemin: /public/port/index.php
  * Version: 0.5 beta + build auto
  */
@@ -18,7 +18,44 @@ session_start();
 // DEBUG activé temporairement
 define('DEBUG_CALC', true);
 
-// Gestion AJAX avec debug
+// Fonction pour récupérer les délais depuis la BDD
+function getCarrierDelay($db, $carrier, $departement, $option_sup = 'standard') {
+    try {
+        $table_map = [
+            'xpo' => 'gul_xpo_rates',
+            'heppner' => 'gul_heppner_rates',
+            'kn' => 'gul_kn_rates'
+        ];
+        
+        if (!isset($table_map[$carrier])) {
+            return '24-48h';
+        }
+        
+        $sql = "SELECT delais FROM {$table_map[$carrier]} WHERE num_departement = ? LIMIT 1";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$departement]);
+        $row = $stmt->fetch();
+        
+        $delay = $row['delais'] ?? '24-48h';
+        
+        // Adaptation selon l'option de service
+        switch ($option_sup) {
+            case 'premium_matin':
+                return $delay . ' garanti avant 13h';
+            case 'rdv':
+                return $delay . ' sur RDV';
+            case 'target':
+                return 'Date imposée précise';
+            default:
+                return $delay;
+        }
+        
+    } catch (Exception $e) {
+        return '24-48h'; // Fallback
+    }
+}
+
+// Gestion AJAX avec debug amélioré
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
     header('Content-Type: application/json');
     
@@ -54,7 +91,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             throw new Exception('Poids invalide: ' . $params['poids']);
         }
         
-        // Chargement classe Transport
+        // Chargement classe Transport avec chemin corrigé
         $transport_file = __DIR__ . '/../../features/port/transport.php';
         $debug_info['transport_file'] = $transport_file;
         $debug_info['transport_exists'] = file_exists($transport_file);
@@ -80,18 +117,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
         $test_query = $db->query("SELECT COUNT(*) as count FROM gul_xpo_rates LIMIT 1");
         $debug_info['db_test'] = $test_query ? $test_query->fetch()['count'] : 'erreur';
         
-        // Charger la vraie classe Transport fonctionnelle
-        $transport_file = __DIR__ . '/../../features/port/transport.php';
-        
-        if (!file_exists($transport_file)) {
-            throw new Exception('Service de calcul introuvable: ' . $transport_file);
-        }
-        require_once $transport_file;
-        
-        if (!class_exists('Transport')) {
-            throw new Exception('Classe Transport non trouvée');
-        }
-        
+        // Initialisation du transport
         $transport = new Transport($db);
         $start_time = microtime(true);
         
@@ -100,6 +126,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
         $calc_time = round((microtime(true) - $start_time) * 1000, 2);
         
         $debug_info['transport_call'] = 'signature array';
+        $debug_info['raw_results'] = $results;
+        
         // Formatage réponse compatible
         $response = [
             'success' => false,
@@ -108,6 +136,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             'debug' => DEBUG_CALC ? $debug_info : null
         ];
         
+        // Support des deux formats de retour
         $carrier_results = isset($results['results']) ? $results['results'] : $results;
         $valid_count = 0;
         
@@ -117,108 +146,31 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             'kn' => 'Kuehne+Nagel'
         ];
         
-        foreach ($carrier_results as $carrier => $price) {
-            if (is_numeric($price) && $price > 0) {
+        foreach ($carrier_results as $carrier => $price_data) {
+            $debug_info['carrier_' . $carrier] = [
+                'raw_data' => $price_data,
+                'is_numeric' => is_numeric($price_data),
+                'is_positive' => is_numeric($price_data) && $price_data > 0
+            ];
+            
+            // Support prix direct ou structure complexe
+            $price = null;
+            if (is_numeric($price_data) && $price_data > 0) {
+                $price = (float)$price_data;
+            } elseif (is_array($price_data) && isset($price_data['price']) && $price_data['price'] > 0) {
+                $price = (float)$price_data['price'];
+            }
+            
+            if ($price !== null && $price > 0) {
                 $valid_count++;
                 
                 // Récupération délai depuis BDD
-                $delay = getCarrierDelayFromDB($db, $carrier, $params['departement'], $params['option_sup']);
-                
-                $response['carriers'][] = [
-                    'carrier_code' => $carrier,
-                    'carrier_name' => $carrier_names[$carrier] ?? strtoupper($carrier),
-                    'price' => (float)$price,
-                    'price_display' => number_format($price, 2, ',', ' ') . '€',
-                    'delay' => $delay
-                ];
-            }
-        }
-        
-        $response['success'] = $valid_count > 0;
-        $response['message'] = $valid_count > 0 ? 
-            "$valid_count transporteur(s) disponible(s)" : 
-            'Aucun tarif disponible';
-        
-        echo json_encode($response, JSON_PRETTY_PRINT);
-        
-    } catch (Exception $e) {
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'debug' => DEBUG_CALC ? ($debug_info ?? []) : null
-        ], JSON_PRETTY_PRINT);
-    }
-    exit;
-}
-
-// Fonction pour calculer le prix selon la tranche de poids
-function calculatePriceFromRecord($record, $poids, $carrier) {
-    if ($carrier === 'xpo') {
-        if ($poids <= 99) return $record['tarif_0_99'];
-        if ($poids <= 499) return $record['tarif_100_499'];
-        if ($poids <= 999) return $record['tarif_500_999'];
-        if ($poids <= 1999) return $record['tarif_1000_1999'];
-        return $record['tarif_2000_2999'];
-    }
-    
-    if ($carrier === 'heppner') {
-        if ($poids <= 9) return $record['tarif_0_9'];
-        if ($poids <= 19) return $record['tarif_10_19'];
-        if ($poids <= 29) return $record['tarif_20_29'];
-        if ($poids <= 39) return $record['tarif_30_39'];
-        if ($poids <= 49) return $record['tarif_40_49'];
-        if ($poids <= 59) return $record['tarif_50_59'];
-        if ($poids <= 69) return $record['tarif_60_69'];
-        if ($poids <= 79) return $record['tarif_70_79'];
-        if ($poids <= 89) return $record['tarif_80_89'];
-        if ($poids <= 99) return $record['tarif_90_99'];
-        if ($poids <= 299) return $record['tarif_100_299'];
-        if ($poids <= 499) return $record['tarif_300_499'];
-        if ($poids <= 999) return $record['tarif_500_999'];
-        return $record['tarif_1000_1999'];
-    }
-    
-    return null;
-}
-        
-        $debug_info['results_raw'] = $results;
-        $debug_info['transport_debug'] = $transport->debug ?? 'pas de debug';
-        
-        // Formatage réponse
-        $response = [
-            'success' => false,
-            'carriers' => [],
-            'time_ms' => $calc_time,
-            'debug' => DEBUG_CALC ? $debug_info : null
-        ];
-        
-        // Traitement résultats
-        $carrier_results = isset($results['results']) ? $results['results'] : $results;
-        $valid_count = 0;
-        
-        $carrier_names = [
-            'xpo' => 'XPO Logistics',
-            'heppner' => 'Heppner',
-            'kn' => 'Kuehne+Nagel'
-        ];
-        
-        foreach ($carrier_results as $carrier => $price) {
-            $debug_info['carrier_' . $carrier] = [
-                'raw_price' => $price,
-                'is_numeric' => is_numeric($price),
-                'is_positive' => $price > 0
-            ];
-            
-            if (is_numeric($price) && $price > 0) {
-                $valid_count++;
-                
-                // Récupération du délai depuis la BDD
                 $delay = getCarrierDelay($db, $carrier, $params['departement'], $params['option_sup']);
                 
                 $response['carriers'][] = [
                     'carrier_code' => $carrier,
                     'carrier_name' => $carrier_names[$carrier] ?? strtoupper($carrier),
-                    'price' => (float)$price,
+                    'price' => $price,
                     'price_display' => number_format($price, 2, ',', ' ') . '€',
                     'delay' => $delay
                 ];
@@ -228,721 +180,392 @@ function calculatePriceFromRecord($record, $poids, $carrier) {
         $response['success'] = $valid_count > 0;
         $response['message'] = $valid_count > 0 ? 
             "$valid_count transporteur(s) disponible(s)" : 
-            'Aucun tarif disponible';
+            'Aucun tarif disponible pour cette destination';
         
-        echo json_encode($response, JSON_PRETTY_PRINT);
+        // Debug des résultats finaux
+        if (DEBUG_CALC) {
+            $response['debug']['valid_count'] = $valid_count;
+            $response['debug']['final_carriers'] = $response['carriers'];
+        }
+        
+        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         
     } catch (Exception $e) {
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage(),
             'debug' => DEBUG_CALC ? ($debug_info ?? []) : null
-        ], JSON_PRETTY_PRINT);
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
     exit;
 }
-
-// Fonction pour récupérer le délai depuis la BDD
-function getCarrierDelay($db, $carrier, $departement, $option_sup) {
-    try {
-        $table_map = [
-            'xpo' => 'gul_xpo_rates',
-            'heppner' => 'gul_heppner_rates',
-            'kn' => 'gul_kn_rates'
-        ];
-        
-        if (!isset($table_map[$carrier])) {
-            return '24-48h';
-        }
-        
-        $sql = "SELECT delais FROM {$table_map[$carrier]} WHERE num_departement = ? LIMIT 1";
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$departement]);
-        $row = $stmt->fetch();
-        
-        $delay = $row['delais'] ?? '24-48h';
-        
-        // Adaptation selon options
-        switch ($option_sup) {
-            case 'premium_matin':
-                if ($carrier === 'heppner') $delay .= ' avant 13h';
-                elseif ($carrier === 'xpo') $delay .= ' avant 14h';
-                else $delay .= ' matin';
-                break;
-            case 'target':
-                $delay = 'Date imposée';
-                break;
-            case 'rdv':
-                $delay .= ' sur RDV';
-                break;
-        }
-        
-        return $delay;
-        
-    } catch (Exception $e) {
-        return '24-48h';
-    }
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?> - Guldagil</title>
-    
+    <title><?= htmlspecialchars($page_title) ?> - <?= APP_NAME ?></title>
+    <link rel="stylesheet" href="../assets/css/portail.css">
     <style>
         :root {
             --primary: #2563eb;
+            --primary-dark: #1d4ed8;
             --success: #10b981;
             --warning: #f59e0b;
-            --error: #ef4444;
+            --danger: #ef4444;
             --gray: #6b7280;
-            --light-gray: #f8fafc;
+            --gray-light: #f3f4f6;
+            --white: #ffffff;
+            --border: #e5e7eb;
         }
-        
-        * { box-sizing: border-box; }
-        body { 
-            margin: 0; 
-            font-family: -apple-system, sans-serif; 
-            background: var(--light-gray);
-            font-size: 14px;
-        }
-        
-        /* Header */
-        .calc-header {
-            background: linear-gradient(135deg, var(--primary), #1d4ed8);
-            color: white;
-            padding: 1rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .calc-header h1 {
-            margin: 0;
-            font-size: 1.25rem;
-        }
-        
-        .calc-header p {
-            margin: 0.25rem 0 0;
-            font-size: 0.875rem;
-            opacity: 0.9;
-        }
-        
-        /* Layout principal */
-        .calc-container {
+
+        .calculator-container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 2rem;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-grid {
             display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 2rem;
-            padding: 2rem;
-            min-height: calc(100vh - 120px);
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
         }
-        
-        /* Formulaire scrollable */
-        .calc-form-wrapper {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
-            overflow: hidden;
-        }
-        
-        .calc-form-header {
-            background: linear-gradient(135deg, var(--primary), #1d4ed8);
-            color: white;
-            padding: 1.5rem;
-        }
-        
-        .calc-form-header h2 {
-            margin: 0;
-            font-size: 1.1rem;
-        }
-        
-        .calc-form-content {
-            padding: 2rem;
-            max-height: calc(100vh - 200px);
-            overflow-y: auto;
-        }
-        
-        /* Résultats sticky */
-        .calc-results-wrapper {
-            position: sticky;
-            top: 120px;
-            height: fit-content;
-            max-height: calc(100vh - 140px);
-        }
-        
-        .calc-results {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
-            overflow: hidden;
-        }
-        
-        .calc-results-header {
-            background: linear-gradient(135deg, var(--success), #059669);
-            color: white;
-            padding: 1.5rem;
-        }
-        
-        .calc-results-header h2 {
-            margin: 0;
-            font-size: 1.1rem;
-        }
-        
-        .calc-results-content {
-            padding: 1.5rem;
-            max-height: calc(100vh - 300px);
-            overflow-y: auto;
-        }
-        
-        /* Champs formulaire */
+
         .form-group {
-            margin-bottom: 1.5rem;
+            display: flex;
+            flex-direction: column;
         }
-        
-        .form-label {
-            display: block;
+
+        .form-group label {
             font-weight: 600;
             margin-bottom: 0.5rem;
             color: #374151;
-            font-size: 0.9rem;
         }
-        
-        .form-input, .form-select {
-            width: 100%;
+
+        .form-group input,
+        .form-group select {
             padding: 0.75rem;
-            border: 2px solid #e5e7eb;
+            border: 2px solid var(--border);
             border-radius: 8px;
             font-size: 1rem;
             transition: border-color 0.2s;
         }
-        
-        .form-input:focus, .form-select:focus {
+
+        .form-group input:focus,
+        .form-group select:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
-        
-        .form-help {
-            font-size: 0.8rem;
-            color: var(--gray);
-            margin-top: 0.25rem;
-        }
-        
-        /* Options radio */
-        .radio-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-            margin-top: 0.5rem;
-        }
-        
-        .radio-option {
+
+        .checkbox-group {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.75rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.9rem;
+            margin-top: 1rem;
         }
-        
-        .radio-option:hover {
-            background: #f8fafc;
-            border-color: var(--primary);
-        }
-        
-        .radio-option input:checked + span {
-            font-weight: 600;
-            color: var(--primary);
-        }
-        
-        /* Checkbox */
-        .checkbox-option {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .checkbox-option:hover {
-            background: #f8fafc;
-            border-color: var(--primary);
-        }
-        
-        /* Bouton principal */
-        .calc-button {
-            width: 100%;
-            background: linear-gradient(135deg, var(--primary), #1d4ed8);
+
+        .btn-calculate {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
+            padding: 1rem 2rem;
             border: none;
-            padding: 1rem 1.5rem;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 1.5rem;
+            transition: transform 0.2s;
+            width: 100%;
         }
-        
-        .calc-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+
+        .btn-calculate:hover {
+            transform: translateY(-2px);
         }
-        
-        .calc-button:disabled {
+
+        .btn-calculate:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
-        
-        /* États résultats */
-        .results-empty {
-            text-align: center;
+
+        .results-container {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: var(--gray-light);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .results-container.show {
+            display: block;
+        }
+
+        .carrier-result {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: var(--white);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .carrier-result.best {
+            border-left-color: var(--success);
+            background: #f0fdf4;
+        }
+
+        .carrier-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .carrier-name {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .carrier-delay {
+            font-size: 0.875rem;
             color: var(--gray);
-            padding: 3rem 1rem;
         }
-        
-        .results-empty .icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
+
+        .carrier-price {
+            text-align: right;
         }
-        
-        .results-loading {
-            text-align: center;
-            padding: 2rem;
+
+        .price-value {
+            font-size: 1.25rem;
+            font-weight: 700;
             color: var(--primary);
         }
-        
+
+        .price-badge {
+            background: var(--success);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
         .spinner {
             width: 40px;
             height: 40px;
-            border: 4px solid #e5e7eb;
+            border: 4px solid var(--border);
             border-top: 4px solid var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 1rem;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
-        /* Cartes transporteurs */
-        .carrier-card {
-            background: #f8fafc;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            transition: all 0.3s;
-        }
-        
-        .carrier-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-        
-        .carrier-card.best {
-            border-color: var(--success);
-            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-            position: relative;
-        }
-        
-        .carrier-card.best::before {
-            content: '🏆 MEILLEUR';
-            position: absolute;
-            top: -8px;
-            right: 1rem;
-            background: var(--success);
-            color: white;
-            font-size: 0.7rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 12px;
-            font-weight: 600;
-        }
-        
-        .carrier-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.75rem;
-        }
-        
-        .carrier-name {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: #374151;
-        }
-        
-        .carrier-price {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-        
-        .carrier-card.best .carrier-price {
-            color: var(--success);
-        }
-        
-        .carrier-details {
-            font-size: 0.85rem;
-            color: var(--gray);
-            line-height: 1.4;
-        }
-        
-        /* Messages d'erreur */
+
         .error-message {
             background: #fef2f2;
-            border: 2px solid #fecaca;
+            border: 1px solid #fecaca;
             color: #dc2626;
             padding: 1rem;
             border-radius: 8px;
             margin-bottom: 1rem;
         }
-        
-        /* Debug */
-        .debug-panel {
-            background: #f3f4f6;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            padding: 1rem;
+
+        .debug-info {
             margin-top: 1rem;
-            font-size: 0.8rem;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .debug-panel pre {
-            margin: 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.875rem;
             white-space: pre-wrap;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .calc-container {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                padding: 1rem;
-            }
-            
-            .calc-results-wrapper {
-                position: static;
-                order: -1;
-            }
-            
-            .radio-group {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        /* Section titres */
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #374151;
-            margin: 2rem 0 1rem 0;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid #e5e7eb;
-        }
-        
-        .section-title:first-child {
-            margin-top: 0;
         }
     </style>
 </head>
 <body>
-
-<!-- Header -->
-<div class="calc-header">
-    <h1><?= htmlspecialchars($page_title) ?></h1>
-    <p>Comparaison instantanée XPO, Heppner, Kuehne+Nagel</p>
-</div>
-
-<!-- Container principal -->
-<div class="calc-container">
-    
-    <!-- Formulaire scrollable -->
-    <div class="calc-form-wrapper">
-        <div class="calc-form-header">
-            <h2>📋 Paramètres d'expédition</h2>
+    <div class="header">
+        <h1><?= htmlspecialchars($page_title) ?></h1>
+        <div class="version-info">
+            Version <?= APP_VERSION ?> - Build <?= BUILD_NUMBER ?>
         </div>
-        
-        <div class="calc-form-content">
-            <form id="calcForm">
-                
-                <h3 class="section-title">📍 Destination</h3>
+    </div>
+
+    <div class="calculator-container">
+        <form id="calc-form" onsubmit="return false;">
+            <div class="form-grid">
                 <div class="form-group">
-                    <label for="departement" class="form-label">Département de destination *</label>
-                    <input type="text" id="departement" class="form-input" 
+                    <label for="departement">Département de destination *</label>
+                    <input type="text" id="departement" name="departement" 
                            placeholder="Ex: 67, 75, 13..." maxlength="2" required>
-                    <div class="form-help">Code département français (01-95)</div>
                 </div>
-                
-                <h3 class="section-title">⚖️ Poids et conditionnement</h3>
+
                 <div class="form-group">
-                    <label for="poids" class="form-label">Poids total (kg) *</label>
-                    <input type="number" id="poids" class="form-input" 
-                           placeholder="Ex: 25.5" min="0.1" step="0.1" max="32000" required>
-                    <div class="form-help">Poids brut total incluant emballage</div>
+                    <label for="poids">Poids (kg) *</label>
+                    <input type="number" id="poids" name="poids" 
+                           min="0.1" max="32000" step="0.1" placeholder="Ex: 25.5" required>
                 </div>
-                
+
                 <div class="form-group">
-                    <label for="type" class="form-label">Type d'envoi</label>
-                    <select id="type" class="form-select">
-                        <option value="colis">Colis standard</option>
+                    <label for="type">Type d'expédition</label>
+                    <select id="type" name="type">
+                        <option value="colis">Colis</option>
                         <option value="palette">Palette</option>
                     </select>
                 </div>
-                
-                <div class="form-group" id="palettesGroup" style="display: none;">
-                    <label for="palettes" class="form-label">Nombre de palettes EUR consignées</label>
-                    <input type="number" id="palettes" class="form-input" 
-                           placeholder="0" min="0" max="20" value="0">
-                    <div class="form-help">Palettes Europe retournables (peut être 0)</div>
-                </div>
-                
-                <h3 class="section-title">⚠️ Matières dangereuses</h3>
+
                 <div class="form-group">
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" name="adr" value="non" checked>
-                            <span>✅ Non ADR</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="adr" value="oui">
-                            <span>⚠️ ADR</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <h3 class="section-title">⚙️ Options de livraison</h3>
-                <div class="form-group">
-                    <label for="option_sup" class="form-label">Service de livraison</label>
-                    <select id="option_sup" class="form-select">
-                        <option value="standard">Standard</option>
-                        <option value="rdv">Prise de RDV (+6-8€)</option>
-                        <option value="premium_matin">Premium matin (+25€)</option>
-                        <option value="target">Date imposée (+30€)</option>
+                    <label for="adr">Matières dangereuses (ADR)</label>
+                    <select id="adr" name="adr">
+                        <option value="non">Non</option>
+                        <option value="oui">Oui</option>
                     </select>
                 </div>
-                
-                <div class="form-group">
-                    <label class="checkbox-option">
-                        <input type="checkbox" id="enlevement">
-                        <span>🏭 Enlèvement extérieur (hors siège social)</span>
-                    </label>
-                    <div class="form-help">Gratuit Heppner, +25€ XPO, +20€ Kuehne+Nagel</div>
-                </div>
-                
-                <button type="submit" class="calc-button" id="calculateBtn">
-                    🧮 Calculer les tarifs
-                </button>
-                
-            </form>
-        </div>
-    </div>
-    
-    <!-- Résultats sticky -->
-    <div class="calc-results-wrapper">
-        <div class="calc-results">
-            <div class="calc-results-header">
-                <h2>💰 Comparaison des tarifs</h2>
-            </div>
-            
-            <div class="calc-results-content" id="resultsContent">
-                <div class="results-empty">
-                    <div class="icon">📊</div>
-                    <p><strong>Prêt pour le calcul</strong></p>
-                    <p>Remplissez le formulaire pour obtenir<br>une comparaison des tarifs transporteurs</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-</div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('calcForm');
-    const calculateBtn = document.getElementById('calculateBtn');
-    const resultsContent = document.getElementById('resultsContent');
-    const typeSelect = document.getElementById('type');
-    const palettesGroup = document.getElementById('palettesGroup');
-    
-    // Gestion palette
-    typeSelect.addEventListener('change', function() {
-        palettesGroup.style.display = this.value === 'palette' ? 'block' : 'none';
-    });
-    
-    // Auto-palette si > 60kg
-    document.getElementById('poids').addEventListener('input', function() {
-        if (parseFloat(this.value) > 60) {
-            typeSelect.value = 'palette';
-            palettesGroup.style.display = 'block';
-        }
-    });
-    
-    // Validation département temps réel
-    document.getElementById('departement').addEventListener('input', function() {
-        this.value = this.value.replace(/\D/g, '');
-        if (this.value.length >= 2) {
-            // Calcul automatique si formulaire valide
-            setTimeout(checkAutoCalculate, 500);
-        }
-    });
-    
-    // Calcul automatique sur changement
-    ['poids', 'type', 'option_sup'].forEach(id => {
-        document.getElementById(id).addEventListener('change', function() {
-            setTimeout(checkAutoCalculate, 300);
-        });
-    });
-    
-    document.querySelectorAll('input[name="adr"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            setTimeout(checkAutoCalculate, 300);
-        });
-    });
-    
-    document.getElementById('enlevement').addEventListener('change', function() {
-        setTimeout(checkAutoCalculate, 300);
-    });
-    
-    function checkAutoCalculate() {
-        const dept = document.getElementById('departement').value;
-        const poids = parseFloat(document.getElementById('poids').value);
-        
-        if (dept && dept.length === 2 && poids && poids > 0) {
-            calculateTariffs();
-        }
-    }
-    
-    // Soumission manuelle
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        calculateTariffs();
-    });
-    
-    function showError(message) {
-        resultsContent.innerHTML = `<div class="error-message">❌ ${message}</div>`;
-    }
-    
-    function showLoading() {
-        calculateBtn.disabled = true;
-        calculateBtn.textContent = 'Calcul en cours...';
-        
-        resultsContent.innerHTML = `
-            <div class="results-loading">
-                <div class="spinner"></div>
-                <p><strong>Calcul en cours...</strong></p>
-                <p>Interrogation des tarifs transporteurs</p>
+                <div class="form-group">
+                    <label for="option_sup">Options de service</label>
+                    <select id="option_sup" name="option_sup">
+                        <option value="standard">Livraison standard</option>
+                        <option value="premium_matin">Premium avant 13h</option>
+                        <option value="rdv">Prise de RDV</option>
+                        <option value="target">Date imposée</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="palettes">Nombre de palettes</label>
+                    <input type="number" id="palettes" name="palettes" 
+                           min="0" max="10" value="0" placeholder="0">
+                </div>
             </div>
-        `;
-    }
-    
-    function calculateTariffs() {
-        const dept = document.getElementById('departement').value;
-        const poids = parseFloat(document.getElementById('poids').value);
-        
-        if (!dept || dept.length !== 2) {
-            showError('Département invalide (01-95)');
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="enlevement" name="enlevement" value="1">
+                <label for="enlevement">Enlèvement à domicile</label>
+            </div>
+
+            <button type="button" class="btn-calculate" onclick="calculateRates()">
+                🚚 Calculer les tarifs
+            </button>
+        </form>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <div>Calcul en cours...</div>
+        </div>
+
+        <div id="results" class="results-container">
+            <h3>Résultats de calcul</h3>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <script>
+    function calculateRates() {
+        const form = document.getElementById('calc-form');
+        const formData = new FormData(form);
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const resultsContent = document.getElementById('resultsContent');
+        const button = document.querySelector('.btn-calculate');
+
+        // Validation côté client
+        const departement = formData.get('departement');
+        const poids = parseFloat(formData.get('poids'));
+
+        if (!departement || departement.length < 1) {
+            alert('Veuillez saisir un département');
             return;
         }
-        
+
         if (!poids || poids <= 0) {
-            showError('Poids invalide');
+            alert('Veuillez saisir un poids valide');
             return;
         }
-        
-        showLoading();
-        
-        const formData = new URLSearchParams();
-        formData.append('departement', dept);
-        formData.append('poids', poids.toString());
-        formData.append('type', document.getElementById('type').value);
-        formData.append('adr', document.querySelector('input[name="adr"]:checked').value);
-        formData.append('option_sup', document.getElementById('option_sup').value);
-        formData.append('palettes', document.getElementById('palettes').value);
-        
-        if (document.getElementById('enlevement').checked) {
-            formData.append('enlevement', '1');
+
+        // Affichage du loading
+        button.disabled = true;
+        loading.classList.add('show');
+        results.classList.remove('show');
+
+        // Préparation des données
+        const params = new URLSearchParams();
+        for (const [key, value] of formData.entries()) {
+            params.append(key, value);
         }
-        
+
+        // Appel AJAX
         fetch('?ajax=calculate', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: formData.toString()
+            body: params.toString()
         })
         .then(response => response.json())
         .then(data => {
-            calculateBtn.disabled = false;
-            calculateBtn.textContent = '🧮 Calculer les tarifs';
-            
-            console.log('Réponse API:', data);
+            loading.classList.remove('show');
+            button.disabled = false;
             
             if (data.success && data.carriers && data.carriers.length > 0) {
                 displayResults(data);
             } else {
-                showError(data.error || data.message || 'Aucun tarif disponible');
-                
-                // Afficher debug si disponible
-                if (data.debug) {
-                    const debugHtml = `
-                        <div class="debug-panel">
-                            <strong>Debug info:</strong>
-                            <pre>${JSON.stringify(data.debug, null, 2)}</pre>
-                        </div>
-                    `;
-                    resultsContent.innerHTML += debugHtml;
-                }
+                displayError(data.message || 'Aucun résultat disponible', data.debug);
             }
         })
         .catch(error => {
-            calculateBtn.disabled = false;
-            calculateBtn.textContent = '🧮 Calculer les tarifs';
-            showError('Erreur de connexion');
-            console.error('Erreur fetch:', error);
+            loading.classList.remove('show');
+            button.disabled = false;
+            displayError('Erreur de communication: ' + error.message);
         });
     }
-    
+
     function displayResults(data) {
+        const resultsContent = document.getElementById('resultsContent');
+        const results = document.getElementById('results');
+        
+        // Tri des transporteurs par prix
         const carriers = data.carriers.sort((a, b) => a.price - b.price);
-        let html = '';
+        
+        let html = '<div class="results-grid">';
         
         carriers.forEach((carrier, index) => {
             const isBest = index === 0;
-            
             html += `
-                <div class="carrier-card ${isBest ? 'best' : ''}">
-                    <div class="carrier-header">
+                <div class="carrier-result ${isBest ? 'best' : ''}" data-carrier="${carrier.carrier_code}">
+                    <div class="carrier-info">
                         <div class="carrier-name">${carrier.carrier_name}</div>
-                        <div class="carrier-price">${carrier.price_display}</div>
+                        <div class="carrier-delay">⏰ ${carrier.delay}</div>
                     </div>
-                    <div class="carrier-details">
-                        Tarif TTC • Délai: ${carrier.delay || getDelay(carrier.carrier_code)}
-                        ${getOptionsText(carrier.carrier_code)}
+                    <div class="carrier-price">
+                        <div class="price-value">${carrier.price_display}</div>
+                        ${isBest ? '<div class="price-badge">MEILLEUR PRIX</div>' : ''}
                     </div>
                 </div>
             `;
         });
         
-        // Métadonnées
+        html += '</div>';
+        
+        // Informations complémentaires
         const economy = carriers.length > 1 ? 
             (carriers[carriers.length-1].price - carriers[0].price).toFixed(2) : '0.00';
         
@@ -952,35 +575,54 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         
-        resultsContent.innerHTML = html;
-    }
-    
-    function getDelay(carrier) {
-        const delays = {
-            'xpo': '24-48h',
-            'heppner': '24-48h', 
-            'kn': '48-72h'
-        };
-        return delays[carrier] || '24-48h';
-    }
-    
-    function getOptionsText(carrier) {
-        const service = document.getElementById('option_sup').value;
-        const enlevement = document.getElementById('enlevement').checked;
-        const options = [];
-        
-        if (service === 'rdv') options.push('RDV');
-        if (service === 'premium_matin') options.push('Premium');
-        if (service === 'target') options.push('Date imposée');
-        if (enlevement) {
-            const costs = {'xpo': '+25€', 'heppner': 'Gratuit', 'kn': '+20€'};
-            options.push('Enlèvement ' + (costs[carrier] || '+15€'));
+        // Debug si activé
+        if (data.debug) {
+            html += `<div class="debug-info">${JSON.stringify(data.debug, null, 2)}</div>`;
         }
         
-        return options.length > 0 ? ' • ' + options.join(' • ') : '';
+        resultsContent.innerHTML = html;
+        results.classList.add('show');
     }
-});
-</script>
+    
+    function displayError(message, debug = null) {
+        const resultsContent = document.getElementById('resultsContent');
+        const results = document.getElementById('results');
+        
+        let html = `<div class="error-message">${message}</div>`;
+        
+        if (debug) {
+            html += `<div class="debug-info">${JSON.stringify(debug, null, 2)}</div>`;
+        }
+        
+        resultsContent.innerHTML = html;
+        results.classList.add('show');
+    }
 
+    // Auto-format département
+    document.getElementById('departement').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 2) value = value.slice(0, 2);
+        e.target.value = value;
+    });
+
+    // Calcul automatique poids pallettes
+    document.getElementById('type').addEventListener('change', function(e) {
+        const palettesInput = document.getElementById('palettes');
+        if (e.target.value === 'palette') {
+            palettesInput.min = '1';
+            if (palettesInput.value === '0') palettesInput.value = '1';
+        } else {
+            palettesInput.min = '0';
+        }
+    });
+    </script>
+
+    <div class="footer">
+        <div class="footer-info">
+            <span><?= APP_NAME ?> - Version <?= APP_VERSION ?></span>
+            <span>Build <?= BUILD_NUMBER ?> (<?= BUILD_DATE ?>)</span>
+            <span>&copy; <?= COPYRIGHT_YEAR ?> <?= APP_AUTHOR ?></span>
+        </div>
+    </div>
 </body>
 </html>
