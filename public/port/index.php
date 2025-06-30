@@ -607,7 +607,7 @@ include __DIR__ . '/../../templates/header.php';
                                 <span>⚠️ Oui</span>
                             </button>
                         </div>
-                        <input type="hidden" id="adr" name="adr" value="non">
+                        <input type="hidden" id="adr" name="adr" value="">
                     </div>
                 </div>
 
@@ -697,7 +697,7 @@ let autoCalcTimeout = null;
 let fieldsValidated = {
     departement: false,
     poids: false,
-    adr: false
+    adr: false // Aucune valeur par défaut - choix obligatoire
 };
 
 // Initialisation
@@ -763,7 +763,7 @@ function setupEventListeners() {
         checkCanCalculate();
     });
     
-    // Boutons ADR tactiles
+    // Boutons ADR tactiles - CORRIGER LA VALIDATION
     document.querySelectorAll('[data-adr]').forEach(btn => {
         btn.addEventListener('click', function() {
             const value = this.dataset.adr;
@@ -775,7 +775,7 @@ function setupEventListeners() {
             
             // Mise à jour input hidden et validation
             document.getElementById('adr').value = value;
-            fieldsValidated.adr = true;
+            fieldsValidated.adr = true; // ✅ Maintenant ADR est validé
             
             checkAndAutoCalculate();
         });
@@ -1151,10 +1151,10 @@ function resetForm() {
         btn.classList.remove('completed');
     });
     
-    // Reset boutons
+    // Reset boutons ADR - AUCUNE SÉLECTION PAR DÉFAUT
     document.querySelectorAll('[data-adr]').forEach(btn => btn.classList.remove('active', 'oui'));
-    document.querySelector('[data-adr="non"]').classList.add('active');
-    document.getElementById('adr').value = 'non';
+    // PAS de classList.add('active') - l'utilisateur doit choisir
+    document.getElementById('adr').value = ''; // Valeur vide
     
     document.querySelectorAll('[data-enlevement]').forEach(btn => btn.classList.remove('active'));
     document.querySelector('[data-enlevement="non"]').classList.add('active');
