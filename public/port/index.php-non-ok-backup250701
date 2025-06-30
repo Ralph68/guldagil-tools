@@ -522,6 +522,26 @@ include __DIR__ . '/../../templates/header.php';
         transform: translateX(0);
     }
 }
+    .form-section.inactive {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.step-indicator {
+    background: #e5e7eb;
+    color: #6b7280;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.step-indicator.active { background: #3b82f6; color: white; }
+.step-indicator.completed { background: #10b981; color: white; }
 </style>
 
 <!-- Contenu principal -->
@@ -538,7 +558,6 @@ include __DIR__ . '/../../templates/header.php';
             <h2 class="panel-title">Configuration de l'expédition</h2>
         </div>
         
-        <!-- Navigation étapes -->
         <!-- Navigation étapes -->
 <nav class="steps-nav">
     <button type="button" class="step-btn active" data-step="1">📍 Destination</button>
@@ -642,9 +661,6 @@ include __DIR__ . '/../../templates/header.php';
                     <button type="button" class="btn-reset" onclick="resetForm()">
                         🔄 Nouvelle recherche
                     </button>
-            <button type="button" onclick="showHistory()" class="btn-reset">
-    📚 Voir l'historique
-</button>
                 </div>
             </form>
         </div>
@@ -664,6 +680,19 @@ include __DIR__ . '/../../templates/header.php';
             </div>
         </div>
     </div>
+    <!-- Bouton historique -->
+<div id="history-section" style="display: none; margin-top: 20px;">
+    <button id="show-history" class="btn btn-secondary">
+        📋 Voir l'historique des calculs
+    </button>
+    <div class="debug-container" id="debug-container" style="display: none;">
+    <div class="debug-header" onclick="toggleDebug()">
+        <span>🐛 Debug Transport</span>
+        <span id="debug-toggle">▼</span>
+    </div>
+    <div class="debug-content" id="debug-content"></div>
+</div>
+</div>
 </main>
 
 <!-- JavaScript -->
