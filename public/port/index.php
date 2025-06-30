@@ -578,23 +578,28 @@ include __DIR__ . '/../../templates/header.php';
                                min="1" max="10000" step="0.1" placeholder="Ex: 25.5">
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="type">
-                            Type d'expédition *
-                        </label>
-                        <select id="type" name="type" class="form-input">
-                            <option value="colis">Colis</option>
-                            <option value="palette">Palette(s)</option>
-                        </select>
-                    </div>
+<!-- Type d'expédition avec sous-option palette -->
+<div class="form-group">
+    <label class="form-label" for="type">
+        Type d'expédition *
+    </label>
+    <select id="type" name="type" class="form-input">
+        <option value="colis">Colis</option>
+        <option value="palette">Palette(s)</option>
+    </select>
+</div>
 
-                    <div class="form-group" id="palettesGroup" style="display: none;">
-                        <label class="form-label" for="palettes">
-                            Nombre de palettes
-                        </label>
-                        <input type="number" id="palettes" name="palettes" class="form-input" 
-                               min="1" max="10" value="1">
-                    </div>
+                    <!-- Nombre de palettes EUR - s'affiche si palette sélectionné -->
+<div class="form-group" id="palettesGroup" style="display: none;">
+    <label class="form-label" for="palettes">
+        Nombre de palettes EUR
+    </label>
+    <input type="number" id="palettes" name="palettes" class="form-input" 
+           min="0" max="10" value="1" placeholder="0 à 10 palettes">
+    <small style="color: #6b7280; font-size: 0.75rem;">
+        Palettes EUR standard (peut être 0)
+    </small>
+</div>
                     
                     <!-- ADR obligatoire -->
                     <div class="form-group">
@@ -741,7 +746,7 @@ function setupEventListeners() {
         }
     });
     
-    // Validation poids avec auto-palette si >60kg
+    // Validation poids - SANS auto-navigation
     document.getElementById('poids').addEventListener('input', function() {
         const value = parseFloat(this.value);
         
@@ -750,16 +755,10 @@ function setupEventListeners() {
             this.classList.remove('invalid');
             fieldsValidated.poids = true;
             
-            // Auto-palette si >60kg
+            // Auto-palette si >60kg MAIS pas de navigation auto
             if (value > 60) {
                 document.getElementById('type').value = 'palette';
                 togglePalettesGroup();
-            }
-            
-            // ATTENDRE validation ET étape 2
-            if (currentStep === 2) {
-                markStepCompleted(2);
-                setTimeout(() => goToStep(3), 1000);
             }
         } else {
             this.classList.remove('valid');
@@ -773,10 +772,35 @@ function setupEventListeners() {
         clearTimeout(autoCalcTimeout);
     });
     
-    // Type d'expédition
+    // Type d'expédition - avec navigation conditionnelle
     document.getElementById('type').addEventListener('change', function() {
         togglePalettesGroup();
-        checkCanCalculate();
+        
+        // Si palette sélectionné, attendre nombre de palettes
+        if (this.value === 'palette') {
+            // Focus sur champ palettes
+            setTimeout(() => {
+                document.getElementById('palettes').focus();
+            }, 100);
+        } else {
+            // Si colis, on peut passer à ADR
+            if (fieldsValidated.poids && currentStep === 2) {
+                markStepCompleted(2);
+                setTimeout(() => goToStep(3), 800);
+            }
+        }
+    });
+    
+    // Validation palettes - déclenche navigation vers ADR
+    document.getElementById('palettes').addEventListener('input', function() {
+        const value = parseInt(this.value);
+        
+        // Si palette sélectionné ET poids valide, aller à ADR
+        if (document.getElementById('type').value === 'palette' && 
+            fieldsValidated.poids && currentStep === 2) {
+            markStepCompleted(2);
+            setTimeout(() => goToStep(3), 800);
+        }
     });
     
     // Boutons ADR tactiles - NE DÉCLENCHE PAS AUTO-CALCUL
@@ -1042,11 +1066,17 @@ function displayResults(results, bestCarrier, params) {
     };
     
     let html = `
-        <!-- Informations recherche -->
-        <div style="background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem;">
-            <strong>Recherche:</strong> ${params.departement} • ${params.poids}kg • ${params.type}
-            ${params.adr === 'oui' ? ' • ADR' : ''}
-            ${params.enlevement === 'oui' ? ' • Enlèvement' : ''}
+        <!-- RAPPEL INFORMATIONS SAISIES -->
+        <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; border-left: 4px solid #3b82f6;">
+            <h4 style="margin: 0 0 0.5rem 0; color: #1f2937; font-size: 0.875rem;">📋 Votre recherche</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.875rem;">
+                <div><strong>Destination:</strong> Département ${params.departement}</div>
+                <div><strong>Poids:</strong> ${params.poids} kg</div>
+                <div><strong>Type:</strong> ${params.type === 'palette' ? 'Palette(s)' : 'Colis'}</div>
+                <div><strong>ADR:</strong> ${params.adr === 'oui' ? '⚠️ Oui' : '❌ Non'}</div>
+                <div><strong>Service:</strong> ${getServiceLabel(params.option_sup)}</div>
+                <div><strong>Enlèvement:</strong> ${params.enlevement === 'oui' ? '📤 Inclus' : '❌ Non inclus'}</div>
+            </div>
         </div>
         
         <!-- Meilleur résultat -->
@@ -1269,6 +1299,17 @@ function loadSavedData() {
     } catch (e) {
         console.warn('Erreur chargement données sauvegardées');
     }
+}
+
+// Utilitaires
+function getServiceLabel(service) {
+    const labels = {
+        'standard': 'Standard',
+        'rdv': 'Sur RDV',
+        'premium_matin': 'Premium Matin',
+        'target': 'Date imposée'
+    };
+    return labels[service] || 'Standard';
 }
 
 // Raccourcis clavier
