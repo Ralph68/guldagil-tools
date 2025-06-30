@@ -697,7 +697,7 @@ function setupEventListeners() {
     document.getElementById('type').addEventListener('change', handleFormChange);
     document.getElementById('palettes').addEventListener('input', handleFormChange);
     
-    // Boutons ADR
+    // Boutons ADR - SEUL DÉCLENCHEUR AUTORISÉ
     document.querySelectorAll('[data-adr]').forEach(btn => {
         btn.addEventListener('click', function() {
             const value = this.dataset.adr;
@@ -708,6 +708,9 @@ function setupEventListeners() {
             if (value === 'oui') this.classList.add('oui');
             
             document.getElementById('adr').value = value;
+            
+            // SEULEMENT MAINTENANT on peut passer aux options ET calculer
+            setTimeout(() => goToStep(3), 500);
             handleFormChange();
         });
     });
@@ -766,7 +769,7 @@ function handleFormChange() {
     }
 }
 
-// Auto-navigation naturelle
+// Auto-navigation naturelle - BLOQUE SUR ADR
 function autoNavigateIfNeeded() {
     const dept = document.getElementById('departement').value;
     const poids = parseFloat(document.getElementById('poids').value);
@@ -777,10 +780,8 @@ function autoNavigateIfNeeded() {
         setTimeout(() => goToStep(2), 800);
     }
     
-    // Poids valide → Étape 3  
-    if (poids > 0 && poids <= 9999) {
-        setTimeout(() => goToStep(3), 800);
-    }
+    // POIDS SAISI = ON NE FAIT RIEN !
+    // ON ATTEND ADR OBLIGATOIREMENT
 }
 
 // Validation formulaire
