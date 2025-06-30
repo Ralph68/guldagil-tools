@@ -850,14 +850,17 @@ function goToStep(step) {
     document.querySelectorAll('.step-btn').forEach(s => s.classList.remove('active'));
     
     // Afficher l'étape cible
-    document.querySelector(`[data-step="${step}"]`).classList.add('active');
-    document.querySelector(`.step-btn[data-step="${step}"]`).classList.add('active');
+    const targetStep = document.querySelector(`.form-step[data-step="${step}"]`);
+    const targetBtn = document.querySelector(`.step-btn[data-step="${step}"]`);
+    
+    if (targetStep) targetStep.classList.add('active');
+    if (targetBtn) targetBtn.classList.add('active');
     
     currentStep = step;
     
     // Focus sur le premier champ
     setTimeout(() => {
-        const firstInput = document.querySelector(`[data-step="${step}"] input, [data-step="${step}"] select`);
+        const firstInput = document.querySelector(`.form-step[data-step="${step}"] input, .form-step[data-step="${step}"] select`);
         if (firstInput) firstInput.focus();
     }, 100);
 }
