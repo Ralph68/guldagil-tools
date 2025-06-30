@@ -693,13 +693,21 @@ let maxStep = 3;
 let canCalculate = false;
 let calculationTimeout = null;
 let lastCalculationParams = null;
+let autoCalcTimeout = null;
+let fieldsValidated = {
+    departement: false,
+    poids: false,
+    adr: false
+};
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     loadSavedData();
+    console.log('🧮 Calculateur initialisé - version intégrée');
 });
 
+// Configuration des événements
 function setupEventListeners() {
     // Navigation entre étapes
     document.querySelectorAll('.step-btn').forEach(btn => {
@@ -711,51 +719,42 @@ function setupEventListeners() {
         });
     });
     
-    // Département - validation temps réel
+    // Validation département
     document.getElementById('departement').addEventListener('input', function() {
-        const value = this.value.trim();
+        const value = this.value.replace(/\D/g, '').slice(0, 2);
+        this.value = value;
         
         if (value.length === 2 && /^(0[1-9]|[1-8][0-9]|9[0-5])$/.test(value)) {
             this.classList.add('valid');
             this.classList.remove('invalid');
-            markStepCompleted(1);
-            setTimeout(() => goToStep(2), 300); // Passage automatique
-        } else if (value.length >= 2) {
-            this.classList.add('invalid');
-            this.classList.remove('valid');
+            fieldsValidated.departement = true;
         } else {
-            this.classList.remove('valid', 'invalid');
+            this.classList.remove('valid');
+            this.classList.add('invalid');
+            fieldsValidated.departement = false;
         }
-        
-        checkCanCalculate();
+        checkAndAutoCalculate();
     });
     
-    // Poids - délai avant validation
+    // Validation poids
     document.getElementById('poids').addEventListener('input', function() {
-        clearTimeout(calculationTimeout);
+        const value = parseFloat(this.value);
         
-        calculationTimeout = setTimeout(() => {
-            const value = parseFloat(this.value);
-            
-            if (value > 0 && value <= 10000) {
-                this.classList.add('valid');
-                this.classList.remove('invalid');
-                
-                // Règle métier : > 60kg = palette automatique
-                if (value > 60) {
-                    document.getElementById('type').value = 'palette';
-                    togglePalettesGroup();
-                }
-                
-                markStepCompleted(2);
-                setTimeout(() => goToStep(3), 300); // Passage automatique
-            } else if (value <= 0 || value > 10000) {
-                this.classList.add('invalid');
-                this.classList.remove('valid');
-            }
-            
-            checkCanCalculate();
-        }, 800); // Délai pour laisser saisir 2-3 chiffres
+        if (value > 0 && value <= 9999) {
+            this.classList.add('valid');
+            this.classList.remove('invalid');
+            fieldsValidated.poids = true;
+        } else {
+            this.classList.remove('valid');
+            this.classList.add('invalid');
+            fieldsValidated.poids = false;
+        }
+        checkAndAutoCalculate();
+    });
+    
+    // Empêcher auto-calcul pendant la frappe rapide
+    document.getElementById('poids').addEventListener('keydown', function() {
+        clearTimeout(autoCalcTimeout);
     });
     
     // Type d'expédition
@@ -774,10 +773,11 @@ function setupEventListeners() {
             this.classList.add('active');
             if (value === 'oui') this.classList.add('oui');
             
-            // Mise à jour input hidden
+            // Mise à jour input hidden et validation
             document.getElementById('adr').value = value;
+            fieldsValidated.adr = true;
             
-            checkCanCalculate();
+            checkAndAutoCalculate();
         });
     });
     
@@ -812,6 +812,24 @@ function setupEventListeners() {
     });
 }
 
+// Fonction de validation et auto-calcul
+function checkAndAutoCalculate() {
+    // Vérifier si tous les champs requis sont remplis
+    const allRequired = fieldsValidated.departement && 
+                       fieldsValidated.poids && 
+                       fieldsValidated.adr;
+    
+    if (allRequired) {
+        // Déclencher calcul avec délai pour éviter spam
+        clearTimeout(autoCalcTimeout);
+        autoCalcTimeout = setTimeout(() => {
+            console.log('🚀 Auto-calcul déclenché');
+            calculateRates();
+        }, 800); // 800ms délai
+    }
+}
+
+// Navigation entre étapes
 function goToStep(step) {
     if (step < 1 || step > maxStep) return;
     
@@ -909,6 +927,7 @@ function getFormParams() {
     };
 }
 
+// Calcul des tarifs
 async function calculateRates() {
     const resultsContainer = document.getElementById('resultsContainer');
     
@@ -957,6 +976,7 @@ async function calculateRates() {
     }
 }
 
+// Affichage des résultats
 function displayResults(results, bestCarrier, params) {
     const resultsContainer = document.getElementById('resultsContainer');
     
@@ -1089,6 +1109,7 @@ function displayResults(results, bestCarrier, params) {
     resultsContainer.innerHTML = html;
 }
 
+// Utilitaires d'affichage
 function toggleAlternative() {
     const details = document.getElementById('altDetails');
     const toggle = document.getElementById('altToggle');
@@ -1107,6 +1128,7 @@ function toggleDebug() {
     debug.classList.toggle('open');
 }
 
+// Reset du formulaire
 function resetForm() {
     document.getElementById('calculatorForm').reset();
     
@@ -1114,6 +1136,11 @@ function resetForm() {
     currentStep = 1;
     canCalculate = false;
     lastCalculationParams = null;
+    fieldsValidated = {
+        departement: false,
+        poids: false,
+        adr: false
+    };
     
     // Reset visuel
     document.querySelectorAll('.form-input').forEach(input => {
@@ -1157,6 +1184,7 @@ function resetForm() {
     localStorage.removeItem('calculateur_data');
 }
 
+// Sauvegarde et chargement des données
 function saveFormData() {
     const data = getFormParams();
     localStorage.setItem('calculateur_data', JSON.stringify(data));
@@ -1222,7 +1250,6 @@ document.addEventListener('keydown', function(e) {
     }
 });
 </script>
-
 <?php
 // Inclure le footer avec templates
 include __DIR__ . '/../../templates/footer.php';
