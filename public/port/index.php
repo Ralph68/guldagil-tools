@@ -724,14 +724,16 @@ function setupEventListeners() {
         const value = this.value.replace(/\D/g, '').slice(0, 2);
         this.value = value;
         
-        if (value.length === 2 && /^(0[1-9]|[1-8][0-9]|9[0-5])$/.test(value)) {
+        if (value.length === 2 && /^(0[1-9]|[1-8][0-9]|9[0-5])$/.test(value) && value !== '00') {
             this.classList.add('valid');
             this.classList.remove('invalid');
             fieldsValidated.departement = true;
             
-            // Auto-navigation vers étape 2
-            markStepCompleted(1);
-            setTimeout(() => goToStep(2), 500);
+            // Auto-navigation vers étape 2 seulement si on est à l'étape 1
+            if (currentStep === 1) {
+                markStepCompleted(1);
+                setTimeout(() => goToStep(2), 500);
+            }
         } else {
             this.classList.remove('valid');
             this.classList.add('invalid');
@@ -749,9 +751,11 @@ function setupEventListeners() {
             this.classList.remove('invalid');
             fieldsValidated.poids = true;
             
-            // Auto-navigation vers étape 3
-            markStepCompleted(2);
-            setTimeout(() => goToStep(3), 500);
+            // Auto-navigation vers étape 3 seulement si on est à l'étape 2
+            if (currentStep === 2) {
+                markStepCompleted(2);
+                setTimeout(() => goToStep(3), 500);
+            }
         } else {
             this.classList.remove('valid');
             this.classList.add('invalid');
