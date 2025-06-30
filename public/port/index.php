@@ -80,50 +80,106 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
         $test_query = $db->query("SELECT COUNT(*) as count FROM gul_xpo_rates LIMIT 1");
         $debug_info['db_test'] = $test_query ? $test_query->fetch()['count'] : 'erreur';
         
-        // Calcul
+        // Charger la vraie classe Transport fonctionnelle
+        $transport_file = __DIR__ . '/../../features/port/transport.php';
+        
+        if (!file_exists($transport_file)) {
+            throw new Exception('Service de calcul introuvable: ' . $transport_file);
+        }
+        require_once $transport_file;
+        
+        if (!class_exists('Transport')) {
+            throw new Exception('Classe Transport non trouvée');
+        }
+        
         $transport = new Transport($db);
         $start_time = microtime(true);
         
-        $debug_info['transport_created'] = true;
+        // Appel avec la signature array (nouvelle version)
+        $results = $transport->calculateAll($params);
+        $calc_time = round((microtime(true) - $start_time) * 1000, 2);
         
-        // Test direct méthode
-        if (!method_exists($transport, 'calculateAll')) {
-            throw new Exception('Méthode calculateAll non trouvée');
-        }
+        $debug_info['transport_call'] = 'signature array';
+        // Formatage réponse compatible
+        $response = [
+            'success' => false,
+            'carriers' => [],
+            'time_ms' => $calc_time,
+            'debug' => DEBUG_CALC ? $debug_info : null
+        ];
         
-        // Test avec debug détaillé pour chaque transporteur
-        $debug_info['individual_tests'] = [];
-        foreach (['xpo', 'heppner'] as $carrier) {
-            $debug_info['individual_tests'][$carrier] = [];
-            
-            // Test requête directe BDD
-            try {
-                $table = $carrier === 'xpo' ? 'gul_xpo_rates' : 'gul_heppner_rates';
+        $carrier_results = isset($results['results']) ? $results['results'] : $results;
+        $valid_count = 0;
+        
+        $carrier_names = [
+            'xpo' => 'XPO Logistics',
+            'heppner' => 'Heppner',
+            'kn' => 'Kuehne+Nagel'
+        ];
+        
+        foreach ($carrier_results as $carrier => $price) {
+            if (is_numeric($price) && $price > 0) {
+                $valid_count++;
                 
-                // D'abord, découvrir les colonnes disponibles
-                $sql = "DESCRIBE {$table}";
-                $stmt = $db->prepare($sql);
-                $stmt->execute();
-                $columns = $stmt->fetchAll();
+                // Récupération délai depuis BDD
+                $delay = getCarrierDelayFromDB($db, $carrier, $params['departement'], $params['option_sup']);
                 
-                $debug_info['individual_tests'][$carrier]['table_structure'] = $columns;
-                
-                // Test simple avec SELECT *
-                $sql = "SELECT * FROM {$table} WHERE num_departement = ? LIMIT 3";
-                $stmt = $db->prepare($sql);
-                $stmt->execute([$params['departement']]);
-                $sample_records = $stmt->fetchAll();
-                
-                $debug_info['individual_tests'][$carrier]['sample_records'] = $sample_records;
-                $debug_info['individual_tests'][$carrier]['record_count'] = count($sample_records);
-                
-            } catch (Exception $e) {
-                $debug_info['individual_tests'][$carrier]['db_error'] = $e->getMessage();
+                $response['carriers'][] = [
+                    'carrier_code' => $carrier,
+                    'carrier_name' => $carrier_names[$carrier] ?? strtoupper($carrier),
+                    'price' => (float)$price,
+                    'price_display' => number_format($price, 2, ',', ' ') . '€',
+                    'delay' => $delay
+                ];
             }
         }
         
-        $results = $transport->calculateAll($params);
-        $calc_time = round((microtime(true) - $start_time) * 1000, 2);
+        $response['success'] = $valid_count > 0;
+        $response['message'] = $valid_count > 0 ? 
+            "$valid_count transporteur(s) disponible(s)" : 
+            'Aucun tarif disponible';
+        
+        echo json_encode($response, JSON_PRETTY_PRINT);
+        
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'debug' => DEBUG_CALC ? ($debug_info ?? []) : null
+        ], JSON_PRETTY_PRINT);
+    }
+    exit;
+}
+
+// Fonction pour calculer le prix selon la tranche de poids
+function calculatePriceFromRecord($record, $poids, $carrier) {
+    if ($carrier === 'xpo') {
+        if ($poids <= 99) return $record['tarif_0_99'];
+        if ($poids <= 499) return $record['tarif_100_499'];
+        if ($poids <= 999) return $record['tarif_500_999'];
+        if ($poids <= 1999) return $record['tarif_1000_1999'];
+        return $record['tarif_2000_2999'];
+    }
+    
+    if ($carrier === 'heppner') {
+        if ($poids <= 9) return $record['tarif_0_9'];
+        if ($poids <= 19) return $record['tarif_10_19'];
+        if ($poids <= 29) return $record['tarif_20_29'];
+        if ($poids <= 39) return $record['tarif_30_39'];
+        if ($poids <= 49) return $record['tarif_40_49'];
+        if ($poids <= 59) return $record['tarif_50_59'];
+        if ($poids <= 69) return $record['tarif_60_69'];
+        if ($poids <= 79) return $record['tarif_70_79'];
+        if ($poids <= 89) return $record['tarif_80_89'];
+        if ($poids <= 99) return $record['tarif_90_99'];
+        if ($poids <= 299) return $record['tarif_100_299'];
+        if ($poids <= 499) return $record['tarif_300_499'];
+        if ($poids <= 999) return $record['tarif_500_999'];
+        return $record['tarif_1000_1999'];
+    }
+    
+    return null;
+}
         
         $debug_info['results_raw'] = $results;
         $debug_info['transport_debug'] = $transport->debug ?? 'pas de debug';
