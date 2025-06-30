@@ -719,7 +719,7 @@ function setupEventListeners() {
         });
     });
     
-    // Validation département
+    // Validation département - ATTENDRE SAISIE COMPLÈTE
     document.getElementById('departement').addEventListener('input', function() {
         const value = this.value.replace(/\D/g, '').slice(0, 2);
         this.value = value;
@@ -729,20 +729,19 @@ function setupEventListeners() {
             this.classList.remove('invalid');
             fieldsValidated.departement = true;
             
-            // Auto-navigation vers étape 2 seulement si on est à l'étape 1
+            // DÉLAI plus long pour laisser finir la saisie
             if (currentStep === 1) {
                 markStepCompleted(1);
-                setTimeout(() => goToStep(2), 500);
+                setTimeout(() => goToStep(2), 1200);
             }
         } else {
             this.classList.remove('valid');
             this.classList.add('invalid');
             fieldsValidated.departement = false;
         }
-        checkAndAutoCalculate();
     });
     
-    // Validation poids
+    // Validation poids avec auto-palette si >60kg
     document.getElementById('poids').addEventListener('input', function() {
         const value = parseFloat(this.value);
         
@@ -751,17 +750,22 @@ function setupEventListeners() {
             this.classList.remove('invalid');
             fieldsValidated.poids = true;
             
-            // Auto-navigation vers étape 3 seulement si on est à l'étape 2
+            // Auto-palette si >60kg
+            if (value > 60) {
+                document.getElementById('type').value = 'palette';
+                togglePalettesGroup();
+            }
+            
+            // ATTENDRE validation ET étape 2
             if (currentStep === 2) {
                 markStepCompleted(2);
-                setTimeout(() => goToStep(3), 500);
+                setTimeout(() => goToStep(3), 1000);
             }
         } else {
             this.classList.remove('valid');
             this.classList.add('invalid');
             fieldsValidated.poids = false;
         }
-        checkAndAutoCalculate();
     });
     
     // Empêcher auto-calcul pendant la frappe rapide
@@ -775,7 +779,7 @@ function setupEventListeners() {
         checkCanCalculate();
     });
     
-    // Boutons ADR tactiles - CORRIGER LA VALIDATION
+    // Boutons ADR tactiles - NE DÉCLENCHE PAS AUTO-CALCUL
     document.querySelectorAll('[data-adr]').forEach(btn => {
         btn.addEventListener('click', function() {
             const value = this.dataset.adr;
@@ -787,8 +791,9 @@ function setupEventListeners() {
             
             // Mise à jour input hidden et validation
             document.getElementById('adr').value = value;
-            fieldsValidated.adr = true; // ✅ Maintenant ADR est validé
+            fieldsValidated.adr = true;
             
+            // MAINTENANT on peut calculer
             checkAndAutoCalculate();
         });
     });
@@ -942,7 +947,7 @@ function getFormParams() {
     };
 }
 
-// Calcul des tarifs
+// Calcul des tarifs avec DEBUG
 async function calculateRates() {
     const resultsContainer = document.getElementById('resultsContainer');
     
@@ -957,6 +962,8 @@ async function calculateRates() {
     
     try {
         const params = getFormParams();
+        console.log('🔍 Paramètres envoyés:', params);
+        
         const urlParams = new URLSearchParams(params);
         
         const response = await fetch('?ajax=calculate', {
@@ -967,7 +974,10 @@ async function calculateRates() {
             body: urlParams.toString()
         });
         
+        console.log('📡 Réponse HTTP:', response.status, response.statusText);
+        
         const data = await response.json();
+        console.log('📊 Données reçues:', data);
         
         if (data.success) {
             displayResults(data.results, data.best, data.params);
@@ -977,13 +987,16 @@ async function calculateRates() {
         }
         
     } catch (error) {
-        console.error('Erreur:', error);
+        console.error('❌ Erreur complète:', error);
         resultsContainer.innerHTML = `
             <div class="results-empty">
                 <div class="icon">❌</div>
                 <h3>Erreur de calcul</h3>
                 <p>${error.message}</p>
-                <button onclick="triggerCalculation()" class="btn-reset" style="margin-top: 1rem;">
+                <div style="margin-top: 1rem; font-size: 0.75rem; color: #666;">
+                    Voir console (F12) pour détails
+                </div>
+                <button onclick="calculateRates()" class="btn-reset" style="margin-top: 1rem;">
                     Réessayer
                 </button>
             </div>
