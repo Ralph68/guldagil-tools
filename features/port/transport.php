@@ -78,34 +78,48 @@ class Transport {
      * LOGIQUE MÉTIER GULDAGIL - PRÉSERVÉE
      */
     private function calculateForCarrier(string $carrier, array $params): ?float {
-        $this->debug[$carrier] = ['steps' => []];
+        $this->debug[$carrier] = [
+            'steps' => [],
+            'input_params' => $params,
+            'carrier_table' => $this->tables[$carrier] ?? 'INCONNU'
+        ];
         
         // 1. Validation contraintes
-        if (!$this->validateCarrierConstraints($carrier, $params)) {
-            $this->debug[$carrier]['steps'][] = 'Contraintes non respectées';
+        $constraintsValid = $this->validateCarrierConstraints($carrier, $params);
+        $this->debug[$carrier]['constraints_valid'] = $constraintsValid;
+        $this->debug[$carrier]['steps'][] = $constraintsValid ? '✓ Contraintes OK' : '✗ Contraintes KO';
+        
+        if (!$constraintsValid) {
             return null;
         }
         
         // 2. Récupération tarif de base selon le poids (LOGIQUE EXCEL GULDAGIL)
         $baseTariff = $this->getBaseTariffByWeight($carrier, $params);
+        $this->debug[$carrier]['base_tariff_result'] = $baseTariff;
+        $this->debug[$carrier]['steps'][] = $baseTariff ? "✓ Tarif base: {$baseTariff}€" : "✗ Tarif base non trouvé";
+        
         if ($baseTariff === null) {
-            $this->debug[$carrier]['steps'][] = 'Tarif de base non trouvé';
             return null;
         }
         
-        $this->debug[$carrier]['base_tariff'] = $baseTariff;
         $finalPrice = $baseTariff;
+        $this->debug[$carrier]['price_after_base'] = $finalPrice;
         
         // 3. SPÉCIFICITÉ GULDAGIL - Calcul proportionnel poids > 100kg
         if ($params['poids'] > 100) {
             $ratio = $params['poids'] / 100;
             $finalPrice = $baseTariff * $ratio;
             $this->debug[$carrier]['weight_ratio'] = $ratio;
-            $this->debug[$carrier]['steps'][] = "Poids > 100kg, ratio: {$ratio}";
+            $this->debug[$carrier]['price_after_weight'] = $finalPrice;
+            $this->debug[$carrier]['steps'][] = "✓ Poids > 100kg, ratio: {$ratio}, nouveau prix: {$finalPrice}€";
+        } else {
+            $this->debug[$carrier]['steps'][] = "✓ Poids ≤ 100kg, pas de ratio";
         }
         
         // 4. Majorations spécifiques Guldagil
         $finalPrice = $this->addGuldagilSurcharges($carrier, $finalPrice, $params);
+        $this->debug[$carrier]['final_calculated_price'] = $finalPrice;
+        $this->debug[$carrier]['steps'][] = "✓ Prix final après majorations: {$finalPrice}€";
         
         return round($finalPrice, 2);
     }
@@ -120,29 +134,48 @@ class Transport {
             $weight = $params['poids'];
             $dept = $params['departement'];
             
+            $this->debug[$carrier]['tariff_lookup'] = [
+                'table' => $table,
+                'weight' => $weight,
+                'dept' => $dept,
+                'type' => $params['type']
+            ];
+            
             // Déterminer la colonne de poids selon la logique Guldagil
             $weightColumn = $this->getWeightColumnGuldagil($weight, $params['type']);
+            $this->debug[$carrier]['weight_column_selected'] = $weightColumn;
+            
             if (!$weightColumn) {
-                $this->debug[$carrier]['weight_error'] = 'Colonne non trouvée pour ' . $weight . 'kg';
+                $this->debug[$carrier]['weight_error'] = 'Colonne non trouvée pour ' . $weight . 'kg, type: ' . $params['type'];
                 return null;
             }
             
-            $this->debug[$carrier]['weight_column'] = $weightColumn;
-            
-            // Requête BDD
+            // Requête BDD avec debug complet
             $sql = "SELECT {$weightColumn} as tarif FROM {$table} WHERE num_departement = ? LIMIT 1";
+            $this->debug[$carrier]['sql_query'] = $sql;
+            $this->debug[$carrier]['sql_params'] = [$dept];
+            
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$dept]);
             $row = $stmt->fetch();
             
-            if ($row && $row['tarif'] > 0) {
-                return (float)$row['tarif'];
+            $this->debug[$carrier]['sql_result'] = $row;
+            
+            if ($row && isset($row['tarif']) && $row['tarif'] > 0) {
+                $tariff = (float)$row['tarif'];
+                $this->debug[$carrier]['tariff_found'] = $tariff;
+                return $tariff;
+            } else {
+                $this->debug[$carrier]['tariff_not_found'] = 'Aucun tarif trouvé ou tarif = 0';
+                return null;
             }
             
-            return null;
-            
         } catch (Exception $e) {
-            $this->debug[$carrier]['tariff_db_error'] = $e->getMessage();
+            $this->debug[$carrier]['tariff_db_error'] = [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ];
             return null;
         }
     }
@@ -290,17 +323,41 @@ class Transport {
      * Validation contraintes transporteur
      */
     private function validateCarrierConstraints(string $carrier, array $params): bool {
+        $this->debug[$carrier]['constraint_checks'] = [];
+        
+        // Vérifier si le transporteur existe
+        if (!isset($this->tables[$carrier])) {
+            $this->debug[$carrier]['constraint_checks']['carrier_exists'] = false;
+            return false;
+        }
+        $this->debug[$carrier]['constraint_checks']['carrier_exists'] = true;
+        
         // Poids maximum
         $maxWeights = ['heppner' => 3000, 'xpo' => 32000, 'kn' => 32000];
-        if ($params['poids'] > ($maxWeights[$carrier] ?? 32000)) {
+        $maxWeight = $maxWeights[$carrier] ?? 32000;
+        $weightOk = $params['poids'] <= $maxWeight && $params['poids'] > 0;
+        $this->debug[$carrier]['constraint_checks']['weight'] = [
+            'current' => $params['poids'],
+            'max_allowed' => $maxWeight,
+            'valid' => $weightOk
+        ];
+        
+        if (!$weightOk) {
             return false;
         }
         
         // Départements blacklistés
-        if ($this->isDepartmentBlacklisted($carrier, $params['departement'])) {
+        $deptBlacklisted = $this->isDepartmentBlacklisted($carrier, $params['departement']);
+        $this->debug[$carrier]['constraint_checks']['department'] = [
+            'dept' => $params['departement'],
+            'blacklisted' => $deptBlacklisted
+        ];
+        
+        if ($deptBlacklisted) {
             return false;
         }
         
+        $this->debug[$carrier]['constraint_checks']['all_valid'] = true;
         return true;
     }
     
