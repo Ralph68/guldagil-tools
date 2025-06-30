@@ -237,6 +237,15 @@ const CalculateurModule = {
             return;
         }
 
+        // Après affichage des résultats
+if (data.debug) {
+    displayDebug(data);
+    document.getElementById('debug-container').style.display = 'block';
+}
+
+// Afficher bouton historique
+document.getElementById('history-section').style.display = 'block';
+
         // Trier par prix
         const sortedCarriers = results.carriers.sort((a, b) => a.price - b.price);
         const bestPrice = sortedCarriers[0].price;
