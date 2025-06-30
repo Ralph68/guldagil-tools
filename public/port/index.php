@@ -728,6 +728,10 @@ function setupEventListeners() {
             this.classList.add('valid');
             this.classList.remove('invalid');
             fieldsValidated.departement = true;
+            
+            // Auto-navigation vers étape 2
+            markStepCompleted(1);
+            setTimeout(() => goToStep(2), 500);
         } else {
             this.classList.remove('valid');
             this.classList.add('invalid');
@@ -744,6 +748,10 @@ function setupEventListeners() {
             this.classList.add('valid');
             this.classList.remove('invalid');
             fieldsValidated.poids = true;
+            
+            // Auto-navigation vers étape 3
+            markStepCompleted(2);
+            setTimeout(() => goToStep(3), 500);
         } else {
             this.classList.remove('valid');
             this.classList.add('invalid');
