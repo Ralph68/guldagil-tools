@@ -206,7 +206,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?> - <?= APP_NAME ?></title>
-    <link rel="stylesheet" href="../assets/css/portail.css">
+    <!-- CSS intégré pour éviter les erreurs MIME -->
     <style>
         :root {
             --primary: #2563eb;
@@ -402,9 +402,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1><?= htmlspecialchars($page_title) ?></h1>
-        <div class="version-info">
+    <div class="header" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+        <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($page_title) ?></h1>
+        <div class="version-info" style="opacity: 0.9; margin-top: 0.5rem;">
             Version <?= APP_VERSION ?> - Build <?= BUILD_NUMBER ?>
         </div>
     </div>
@@ -499,6 +499,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
         if (!poids || poids <= 0) {
             alert('Veuillez saisir un poids valide');
             return;
+        }
+
+        // Règle métier : poids > 60kg = forcément palette
+        if (poids > 60 && formData.get('type') === 'colis') {
+            formData.set('type', 'palette');
+            console.log(`Poids ${poids}kg > 60kg : forcé en palette`);
         }
 
         // Affichage du loading
@@ -617,10 +623,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
     });
     </script>
 
-    <div class="footer">
-        <div class="footer-info">
-            <span><?= APP_NAME ?> - Version <?= APP_VERSION ?></span>
-            <span>Build <?= BUILD_NUMBER ?> (<?= BUILD_DATE ?>)</span>
+    <div class="footer" style="background: #f8f9fa; border-top: 1px solid #e5e7eb; padding: 1.5rem; margin-top: 3rem;">
+        <div class="footer-info" style="text-align: center; color: #6b7280; font-size: 0.875rem;">
+            <span><?= APP_NAME ?> - Version <?= APP_VERSION ?></span> • 
+            <span>Build <?= BUILD_NUMBER ?> (<?= BUILD_DATE ?>)</span> • 
             <span>&copy; <?= COPYRIGHT_YEAR ?> <?= APP_AUTHOR ?></span>
         </div>
     </div>
