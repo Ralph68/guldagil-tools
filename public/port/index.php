@@ -642,6 +642,9 @@ include __DIR__ . '/../../templates/header.php';
                     <button type="button" class="btn-reset" onclick="resetForm()">
                         🔄 Nouvelle recherche
                     </button>
+            <button type="button" onclick="showHistory()" class="btn-reset">
+    📚 Voir l'historique
+</button>
                 </div>
             </form>
         </div>
@@ -668,11 +671,13 @@ include __DIR__ . '/../../templates/header.php';
 // État du formulaire
 let calculationTimeout = null;
 let lastCalculationParams = null;
+let calculationHistory = [];
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', function() {
+    resetFormState(); // Toujours partir propre
     setupEventListeners();
-    loadSavedData();
+    loadHistory();
     console.log('🧮 Calculateur initialisé - mode simplifié');
 });
 
@@ -750,12 +755,31 @@ function handleFormChange() {
     validateForm();
     togglePalettesGroup();
     
+    // Auto-navigation UX naturelle
+    autoNavigateIfNeeded();
+    
     if (isFormValid()) {
-        // Auto-calcul avec délai
         clearTimeout(calculationTimeout);
         calculationTimeout = setTimeout(() => {
             calculateRates();
         }, 1000);
+    }
+}
+
+// Auto-navigation naturelle
+function autoNavigateIfNeeded() {
+    const dept = document.getElementById('departement').value;
+    const poids = parseFloat(document.getElementById('poids').value);
+    const adr = document.getElementById('adr').value;
+    
+    // Département valide → Étape 2
+    if (dept.length === 2 && /^(0[1-9]|[1-8][0-9]|9[0-5])$/.test(dept)) {
+        setTimeout(() => goToStep(2), 800);
+    }
+    
+    // Poids valide → Étape 3  
+    if (poids > 0 && poids <= 9999) {
+        setTimeout(() => goToStep(3), 800);
     }
 }
 
@@ -889,8 +913,11 @@ async function calculateRates() {
         
         if (data.success) {
             console.log('✅ Calcul réussi');
+            
+            // Sauvegarder dans l'historique
+            saveToHistory(params, data.results, data.best);
+            
             displayResults(data.results, data.best, data.params);
-            saveFormData();
         } else {
             console.error('❌ Erreur calcul serveur:', data.error);
             throw new Error(data.error || 'Erreur de calcul');
@@ -1056,20 +1083,31 @@ function getServiceLabel(service) {
     return labels[service] || 'Standard';
 }
 
-function resetForm() {
+// Reset formulaire à l'état initial
+function resetFormState() {
+    // Reset tous les champs
     document.getElementById('calculatorForm').reset();
     
-    // Reset boutons
+    // Reset visuel
+    document.querySelectorAll('.form-input').forEach(input => {
+        input.classList.remove('valid', 'invalid');
+    });
+    
+    // Reset boutons ADR - AUCUNE sélection par défaut
     document.querySelectorAll('[data-adr]').forEach(btn => btn.classList.remove('active', 'oui'));
     document.getElementById('adr').value = '';
     
+    // Reset boutons enlèvement - Non par défaut
     document.querySelectorAll('[data-enlevement]').forEach(btn => btn.classList.remove('active'));
-    document.querySelector('[data-enlevement="non"]').classList.add('active');
+    document.querySelector('[data-enlevement="non"]')?.classList.add('active');
     document.getElementById('enlevement').value = 'non';
     
-    // Reset options
+    // Reset options - Standard par défaut
     document.querySelectorAll('.option-card').forEach(card => card.classList.remove('selected'));
-    document.querySelector('.option-card').classList.add('selected');
+    document.querySelector('.option-card')?.classList.add('selected');
+    
+    // Reset étapes - Retour étape 1
+    goToStep(1);
     
     // Reset résultats
     document.getElementById('resultsContainer').innerHTML = `
@@ -1080,50 +1118,134 @@ function resetForm() {
         </div>
     `;
     
+    // Reset état
     lastCalculationParams = null;
-    localStorage.removeItem('calculateur_data');
-}
-
-function saveFormData() {
-    const data = getFormParams();
-    localStorage.setItem('calculateur_data', JSON.stringify(data));
-}
-
-function loadSavedData() {
-    const saved = localStorage.getItem('calculateur_data');
-    if (!saved) return;
+    clearTimeout(calculationTimeout);
     
+    console.log('🔄 Formulaire réinitialisé');
+}
+
+// Gestion historique
+function saveToHistory(params, results, bestCarrier) {
+    const entry = {
+        id: Date.now(),
+        timestamp: new Date().toLocaleString('fr-FR'),
+        params: params,
+        results: results,
+        bestCarrier: bestCarrier,
+        bestPrice: bestCarrier ? Math.min(...Object.values(results).map(r => r.total || 0)) : null
+    };
+    
+    calculationHistory.unshift(entry);
+    calculationHistory = calculationHistory.slice(0, 10); // Limite 10 entrées
+    
+    localStorage.setItem('calculateur_history', JSON.stringify(calculationHistory));
+    console.log('💾 Calcul sauvé dans historique');
+}
+
+function loadHistory() {
     try {
-        const data = JSON.parse(saved);
-        
-        Object.entries(data).forEach(([key, value]) => {
-            const element = document.getElementById(key);
-            if (element) {
-                element.value = value;
-                element.dispatchEvent(new Event('input'));
-            }
-        });
-        
-        // Restore buttons states
-        if (data.adr) {
-            const adrBtn = document.querySelector(`[data-adr="${data.adr}"]`);
-            if (adrBtn) adrBtn.click();
-        }
-        
-        if (data.enlevement) {
-            const enlBtn = document.querySelector(`[data-enlevement="${data.enlevement}"]`);
-            if (enlBtn) enlBtn.click();
-        }
-        
+        const saved = localStorage.getItem('calculateur_history');
+        calculationHistory = saved ? JSON.parse(saved) : [];
+        console.log(`📚 ${calculationHistory.length} calculs en historique`);
     } catch (e) {
-        console.warn('Erreur chargement données:', e);
+        console.warn('Erreur chargement historique:', e);
+        calculationHistory = [];
     }
+}
+
+function showHistory() {
+    if (calculationHistory.length === 0) {
+        alert('Aucun calcul dans l\'historique');
+        return;
+    }
+    
+    let html = `
+        <div style="max-height: 400px; overflow-y: auto;">
+            <h3>📚 Historique des calculs</h3>
+    `;
+    
+    calculationHistory.forEach(entry => {
+        html += `
+            <div style="border: 1px solid #e5e7eb; padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 0.5rem; cursor: pointer;" 
+                 onclick="restoreCalculation('${entry.id}')">
+                <div style="font-weight: 600; margin-bottom: 0.25rem;">
+                    ${entry.timestamp} - ${entry.bestPrice?.toFixed(2)}€
+                </div>
+                <div style="font-size: 0.875rem; color: #666;">
+                    Dept ${entry.params.departement} • ${entry.params.poids}kg • ${entry.params.type} 
+                    ${entry.params.adr === 'oui' ? '• ADR' : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+            <button onclick="clearHistory()" style="margin-top: 1rem; padding: 0.5rem; background: #ef4444; color: white; border: none; border-radius: 0.25rem;">
+                🗑️ Vider l'historique
+            </button>
+        </div>
+    `;
+    
+    // Afficher dans une modale simple
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
+    modal.innerHTML = `
+        <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; max-width: 500px; width: 90%;">
+            ${html}
+            <button onclick="this.closest('div').parentElement.remove()" style="margin-top: 1rem; padding: 0.5rem; background: #6b7280; color: white; border: none; border-radius: 0.25rem;">
+                Fermer
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function restoreCalculation(id) {
+    const entry = calculationHistory.find(e => e.id == id);
+    if (!entry) return;
+    
+    // Restaurer les paramètres
+    Object.entries(entry.params).forEach(([key, value]) => {
+        const element = document.getElementById(key);
+        if (element) {
+            element.value = value;
+        }
+    });
+    
+    // Restaurer boutons
+    if (entry.params.adr) {
+        document.querySelector(`[data-adr="${entry.params.adr}"]`)?.click();
+    }
+    if (entry.params.enlevement) {
+        document.querySelector(`[data-enlevement="${entry.params.enlevement}"]`)?.click();
+    }
+    
+    // Fermer modale
+    document.querySelector('[style*="position: fixed"]')?.remove();
+    
+    // Recalculer
+    handleFormChange();
+    
+    console.log('🔄 Calcul restauré depuis historique');
+}
+
+function clearHistory() {
+    calculationHistory = [];
+    localStorage.removeItem('calculateur_history');
+    document.querySelector('[style*="position: fixed"]')?.remove();
+    console.log('🗑️ Historique vidé');
 }
 
 // Raccourcis clavier
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        resetForm();
+        resetFormState();
+    }
+    if (e.key === 'h' && e.ctrlKey) {
+        e.preventDefault();
+        showHistory();
     }
 });
 </script>
