@@ -1,0 +1,9 @@
+<map id="AuthManager\getCurrentUser" name="AuthManager\getCurrentUser">
+<area shape="rect" id="Node000001" title=" " alt="" coords="263,56,454,83"/>
+<area shape="rect" id="Node000002" href="$class_auth_manager.html#a052bb859f87c77a3f7cc90bd1d597f1e" title=" " alt="" coords="5,5,215,32"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="274,55,178,35,179,30,275,50"/>
+<area shape="rect" id="Node000003" href="$class_auth_manager.html#ac85b824bf2fc1ee2100a617c36cf1d67" title=" " alt="" coords="16,56,204,83"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="247,72,204,72,204,67,247,67"/>
+<area shape="rect" id="Node000004" href="$class_auth_manager.html#a52fff09fc4bf6c9a0f60755a6939ec35" title=" " alt="" coords="45,107,175,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="275,89,176,109,175,104,274,84"/>
+</map>

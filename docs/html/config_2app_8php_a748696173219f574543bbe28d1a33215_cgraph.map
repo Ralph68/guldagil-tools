@@ -1,0 +1,7 @@
+<map id="healthCheck" name="healthCheck">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,31,100,57"/>
+<area shape="rect" id="Node000002" href="$config_2app_8php.html#a5f37503a5fa316e6664d8f487caac938" title=" " alt="" coords="148,5,272,32"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,34,132,29,133,34,101,39"/>
+<area shape="rect" id="Node000003" href="$version_8php.html#a36935c9faec39ba5812cb0c6a7e4109e" title=" " alt="" coords="158,56,262,83"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="101,49,143,56,142,61,100,54"/>
+</map>

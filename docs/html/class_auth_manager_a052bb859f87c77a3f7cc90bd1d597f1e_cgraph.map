@@ -1,0 +1,10 @@
+<map id="AuthManager\canAccessModule" name="AuthManager\canAccessModule">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,31,215,57"/>
+<area shape="rect" id="Node000002" href="$class_auth_manager.html#aaf5e59a46ac4cdafa27f0e2ec9db794b" title=" " alt="" coords="263,5,454,32"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="215,31,247,27,247,33,215,36"/>
+<area shape="rect" id="Node000003" href="$class_auth_manager.html#ad5207ed63badc074e1396bafa30f9f75" title=" " alt="" coords="502,31,694,57"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="215,41,487,41,487,47,215,47"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="455,26,487,30,486,35,454,31"/>
+<area shape="rect" id="Node000004" href="$class_auth_manager.html#a286ff922c12645edcf105161b4463726" title=" " alt="" coords="742,31,880,57"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="695,41,727,41,727,47,695,47"/>
+</map>

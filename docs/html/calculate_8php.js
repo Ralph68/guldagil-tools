@@ -1,0 +1,27 @@
+var calculate_8php =
+[
+    [ "$carrier_names", "calculate_8php.html#a300511b41b28fbe95a69848c8a842d37", null ],
+    [ "$carrier_results", "calculate_8php.html#adc735bd27576c7a23349a8fc00aaa64d", null ],
+    [ "$content_type", "calculate_8php.html#ae754d6373f275e781f47c8bc9b994b6d", null ],
+    [ "$db_connection", "calculate_8php.html#afe67d9974fdbe3ce10c89281469f3df9", null ],
+    [ "$dept_num", "calculate_8php.html#ad33c90a70b090fac4aed8497efd4ad9d", null ],
+    [ "$json_flags", "calculate_8php.html#ac4edb35ef8807448586364e6c2cf5a30", null ],
+    [ "$missing_fields", "calculate_8php.html#a0a01bb473c1255da8e7457c4e4f46c65", null ],
+    [ "$params", "calculate_8php.html#a2bd5c012e9d69957ade8b7e0a999e7d2", null ],
+    [ "$required_fields", "calculate_8php.html#acbb0e338149e955b7f2d827719bc4358", null ],
+    [ "$response", "calculate_8php.html#af4b6fb1bbc77ccc05f10da3b16935b99", null ],
+    [ "$response", "calculate_8php.html#a5992615fd84757ac7f4c14643826cd37", null ],
+    [ "$response", "calculate_8php.html#af6f4fe2bbfc5acb13f89e72775538ef1", null ],
+    [ "$results", "calculate_8php.html#a233d12bd8b6d3453e9a7a3f0b8c31db2", null ],
+    [ "$signature_used", "calculate_8php.html#a90e0b3971d6c0c3cc2ffc379c6b30ae7", null ],
+    [ "$start_time", "calculate_8php.html#a73a034a7a0fbdd2c93f23fb6c9946ee9", null ],
+    [ "$transport", "calculate_8php.html#a208f6050e0847841e8271ad728c59113", null ],
+    [ "$transport_class_path", "calculate_8php.html#a9023cc8861432d379622239dc10ad6d7", null ],
+    [ "$valid_options", "calculate_8php.html#abdbbe6475f424561475f7b636f53a3f6", null ],
+    [ "$valid_results", "calculate_8php.html#aad58462cd84c36b556fbd3b337b0bcf9", null ],
+    [ "else", "calculate_8php.html#a2588092c85f15ea4e812a8a1f13e0a59", null ],
+    [ "exit", "calculate_8php.html#afe5c9642ad8ca933974ba3a491fb2760", null ],
+    [ "finally", "calculate_8php.html#a1eb47d68a4a4f73debf91b15e179d813", null ],
+    [ "if", "calculate_8php.html#acfb142dbeaf7c3300cf1c939a62c4ad0", null ],
+    [ "try", "calculate_8php.html#abe4cc9788f52e49485473dc699537388", null ]
+];

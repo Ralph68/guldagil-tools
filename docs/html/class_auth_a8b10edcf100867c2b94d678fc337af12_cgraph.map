@@ -1,0 +1,7 @@
+<map id="Auth\hasPermission" name="Auth\hasPermission">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,144,32"/>
+<area shape="rect" id="Node000002" href="$class_auth.html#ae85d51d32fe1cb4bc665e0cb5da9cc9e" title=" " alt="" coords="192,5,307,32"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="144,16,177,16,177,21,144,21"/>
+<area shape="rect" id="Node000003" href="$class_auth.html#acbbcb54916a234d1d816ec85e4a88d5e" title=" " alt="" coords="355,5,442,32"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="307,16,339,16,339,21,307,21"/>
+</map>
