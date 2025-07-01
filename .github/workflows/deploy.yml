@@ -1,4 +1,4 @@
-# .github/workflows/deploy.yml
+# .github/workflows/deploy.yml - Version optimisée
 name: Déploiement FTP vers port.gul.runser.ovh
 
 on:
@@ -13,16 +13,13 @@ jobs:
     steps:
       # 1) Checkout du code
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      # 2) Journal local
-      - name: Générer un journal de déploiement local
-        if: always()
-        run: |
-          echo "🔁 Déploiement sur ${{ github.ref_name }} à $(date) par ${{ github.actor }} (commit: ${{ github.sha }})" \
-            > deploy-log.txt
+      # 2) Désactiver Jekyll explicitement
+      - name: Désactiver Jekyll
+        run: touch .nojekyll
 
       # 3) Générer .env pour la BDD
       - name: Générer .env pour la BDD
@@ -36,7 +33,7 @@ jobs:
           APP_ENV="production"
           EOF
 
-      # 4) Déploiement incrémental via SamKirkland/FTP-Deploy-Action
+      # 4) Déploiement FTP optimisé
       - name: Déployer vers PROD
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -45,18 +42,26 @@ jobs:
           password:   ${{ secrets.FTP_PASSWORD_PROD }}
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
           local-dir:  ./
+          # Inclure seulement les fichiers nécessaires
           include: |
-            lib/**
             public/**
-            config.php
+            config/**
+            lib/**
+            .env
+            .nojekyll
+          # Exclure tout le reste
           exclude: |
             .git/**
             .github/**
-            public/assets/img/**
             .gitignore
             .gitattributes
             README.md
-            deploy-log.txt
+            docs/**
+            _site/**
+            .sass-cache/**
+            _config.yml
+            Gemfile*
+            *.md
 
       # 5) Notification email uniquement en cas d'échec
       - name: Envoi d'un email (échec)
@@ -81,12 +86,10 @@ jobs:
             
             🔗 Voir les détails de l'erreur :
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            
-            Veuillez vérifier les logs et corriger le problème.
           to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
 
-      # 6) Log de succès silencieux (optionnel - juste pour les logs GitHub)
+      # 6) Log de succès
       - name: Déploiement réussi
         if: success()
         run: |
