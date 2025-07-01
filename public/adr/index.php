@@ -1,54 +1,41 @@
 <?php
-// public/adr/index.php - Page d'accueil module ADR
+/**
+ * Titre: Page d'accueil module ADR
+ * Chemin: /public/adr/index.php
+ * Version: 0.5 beta + build auto
+ */
+
 session_start();
 
-// Configuration temporaire en attendant l'auth complète
-$authEnabled = false; // Mettre à true quand l'auth sera implémentée
-$debugMode = true;    // Pour permettre l'accès direct en développement
-
-// Vérification d'authentification (temporaire)
-if ($authEnabled) {
-    // Vérifier si l'utilisateur est authentifié ADR
-    if (!isset($_SESSION['adr_logged_in']) || $_SESSION['adr_logged_in'] !== true) {
-        // Rediriger vers la page de login ADR
-        header('Location: auth/login.php');
-        exit;
-    }
-    
-    // Si authentifié, rediriger vers le dashboard
-    header('Location: dashboard.php');
+// Vérification authentification portail
+if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
+    header('Location: /auth/login.php');
     exit;
-} else {
-    // Mode développement : accès direct autorisé
-    if (isset($_GET['access']) && $_GET['access'] === 'dev') {
-        // Simuler une session authentifiée pour le développement
-        $_SESSION['adr_logged_in'] = true;
-        $_SESSION['adr_user'] = 'dev.user';
-        $_SESSION['adr_login_time'] = time();
-        // Donner aussi la permission "dev" pour accéder aux outils internes
-        $_SESSION['adr_permissions'] = ['read', 'write', 'admin', 'dev'];
-        
-        header('Location: dashboard.php');
-        exit;
-    }
 }
 
-// Charger la configuration
-require __DIR__ . '/../../config.php';
+// Configuration
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/version.php';
 
-// Informations du module ADR
-$moduleInfo = [
-    'name' => 'Module ADR Guldagil',
-    'version' => '1.0.0',
-    'description' => 'Gestion des marchandises dangereuses selon la réglementation ADR',
-    'features' => [
-        'Déclarations d\'expédition individuelles',
-        'Récapitulatifs quotidiens par transporteur',
-        'Base de données produits ADR actualisée',
-        'Export PDF conformes à la réglementation',
-        'Historique et recherche avancée',
-        'Gestion des quotas de transport'
-    ]
+// Variables utilisateur
+$current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
+
+// Debug si activé
+$debug_mode = defined('DEBUG') && DEBUG;
+
+// Simuler données quotas (à remplacer par vraies requêtes BDD)
+$quotas_data = [
+    'xpo' => ['used' => 750, 'limit' => 1000, 'percentage' => 75],
+    'heppner' => ['used' => 320, 'limit' => 1000, 'percentage' => 32],
+    'kuehne' => ['used' => 890, 'limit' => 1000, 'percentage' => 89]
+];
+
+// Stats rapides (à remplacer par vraies requêtes)
+$quick_stats = [
+    'declarations_today' => 12,
+    'products_adr' => 180,
+    'alerts_active' => 3,
+    'last_declaration' => '14:32'
 ];
 
 ?>
@@ -57,168 +44,202 @@ $moduleInfo = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Module ADR - Guldagil Portal</title>
+    <title>Module ADR - Dashboard</title>
+    
+    <!-- CSS globaux du portail -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    
     <style>
         :root {
             --adr-primary: #ff6b35;
             --adr-secondary: #f7931e;
             --adr-danger: #dc3545;
-            --adr-warning: #ffc107;
             --adr-success: #28a745;
-            --adr-dark: #343a40;
-            --adr-light: #f8f9fa;
+            --adr-warning: #ffc107;
+            --adr-info: #17a2b8;
             --border-radius: 8px;
             --shadow: 0 2px 8px rgba(0,0,0,0.1);
-            --shadow-hover: 0 4px 16px rgba(0,0,0,0.15);
             --transition: all 0.3s ease;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+        body {
+            background: #f5f6fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-            color: #333;
-            line-height: 1.6;
-            min-height: 100vh;
+        /* Header ADR */
+        .adr-header {
+            background: linear-gradient(135deg, var(--adr-primary), var(--adr-secondary));
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-
-        .adr-container {
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 3rem;
-            max-width: 800px;
-            width: 100%;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .adr-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--adr-primary) 0%, var(--adr-secondary) 100%);
+            gap: 1rem;
         }
 
         .adr-logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, var(--adr-primary) 0%, var(--adr-secondary) 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: white;
-            margin: 0 auto 2rem;
-            box-shadow: var(--shadow-hover);
-        }
-
-        .adr-title {
             font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--adr-primary);
-            margin-bottom: 0.5rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
 
-        .adr-subtitle {
-            font-size: 1.2rem;
-            color: #666;
-            margin-bottom: 2rem;
+        .header-info h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
         }
 
-        .adr-description {
-            font-size: 1rem;
-            color: #555;
-            margin-bottom: 2rem;
-            line-height: 1.7;
+        .header-subtitle {
+            opacity: 0.9;
+            margin-top: 0.5rem;
         }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
-            text-align: left;
-        }
-
-        .feature-card {
-            background: var(--adr-light);
-            padding: 1rem;
+        .user-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
             border-radius: var(--border-radius);
-            border-left: 4px solid var(--adr-primary);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Container principal */
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            margin-bottom: 3rem;
+        }
+
+        /* Section recherche */
+        .search-section {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        .search-title {
+            color: var(--adr-primary);
+            margin: 0 0 1.5rem 0;
+            font-size: 1.3rem;
+        }
+
+        .search-form {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            border: 2px solid #e1e5e9;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
             transition: var(--transition);
         }
 
-        .feature-card:hover {
-            transform: translateY(-2px);
+        .search-input:focus {
+            outline: none;
+            border-color: var(--adr-primary);
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+        }
+
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-top: none;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
             box-shadow: var(--shadow);
-            border-left-color: var(--adr-secondary);
+            display: none;
+            z-index: 100;
         }
 
-        .feature-icon {
-            font-size: 1.2rem;
-            margin-right: 0.5rem;
+        /* Actions rapides */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
-        .actions-section {
-            margin-top: 3rem;
+        .action-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            cursor: pointer;
+            border-left: 4px solid;
+        }
+
+        .action-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .action-card.primary { border-left-color: var(--adr-primary); }
+        .action-card.success { border-left-color: var(--adr-success); }
+        .action-card.info { border-left-color: var(--adr-info); }
+
+        .action-header {
             display: flex;
-            flex-direction: column;
-            gap: 1rem;
+            justify-content: between;
             align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .action-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .action-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0 0 0.5rem 0;
+        }
+
+        .action-desc {
+            color: #666;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
         }
 
         .btn {
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: var(--border-radius);
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            text-decoration: none;
-            font-size: 1rem;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
             gap: 0.5rem;
-            min-width: 200px;
-        }
-
-        .btn-primary {
+            padding: 0.75rem 1.5rem;
             background: var(--adr-primary);
             color: white;
-            box-shadow: var(--shadow);
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
         }
 
-        .btn-primary:hover {
+        .btn:hover {
             background: #e55a2b;
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-hover);
-        }
-
-        .btn-secondary {
-            background: var(--adr-light);
-            color: var(--adr-dark);
-            border: 2px solid var(--adr-primary);
-        }
-
-        .btn-secondary:hover {
-            background: var(--adr-primary);
-            color: white;
+            transform: translateY(-1px);
         }
 
         .btn-outline {
@@ -232,284 +253,385 @@ $moduleInfo = [
             color: white;
         }
 
-        .auth-status {
-            background: var(--adr-warning);
-            color: #856404;
-            padding: 1rem;
+        /* Quotas section */
+        .quotas-section {
+            background: white;
             border-radius: var(--border-radius);
-            margin: 2rem 0;
-            border-left: 4px solid #ffc107;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
         }
 
-        .dev-access {
-            background: #d1ecf1;
-            color: #0c5460;
-            padding: 1rem;
-            border-radius: var(--border-radius);
-            margin: 1rem 0;
-            border-left: 4px solid var(--adr-info);
+        .quotas-title {
+            color: var(--adr-primary);
+            margin: 0 0 1.5rem 0;
+            font-size: 1.3rem;
         }
 
-        .footer-links {
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid #eee;
+        .quotas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .quota-card {
+            border: 1px solid #e1e5e9;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+        }
+
+        .quota-header {
             display: flex;
-            justify-content: center;
-            gap: 2rem;
-            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
         }
 
-        .footer-link {
+        .quota-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .quota-value {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .quota-bar {
+            width: 100%;
+            height: 20px;
+            background: #f1f2f6;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .quota-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .quota-fill.low { background: var(--adr-success); }
+        .quota-fill.medium { background: var(--adr-warning); }
+        .quota-fill.high { background: var(--adr-danger); }
+
+        .quota-status {
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        /* Stats section */
+        .stats-section {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        .stats-title {
+            color: var(--adr-primary);
+            margin: 0 0 1.5rem 0;
+            font-size: 1.3rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            border: 1px solid #e1e5e9;
+            border-radius: var(--border-radius);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--adr-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Navigation retour */
+        .back-nav {
+            margin-bottom: 1rem;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
             color: #666;
             text-decoration: none;
-            font-size: 0.9rem;
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
             transition: var(--transition);
         }
 
-        .footer-link:hover {
+        .back-link:hover {
+            background: #f1f2f6;
             color: var(--adr-primary);
-        }
-
-        /* Animation de chargement */
-        .loading-dots {
-            display: inline-block;
-        }
-
-        .loading-dots::after {
-            content: '';
-            animation: dots 1.5s infinite;
-        }
-
-        @keyframes dots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .adr-container {
-                padding: 2rem 1.5rem;
-                margin: 1rem;
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
             }
 
-            .adr-title {
-                font-size: 2rem;
+            .dashboard-container {
+                padding: 0 1rem;
             }
 
-            .features-grid {
+            .quick-actions {
                 grid-template-columns: 1fr;
             }
 
-            .actions-section {
-                gap: 0.5rem;
+            .quotas-grid {
+                grid-template-columns: 1fr;
             }
+        }
 
-            .btn {
-                width: 100%;
-            }
-
-            .footer-links {
-                flex-direction: column;
-                gap: 1rem;
-            }
+        /* Debug panel */
+        .debug-panel {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            font-family: monospace;
+            font-size: 0.85rem;
         }
     </style>
 </head>
 <body>
-    <div class="adr-container">
-        <!-- Logo ADR -->
-        <div class="adr-logo">⚠️</div>
-        
-        <!-- Titre et description -->
-        <h1 class="adr-title"><?= htmlspecialchars($moduleInfo['name']) ?></h1>
-        <p class="adr-subtitle">Transport de marchandises dangereuses</p>
-        <p class="adr-description">
-            <?= htmlspecialchars($moduleInfo['description']) ?>
-        </p>
-
-        <!-- Statut d'authentification -->
-        <?php if (!$authEnabled && $debugMode): ?>
-        <div class="auth-status">
-            <strong>⚠️ Mode développement</strong><br>
-            L'authentification n'est pas encore implémentée. Accès direct autorisé pour les tests.
-        </div>
-        <?php endif; ?>
-
-        <!-- Fonctionnalités -->
-        <div class="features-grid">
-            <?php foreach ($moduleInfo['features'] as $feature): ?>
-            <div class="feature-card">
-                <span class="feature-icon">✅</span>
-                <?= htmlspecialchars($feature) ?>
-            </div>
-            <?php endforeach; ?>
-        </div>
-
-        <!-- Actions principales -->
-        <div class="actions-section">
-            <?php if ($authEnabled): ?>
-                <!-- Mode production avec authentification -->
-                <a href="auth/login.php" class="btn btn-primary">
-                    <span>🔐</span>
-                    Se connecter au module ADR
-                </a>
-                <a href="../" class="btn btn-outline">
-                    <span>🏠</span>
-                    Retour au Portal Guldagil
-                </a>
-                
-            <?php else: ?>
-                <!-- Mode développement -->
-                <div class="dev-access">
-                    <strong>🔧 Accès développement</strong><br>
-                    Cliquez ci-dessous pour accéder directement au module (session temporaire)
-                </div>
-                
-                <a href="?access=dev" class="btn btn-primary">
-                    <span>🚀</span>
-                    Accéder au Dashboard ADR
-                </a>
-                
-                <a href="dashboard.php" class="btn btn-secondary">
-                    <span>📊</span>
-                    Dashboard direct
-                </a>
-                
-                <a href="declaration/create.php" class="btn btn-outline">
-                    <span>📝</span>
-                    Créer une déclaration
-                </a>
-                
-            <?php endif; ?>
-            
-            <a href="../" class="btn btn-outline">
-                <span>🏠</span>
-                Retour au Portal
+    
+    <!-- Navigation retour -->
+    <div class="dashboard-container">
+        <div class="back-nav">
+            <a href="../" class="back-link">
+                ← Retour au portail
             </a>
-        </div>
-
-        <!-- Liens footer -->
-        <div class="footer-links">
-            <a href="../" class="footer-link">🏠 Accueil Portal</a>
-            <a href="../admin/" class="footer-link">⚙️ Administration</a>
-            <a href="mailto:runser.jean.thomas@guldagil.com" class="footer-link">📧 Support technique</a>
-            <a href="https://www.guldagil.com" target="_blank" class="footer-link">🌐 Site Guldagil</a>
-        </div>
-
-        <!-- Version et informations -->
-        <div style="margin-top: 2rem; font-size: 0.8rem; color: #999;">
-            Version <?= htmlspecialchars($moduleInfo['version']) ?> | 
-            <?= $authEnabled ? 'Mode production' : 'Mode développement' ?> | 
-            © <?= date('Y') ?> Guldagil
         </div>
     </div>
 
+    <!-- Header ADR -->
+    <header class="adr-header">
+        <div class="header-content">
+            <div class="header-title">
+                <div class="adr-logo">⚠️</div>
+                <div class="header-info">
+                    <h1>Module ADR</h1>
+                    <div class="header-subtitle">Gestion des marchandises dangereuses</div>
+                </div>
+            </div>
+            <div class="user-badge">
+                👤 <?= htmlspecialchars($current_user['username']) ?>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container principal -->
+    <div class="dashboard-container">
+        
+        <!-- Debug panel si activé -->
+        <?php if ($debug_mode): ?>
+        <div class="debug-panel">
+            🔧 DEBUG MODE | Session: <?= session_id() ?> | User: <?= $current_user['username'] ?> | Role: <?= $current_user['role'] ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- Section recherche produit -->
+        <section class="search-section">
+            <h2 class="search-title">🔍 Recherche produit ADR</h2>
+            <div class="search-form">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="product-search"
+                    placeholder="Code produit, nom, numéro UN..." 
+                    autocomplete="off"
+                >
+                <div class="search-suggestions" id="search-suggestions"></div>
+            </div>
+        </section>
+
+        <!-- Actions rapides -->
+        <section class="quick-actions">
+            <div class="action-card primary" onclick="location.href='declaration/create.php'">
+                <div class="action-icon">📝</div>
+                <h3 class="action-title">Nouvelle déclaration</h3>
+                <p class="action-desc">Créer une déclaration d'expédition de marchandises dangereuses</p>
+                <button class="btn">Commencer</button>
+            </div>
+
+            <div class="action-card info" onclick="location.href='archives.php'">
+                <div class="action-icon">📋</div>
+                <h3 class="action-title">Archives</h3>
+                <p class="action-desc">Consulter et réouvrir les déclarations passées</p>
+                <button class="btn btn-outline">Consulter</button>
+            </div>
+
+            <div class="action-card success" onclick="location.href='reports.php'">
+                <div class="action-icon">📊</div>
+                <h3 class="action-title">Rapports</h3>
+                <p class="action-desc">Statistiques et rapports de conformité</p>
+                <button class="btn btn-outline">Voir rapports</button>
+            </div>
+        </section>
+
+        <!-- Quotas quotidiens -->
+        <section class="quotas-section">
+            <h2 class="quotas-title">⚖️ Quotas quotidiens (1000 pts/jour/transporteur)</h2>
+            <div class="quotas-grid">
+                <?php foreach ($quotas_data as $transporteur => $quota): ?>
+                <div class="quota-card">
+                    <div class="quota-header">
+                        <span class="quota-name"><?= strtoupper($transporteur) ?></span>
+                        <span class="quota-value"><?= $quota['used'] ?> / <?= $quota['limit'] ?> pts</span>
+                    </div>
+                    <div class="quota-bar">
+                        <div class="quota-fill <?= $quota['percentage'] > 80 ? 'high' : ($quota['percentage'] > 50 ? 'medium' : 'low') ?>" 
+                             style="width: <?= $quota['percentage'] ?>%"></div>
+                    </div>
+                    <div class="quota-status">
+                        <?= $quota['percentage'] ?>% utilisé
+                        <?php if ($quota['percentage'] > 90): ?>
+                            ⚠️ Limite proche
+                        <?php elseif ($quota['percentage'] > 80): ?>
+                            🟡 Attention
+                        <?php else: ?>
+                            ✅ OK
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <!-- Stats rapides -->
+        <section class="stats-section">
+            <h2 class="stats-title">📈 Statistiques du jour</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value"><?= $quick_stats['declarations_today'] ?></div>
+                    <div class="stat-label">Déclarations aujourd'hui</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value"><?= $quick_stats['products_adr'] ?></div>
+                    <div class="stat-label">Produits ADR actifs</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value"><?= $quick_stats['alerts_active'] ?></div>
+                    <div class="stat-label">Alertes actives</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value"><?= $quick_stats['last_declaration'] ?></div>
+                    <div class="stat-label">Dernière déclaration</div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Scripts -->
     <script>
         // Configuration
         const ADR_CONFIG = {
-            authEnabled: <?= json_encode($authEnabled) ?>,
-            debugMode: <?= json_encode($debugMode) ?>,
-            moduleInfo: <?= json_encode($moduleInfo) ?>
+            searchEndpoint: 'ajax/search.php',
+            minChars: 1,
+            searchDelay: 300
         };
 
-        // Fonctions utilitaires
-        function showLoading(button) {
-            const originalText = button.innerHTML;
-            button.innerHTML = '<span class="loading-dots">Chargement</span>';
-            button.disabled = true;
+        let searchTimeout;
+
+        // Recherche en temps réel
+        document.getElementById('product-search').addEventListener('input', function(e) {
+            const query = e.target.value.trim();
             
+            clearTimeout(searchTimeout);
+            
+            if (query.length >= ADR_CONFIG.minChars) {
+                searchTimeout = setTimeout(() => {
+                    searchProducts(query);
+                }, ADR_CONFIG.searchDelay);
+            } else {
+                hideSuggestions();
+            }
+        });
+
+        function searchProducts(query) {
+            const suggestions = document.getElementById('search-suggestions');
+            suggestions.innerHTML = '<div style="padding: 1rem; color: #666;">🔍 Recherche...</div>';
+            suggestions.style.display = 'block';
+
+            // Simulation - à remplacer par vraie requête AJAX
             setTimeout(() => {
-                button.innerHTML = originalText;
-                button.disabled = false;
-            }, 2000);
+                const mockResults = [
+                    { code: 'ADR001', name: 'Acide sulfurique', un: '1830' },
+                    { code: 'ADR002', name: 'Alcool éthylique', un: '1170' },
+                    { code: 'ADR003', name: 'Ammoniaque', un: '1005' }
+                ];
+
+                let html = '';
+                mockResults.forEach(product => {
+                    html += `
+                        <div style="padding: 0.75rem; border-bottom: 1px solid #eee; cursor: pointer;" 
+                             onclick="selectProduct('${product.code}')">
+                            <strong>${product.code}</strong> - ${product.name}
+                            <small style="color: #666; display: block;">UN ${product.un}</small>
+                        </div>
+                    `;
+                });
+
+                suggestions.innerHTML = html;
+            }, 500);
         }
 
-        // Gestion des clics sur les boutons
-        document.querySelectorAll('.btn').forEach(button => {
-            button.addEventListener('click', function(e) {
-                // Ajouter un effet de chargement pour les liens externes
-                if (this.href && !this.href.includes('#')) {
-                    showLoading(this);
-                }
-            });
+        function selectProduct(code) {
+            alert(`Produit sélectionné: ${code}`);
+            hideSuggestions();
+        }
+
+        function hideSuggestions() {
+            document.getElementById('search-suggestions').style.display = 'none';
+        }
+
+        // Fermer suggestions si clic ailleurs
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-form')) {
+                hideSuggestions();
+            }
         });
 
         // Animation d'entrée
         document.addEventListener('DOMContentLoaded', function() {
-            const container = document.querySelector('.adr-container');
-            container.style.opacity = '0';
-            container.style.transform = 'translateY(20px)';
-            
-            setTimeout(() => {
-                container.style.transition = 'all 0.6s ease';
-                container.style.opacity = '1';
-                container.style.transform = 'translateY(0)';
-            }, 100);
-
-            // Animation des cartes
-            const cards = document.querySelectorAll('.feature-card');
+            const cards = document.querySelectorAll('.action-card, .quota-card, .stat-item');
             cards.forEach((card, index) => {
                 card.style.opacity = '0';
-                card.style.transform = 'translateX(-20px)';
+                card.style.transform = 'translateY(20px)';
                 
                 setTimeout(() => {
-                    card.style.transition = 'all 0.4s ease';
+                    card.style.transition = 'all 0.5s ease';
                     card.style.opacity = '1';
-                    card.style.transform = 'translateX(0)';
-                }, 200 + (index * 100));
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
             });
         });
-
-        // Gestion des raccourcis clavier
-        document.addEventListener('keydown', function(e) {
-            switch(e.key) {
-                case 'Enter':
-                    // Entrée pour accès rapide
-                    if (ADR_CONFIG.authEnabled) {
-                        window.location.href = 'auth/login.php';
-                    } else {
-                        window.location.href = '?access=dev';
-                    }
-                    break;
-                    
-                case 'Escape':
-                    // Echap pour retour
-                    window.location.href = '../';
-                    break;
-                    
-                case 'd':
-                    // 'd' pour dashboard direct (dev only)
-                    if (ADR_CONFIG.debugMode && !ADR_CONFIG.authEnabled) {
-                        window.location.href = 'dashboard.php';
-                    }
-                    break;
-            }
-        });
-
-        // Analytics et logging
-        function logAccess(type) {
-            console.log('ADR_ACCESS:', {
-                type: type,
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                authEnabled: ADR_CONFIG.authEnabled
-            });
-            
-            // Ici vous pourriez envoyer des données analytics
-        }
-
-        // Log de l'accès à la page
-        logAccess('page_view');
 
         console.log('🔰 Module ADR initialisé');
-        console.log('📋 Fonctionnalités:', ADR_CONFIG.moduleInfo.features);
-        
-        <?php if (!$authEnabled): ?>
-        console.log('🚨 Mode développement actif - Authentification désactivée');
-        console.log('💡 Raccourcis: Entrée (accès rapide), d (dashboard), Échap (retour)');
+        <?php if ($debug_mode): ?>
+        console.log('🚨 Mode debug actif');
         <?php endif; ?>
     </script>
 </body>
