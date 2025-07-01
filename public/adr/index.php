@@ -667,12 +667,23 @@ function searchProducts(query) {
     suggestions.style.display = 'block';
 
     fetch(`search/search.php?action=suggestions&q=${encodeURIComponent(query)}&limit=10`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.suggestions && data.suggestions.length > 0) {
-                displaySuggestions(data.suggestions);
-            } else {
-                suggestions.innerHTML = '<div class="suggestion-empty">Aucun résultat trouvé</div>';
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.text(); // D'abord récupérer le texte
+        })
+        .then(text => {
+            try {
+                const data = JSON.parse(text); // Puis parser
+                if (data.success && data.suggestions && data.suggestions.length > 0) {
+                    displaySuggestions(data.suggestions);
+                } else {
+                    suggestions.innerHTML = '<div class="suggestion-empty">Aucun résultat trouvé</div>';
+                }
+            } catch (e) {
+                console.error('JSON invalide:', text);
+                suggestions.innerHTML = '<div class="suggestion-error">Erreur de format</div>';
             }
         })
         .catch(error => {
