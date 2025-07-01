@@ -1,4 +1,4 @@
-# .github/workflows/deploy.yml - Version optimisée
+# .github/workflows/deploy.yml - VERSION ANTI-JEKYLL
 name: Déploiement FTP vers port.gul.runser.ovh
 
 on:
@@ -17,9 +17,13 @@ jobs:
         with:
           fetch-depth: 1
 
-      # 2) Désactiver Jekyll explicitement
-      - name: Désactiver Jekyll
-        run: touch .nojekyll
+      # 2) DÉSACTIVER JEKYLL DE FORCE
+      - name: Désactiver Jekyll complètement
+        run: |
+          touch .nojekyll
+          rm -f _config.yml Gemfile* 2>/dev/null || true
+          rm -rf _site/ .sass-cache/ .jekyll-cache/ 2>/dev/null || true
+          echo "🚫 Jekyll désactivé définitivement"
 
       # 3) Générer .env pour la BDD
       - name: Générer .env pour la BDD
@@ -33,7 +37,7 @@ jobs:
           APP_ENV="production"
           EOF
 
-      # 4) Déploiement FTP optimisé
+      # 4) Déploiement FTP
       - name: Déployer vers PROD
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -42,14 +46,12 @@ jobs:
           password:   ${{ secrets.FTP_PASSWORD_PROD }}
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
           local-dir:  ./
-          # Inclure seulement les fichiers nécessaires
           include: |
             public/**
             config/**
             lib/**
             .env
             .nojekyll
-          # Exclure tout le reste
           exclude: |
             .git/**
             .github/**
@@ -59,12 +61,14 @@ jobs:
             docs/**
             _site/**
             .sass-cache/**
+            .jekyll-cache/**
             _config.yml
             Gemfile*
-            *.md
+            *.scss
+            deploy-log.txt
 
-      # 5) Notification email uniquement en cas d'échec
-      - name: Envoi d'un email (échec)
+      # 5) Notification échec
+      - name: Envoi email (échec)
         if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
@@ -72,7 +76,7 @@ jobs:
           server_port:    ${{ secrets.MAIL_PORT }}
           username:       ${{ secrets.MAIL_USERNAME }}
           password:       ${{ secrets.MAIL_PASSWORD }}
-          subject:        "❌ Échec du déploiement vers port.gul.runser.ovh"
+          subject:        "❌ Échec déploiement port.gul.runser.ovh"
           body: |
             ⚠️ ÉCHEC DU DÉPLOIEMENT ⚠️
             
@@ -80,12 +84,8 @@ jobs:
             Branche: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
             Auteur: ${{ github.actor }}
-            Date: ${{ github.event.head_commit.timestamp }}
             
-            Message du commit: "${{ github.event.head_commit.message }}"
-            
-            🔗 Voir les détails de l'erreur :
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            🔗 Logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
 
@@ -94,6 +94,4 @@ jobs:
         if: success()
         run: |
           echo "✅ Déploiement réussi vers port.gul.runser.ovh"
-          echo "📅 Date: $(date)"
-          echo "👤 Auteur: ${{ github.actor }}"
-          echo "📝 Commit: ${{ github.sha }}"
+          echo "🚫 Jekyll définitivement désactivé"
