@@ -72,35 +72,96 @@ if (file_exists(__DIR__ . '/../../templates/header.php')) {
     }
 
     .adr-container {
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
         padding: 2rem;
+        width: 100%;
     }
 
     .adr-hero {
         background: linear-gradient(135deg, var(--adr-primary), var(--adr-secondary));
         color: white;
-        padding: 3rem 2rem;
+        padding: 2rem;
         border-radius: 12px;
         margin-bottom: 2rem;
-        text-align: center;
         box-shadow: 0 4px 16px rgba(255, 107, 53, 0.3);
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 2rem;
+        align-items: center;
     }
 
-    .adr-hero h1 {
+    .hero-content h1 {
         font-size: 2.5rem;
         margin: 0 0 0.5rem 0;
         display: flex;
         align-items: center;
-        justify-content: center;
         gap: 1rem;
     }
 
-    .adr-hero p {
+    .hero-content p {
         font-size: 1.1rem;
         opacity: 0.9;
         margin: 0;
     }
+
+    /* Quotas en sidebar du hero */
+    .hero-quotas {
+        min-width: 350px;
+    }
+
+    .hero-quotas h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+
+    .quota-mini {
+        background: rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .quota-mini:last-child {
+        margin-bottom: 0;
+    }
+
+    .quota-mini-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .quota-mini-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .quota-mini-value {
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+
+    .quota-mini-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .quota-mini-fill {
+        height: 100%;
+        transition: width 0.8s ease;
+        border-radius: 3px;
+    }
+
+    .quota-mini-fill.low { background: #4ade80; }
+    .quota-mini-fill.medium { background: #fbbf24; }
+    .quota-mini-fill.high { background: #f87171; }
 
     /* Section recherche */
     .search-section {
@@ -155,11 +216,11 @@ if (file_exists(__DIR__ . '/../../templates/header.php')) {
         overflow-y: auto;
     }
 
-    /* Actions principales */
+    /* Actions principales - plus large */
     .main-actions {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
         margin-bottom: 2rem;
     }
 
@@ -452,13 +513,32 @@ if (file_exists(__DIR__ . '/../../templates/header.php')) {
     </div>
     <?php endif; ?>
 
-    <!-- Hero section -->
+    <!-- Hero section avec quotas intégrés -->
     <section class="adr-hero">
-        <h1>
-            <span>⚠️</span>
-            <span>Module ADR</span>
-        </h1>
-        <p>Gestion des marchandises dangereuses selon la réglementation ADR</p>
+        <div class="hero-content">
+            <h1>
+                <span>⚠️</span>
+                <span>Module ADR</span>
+            </h1>
+            <p>Gestion des marchandises dangereuses selon la réglementation ADR</p>
+        </div>
+        
+        <!-- Quotas en sidebar -->
+        <div class="hero-quotas">
+            <h3>⚖️ Quotas quotidiens (1000 pts/jour)</h3>
+            <?php foreach ($quotas_data as $transporteur => $quota): ?>
+            <div class="quota-mini">
+                <div class="quota-mini-header">
+                    <span class="quota-mini-name"><?= strtoupper($transporteur) ?></span>
+                    <span class="quota-mini-value"><?= $quota['used'] ?>/<?= $quota['limit'] ?></span>
+                </div>
+                <div class="quota-mini-bar">
+                    <div class="quota-mini-fill <?= $quota['percentage'] > 80 ? 'high' : ($quota['percentage'] > 50 ? 'medium' : 'low') ?>" 
+                         style="width: <?= $quota['percentage'] ?>%"></div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
     </section>
 
     <!-- Section recherche produit -->
@@ -502,36 +582,8 @@ if (file_exists(__DIR__ . '/../../templates/header.php')) {
         </a>
     </section>
 
-    <!-- Quotas quotidiens (sans Kuehne+Nagel) -->
-    <section class="quotas-section">
-        <h2 class="quotas-title">
-            ⚖️ Quotas quotidiens (1000 pts/jour/transporteur)
-        </h2>
-        <div class="quotas-grid">
-            <?php foreach ($quotas_data as $transporteur => $quota): ?>
-            <div class="quota-card">
-                <div class="quota-header">
-                    <span class="quota-name"><?= strtoupper($transporteur) ?></span>
-                    <span class="quota-value"><?= $quota['used'] ?> / <?= $quota['limit'] ?> pts</span>
-                </div>
-                <div class="quota-bar">
-                    <div class="quota-fill <?= $quota['percentage'] > 80 ? 'high' : ($quota['percentage'] > 50 ? 'medium' : 'low') ?>" 
-                         style="width: <?= $quota['percentage'] ?>%"></div>
-                </div>
-                <div class="quota-status">
-                    <?= $quota['percentage'] ?>% utilisé
-                    <?php if ($quota['percentage'] > 90): ?>
-                        ⚠️ Limite proche
-                    <?php elseif ($quota['percentage'] > 80): ?>
-                        🟡 Attention
-                    <?php else: ?>
-                        ✅ OK
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </section>
+    <!-- Supprimer cette section - quotas déplacés dans hero -->
+    <!-- Section supprimée : quotas-section -->
 
     <!-- Stats rapides -->
     <section class="stats-section">
@@ -614,11 +666,11 @@ function searchProducts(query) {
     suggestions.innerHTML = '<div class="suggestion-loading">🔍 Recherche...</div>';
     suggestions.style.display = 'block';
 
-    fetch(`${ADR_CONFIG.searchEndpoint}?q=${encodeURIComponent(query)}&limit=10`)
+    fetch(`search/search.php?action=suggestions&q=${encodeURIComponent(query)}&limit=10`)
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.results.length > 0) {
-                displaySuggestions(data.results);
+            if (data.success && data.suggestions && data.suggestions.length > 0) {
+                displaySuggestions(data.suggestions);
             } else {
                 suggestions.innerHTML = '<div class="suggestion-empty">Aucun résultat trouvé</div>';
             }
