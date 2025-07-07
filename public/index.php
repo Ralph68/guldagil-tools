@@ -115,7 +115,7 @@ $available_modules = [
         'icon' => '✅',
         'color' => 'green',
         'status' => 'development',
-        'path' => '/controle-qualite/',
+        'path' => '/qualite/',
         'features' => ['Tests et validations', 'Rapports de conformité', 'Suivi des équipements'],
         'estimated_completion' => '60%'
     ],
