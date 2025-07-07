@@ -97,7 +97,7 @@ $available_modules = [
         'status' => 'active',
         'path' => '/port/',
         'features' => ['Comparaison multi-transporteurs', 'Calculs automatisés', 'Export et historique'],
-        'estimated_completion' => '100%'
+        'estimated_completion' => '70%'
     ],
     'adr' => [
         'name' => 'Gestion ADR',
@@ -107,17 +107,17 @@ $available_modules = [
         'status' => 'active',
         'path' => '/adr/',
         'features' => ['Déclarations ADR', 'Gestion des quotas', 'Suivi réglementaire'],
-        'estimated_completion' => '85%'
+        'estimated_completion' => '50%'
     ],
     'controle-qualite' => [
         'name' => 'Contrôle Qualité',
         'description' => 'Contrôle et validation des équipements - Suivi qualité et conformité',
         'icon' => '✅',
         'color' => 'green',
-        'status' => 'development',
+        'status' => 'active',
         'path' => '/qualite/',
         'features' => ['Tests et validations', 'Rapports de conformité', 'Suivi des équipements'],
-        'estimated_completion' => '60%'
+        'estimated_completion' => '10%'
     ],
     'epi' => [
         'name' => 'Équipements EPI',
@@ -127,7 +127,7 @@ $available_modules = [
         'status' => 'development',
         'path' => '/epi/',
         'features' => ['Inventaire EPI', 'Suivi des dates d\'expiration', 'Gestion des commandes'],
-        'estimated_completion' => '40%'
+        'estimated_completion' => '01%'
     ],
     'outillages' => [
         'name' => 'Outillages',
@@ -137,7 +137,7 @@ $available_modules = [
         'status' => 'development',
         'path' => '/outillages/',
         'features' => ['Inventaire outillage', 'Planning maintenance', 'Suivi d\'utilisation'],
-        'estimated_completion' => '25%'
+        'estimated_completion' => '01%'
     ],
     'admin' => [
         'name' => 'Administration',
@@ -147,7 +147,7 @@ $available_modules = [
         'status' => 'admin_only',
         'path' => '/admin/',
         'features' => ['Configuration système', 'Gestion utilisateurs', 'Maintenance'],
-        'estimated_completion' => '95%'
+        'estimated_completion' => '10%'
     ]
 ];
 
