@@ -45,7 +45,13 @@ $is_debug = defined('DEBUG') && DEBUG;
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
+// ========================================
+// 🔐 AUTHENTIFICATION OBLIGATOIRE
+// ========================================
+if (!$user_authenticated) {
+    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+    exit;
+}
 // Vérifier authentification
 $user_authenticated = false;
 $current_user = null;
