@@ -45,13 +45,6 @@ $is_debug = defined('DEBUG') && DEBUG;
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// ========================================
-// 🔐 AUTHENTIFICATION OBLIGATOIRE
-// ========================================
-if (!$user_authenticated) {
-    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
-    exit;
-}
 // Vérifier authentification
 $user_authenticated = false;
 $current_user = null;
@@ -73,9 +66,11 @@ if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
     $current_user = $user_authenticated ? ($_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user']) : null;
 }
 
-// REDIRECTION si non connecté (ACTIVÉE - corrige le problème)
+// ========================================
+// 🔐 AUTHENTIFICATION OBLIGATOIRE
+// ========================================
 if (!$user_authenticated) {
-    header('Location: /auth/login.php');
+    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
     exit;
 }
 
