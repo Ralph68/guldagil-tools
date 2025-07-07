@@ -1,5 +1,10 @@
 <?php
-// public/adr/dashboard.php - Version PROPRE et SIMPLE
+/**
+ * Titre: Dashboard module ADR
+ * Chemin: /features/adr/dashboard.php
+ * Version: 0.5 beta + build auto
+ */
+
 session_start();
 
 // Vérification authentification ADR
@@ -186,10 +191,9 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard ADR - Guldagil Portal</title>
     
-    <!-- CSS existants -->
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/adr.css">
-    <link rel="stylesheet" href="assets/css/adr-dashboard.css">
+    <!-- CSS et JS externe modulaire -->
+    <link rel="stylesheet" href="assets/css/adr.css">
+    <script src="assets/js/adr.js"></script>
 </head>
 <body>
     
@@ -324,30 +328,6 @@ try {
             </div>
         </div>
     </div>
-
-    <!-- Scripts séparés -->
-    <script src="../assets/js/common.js"></script>
-    <script src="assets/js/adr.js"></script>
-    <script src="assets/js/adr-dashboard.js"></script>
     
-    <script>
-        // Configuration pour ce dashboard
-        window.ADR_CONFIG = {
-            searchUrl: window.location.href,
-            user: '<?= $_SESSION['adr_user'] ?>',
-            debug: true
-        };
-        
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ Dashboard ADR chargé');
-            
-            if (typeof ADR !== 'undefined' && ADR.Dashboard) {
-                ADR.Dashboard.init();
-            } else {
-                console.error('❌ Module ADR.Dashboard non trouvé');
-            }
-        });
-    </script>
 </body>
 </html>
