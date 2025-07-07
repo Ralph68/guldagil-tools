@@ -594,3 +594,54 @@ const notificationStyles = `
     background: none;
     border: none;
     font-size: 18px;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.notification-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.field-error {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
+
+.modal-show {
+    animation: modalFadeIn 0.2s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+`;
+
+// Injecter les styles
+if (!document.getElementById('qualite-notification-styles')) {
+    const style = document.createElement('style');
+    style.id = 'qualite-notification-styles';
+    style.textContent = notificationStyles;
+    document.head.appendChild(style);
+}
+
+console.log('🔬 Module Contrôle Qualité JavaScript chargé');
+
+// Export pour utilisation externe
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = QualiteModule;
+}
