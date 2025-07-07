@@ -28,6 +28,13 @@ $breadcrumbs = [
 
 session_start();
 
+// ========================================
+// 🔐 AUTHENTIFICATION OBLIGATOIRE
+// ========================================
+if (!$user_authenticated) {
+    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+    exit;
+}
 // GESTION AJAX CALCULATE
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
     header('Content-Type: application/json');
