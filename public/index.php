@@ -100,7 +100,7 @@ $nav_info = 'Tableau de bord principal';
 $roles = ['guest' => 0, 'user' => 1, 'manager' => 2, 'admin' => 3, 'dev' => 4];
 $user_level = $roles[$current_user['role']] ?? 1;
 
-// Modules disponibles selon le niveau d'accès
+// Modules disponibles selon le niveau d'accès - COMPLET (6 modules)
 $available_modules = [
     'calculateur' => [
         'name' => 'Calculateur de frais',
@@ -108,18 +108,20 @@ $available_modules = [
         'icon' => '🧮',
         'color' => 'blue',
         'status' => 'active',
+        'status_label' => 'DISPONIBLE',
         'path' => '/calculateur/',
         'features' => ['Comparaison multi-transporteurs', 'Calculs automatisés', 'Export et historique'],
         'min_level' => 1
     ],
     'adr' => [
-        'name' => 'Matières ADR',
-        'description' => 'Gestion et consultation des matières dangereuses selon la réglementation ADR',
+        'name' => 'Gestion ADR',
+        'description' => 'Transport de marchandises dangereuses - Déclarations et suivi réglementaire',
         'icon' => '⚠️',
         'color' => 'orange',
         'status' => 'active',
+        'status_label' => 'DISPONIBLE',
         'path' => '/adr/',
-        'features' => ['Base de données ADR', 'Classification UN', 'Réglementation transport'],
+        'features' => ['Déclarations ADR', 'Gestion des quotas', 'Suivi réglementaire'],
         'min_level' => 1
     ],
     'qualite' => [
@@ -128,18 +130,42 @@ $available_modules = [
         'icon' => '✅',
         'color' => 'green',
         'status' => 'active',
+        'status_label' => 'DISPONIBLE',
         'path' => '/qualite/',
-        'features' => ['Contrôles qualité', 'Suivi conformité', 'Rapports'],
-        'min_level' => 2
+        'features' => ['Tests et validations', 'Rapports de conformité', 'Suivi des équipements'],
+        'min_level' => 1
+    ],
+    'epi' => [
+        'name' => 'Équipements EPI',
+        'description' => 'Gestion des équipements de protection individuelle - Stock et maintenance',
+        'icon' => '🛡️',
+        'color' => 'purple',
+        'status' => 'development',
+        'status_label' => 'EN DÉVELOPPEMENT',
+        'path' => '/epi/',
+        'features' => ['Inventaire EPI', 'Suivi des dates d\'expiration', 'Gestion des commandes'],
+        'min_level' => 1
+    ],
+    'outillages' => [
+        'name' => 'Outillages',
+        'description' => 'Gestion des outils et équipements techniques - Maintenance et traçabilité',
+        'icon' => '🔧',
+        'color' => 'gray',
+        'status' => 'development',
+        'status_label' => 'EN DÉVELOPPEMENT',
+        'path' => '/outillages/',
+        'features' => ['Inventaire outillage', 'Planning maintenance', 'Suivi d\'utilisation'],
+        'min_level' => 1
     ],
     'admin' => [
         'name' => 'Administration',
-        'description' => 'Configuration du portail, gestion des tarifs et maintenance système',
+        'description' => 'Configuration et gestion globale du portail - Réservé aux administrateurs',
         'icon' => '⚙️',
-        'color' => 'gray',
+        'color' => 'red',
         'status' => 'restricted',
+        'status_label' => 'ADMINISTRATEURS',
         'path' => '/admin/',
-        'features' => ['Gestion tarifs', 'Configuration', 'Maintenance'],
+        'features' => ['Configuration système', 'Gestion utilisateurs', 'Maintenance'],
         'min_level' => 3
     ]
 ];
@@ -353,7 +379,9 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
     .module-icon-blue { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
     .module-icon-orange { background: linear-gradient(135deg, #fed7aa, #fdba74); }
     .module-icon-green { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
+    .module-icon-purple { background: linear-gradient(135deg, #e0e7ff, #c7d2fe); }
     .module-icon-gray { background: linear-gradient(135deg, #f3f4f6, #e5e7eb); }
+    .module-icon-red { background: linear-gradient(135deg, #fecaca, #fca5a5); }
 
     .status-badge {
         padding: 0.25rem 0.5rem;
@@ -369,8 +397,13 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
         color: white;
     }
 
-    .status-restricted {
+    .status-development {
         background: var(--warning, #f59e0b);
+        color: white;
+    }
+
+    .status-restricted {
+        background: var(--error, #ef4444);
         color: white;
     }
 
@@ -440,14 +473,44 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
         color: white;
     }
 
+    .module-btn-orange:hover {
+        background: #c2410c;
+    }
+
     .module-btn-green {
         background: #059669;
         color: white;
     }
 
+    .module-btn-green:hover {
+        background: #047857;
+    }
+
+    .module-btn-purple {
+        background: #7c3aed;
+        color: white;
+    }
+
+    .module-btn-purple:hover {
+        background: #5b21b6;
+    }
+
     .module-btn-gray {
         background: var(--gray-600, #4b5563);
         color: white;
+    }
+
+    .module-btn-gray:hover {
+        background: var(--gray-700, #374151);
+    }
+
+    .module-btn-red {
+        background: #dc2626;
+        color: white;
+    }
+
+    .module-btn-red:hover {
+        background: #b91c1c;
     }
 
     /* Statistiques */
