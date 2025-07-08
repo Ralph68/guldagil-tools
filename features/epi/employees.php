@@ -37,7 +37,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Portail Guldagil</title>
-    <link rel="stylesheet" href="/features/epi/assets/epi.css">
+    <link rel="stylesheet" href="/features/epi/assets/css/epi.css">
 </head>
 <body>
     <header class="epi-header">
@@ -252,7 +252,7 @@ try {
         </div>
     </main>
 
-    <script src="/features/epi/assets/epi.js"></script>
+    <script src="/features/epi/assets/js/epi.js"></script>
     <script>
         // Script spécifique à la page employés
         document.addEventListener('DOMContentLoaded', function() {
