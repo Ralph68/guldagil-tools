@@ -1,41 +1,201 @@
 /**
- * Titre: Styles pour les pages légales (privacy, terms, security)
+ * Titre: Extensions CSS pour les pages légales (utilise portal.css)
  * Chemin: /public/assets/css/legal.css
  * Version: 0.5 beta + build auto
  */
 
-/* Variables CSS pour cohérence avec le thème principal */
-:root {
-    --primary-blue: #1e40af;
-    --primary-blue-dark: #1e3a8a;
-    --primary-blue-light: #eff6ff;
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-900: #111827;
-    --color-success: #22c55e;
-    --color-warning: #f59e0b;
-    --color-danger: #ef4444;
-    --color-danger-light: #fef2f2;
-    --color-success-light: #f0fdf4;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 1.5rem;
-    --spacing-xl: 2rem;
-    --spacing-2xl: 3rem;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --font-size-sm: 0.875rem;
-    --font-size-base: 1rem;
-    --font-size-lg: 1.125rem;
-    --font-size-xl: 1.25rem;
-    --font-size-2xl: 1.5rem;
-    --font-size-3xl: 1.875rem;
-    --transition-normal: all 0.3s ease;
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+/* Extensions spécifiques aux pages légales - basées sur portal.css */
+
+/* Styles spécifiques pour les pages légales */
+.legal-page {
+    /* Hérite de body dans portal.css */
+}
+
+.legal-header {
+    text-align: center;
+    padding: var(--spacing-2xl, 3rem) 0;
+    background: white;
+    border-radius: var(--radius-lg, 0.75rem);
+    box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--gray-200, #e5e7eb);
+    margin-bottom: var(--spacing-2xl, 3rem);
+}
+
+.legal-header h1 {
+    font-size: var(--font-size-3xl, 1.875rem);
+    font-weight: 600;
+    color: var(--gray-900, #111827);
+    margin: 0 0 var(--spacing-lg, 1.5rem) 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md, 1rem);
+}
+
+.legal-meta {
+    color: var(--gray-600, #4b5563);
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.legal-content {
+    background: white;
+    border-radius: var(--radius-lg, 0.75rem);
+    box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--gray-200, #e5e7eb);
+    overflow: hidden;
+}
+
+.legal-section {
+    padding: var(--spacing-2xl, 3rem);
+    border-bottom: 1px solid var(--gray-200, #e5e7eb);
+}
+
+.legal-section:last-child {
+    border-bottom: none;
+}
+
+.legal-section h2 {
+    font-size: var(--font-size-2xl, 1.5rem);
+    font-weight: 600;
+    color: var(--gray-900, #111827);
+    margin: 0 0 var(--spacing-lg, 1.5rem) 0;
+    padding-bottom: var(--spacing-md, 1rem);
+    border-bottom: 2px solid var(--primary-blue, #3182ce);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md, 1rem);
+}
+
+.legal-section h3 {
+    font-size: var(--font-size-xl, 1.25rem);
+    font-weight: 600;
+    color: var(--gray-900, #111827);
+    margin: var(--spacing-xl, 2rem) 0 var(--spacing-md, 1rem) 0;
+}
+
+.legal-section h4 {
+    font-size: var(--font-size-lg, 1.125rem);
+    font-weight: 600;
+    color: var(--gray-800, #1f2937);
+    margin: var(--spacing-lg, 1.5rem) 0 var(--spacing-sm, 0.5rem) 0;
+}
+
+.legal-section p {
+    margin: var(--spacing-md, 1rem) 0;
+    line-height: 1.7;
+    color: var(--gray-700, #374151);
+}
+
+.legal-section ul, .legal-section ol {
+    margin: var(--spacing-md, 1rem) 0;
+    padding-left: var(--spacing-xl, 2rem);
+}
+
+.legal-section li {
+    margin: var(--spacing-sm, 0.5rem) 0;
+    line-height: 1.6;
+    color: var(--gray-700, #374151);
+}
+
+.legal-section a {
+    color: var(--primary-blue, #3182ce);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.legal-section a:hover {
+    text-decoration: underline;
+}
+
+/* Boîtes de statut */
+.status-box {
+    padding: var(--spacing-lg, 1.5rem);
+    border-radius: var(--radius-md, 0.5rem);
+    margin: var(--spacing-lg, 1.5rem) 0;
+    border-left: 4px solid;
+}
+
+.status-beta {
+    background: rgba(245, 158, 11, 0.1);
+    border-left-color: var(--color-warning, #f59e0b);
+}
+
+.status-info {
+    background: rgba(49, 130, 206, 0.1);
+    border-left-color: var(--primary-blue, #3182ce);
+}
+
+.status-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-left-color: var(--color-warning, #f59e0b);
+}
+
+.status-development {
+    background: rgba(107, 114, 128, 0.1);
+    border-left-color: var(--gray-500, #6b7280);
+}
+
+.status-security {
+    background: rgba(34, 197, 94, 0.1);
+    border-left-color: var(--color-success, #22c55e);
+}
+
+.status-box h4 {
+    margin: 0 0 var(--spacing-sm, 0.5rem) 0;
+    font-size: var(--font-size-lg, 1.125rem);
+    font-weight: 600;
+}
+
+.status-box p, .status-box ul {
+    margin: var(--spacing-sm, 0.5rem) 0 0 0;
+}
+
+.status-box li {
+    margin: 0.25rem 0;
+}
+
+/* Footer de page légale */
+.legal-footer {
+    text-align: center;
+    padding: var(--spacing-2xl, 3rem);
+    background: var(--gray-50, #f9fafb);
+    border-top: 1px solid var(--gray-200, #e5e7eb);
+    margin-top: var(--spacing-2xl, 3rem);
+}
+
+.legal-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-lg, 1.5rem);
+    flex-wrap: wrap;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .legal-container {
+        padding: 0 var(--spacing-md, 1rem);
+    }
+    
+    .legal-section {
+        padding: var(--spacing-lg, 1.5rem);
+    }
+    
+    .legal-header {
+        padding: var(--spacing-lg, 1.5rem);
+    }
+    
+    .legal-header h1 {
+        font-size: var(--font-size-2xl, 1.5rem);
+        flex-direction: column;
+        gap: var(--spacing-sm, 0.5rem);
+    }
+    
+    .legal-actions {
+        flex-direction: column;
+        align-items: center;
+    }
 }
 
 /* Reset et base */
