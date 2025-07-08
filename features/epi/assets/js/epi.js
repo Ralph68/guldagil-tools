@@ -1,6 +1,6 @@
 /**
  * Titre: JavaScript EPI Module
- * Chemin: /features/epi/assets/epi.js
+ * Chemin: /features/epi/assets/js/epi.js
  * Version: 0.5 beta + build auto
  */
 
@@ -387,4 +387,36 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Erreur EPI Module:', event.error);
         
         // En mode debug, afficher l'erreur
-        if (window.location.hostname === 'localhost' || window.location
+        if (window.location.hostname === 'localhost' || window.location.search.includes('debug=1')) {
+            if (window.epiManager) {
+                window.epiManager.showNotification(`Erreur JS: ${event.error.message}`, 'error');
+            }
+        }
+    });
+
+    // Raccourcis clavier
+    document.addEventListener('keydown', (event) => {
+        // Ctrl+R : Refresh dashboard
+        if (event.ctrlKey && event.key === 'r') {
+            event.preventDefault();
+            if (window.epiManager) {
+                window.epiManager.refreshDashboard();
+            }
+        }
+        
+        // Échap : Fermer les modales
+        if (event.key === 'Escape') {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (modal.style.display === 'flex') {
+                    window.epiManager?.closeModal(modal.id);
+                }
+            });
+        }
+    });
+});
+
+// Export pour utilisation dans d'autres scripts
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { EpiManager, EpiUtils };
+}
