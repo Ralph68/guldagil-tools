@@ -18,9 +18,8 @@ if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
 define('ROOT_PATH', dirname(__DIR__));
 
 // Chargement configuration
-$required_files = [
-    ROOT_PATH . '/config/config.php',
-    ROOT_PATH . '/config/version.php'
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/version.php';
 ];
 
 foreach ($required_files as $file) {
