@@ -9,12 +9,10 @@
 $epi_module_path = __DIR__ . '/../../features/epi/index.php';
 
 if (!file_exists($epi_module_path)) {
-    // Si le module n'existe pas, rediriger vers l'accueil avec message d'erreur
-    session_start();
-    $_SESSION['error'] = "Module EPI temporairement indisponible";
+    // Si le module n'existe pas, rediriger vers l'accueil
     header('Location: /public/index.php');
     exit;
 }
 
-// Inclure et exécuter le module EPI
+// Inclure le module EPI directement
 require_once $epi_module_path;
