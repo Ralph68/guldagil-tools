@@ -203,9 +203,9 @@ $is_admin = $user_authenticated && isset($current_user['role']) && $current_user
                             <span class="link-icon">⚠️</span>
                             Module ADR
                         </a>
-                        <a href="/qualite/" class="footer-link">
-                            <span class="link-icon">✅</span>
-                            Contrôle Qualité
+                        <a href="/help/" class="footer-link">
+                            <span class="link-icon">❓</span>
+                            Documentation
                         </a>
                         <?php if ($user_authenticated): ?>
                         <a href="/admin/" class="footer-link">
@@ -266,14 +266,9 @@ $is_admin = $user_authenticated && isset($current_user['role']) && $current_user
                         </a>
                         <a href="mailto:<?= htmlspecialchars($app_author) ?>?subject=Support Portail Guldagil" class="support-link">
                             <span class="link-icon">📧</span>
-                            Contact dev
+                            Contact développeur
                         </a>
-                        <?php if (file_exists(ROOT_PATH . '/documentation/README.md')): ?>
-                        <a href="/documentation/" class="support-link">
-                            <span class="link-icon">📚</span>
-                            Documentation
-                        </a>
-                        <?php endif; ?>
+                    </div>
                     </div>
                 </div>
             </div>
