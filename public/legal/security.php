@@ -20,7 +20,7 @@ $page_type = "legal";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - <?= APP_NAME ?></title>
     <meta name="description" content="<?= $page_description ?>">
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/assets/css/portal.css">
     <link rel="stylesheet" href="/assets/css/legal.css">
 </head>
 <body class="legal-page">
