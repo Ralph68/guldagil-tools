@@ -44,107 +44,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Portail Guldagil</title>
-    <link rel="stylesheet" href="/features/epi/assets/epi.css">
-    <style>
-        /* CSS intégré temporaire si le fichier CSS n'existe pas */
-        :root {
-            --epi-primary: #6B46C1;
-            --epi-secondary: #8B5CF6;
-            --epi-accent: #A78BFA;
-            --epi-success: #10B981;
-            --epi-warning: #F59E0B;
-            --epi-danger: #EF4444;
-            --shadow-light: 0 4px 6px rgba(107, 70, 193, 0.1);
-            --shadow-medium: 0 8px 25px rgba(107, 70, 193, 0.15);
-        }
-
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; }
-
-        .epi-header {
-            background: linear-gradient(135deg, var(--epi-primary) 0%, var(--epi-secondary) 100%);
-            color: white;
-            padding: 2rem 0;
-            margin-bottom: 2rem;
-        }
-
-        .epi-header h1 { margin: 0; font-size: 2.5rem; font-weight: 700; }
-        .header-container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
-
-        .dashboard-container { max-width: 1200px; margin: 0 auto; padding: 0 2rem 3rem; }
-        .dashboard-grid { display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-
-        .epi-card {
-            background: white;
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow-light);
-            border: 1px solid rgba(107, 70, 193, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .epi-card:hover { box-shadow: var(--shadow-medium); transform: translateY(-2px); }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .metric-card {
-            background: linear-gradient(135deg, var(--epi-primary) 0%, var(--epi-secondary) 100%);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .metric-value { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .metric-label { font-size: 0.9rem; opacity: 0.9; }
-
-        .alert-item {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .alert-expired { background: #FEF2F2; border-left: 4px solid var(--epi-danger); }
-        .alert-urgent { background: #FFFBEB; border-left: 4px solid var(--epi-warning); }
-
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-        }
-
-        .action-btn {
-            background: var(--epi-accent);
-            color: white;
-            border: none;
-            padding: 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            justify-content: center;
-        }
-
-        .action-btn:hover { background: var(--epi-primary); transform: translateY(-2px); }
-
-        @media (max-width: 768px) {
-            .dashboard-container { padding: 0 1rem 2rem; }
-            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-            .metric-value { font-size: 2rem; }
-        }
-    </style>
+    <link rel="stylesheet" href="/features/epi/assets/css/epi.css">
 </head>
 <body>
     <header class="epi-header">
@@ -239,22 +139,6 @@ try {
         </div>
     </main>
 
-    <script>
-        console.log('🛡️ Module EPI initialisé');
-        
-        // Animation au chargement
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.epi-card, .metric-card');
-            cards.forEach((card, index) => {
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(20px)';
-                setTimeout(() => {
-                    card.style.transition = 'all 0.5s ease';
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, index * 100);
-            });
-        });
-    </script>
+    <script src="/features/epi/assets/js/epi.js"></script>
 </body>
 </html>
