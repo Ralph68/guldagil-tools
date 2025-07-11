@@ -593,10 +593,10 @@ include ROOT_PATH . '/templates/header.php';
 </div>
 
 <!-- CSS intégré pour le profil -->
-<link rel="stylesheet" href="/public/user/assets/css/profile.css?v=<?= $build_number ?>">
+<link rel="stylesheet" href="assets/css/profile.css?v=<?= $build_number ?>">
 
 <!-- JavaScript pour le profil -->
-<script src="/public/user/assets/js/profile.js?v=<?= $build_number ?>"></script>
+<script src="assets/js/profile.js?v=<?= $build_number ?>"></script>
 <script>
 // Gestion des onglets
 document.addEventListener('DOMContentLoaded', function() {
