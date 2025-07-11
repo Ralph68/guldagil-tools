@@ -124,7 +124,7 @@ $recent_activities = [
     <!-- CSS de base -->
     <link rel="stylesheet" href="/assets/css/app.css?v=<?= $build_number ?>">
     <!-- CSS module user - CHEMIN CORRIGÉ -->
-    <link rel="stylesheet" href="/public/user/assets/css/user.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="assets/css/user.css?v=<?= $build_number ?>">
 </head>
 <body>
     <?php include ROOT_PATH . '/templates/header.php'; ?>
@@ -300,7 +300,7 @@ $recent_activities = [
     <?php include ROOT_PATH . '/templates/footer.php'; ?>
 
     <!-- JavaScript - CHEMIN CORRIGÉ -->
-    <script src="/public/user/assets/js/user.js?v=<?= $build_number ?>"></script>
+    <script src="assets/js/user.js?v=<?= $build_number ?>"></script>
     <script>
         // Initialisation spécifique au dashboard
         document.addEventListener('DOMContentLoaded', function() {
