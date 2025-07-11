@@ -5,27 +5,48 @@
  * Version: 0.5 beta + build auto
  */
 
-session_start();
+// Démarrage de la session avec paramètres sécurisés
+session_start([
+    'cookie_httponly' => true,
+    'cookie_secure' => true,
+    'cookie_samesite' => 'Strict',
+    'gc_maxlifetime' => 1800, // 30 minutes
+]);
 
 // Configuration - CORRIGÉ
 define('ROOT_PATH', dirname(dirname(__DIR__)));
+define('APP_NAME', 'VotreApplication'); // À définir dans config.php
 
-// Chargement configuration
-$required_files = [
-    ROOT_PATH . '/config/config.php',
-    ROOT_PATH . '/config/version.php'
-];
+// Configuration de la gestion des erreurs
+ini_set('display_errors', 'off');
+ini_set('log_errors', 'on');
+error_reporting(E_ALL & ~E_NOTICE);
 
-foreach ($required_files as $file) {
-    if (!file_exists($file)) {
-        http_response_code(500);
-        die('<h1>❌ Configuration manquante</h1><p>Fichier requis : ' . basename($file) . '</p>');
+// Fonction de chargement sécurisée
+function loadConfigFile(string $filePath): void {
+    if (!file_exists($filePath)) {
+        throw new RuntimeException("Fichier de configuration manquant: " . basename($filePath));
     }
-    require_once $file;
+    require_once $filePath;
 }
 
-// Authentification avec AuthManager
 try {
+    // Chargement configuration
+    $required_files = [
+        ROOT_PATH . '/config/config.php',
+        ROOT_PATH . '/config/version.php'
+    ];
+
+    foreach ($required_files as $file) {
+        loadConfigFile($file);
+    }
+
+    // Validation CSRF
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        validateCsrfToken();
+    }
+
+    // Authentification avec AuthManager
     require_once ROOT_PATH . '/core/auth/AuthManager.php';
     $auth = new AuthManager();
     
@@ -35,17 +56,27 @@ try {
     }
     
     $current_user = $auth->getCurrentUser();
+    regenerateSessionId(); // Régénérer l'ID de session après authentification
+
 } catch (Exception $e) {
-    // Fallback sur l'ancien système
-    if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
-        header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
-        exit;
+    error_log($e->getMessage());
+    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+    exit;
+}
+
+// Fonctions utilitaires
+function regenerateSessionId(): void {
+    session_regenerate_id(true);
+    $_SESSION['last_activity'] = time();
+}
+
+function validateCsrfToken(): void {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        throw new RuntimeException('Token CSRF invalide');
     }
-    $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
 }
 
 // Variables pour template
-$version_info = getVersionInfo();
 $page_title = 'Mon Espace';
 $page_subtitle = 'Dashboard utilisateur';
 $current_module = 'user';
@@ -118,6 +149,10 @@ $recent_activities = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' assets/js/;">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <title><?= htmlspecialchars($page_title) ?> - <?= htmlspecialchars($app_name) ?></title>
     <meta name="description" content="Dashboard utilisateur du portail <?= htmlspecialchars($app_name) ?>">
     
@@ -304,9 +339,18 @@ $recent_activities = [
     <script>
         // Initialisation spécifique au dashboard
         document.addEventListener('DOMContentLoaded', function() {
+            const csrfToken = <?= json_encode($_SESSION['csrf_token'] ?? '') ?>;
             console.log('👤 Dashboard utilisateur initialisé');
             console.log('Modules disponibles:', <?= json_encode($current_user['modules'] ?? ['calculateur']) ?>);
-            
+
+            // Ajouter le token CSRF aux formulaires
+    document.querySelectorAll('form').forEach(form => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'csrf_token';
+        input.value = csrfToken;
+        form.appendChild(input);
+    }        
             // Animation d'entrée des éléments
             const elements = document.querySelectorAll('.action-card, .stat-card, .module-item, .activity-item, .security-item, .link-card');
             elements.forEach((element, index) => {
