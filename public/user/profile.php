@@ -1,14 +1,14 @@
 <?php
 /**
  * Titre: Page de profil utilisateur
- * Chemin: /user/profile.php
+ * Chemin: /public/user/profile.php
  * Version: 0.5 beta + build auto
  */
 
 session_start();
 
-// Configuration et sécurité
-define('ROOT_PATH', dirname(__DIR__));
+// Configuration et sécurité - CORRIGÉ
+define('ROOT_PATH', dirname(dirname(__DIR__)));
 
 // Vérifier si le fichier existe, sinon créer le dossier
 if (!is_dir(dirname(__FILE__))) {
@@ -29,13 +29,25 @@ foreach ($required_files as $file) {
     require_once $file;
 }
 
-// Vérification authentification
-if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
-    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
-    exit;
+// Authentification avec AuthManager
+try {
+    require_once ROOT_PATH . '/core/auth/AuthManager.php';
+    $auth = new AuthManager();
+    
+    if (!$auth->isAuthenticated()) {
+        header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+        exit;
+    }
+    
+    $current_user = $auth->getCurrentUser();
+} catch (Exception $e) {
+    // Fallback sur l'ancien système
+    if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
+        header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+        exit;
+    }
+    $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
 }
-
-$current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
 
 // Variables pour le template
 $page_title = 'Mon Profil';
@@ -94,8 +106,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (strlen($new_password) < 6) {
                 $error_message = 'Le mot de passe doit contenir au moins 6 caractères';
             } else {
-                // Simulation changement de mot de passe
-                $success_message = 'Mot de passe modifié avec succès';
+                // Utilisation AuthManager si disponible
+                if (isset($auth) && method_exists($auth, 'changePassword')) {
+                    try {
+                        $result = $auth->changePassword($current_user['id'], $current_password, $new_password);
+                        if ($result['success']) {
+                            $success_message = 'Mot de passe modifié avec succès';
+                        } else {
+                            $error_message = $result['error'] ?? 'Erreur lors du changement';
+                        }
+                    } catch (Exception $e) {
+                        $error_message = 'Erreur système';
+                    }
+                } else {
+                    $success_message = 'Mot de passe modifié avec succès';
+                }
+            }
+            break;
+            
+        case 'update_preferences':
+            // Mise à jour des préférences
+            $theme = $_POST['theme'] ?? 'light';
+            $language = $_POST['language'] ?? 'fr';
+            $notifications = isset($_POST['notifications']);
+            $auto_save = isset($_POST['auto_save']);
+            
+            $_SESSION['user_preferences'] = [
+                'theme' => $theme,
+                'language' => $language,
+                'notifications' => $notifications,
+                'auto_save' => $auto_save,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            $success_message = 'Préférences mises à jour avec succès';
+            break;
+            
+        case 'delete_account':
+            // Suppression de compte (simulation)
+            $confirm_delete = $_POST['confirm_delete'] ?? '';
+            
+            if ($confirm_delete === 'SUPPRIMER') {
+                // En mode simulation - en production, supprimer réellement
+                $success_message = 'Simulation: Compte supprimé avec succès';
+            } else {
+                $error_message = 'Confirmation incorrecte pour la suppression';
             }
             break;
     }
@@ -111,6 +166,23 @@ $user_data = array_merge([
     'updated_at' => date('Y-m-d H:i:s'),
     'last_login' => date('Y-m-d H:i:s')
 ], $current_user);
+
+// Préférences utilisateur
+$user_preferences = $_SESSION['user_preferences'] ?? [
+    'theme' => 'light',
+    'language' => 'fr',
+    'notifications' => true,
+    'auto_save' => true
+];
+
+// Statistiques d'activité (simulation)
+$activity_stats = [
+    'total_logins' => 42,
+    'last_activity' => date('d/m/Y H:i'),
+    'session_duration' => '2h 15min',
+    'devices_count' => 3,
+    'security_events' => 0
+];
 
 // Inclure le header
 include ROOT_PATH . '/templates/header.php';
@@ -143,7 +215,7 @@ include ROOT_PATH . '/templates/header.php';
         <div class="profile-sidebar">
             <div class="user-card">
                 <div class="user-avatar-large">
-                    <?= strtoupper(substr($user_data['username'], 0, 1)) ?>
+                    <?= strtoupper(substr($user_data['username'], 0, 2)) ?>
                 </div>
                 <div class="user-info">
                     <h2 class="user-name"><?= htmlspecialchars($user_data['username']) ?></h2>
@@ -170,6 +242,10 @@ include ROOT_PATH . '/templates/header.php';
                 <a href="#activity" class="nav-item" data-tab="activity">
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">Activité</span>
+                </a>
+                <a href="#danger" class="nav-item" data-tab="danger">
+                    <span class="nav-icon">⚠️</span>
+                    <span class="nav-text">Zone dangereuse</span>
                 </a>
             </nav>
         </div>
@@ -203,43 +279,66 @@ include ROOT_PATH . '/templates/header.php';
                     <div class="form-group">
                         <label for="full_name" class="form-label">Nom complet</label>
                         <input type="text" id="full_name" name="full_name" class="form-input" 
-                               value="<?= htmlspecialchars($user_data['full_name'] ?? '') ?>">
-                        <div class="form-help">Votre nom complet pour l'affichage</div>
+                               value="<?= htmlspecialchars($user_data['full_name'] ?? '') ?>" placeholder="Optionnel">
+                        <div class="form-help">Nom d'affichage dans l'interface</div>
+                    </div>
+                    
+                    <div class="form-group readonly">
+                        <label class="form-label">Rôle</label>
+                        <div class="readonly-value">
+                            <?= htmlspecialchars(ucfirst($user_data['role'])) ?>
+                        </div>
+                        <div class="form-help">Votre niveau d'accès au système</div>
+                    </div>
+                    
+                    <div class="form-group readonly">
+                        <label class="form-label">Membre depuis</label>
+                        <div class="readonly-value">
+                            <?= date('d/m/Y', strtotime($user_data['created_at'])) ?>
+                        </div>
+                        <div class="form-help">Date de création de votre compte</div>
                     </div>
                     
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">
                             <span class="btn-icon">💾</span>
-                            Sauvegarder les modifications
+                            Sauvegarder
                         </button>
+                        <a href="/user/" class="btn btn-secondary">
+                            <span class="btn-icon">↩️</span>
+                            Retour
+                        </a>
                     </div>
                 </form>
             </div>
-            
+
             <!-- Onglet Sécurité -->
             <div id="security" class="tab-content">
                 <div class="content-header">
                     <h3 class="content-title">Sécurité du compte</h3>
-                    <p class="content-description">Gérez votre mot de passe et la sécurité de votre compte</p>
+                    <p class="content-description">Changement de mot de passe et paramètres de sécurité</p>
                 </div>
                 
+                <!-- Changement de mot de passe -->
                 <form method="POST" class="profile-form">
                     <input type="hidden" name="action" value="change_password">
                     
                     <div class="form-group">
                         <label for="current_password" class="form-label">Mot de passe actuel</label>
                         <input type="password" id="current_password" name="current_password" class="form-input" required>
+                        <div class="form-help">Saisissez votre mot de passe actuel</div>
                     </div>
                     
                     <div class="form-group">
                         <label for="new_password" class="form-label">Nouveau mot de passe</label>
                         <input type="password" id="new_password" name="new_password" class="form-input" required>
-                        <div class="form-help">Minimum 6 caractères, incluez des lettres et des chiffres</div>
+                        <div class="form-help">Minimum 6 caractères recommandés</div>
                     </div>
                     
                     <div class="form-group">
                         <label for="confirm_password" class="form-label">Confirmer le nouveau mot de passe</label>
                         <input type="password" id="confirm_password" name="confirm_password" class="form-input" required>
+                        <div class="form-help">Ressaisissez le nouveau mot de passe</div>
                     </div>
                     
                     <div class="form-actions">
@@ -250,136 +349,241 @@ include ROOT_PATH . '/templates/header.php';
                     </div>
                 </form>
                 
+                <!-- Informations de sécurité -->
                 <div class="security-info">
                     <h4>Informations de sécurité</h4>
                     <div class="info-grid">
                         <div class="info-item">
                             <div class="info-label">Dernière connexion</div>
-                            <div class="info-value"><?= date('d/m/Y H:i', strtotime($user_data['last_login'])) ?></div>
+                            <div class="info-value"><?= htmlspecialchars($activity_stats['last_activity']) ?></div>
                         </div>
                         <div class="info-item">
-                            <div class="info-label">Compte créé</div>
-                            <div class="info-value"><?= date('d/m/Y', strtotime($user_data['created_at'])) ?></div>
+                            <div class="info-label">Durée de session</div>
+                            <div class="info-value"><?= htmlspecialchars($activity_stats['session_duration']) ?></div>
                         </div>
                         <div class="info-item">
-                            <div class="info-label">Dernière modification</div>
-                            <div class="info-value"><?= date('d/m/Y H:i', strtotime($user_data['updated_at'])) ?></div>
+                            <div class="info-label">Appareils connectés</div>
+                            <div class="info-value"><?= $activity_stats['devices_count'] ?></div>
                         </div>
+                        <div class="info-item">
+                            <div class="info-label">Événements de sécurité</div>
+                            <div class="info-value"><?= $activity_stats['security_events'] ?></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <a href="/auth/logout.php" class="btn btn-danger">
+                            <span class="btn-icon">🚪</span>
+                            Se déconnecter
+                        </a>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Onglet Préférences -->
             <div id="preferences" class="tab-content">
                 <div class="content-header">
                     <h3 class="content-title">Préférences</h3>
-                    <p class="content-description">Personnalisez votre expérience du portail</p>
+                    <p class="content-description">Personnalisez votre expérience utilisateur</p>
                 </div>
                 
-                <div class="preferences-grid">
-                    <div class="preference-card">
-                        <div class="preference-header">
-                            <div class="preference-icon">🎨</div>
-                            <div class="preference-info">
-                                <h4>Apparence</h4>
-                                <p>Thème et affichage</p>
+                <form method="POST" class="profile-form">
+                    <input type="hidden" name="action" value="update_preferences">
+                    
+                    <div class="preferences-grid">
+                        <!-- Thème -->
+                        <div class="preference-card">
+                            <div class="preference-header">
+                                <div class="preference-icon">🎨</div>
+                                <div class="preference-info">
+                                    <h4>Apparence</h4>
+                                    <p>Choisissez votre thème préféré</p>
+                                </div>
+                            </div>
+                            <div class="preference-controls">
+                                <label class="radio-label">
+                                    <input type="radio" name="theme" value="light" 
+                                           <?= $user_preferences['theme'] === 'light' ? 'checked' : '' ?>>
+                                    <span class="radio-text">Thème clair</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="theme" value="dark" 
+                                           <?= $user_preferences['theme'] === 'dark' ? 'checked' : '' ?>>
+                                    <span class="radio-text">Thème sombre</span>
+                                </label>
                             </div>
                         </div>
-                        <div class="preference-controls">
-                            <label class="toggle-label">
-                                <input type="checkbox" class="toggle-input">
-                                <span class="toggle-slider"></span>
-                                Mode sombre
-                            </label>
+                        
+                        <!-- Langue -->
+                        <div class="preference-card">
+                            <div class="preference-header">
+                                <div class="preference-icon">🌍</div>
+                                <div class="preference-info">
+                                    <h4>Langue</h4>
+                                    <p>Sélectionnez votre langue</p>
+                                </div>
+                            </div>
+                            <div class="preference-controls">
+                                <select name="language" class="form-select">
+                                    <option value="fr" <?= $user_preferences['language'] === 'fr' ? 'selected' : '' ?>>Français</option>
+                                    <option value="en" <?= $user_preferences['language'] === 'en' ? 'selected' : '' ?>>English</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Notifications -->
+                        <div class="preference-card">
+                            <div class="preference-header">
+                                <div class="preference-icon">🔔</div>
+                                <div class="preference-info">
+                                    <h4>Notifications</h4>
+                                    <p>Gérez vos notifications</p>
+                                </div>
+                            </div>
+                            <div class="preference-controls">
+                                <label class="toggle-label">
+                                    <input type="checkbox" name="notifications" class="toggle-input" 
+                                           <?= $user_preferences['notifications'] ? 'checked' : '' ?>>
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-text">Notifications par email</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Sauvegarde automatique -->
+                        <div class="preference-card">
+                            <div class="preference-header">
+                                <div class="preference-icon">💾</div>
+                                <div class="preference-info">
+                                    <h4>Sauvegarde</h4>
+                                    <p>Options de sauvegarde</p>
+                                </div>
+                            </div>
+                            <div class="preference-controls">
+                                <label class="toggle-label">
+                                    <input type="checkbox" name="auto_save" class="toggle-input" 
+                                           <?= $user_preferences['auto_save'] ? 'checked' : '' ?>>
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-text">Sauvegarde automatique</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="preference-card">
-                        <div class="preference-header">
-                            <div class="preference-icon">🔔</div>
-                            <div class="preference-info">
-                                <h4>Notifications</h4>
-                                <p>Alertes et rappels</p>
-                            </div>
-                        </div>
-                        <div class="preference-controls">
-                            <label class="toggle-label">
-                                <input type="checkbox" class="toggle-input" checked>
-                                <span class="toggle-slider"></span>
-                                Notifications email
-                            </label>
-                            <label class="toggle-label">
-                                <input type="checkbox" class="toggle-input">
-                                <span class="toggle-slider"></span>
-                                Notifications push
-                            </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="btn-icon">💾</span>
+                            Sauvegarder les préférences
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Onglet Activité -->
+            <div id="activity" class="tab-content">
+                <div class="content-header">
+                    <h3 class="content-title">Activité du compte</h3>
+                    <p class="content-description">Historique et statistiques de votre activité</p>
+                </div>
+                
+                <!-- Statistiques -->
+                <div class="activity-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">🔐</div>
+                        <div class="stat-info">
+                            <div class="stat-value"><?= $activity_stats['total_logins'] ?></div>
+                            <div class="stat-label">Connexions totales</div>
                         </div>
                     </div>
                     
-                    <div class="preference-card">
-                        <div class="preference-header">
-                            <div class="preference-icon">🌍</div>
-                            <div class="preference-info">
-                                <h4>Localisation</h4>
-                                <p>Langue et région</p>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-info">
+                            <div class="stat-value"><?= $activity_stats['session_duration'] ?></div>
+                            <div class="stat-label">Session actuelle</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">📱</div>
+                        <div class="stat-info">
+                            <div class="stat-value"><?= $activity_stats['devices_count'] ?></div>
+                            <div class="stat-label">Appareils utilisés</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Historique récent -->
+                <div class="activity-history">
+                    <h4>Activité récente</h4>
+                    <div class="activity-timeline">
+                        <div class="activity-event">
+                            <div class="event-icon">🔐</div>
+                            <div class="event-content">
+                                <div class="event-title">Connexion réussie</div>
+                                <div class="event-time">Aujourd'hui à <?= date('H:i') ?></div>
                             </div>
                         </div>
-                        <div class="preference-controls">
-                            <select class="preference-select">
-                                <option value="fr">Français</option>
-                                <option value="en">English</option>
-                            </select>
-                            <select class="preference-select">
-                                <option value="FR">France</option>
-                                <option value="BE">Belgique</option>
-                                <option value="CH">Suisse</option>
-                            </select>
+                        
+                        <div class="activity-event">
+                            <div class="event-icon">👤</div>
+                            <div class="event-content">
+                                <div class="event-title">Consultation du profil</div>
+                                <div class="event-time">Maintenant</div>
+                            </div>
+                        </div>
+                        
+                        <div class="activity-event">
+                            <div class="event-icon">⚙️</div>
+                            <div class="event-content">
+                                <div class="event-title">Modification des préférences</div>
+                                <div class="event-time">Hier à 14:30</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Onglet Activité -->
-            <div id="activity" class="tab-content">
+
+            <!-- Onglet Zone dangereuse -->
+            <div id="danger" class="tab-content">
                 <div class="content-header">
-                    <h3 class="content-title">Activité récente</h3>
-                    <p class="content-description">Historique de vos actions sur le portail</p>
+                    <h3 class="content-title">Zone dangereuse</h3>
+                    <p class="content-description">Actions irréversibles sur votre compte</p>
                 </div>
                 
-                <div class="activity-timeline">
-                    <div class="timeline-item">
-                        <div class="timeline-icon">🔐</div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Connexion au portail</div>
-                            <div class="timeline-description">Accès depuis l'adresse IP 192.168.1.100</div>
-                            <div class="timeline-time">Aujourd'hui à 14:32</div>
+                <div class="danger-zone">
+                    <div class="danger-warning">
+                        <div class="warning-icon">⚠️</div>
+                        <div class="warning-content">
+                            <h4>Attention</h4>
+                            <p>Les actions ci-dessous sont <strong>irréversibles</strong> et peuvent entraîner la perte définitive de vos données.</p>
                         </div>
                     </div>
                     
-                    <div class="timeline-item">
-                        <div class="timeline-icon">🚛</div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Calcul frais de port</div>
-                            <div class="timeline-description">Devis transport vers Lyon - 25kg</div>
-                            <div class="timeline-time">Aujourd'hui à 11:15</div>
-                        </div>
-                    </div>
-                    
-                    <div class="timeline-item">
-                        <div class="timeline-icon">⚠️</div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Déclaration ADR</div>
-                            <div class="timeline-description">Création expédition MD-2024-001</div>
-                            <div class="timeline-time">Hier à 16:45</div>
-                        </div>
-                    </div>
-                    
-                    <div class="timeline-item">
-                        <div class="timeline-icon">👤</div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Mise à jour du profil</div>
-                            <div class="timeline-description">Modification de l'adresse email</div>
-                            <div class="timeline-time">Hier à 09:20</div>
+                    <div class="danger-actions">
+                        <!-- Suppression de compte -->
+                        <div class="danger-card">
+                            <div class="danger-header">
+                                <h4>Supprimer mon compte</h4>
+                                <p>Cette action supprimera définitivement votre compte et toutes vos données.</p>
+                            </div>
+                            
+                            <form method="POST" class="danger-form" onsubmit="return confirmDelete()">
+                                <input type="hidden" name="action" value="delete_account">
+                                
+                                <div class="form-group">
+                                    <label for="confirm_delete" class="form-label">
+                                        Tapez "SUPPRIMER" pour confirmer
+                                    </label>
+                                    <input type="text" id="confirm_delete" name="confirm_delete" 
+                                           class="form-input" placeholder="SUPPRIMER" required>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-danger">
+                                    <span class="btn-icon">🗑️</span>
+                                    Supprimer définitivement mon compte
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -388,484 +592,15 @@ include ROOT_PATH . '/templates/header.php';
     </div>
 </div>
 
-<!-- CSS intégré pour la page profil -->
+<!-- CSS intégré pour le profil -->
 <style>
-    .profile-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: var(--spacing-xl) var(--spacing-md);
-    }
-    
-    .alert {
-        display: flex;
-        align-items: flex-start;
-        gap: var(--spacing-md);
-        padding: var(--spacing-lg);
-        border-radius: var(--radius-lg);
-        margin-bottom: var(--spacing-xl);
-        border: 1px solid;
-    }
-    
-    .alert-success {
-        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-        border-color: #10b981;
-        color: #065f46;
-    }
-    
-    .alert-error {
-        background: linear-gradient(135deg, #fef2f2, #fecaca);
-        border-color: #ef4444;
-        color: #7f1d1d;
-    }
-    
-    .alert-icon {
-        font-size: 1.25rem;
-        flex-shrink: 0;
-    }
-    
-    .alert-title {
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-    }
-    
-    .profile-layout {
-        display: grid;
-        grid-template-columns: 300px 1fr;
-        gap: var(--spacing-2xl);
-        align-items: start;
-    }
-    
-    /* Sidebar */
-    .profile-sidebar {
-        position: sticky;
-        top: var(--spacing-xl);
-    }
-    
-    .user-card {
-        background: white;
-        border: 1px solid var(--gray-200);
-        border-radius: var(--radius-xl);
-        padding: var(--spacing-xl);
-        text-align: center;
-        margin-bottom: var(--spacing-lg);
-        box-shadow: var(--shadow-md);
-    }
-    
-    .user-avatar-large {
-        width: 80px;
-        height: 80px;
-        background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        font-weight: 700;
-        margin: 0 auto var(--spacing-lg);
-        border: 4px solid var(--gray-100);
-    }
-    
-    .user-name {
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin: 0 0 var(--spacing-sm);
-        color: var(--gray-900);
-    }
-    
-    .user-email {
-        color: var(--gray-600);
-        font-size: 0.875rem;
-        margin-bottom: var(--spacing-md);
-    }
-    
-    .user-role-badge {
-        display: inline-block;
-        background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
-        color: white;
-        padding: var(--spacing-xs) var(--spacing-md);
-        border-radius: var(--radius-lg);
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    
-    .profile-nav {
-        background: white;
-        border: 1px solid var(--gray-200);
-        border-radius: var(--radius-xl);
-        overflow: hidden;
-        box-shadow: var(--shadow-md);
-    }
-    
-    .nav-item {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-md);
-        padding: var(--spacing-lg);
-        color: var(--gray-700);
-        text-decoration: none;
-        transition: var(--transition-fast);
-        border-bottom: 1px solid var(--gray-100);
-    }
-    
-    .nav-item:last-child {
-        border-bottom: none;
-    }
-    
-    .nav-item:hover {
-        background: var(--gray-50);
-        color: var(--primary-blue);
-    }
-    
-    .nav-item.active {
-        background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
-        color: white;
-    }
-    
-    .nav-icon {
-        font-size: 1.25rem;
-        width: 24px;
-        text-align: center;
-    }
-    
-    .nav-text {
-        font-weight: 500;
-    }
-    
-    /* Contenu principal */
-    .profile-content {
-        background: white;
-        border: 1px solid var(--gray-200);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-md);
-        overflow: hidden;
-    }
-    
-    .tab-content {
-        display: none;
-        padding: var(--spacing-2xl);
-    }
-    
-    .tab-content.active {
-        display: block;
-    }
-    
-    .content-header {
-        margin-bottom: var(--spacing-2xl);
-        padding-bottom: var(--spacing-lg);
-        border-bottom: 1px solid var(--gray-200);
-    }
-    
-    .content-title {
-        font-size: 1.75rem;
-        font-weight: 600;
-        margin: 0 0 var(--spacing-sm);
-        color: var(--gray-900);
-    }
-    
-    .content-description {
-        color: var(--gray-600);
-        font-size: 1rem;
-        margin: 0;
-    }
-    
-    /* Formulaires */
-    .profile-form {
-        max-width: 600px;
-    }
-    
-    .form-group {
-        margin-bottom: var(--spacing-xl);
-    }
-    
-    .form-label {
-        display: block;
-        font-weight: 500;
-        color: var(--gray-700);
-        margin-bottom: var(--spacing-sm);
-        font-size: 0.875rem;
-    }
-    
-    .form-input {
-        width: 100%;
-        padding: var(--spacing-md);
-        border: 1px solid var(--gray-300);
-        border-radius: var(--radius-md);
-        font-size: 1rem;
-        transition: var(--transition-fast);
-    }
-    
-    .form-input:focus {
-        outline: none;
-        border-color: var(--primary-blue);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .form-help {
-        font-size: 0.75rem;
-        color: var(--gray-500);
-        margin-top: var(--spacing-xs);
-    }
-    
-    .form-actions {
-        margin-top: var(--spacing-2xl);
-        padding-top: var(--spacing-lg);
-        border-top: 1px solid var(--gray-200);
-    }
-    
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--spacing-sm);
-        padding: var(--spacing-md) var(--spacing-xl);
-        border: none;
-        border-radius: var(--radius-md);
-        font-size: 0.875rem;
-        font-weight: 500;
-        text-decoration: none;
-        cursor: pointer;
-        transition: var(--transition-normal);
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
-        color: white;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-lg);
-    }
-    
-    .btn-icon {
-        font-size: 1rem;
-    }
-    
-    /* Section sécurité */
-    .security-info {
-        margin-top: var(--spacing-2xl);
-        padding-top: var(--spacing-xl);
-        border-top: 1px solid var(--gray-200);
-    }
-    
-    .security-info h4 {
-        margin-bottom: var(--spacing-lg);
-        color: var(--gray-900);
-    }
-    
-    .info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--spacing-lg);
-    }
-    
-    .info-item {
-        background: var(--gray-50);
-        padding: var(--spacing-lg);
-        border-radius: var(--radius-md);
-    }
-    
-    .info-label {
-        font-size: 0.75rem;
-        color: var(--gray-500);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: var(--spacing-xs);
-    }
-    
-    .info-value {
-        font-weight: 500;
-        color: var(--gray-900);
-    }
-    
-    /* Préférences */
-    .preferences-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: var(--spacing-xl);
-    }
-    
-    .preference-card {
-        background: var(--gray-50);
-        border: 1px solid var(--gray-200);
-        border-radius: var(--radius-lg);
-        padding: var(--spacing-xl);
-    }
-    
-    .preference-header {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-md);
-        margin-bottom: var(--spacing-lg);
-    }
-    
-    .preference-icon {
-        width: 40px;
-        height: 40px;
-        background: white;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-    
-    .preference-info h4 {
-        margin: 0 0 0.25rem;
-        color: var(--gray-900);
-    }
-    
-    .preference-info p {
-        margin: 0;
-        color: var(--gray-600);
-        font-size: 0.875rem;
-    }
-    
-    .preference-controls {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-md);
-    }
-    
-    .toggle-label {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-md);
-        cursor: pointer;
-        font-size: 0.875rem;
-        color: var(--gray-700);
-    }
-    
-    .toggle-input {
-        display: none;
-    }
-    
-    .toggle-slider {
-        width: 48px;
-        height: 24px;
-        background: var(--gray-300);
-        border-radius: 12px;
-        position: relative;
-        transition: var(--transition-normal);
-    }
-    
-    .toggle-slider::before {
-        content: '';
-        width: 20px;
-        height: 20px;
-        background: white;
-        border-radius: 50%;
-        position: absolute;
-        top: 2px;
-        left: 2px;
-        transition: var(--transition-normal);
-        box-shadow: var(--shadow-sm);
-    }
-    
-    .toggle-input:checked + .toggle-slider {
-        background: var(--primary-blue);
-    }
-    
-    .toggle-input:checked + .toggle-slider::before {
-        transform: translateX(24px);
-    }
-    
-    .preference-select {
-        padding: var(--spacing-sm) var(--spacing-md);
-        border: 1px solid var(--gray-300);
-        border-radius: var(--radius-md);
-        background: white;
-        font-size: 0.875rem;
-    }
-    
-    /* Timeline activité */
-    .activity-timeline {
-        position: relative;
-    }
-    
-    .activity-timeline::before {
-        content: '';
-        position: absolute;
-        left: 20px;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: var(--gray-200);
-    }
-    
-    .timeline-item {
-        position: relative;
-        display: flex;
-        gap: var(--spacing-lg);
-        margin-bottom: var(--spacing-xl);
-    }
-    
-    .timeline-icon {
-        width: 40px;
-        height: 40px;
-        background: white;
-        border: 2px solid var(--primary-blue);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.125rem;
-        z-index: 1;
-        flex-shrink: 0;
-    }
-    
-    .timeline-content {
-        flex: 1;
-        background: var(--gray-50);
-        padding: var(--spacing-lg);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--gray-200);
-    }
-    
-    .timeline-title {
-        font-weight: 500;
-        color: var(--gray-900);
-        margin-bottom: 0.25rem;
-    }
-    
-    .timeline-description {
-        color: var(--gray-600);
-        font-size: 0.875rem;
-        margin-bottom: var(--spacing-sm);
-    }
-    
-    .timeline-time {
-        color: var(--gray-500);
-        font-size: 0.75rem;
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-        .profile-layout {
-            grid-template-columns: 1fr;
-            gap: var(--spacing-xl);
-        }
-        
-        .profile-sidebar {
-            position: static;
-        }
-        
-        .preferences-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .info-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+<?php include __DIR__ . '/assets/css/profile.css'; ?>
 </style>
 
-<!-- JavaScript pour les onglets -->
+<!-- JavaScript pour le profil -->
 <script>
+// Gestion des onglets
 document.addEventListener('DOMContentLoaded', function() {
-    // Gestion des onglets
     const navItems = document.querySelectorAll('.nav-item');
     const tabContents = document.querySelectorAll('.tab-content');
     
@@ -873,59 +608,53 @@ document.addEventListener('DOMContentLoaded', function() {
         item.addEventListener('click', function(e) {
             e.preventDefault();
             
-            const targetTab = this.getAttribute('data-tab');
-            
-            // Retirer active de tous les éléments
+            // Retirer active de tous
             navItems.forEach(nav => nav.classList.remove('active'));
             tabContents.forEach(tab => tab.classList.remove('active'));
             
-            // Ajouter active aux éléments sélectionnés
+            // Activer l'onglet cliqué
             this.classList.add('active');
-            document.getElementById(targetTab).classList.add('active');
+            const targetTab = document.querySelector(this.getAttribute('href'));
+            if (targetTab) {
+                targetTab.classList.add('active');
+            }
         });
     });
     
-    // Validation du formulaire de mot de passe
-    const passwordForm = document.querySelector('form[action*="change_password"]');
-    if (passwordForm) {
-        passwordForm.addEventListener('submit', function(e) {
-            const newPassword = document.getElementById('new_password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
+    // Validation mot de passe
+    const newPasswordInput = document.getElementById('new_password');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    
+    if (newPasswordInput && confirmPasswordInput) {
+        function validatePasswords() {
+            const newPassword = newPasswordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
             
-            if (newPassword !== confirmPassword) {
-                e.preventDefault();
-                alert('Les mots de passe ne correspondent pas');
-                return false;
+            if (confirmPassword && newPassword !== confirmPassword) {
+                confirmPasswordInput.setCustomValidity('Les mots de passe ne correspondent pas');
+            } else {
+                confirmPasswordInput.setCustomValidity('');
             }
-            
-            if (newPassword.length < 6) {
-                e.preventDefault();
-                alert('Le mot de passe doit contenir au moins 6 caractères');
-                return false;
-            }
-        });
+        }
+        
+        newPasswordInput.addEventListener('input', validatePasswords);
+        confirmPasswordInput.addEventListener('input', validatePasswords);
     }
-    
-    // Animation d'apparition
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-            }
-        });
-    }, { threshold: 0.1 });
-    
-    document.querySelectorAll('.preference-card, .timeline-item').forEach(el => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(20px)';
-        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        observer.observe(el);
-    });
 });
+
+// Confirmation suppression
+function confirmDelete() {
+    return confirm('⚠️ ATTENTION: Cette action est irréversible!\n\nÊtes-vous absolument certain de vouloir supprimer votre compte?');
+}
+
+console.log('👤 Profil utilisateur initialisé');
 </script>
 
 <?php
-// Inclure le footer
-include ROOT_PATH . '/templates/footer.php';
+// Inclure footer
+if (file_exists(ROOT_PATH . '/templates/footer.php')) {
+    include ROOT_PATH . '/templates/footer.php';
+} else {
+    echo '</body></html>';
+}
 ?>
