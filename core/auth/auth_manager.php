@@ -68,6 +68,8 @@ class AuthManager {
             
         } catch (Exception $e) {
             error_log("Erreur auth: " . $e->getMessage());
+            echo '<pre>Erreur auth: ' . $e->getMessage() . '</pre>';
+
             return [
                 'success' => false,
                 'error' => 'Erreur système d\'authentification'
