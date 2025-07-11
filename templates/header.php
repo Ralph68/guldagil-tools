@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Header professionnel du portail Guldagil - Version améliorée
+ * Titre: Header modernisé du portail Guldagil - Structure optimisée
  * Chemin: /templates/header.php
  * Version: 0.5 beta + build auto
  */
@@ -31,7 +31,6 @@ $breadcrumbs = $breadcrumbs ?? [
 // Configuration CSS et JS modulaire
 $module_css = $module_css ?? false;
 $module_js = $module_js ?? false;
-$nav_info = $nav_info ?? '';
 
 // Génération du titre complet
 $full_title = $page_title . ' - Guldagil v' . $app_version;
@@ -44,6 +43,7 @@ $module_icon = match($current_module) {
     'qualite' => '✅',
     'maintenance' => '🔧',
     'stats' => '📊',
+    'user', 'profile' => '👤',
     default => '🏠'
 };
 ?>
@@ -67,8 +67,10 @@ $module_icon = match($current_module) {
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     
     <!-- CSS spécifique au module -->
-    <?php if ($module_css && file_exists(ROOT_PATH . "/assets/css/modules/{$current_module}.css")): ?>
-    <link rel="stylesheet" href="/assets/css/modules/<?= $current_module ?>.css?v=<?= $build_number ?>">
+    <?php if ($module_css && file_exists(ROOT_PATH . "/public/assets/css/modules/{$current_module}.css")): ?>
+    <link rel="stylesheet" href="/public/assets/css/modules/<?= $current_module ?>.css?v=<?= $build_number ?>">
+    <?php elseif ($module_css && file_exists(ROOT_PATH . "/public/{$current_module}/assets/css/{$current_module}.css")): ?>
+    <link rel="stylesheet" href="/public/<?= $current_module ?>/assets/css/<?= $current_module ?>.css?v=<?= $build_number ?>">
     <?php endif; ?>
 
     <!-- CSS critique intégré pour performance -->
@@ -135,7 +137,7 @@ $module_icon = match($current_module) {
             margin: 0 auto;
             padding: var(--spacing-lg) var(--spacing-md);
             display: grid;
-            grid-template-columns: auto 1fr auto auto;
+            grid-template-columns: auto 1fr auto;
             align-items: center;
             gap: var(--spacing-lg);
         }
@@ -146,25 +148,24 @@ $module_icon = match($current_module) {
             align-items: center;
             gap: var(--spacing-md);
             text-decoration: none;
-            color: white;
-            transition: var(--transition-normal);
+            color: inherit;
+            transition: var(--transition-fast);
         }
         
         .header-brand:hover {
             transform: translateY(-1px);
-            color: var(--primary-blue-light);
         }
         
         .header-logo {
-            width: 48px;
-            height: 48px;
-            background: white;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
             border-radius: var(--radius-lg);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
-            box-shadow: var(--shadow-md);
+            font-weight: bold;
         }
         
         .header-brand-text {
@@ -173,57 +174,57 @@ $module_icon = match($current_module) {
         }
         
         .header-brand-name {
-            font-size: 1.25rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            line-height: 1.2;
+            line-height: 1;
         }
         
         .header-brand-tagline {
-            font-size: 0.75rem;
+            font-size: 0.875rem;
             opacity: 0.9;
             font-weight: 400;
         }
         
-        /* Titre de page dans header */
+        /* Titre de la page actuelle */
         .header-page-info {
             display: flex;
             align-items: center;
             gap: var(--spacing-md);
-            min-width: 0;
+            justify-self: center;
         }
         
         .page-module-icon {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: var(--radius-md);
-            padding: var(--spacing-sm);
-            font-size: 1.5rem;
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: var(--radius-lg);
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 40px;
-            height: 40px;
+            font-size: 1.5rem;
         }
         
         .page-title-info {
-            min-width: 0;
+            text-align: center;
         }
         
         .page-main-title {
             font-size: 1.5rem;
             font-weight: 600;
             line-height: 1.2;
-            margin-bottom: 0.125rem;
+            margin-bottom: 0.25rem;
         }
         
         .page-subtitle-text {
             font-size: 0.875rem;
-            opacity: 0.85;
+            opacity: 0.9;
             font-weight: 400;
         }
         
         /* Menu utilisateur avec dropdown */
         .header-user-nav {
-            position: relative;
+            justify-self: end;
         }
         
         .user-dropdown {
@@ -231,55 +232,78 @@ $module_icon = match($current_module) {
         }
         
         .user-menu-trigger {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: var(--radius-lg);
-            padding: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
             color: white;
             cursor: pointer;
-            transition: var(--transition-normal);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            font-size: 0.875rem;
+            transition: var(--transition-fast);
         }
         
         .user-menu-trigger:hover {
             background: rgba(255, 255, 255, 0.2);
             border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
         }
         
-        .user-menu-trigger[aria-expanded="true"] {
+        .user-avatar {
+            width: 32px;
+            height: 32px;
             background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+            line-height: 1.2;
+        }
+        
+        .user-role {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            text-transform: capitalize;
+        }
+        
+        .dropdown-arrow {
+            transition: var(--transition-fast);
         }
         
         .user-menu-trigger[aria-expanded="true"] .dropdown-arrow {
             transform: rotate(180deg);
         }
         
-        .dropdown-arrow {
-            transition: transform 0.2s ease;
-            display: flex;
-            align-items: center;
-        }
-        
-        /* Dropdown menu */
+        /* Menu dropdown */
         .user-dropdown-menu {
             position: absolute;
-            top: 100%;
+            top: calc(100% + 0.5rem);
             right: 0;
-            margin-top: var(--spacing-sm);
+            min-width: 280px;
             background: white;
-            border: 1px solid var(--gray-200);
             border-radius: var(--radius-lg);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            min-width: 320px;
-            z-index: 1000;
-            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            padding: var(--spacing-sm);
             opacity: 0;
             visibility: hidden;
-            transform: translateY(-10px);
-            transition: all 0.2s ease;
+            transform: translateY(-0.5rem);
+            transition: all var(--transition-fast);
+            z-index: 1000;
         }
         
         .user-dropdown-menu.show {
@@ -289,9 +313,9 @@ $module_icon = match($current_module) {
         }
         
         .dropdown-header {
-            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
-            color: white;
-            padding: var(--spacing-lg);
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--gray-200);
+            margin-bottom: var(--spacing-sm);
         }
         
         .dropdown-user-info {
@@ -301,64 +325,50 @@ $module_icon = match($current_module) {
         }
         
         .dropdown-avatar {
-            width: 48px;
-            height: 48px;
-            background: rgba(255, 255, 255, 0.2);
+            width: 40px;
+            height: 40px;
+            background: var(--primary-blue);
+            color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
             font-weight: 600;
-            border: 2px solid rgba(255, 255, 255, 0.3);
         }
         
         .dropdown-user-details {
             flex: 1;
-            min-width: 0;
         }
         
         .dropdown-user-name {
             font-weight: 600;
-            font-size: 1rem;
-            margin-bottom: 0.125rem;
-        }
-        
-        .dropdown-user-email {
-            font-size: 0.75rem;
-            opacity: 0.8;
+            color: var(--gray-900);
             margin-bottom: 0.25rem;
         }
         
-        .dropdown-user-role-badge {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 0.125rem 0.5rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.75rem;
-            font-weight: 500;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+        .dropdown-user-email {
+            font-size: 0.875rem;
+            color: var(--gray-500);
         }
         
-        .dropdown-divider {
-            height: 1px;
-            background: var(--gray-200);
-            margin: var(--spacing-xs) 0;
-        }
-        
+        /* Éléments du dropdown */
         .dropdown-section {
-            padding: var(--spacing-sm) 0;
+            margin-bottom: var(--spacing-sm);
         }
         
         .dropdown-item {
             display: flex;
             align-items: center;
             gap: var(--spacing-md);
-            padding: var(--spacing-md) var(--spacing-lg);
-            color: var(--gray-700);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
             text-decoration: none;
+            color: var(--gray-700);
             transition: var(--transition-fast);
-            position: relative;
+            border: none;
+            background: none;
+            width: 100%;
+            cursor: pointer;
         }
         
         .dropdown-item:hover {
@@ -366,44 +376,18 @@ $module_icon = match($current_module) {
             color: var(--primary-blue);
         }
         
-        .dropdown-item.admin-item:hover {
-            background: linear-gradient(135deg, #fef3c7, #fef08a);
-            color: #92400e;
-        }
-        
-        .dropdown-item.logout-item:hover {
-            background: linear-gradient(135deg, #fef2f2, #fecaca);
-            color: #dc2626;
-        }
-        
-        .dropdown-icon {
-            width: 32px;
-            height: 32px;
-            background: var(--gray-100);
-            border-radius: var(--radius-md);
+        .dropdown-item-icon {
+            width: 20px;
             display: flex;
-            align-items: center;
             justify-content: center;
-            font-size: 1rem;
-            flex-shrink: 0;
         }
         
-        .admin-item .dropdown-icon {
-            background: linear-gradient(135deg, #fef3c7, #fef08a);
-        }
-        
-        .logout-item .dropdown-icon {
-            background: linear-gradient(135deg, #fef2f2, #fecaca);
-        }
-        
-        .dropdown-text {
+        .dropdown-item-text {
             flex: 1;
-            min-width: 0;
         }
         
         .dropdown-title {
             font-weight: 500;
-            font-size: 0.875rem;
             margin-bottom: 0.125rem;
         }
         
@@ -412,99 +396,35 @@ $module_icon = match($current_module) {
             color: var(--gray-500);
         }
         
-        .admin-badge {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            color: white;
-            padding: 0.125rem 0.5rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.625rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
+        .dropdown-divider {
+            height: 1px;
+            background: var(--gray-200);
+            margin: var(--spacing-sm) 0;
         }
         
-        /* Auth actions pour utilisateurs non connectés */
+        /* Actions d'authentification */
         .header-auth-actions {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
+            justify-self: end;
         }
         
         .login-btn {
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-        }
-        
-        .login-btn:hover {
-            background: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.4);
-        }
-        
-        .user-avatar {
-            width: 32px;
-            height: 32px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.875rem;
-            color: var(--primary-blue);
-            font-weight: 600;
-        }
-        
-        .user-details {
-            display: flex;
-            flex-direction: column;
-            line-height: 1.2;
-        }
-        
-        .user-name {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            color: white;
+            text-decoration: none;
             font-weight: 500;
-        }
-        
-        .user-role {
-            font-size: 0.75rem;
-            opacity: 0.8;
-        }
-        
-        /* Actions header */
-        .header-actions {
+            transition: var(--transition-fast);
             display: flex;
             align-items: center;
             gap: var(--spacing-sm);
         }
         
-        .header-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: var(--spacing-sm) var(--spacing-md);
-            border-radius: var(--radius-md);
-            text-decoration: none;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: var(--transition-normal);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-        }
-        
-        .header-btn:hover {
+        .login-btn:hover {
             background: rgba(255, 255, 255, 0.2);
             border-color: rgba(255, 255, 255, 0.3);
-            color: white;
             transform: translateY(-1px);
-        }
-        
-        .version-badge {
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            padding: 0.25rem 0.5rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.75rem;
-            font-weight: 500;
-            letter-spacing: 0.025em;
         }
         
         /* Responsive header */
@@ -537,7 +457,7 @@ $module_icon = match($current_module) {
             }
             
             .header-user-nav,
-            .header-actions {
+            .header-auth-actions {
                 justify-self: center;
             }
             
@@ -552,7 +472,6 @@ $module_icon = match($current_module) {
             .dropdown-user-email {
                 display: none;
             }
-        }
         }
         
         @media (max-width: 480px) {
@@ -629,79 +548,55 @@ $module_icon = match($current_module) {
                                 </div>
                                 <div class="dropdown-user-details">
                                     <div class="dropdown-user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></div>
-                                    <div class="dropdown-user-email"><?= htmlspecialchars($current_user['email'] ?? 'user@guldagil.com') ?></div>
-                                    <div class="dropdown-user-role-badge">
-                                        <?= htmlspecialchars(ucfirst($current_user['role'] ?? 'user')) ?>
-                                    </div>
+                                    <div class="dropdown-user-email"><?= htmlspecialchars($current_user['email'] ?? 'utilisateur@guldagil.com') ?></div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="dropdown-divider"></div>
-                        
                         <div class="dropdown-section">
+                            <a href="/user/" class="dropdown-item">
+                                <div class="dropdown-item-icon">🏠</div>
+                                <div class="dropdown-item-text">
+                                    <div class="dropdown-title">Mon Espace</div>
+                                    <div class="dropdown-subtitle">Dashboard utilisateur</div>
+                                </div>
+                            </a>
+                            
                             <a href="/user/profile.php" class="dropdown-item">
-                                <div class="dropdown-icon">👤</div>
-                                <div class="dropdown-text">
+                                <div class="dropdown-item-icon">👤</div>
+                                <div class="dropdown-item-text">
                                     <div class="dropdown-title">Mon Profil</div>
                                     <div class="dropdown-subtitle">Informations personnelles</div>
                                 </div>
                             </a>
                             
                             <a href="/user/settings.php" class="dropdown-item">
-                                <div class="dropdown-icon">⚙️</div>
-                                <div class="dropdown-text">
+                                <div class="dropdown-item-icon">⚙️</div>
+                                <div class="dropdown-item-text">
                                     <div class="dropdown-title">Paramètres</div>
                                     <div class="dropdown-subtitle">Préférences et configuration</div>
-                                </div>
-                            </a>
-                            
-                            <a href="/user/activity.php" class="dropdown-item">
-                                <div class="dropdown-icon">📊</div>
-                                <div class="dropdown-text">
-                                    <div class="dropdown-title">Activité</div>
-                                    <div class="dropdown-subtitle">Historique et statistiques</div>
                                 </div>
                             </a>
                         </div>
                         
                         <?php if (($current_user['role'] ?? 'user') === 'admin'): ?>
                         <div class="dropdown-divider"></div>
-                        
                         <div class="dropdown-section">
-                            <a href="/admin/" class="dropdown-item admin-item">
-                                <div class="dropdown-icon">🔧</div>
-                                <div class="dropdown-text">
+                            <a href="/admin/" class="dropdown-item">
+                                <div class="dropdown-item-icon">🔧</div>
+                                <div class="dropdown-item-text">
                                     <div class="dropdown-title">Administration</div>
                                     <div class="dropdown-subtitle">Gestion du portail</div>
-                                </div>
-                                <div class="admin-badge">Admin</div>
-                            </a>
-                            
-                            <a href="/admin/users.php" class="dropdown-item admin-item">
-                                <div class="dropdown-icon">👥</div>
-                                <div class="dropdown-text">
-                                    <div class="dropdown-title">Utilisateurs</div>
-                                    <div class="dropdown-subtitle">Gestion des comptes</div>
                                 </div>
                             </a>
                         </div>
                         <?php endif; ?>
                         
                         <div class="dropdown-divider"></div>
-                        
                         <div class="dropdown-section">
-                            <a href="/help/" class="dropdown-item">
-                                <div class="dropdown-icon">❓</div>
-                                <div class="dropdown-text">
-                                    <div class="dropdown-title">Aide & Support</div>
-                                    <div class="dropdown-subtitle">Documentation et contact</div>
-                                </div>
-                            </a>
-                            
-                            <a href="/auth/logout.php" class="dropdown-item logout-item">
-                                <div class="dropdown-icon">🚪</div>
-                                <div class="dropdown-text">
+                            <a href="/auth/logout.php" class="dropdown-item" style="color: #dc2626;">
+                                <div class="dropdown-item-icon">🚪</div>
+                                <div class="dropdown-item-text">
                                     <div class="dropdown-title">Déconnexion</div>
                                     <div class="dropdown-subtitle">Fermer la session</div>
                                 </div>
@@ -712,33 +607,12 @@ $module_icon = match($current_module) {
             </div>
             <?php else: ?>
             <div class="header-auth-actions">
-                <a href="/auth/login.php" class="header-btn login-btn">
+                <a href="/auth/login.php" class="login-btn">
                     <span>🔐</span>
                     Connexion
                 </a>
             </div>
             <?php endif; ?>
-            
-            <!-- Actions et version -->
-            <div class="header-actions">
-                <?php if ($current_module !== 'home'): ?>
-                    <a href="/" class="header-btn">
-                        <span>🏠</span>
-                        Accueil
-                    </a>
-                <?php endif; ?>
-                
-                <?php if ($user_authenticated && ($current_user['role'] ?? 'user') === 'admin'): ?>
-                    <a href="/admin/" class="header-btn">
-                        <span>⚙️</span>
-                        Admin
-                    </a>
-                <?php endif; ?>
-                
-                <div class="version-badge">
-                    v<?= $app_version ?>
-                </div>
-            </div>
         </div>
     </header>
 
@@ -862,7 +736,3 @@ $module_icon = match($current_module) {
             }
         });
     </script>
-
-    <!-- Container principal -->
-    <main class="portal-main">
-        <div class="main-container">
