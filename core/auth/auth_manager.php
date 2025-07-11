@@ -82,8 +82,15 @@ class AuthManager {
         $stmt->execute([$email_or_username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($user && password_verify($password, $user['password'])) {
-            return $user;
+        if ($user) {
+            // Debug temporaire
+            error_log("DEBUG: Testing password for user " . $user['username']);
+            error_log("DEBUG: Hash from DB: " . $user['password']);
+            error_log("DEBUG: password_verify result: " . (password_verify($password, $user['password']) ? 'TRUE' : 'FALSE'));
+            
+            if (password_verify($password, $user['password'])) {
+                return $user;
+            }
         }
         
         return false;
