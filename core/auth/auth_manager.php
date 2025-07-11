@@ -5,6 +5,11 @@
  * Version: 0.5 beta + build auto
  */
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+
 class AuthManager {
     private $db;
     private $max_attempts = 5;
