@@ -47,7 +47,7 @@ if (!isset($db) || !($db instanceof PDO)) {
     die('<h1>❌ Erreur Base de Données</h1><p>Connexion non disponible</p>');
 }
 
-// AUTHENTIFICATION
+// AUTHENTIFICATION - AUCUN BYPASS
 $user_authenticated = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
 $current_user = $user_authenticated ? ($_SESSION['user'] ?? null) : null;
 
@@ -76,8 +76,9 @@ $current_module = 'home';
 
 // Variables pour le header
 $app_name = 'Guldagil';
-$module_css = false; // Pas de CSS spécifique pour l'accueil
-$module_js = false;  // Pas de JS spécifique pour l'accueil
+$app_author = defined('APP_AUTHOR') ? APP_AUTHOR : 'Jean-Thomas RUNSER';
+$module_css = false;
+$module_js = false;
 
 // Variables pour le footer
 $version_info = [
@@ -98,9 +99,9 @@ $nav_info = 'Tableau de bord principal';
 
 // Configuration des niveaux d'accès
 $roles = ['guest' => 0, 'user' => 1, 'manager' => 2, 'admin' => 3, 'dev' => 4];
-$user_level = $roles[$current_user['role']] ?? 1;
+$user_level = $roles[$current_user['role']] ?? 0;
 
-// Modules disponibles selon le niveau d'accès - COMPLET (6 modules)
+// Modules disponibles - TOUS LES MODULES
 $available_modules = [
     'calculateur' => [
         'name' => 'Calculateur de frais',
@@ -108,10 +109,11 @@ $available_modules = [
         'icon' => '🧮',
         'color' => 'blue',
         'status' => 'active',
-        'status_label' => 'DISPONIBLE',
-        'path' => '/calculateur/',
+        'status_label' => 'OPÉRATIONNEL',
+        'path' => '/port/',
         'features' => ['Comparaison multi-transporteurs', 'Calculs automatisés', 'Export et historique'],
-        'min_level' => 1
+        'min_level' => 1,
+        'estimated_completion' => '100%'
     ],
     'adr' => [
         'name' => 'Gestion ADR',
@@ -119,10 +121,11 @@ $available_modules = [
         'icon' => '⚠️',
         'color' => 'orange',
         'status' => 'active',
-        'status_label' => 'DISPONIBLE',
+        'status_label' => 'OPÉRATIONNEL',
         'path' => '/adr/',
         'features' => ['Déclarations ADR', 'Gestion des quotas', 'Suivi réglementaire'],
-        'min_level' => 1
+        'min_level' => 1,
+        'estimated_completion' => '95%'
     ],
     'qualite' => [
         'name' => 'Contrôle Qualité',
@@ -130,21 +133,23 @@ $available_modules = [
         'icon' => '✅',
         'color' => 'green',
         'status' => 'active',
-        'status_label' => 'DISPONIBLE',
+        'status_label' => 'OPÉRATIONNEL',
         'path' => '/qualite/',
         'features' => ['Tests et validations', 'Rapports de conformité', 'Suivi des équipements'],
-        'min_level' => 1
+        'min_level' => 1,
+        'estimated_completion' => '85%'
     ],
     'epi' => [
         'name' => 'Équipements EPI',
         'description' => 'Gestion des équipements de protection individuelle - Stock et maintenance',
         'icon' => '🛡️',
         'color' => 'purple',
-        'status' => 'development',
-        'status_label' => 'EN DÉVELOPPEMENT',
+        'status' => 'active',
+        'status_label' => 'OPÉRATIONNEL',
         'path' => '/epi/',
         'features' => ['Inventaire EPI', 'Suivi des dates d\'expiration', 'Gestion des commandes'],
-        'min_level' => 1
+        'min_level' => 1,
+        'estimated_completion' => '75%'
     ],
     'outillages' => [
         'name' => 'Outillages',
@@ -155,7 +160,8 @@ $available_modules = [
         'status_label' => 'EN DÉVELOPPEMENT',
         'path' => '/outillages/',
         'features' => ['Inventaire outillage', 'Planning maintenance', 'Suivi d\'utilisation'],
-        'min_level' => 1
+        'min_level' => 1,
+        'estimated_completion' => '40%'
     ],
     'admin' => [
         'name' => 'Administration',
@@ -166,31 +172,89 @@ $available_modules = [
         'status_label' => 'ADMINISTRATEURS',
         'path' => '/admin/',
         'features' => ['Configuration système', 'Gestion utilisateurs', 'Maintenance'],
-        'min_level' => 3
+        'min_level' => 3,
+        'estimated_completion' => '90%'
     ]
 ];
 
-// Filtrer les modules selon les droits utilisateur
+// Filtrer les modules selon les droits d'accès
 $accessible_modules = array_filter($available_modules, function($module) use ($user_level) {
     return $user_level >= $module['min_level'];
 });
 
-// ===============================
-// INCLUSION DU HEADER
-// ===============================
+// Statistiques détaillées
+$stats = [
+    'modules_total' => count($available_modules),
+    'modules_accessible' => count($accessible_modules),
+    'modules_active' => count(array_filter($available_modules, fn($m) => $m['status'] === 'active')),
+    'modules_dev' => count(array_filter($available_modules, fn($m) => $m['status'] === 'development')),
+    'user_role' => $current_user['role'],
+    'user_level' => $user_level
+];
+
+// Fonctions utilitaires
+function getStatusLabel($status) {
+    return match($status) {
+        'active' => 'Disponible',
+        'development' => 'En développement',
+        'restricted' => 'Accès restreint',
+        'maintenance' => 'Maintenance',
+        default => 'Non disponible'
+    };
+}
+
+function getModuleStatusClass($status) {
+    return match($status) {
+        'active' => 'module-available',
+        'development' => 'module-dev',
+        'restricted' => 'module-restricted',
+        'maintenance' => 'module-maintenance',
+        default => 'module-disabled'
+    };
+}
+
+// Inclure le header SANS CSS inline
 if (file_exists(ROOT_PATH . '/templates/header.php')) {
     include ROOT_PATH . '/templates/header.php';
 } else {
-    // Fallback header minimal si template manquant
-    echo '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>' . htmlspecialchars($page_title) . '</title></head><body>';
+    ?>
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><?= htmlspecialchars($page_title) ?></title>
+        <meta name="description" content="<?= htmlspecialchars($page_description) ?>">
+        <meta name="author" content="<?= htmlspecialchars($app_author) ?>">
+        <meta name="robots" content="noindex, nofollow">
+        <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+        <link rel="stylesheet" href="/assets/css/portal.css?v=<?= htmlspecialchars($version_info['short_build']) ?>">
+    </head>
+    <body>
+        <header class="portal-header">
+            <div class="header-container container">
+                <a href="/" class="header-brand">
+                    <h1 class="portal-title"><?= htmlspecialchars($app_name) ?></h1>
+                </a>
+                <div class="user-menu">
+                    <span class="user-info">
+                        Connecté : <?= htmlspecialchars($current_user['username']) ?> 
+                        <span class="user-role">(<?= htmlspecialchars($current_user['role']) ?>)</span>
+                    </span>
+                    <a href="/auth/logout.php" class="logout-btn">Déconnexion</a>
+                </div>
+            </div>
+        </header>
+    <?php
 }
 ?>
 
 <!-- ===============================
-     CONTENU PRINCIPAL
+     CONTENU PRINCIPAL COMPLET
      =============================== -->
 <main class="portal-main">
     <div class="container">
+        
         <!-- Section de bienvenue -->
         <section class="welcome-section">
             <div class="welcome-header">
@@ -200,73 +264,38 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
                 <p class="welcome-subtitle">
                     <?= htmlspecialchars($page_description) ?>
                 </p>
-            </div>
-        </section>
-
-        <!-- Navigation modules -->
-        <section class="modules-section">
-            <h2 class="section-title">
-                <span class="section-icon">🚀</span>
-                Vos modules
-            </h2>
-            
-            <div class="modules-grid">
-                <?php foreach ($accessible_modules as $module_key => $module): ?>
-                <div class="module-card <?= $module['status'] === 'restricted' ? 'module-restricted' : '' ?>">
-                    <div class="module-header">
-                        <div class="module-icon module-icon-<?= $module['color'] ?>">
-                            <?= $module['icon'] ?>
-                        </div>
-                        <div class="module-status">
-                            <?php if ($module['status'] === 'active'): ?>
-                                <span class="status-badge status-active">Actif</span>
-                            <?php elseif ($module['status'] === 'restricted'): ?>
-                                <span class="status-badge status-restricted">Restreint</span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    
-                    <div class="module-content">
-                        <h3 class="module-title"><?= htmlspecialchars($module['name']) ?></h3>
-                        <p class="module-description"><?= htmlspecialchars($module['description']) ?></p>
-                        
-                        <ul class="module-features">
-                            <?php foreach ($module['features'] as $feature): ?>
-                            <li><?= htmlspecialchars($feature) ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                    
-                    <div class="module-actions">
-                        <a href="<?= htmlspecialchars($module['path']) ?>" 
-                           class="module-btn module-btn-<?= $module['color'] ?>">
-                            Accéder
-                        </a>
-                    </div>
+                <div class="version-badge">
+                    Version <?= htmlspecialchars($version_info['version']) ?> 
+                    <span class="build-info">(Build #<?= htmlspecialchars($version_info['short_build']) ?>)</span>
                 </div>
-                <?php endforeach; ?>
             </div>
         </section>
 
         <!-- Statistiques système -->
-        <?php if ($user_level >= 2): ?>
         <section class="stats-section">
-            <h3 class="section-title">
+            <h2 class="section-title">
                 <span class="section-icon">📊</span>
                 Aperçu système
-            </h3>
+            </h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon">📊</div>
+                    <div class="stat-icon">🎯</div>
                     <div class="stat-info">
-                        <div class="stat-value"><?= count($accessible_modules) ?></div>
+                        <div class="stat-value"><?= $stats['modules_accessible'] ?></div>
                         <div class="stat-label">Modules accessibles</div>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">🔧</div>
+                    <div class="stat-icon">🚀</div>
                     <div class="stat-info">
-                        <div class="stat-value"><?= APP_VERSION ?></div>
+                        <div class="stat-value"><?= $stats['modules_active'] ?></div>
+                        <div class="stat-label">Modules actifs</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-info">
+                        <div class="stat-value"><?= htmlspecialchars($version_info['version']) ?></div>
                         <div class="stat-label">Version portail</div>
                     </div>
                 </div>
@@ -279,309 +308,187 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
                 </div>
             </div>
         </section>
+
+        <!-- Navigation modules -->
+        <section class="modules-section">
+            <h2 class="section-title">
+                <span class="section-icon">🚀</span>
+                Vos modules
+            </h2>
+            
+            <div class="modules-grid">
+                <?php foreach ($accessible_modules as $module_key => $module): ?>
+                <div class="module-card <?= getModuleStatusClass($module['status']) ?> module-<?= $module['color'] ?>">
+                    <div class="module-header">
+                        <div class="module-icon"><?= $module['icon'] ?></div>
+                        <div class="module-info">
+                            <h3 class="module-title"><?= htmlspecialchars($module['name']) ?></h3>
+                            <span class="module-status status-<?= $module['status'] ?>">
+                                <?= $module['status_label'] ?>
+                            </span>
+                        </div>
+                        <div class="module-progress">
+                            <span class="progress-text"><?= $module['estimated_completion'] ?></span>
+                        </div>
+                    </div>
+                    
+                    <div class="module-body">
+                        <p class="module-description"><?= htmlspecialchars($module['description']) ?></p>
+                        
+                        <div class="module-features">
+                            <h4>Fonctionnalités :</h4>
+                            <ul>
+                                <?php foreach ($module['features'] as $feature): ?>
+                                <li><?= htmlspecialchars($feature) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="module-footer">
+                        <?php if ($module['status'] === 'active'): ?>
+                            <a href="<?= htmlspecialchars($module['path']) ?>" class="btn btn-primary">
+                                Accéder au module
+                            </a>
+                        <?php elseif ($module['status'] === 'development'): ?>
+                            <button class="btn btn-disabled" disabled>
+                                En développement
+                            </button>
+                        <?php elseif ($module['status'] === 'restricted'): ?>
+                            <a href="<?= htmlspecialchars($module['path']) ?>" class="btn btn-warning">
+                                Accès administrateur
+                            </a>
+                        <?php else: ?>
+                            <button class="btn btn-disabled" disabled>
+                                Non disponible
+                            </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <!-- Section informations -->
+        <section class="info-section">
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3 class="info-title">
+                        <span class="info-icon">🛡️</span>
+                        Sécurité
+                    </h3>
+                    <ul class="info-list">
+                        <li>Authentification obligatoire</li>
+                        <li>Sessions sécurisées</li>
+                        <li>Contrôle d'accès par rôles</li>
+                        <li>Logs d'activité</li>
+                    </ul>
+                </div>
+                
+                <div class="info-card">
+                    <h3 class="info-title">
+                        <span class="info-icon">🔧</span>
+                        Support
+                    </h3>
+                    <ul class="info-list">
+                        <li>Documentation intégrée</li>
+                        <li>Système de maintenance</li>
+                        <li>Sauvegarde automatique</li>
+                        <li>Monitoring système</li>
+                    </ul>
+                </div>
+                
+                <div class="info-card">
+                    <h3 class="info-title">
+                        <span class="info-icon">⚡</span>
+                        Performance
+                    </h3>
+                    <ul class="info-list">
+                        <li>Cache intelligent</li>
+                        <li>Optimisation BDD</li>
+                        <li>Compression assets</li>
+                        <li>CDN pour les ressources</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Messages utilisateur -->
+        <?php if (isset($_GET['msg'])): ?>
+        <section class="messages-section">
+            <?php if ($_GET['msg'] === 'login_success'): ?>
+            <div class="alert alert-success">
+                <strong>✅ Connexion réussie !</strong> Bienvenue sur le portail.
+            </div>
+            <?php elseif ($_GET['msg'] === 'logout_success'): ?>
+            <div class="alert alert-info">
+                <strong>ℹ️ Déconnexion effectuée.</strong> À bientôt !
+            </div>
+            <?php endif; ?>
+        </section>
         <?php endif; ?>
+
+        <!-- Actions rapides -->
+        <section class="quick-actions">
+            <h2 class="section-title">
+                <span class="section-icon">⚡</span>
+                Actions rapides
+            </h2>
+            <div class="actions-grid">
+                <a href="/port/" class="action-card">
+                    <div class="action-icon">🧮</div>
+                    <div class="action-text">Nouveau calcul</div>
+                </a>
+                <a href="/adr/" class="action-card">
+                    <div class="action-icon">⚠️</div>
+                    <div class="action-text">Déclaration ADR</div>
+                </a>
+                <a href="/qualite/" class="action-card">
+                    <div class="action-icon">✅</div>
+                    <div class="action-text">Contrôle qualité</div>
+                </a>
+                <?php if ($user_level >= 3): ?>
+                <a href="/admin/" class="action-card admin-only">
+                    <div class="action-icon">⚙️</div>
+                    <div class="action-text">Administration</div>
+                </a>
+                <?php endif; ?>
+            </div>
+        </section>
+
     </div>
 </main>
 
-<!-- CSS spécifique à la page d'accueil -->
-<style>
-    /* Variables pour cohérence avec le thème général */
-    .portal-main {
-        min-height: calc(100vh - 120px);
-        padding: var(--spacing-xl, 2rem) 0;
-    }
-
-    .container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 0 var(--spacing-lg, 1.5rem);
-    }
-
-    /* Section bienvenue */
-    .welcome-section {
-        text-align: center;
-        margin-bottom: var(--spacing-2xl, 3rem);
-    }
-
-    .welcome-title {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: var(--gray-900, #111827);
-        margin-bottom: var(--spacing-md, 1rem);
-    }
-
-    .welcome-subtitle {
-        font-size: 1.125rem;
-        color: var(--gray-600, #4b5563);
-        margin: 0;
-    }
-
-    /* Sections */
-    .section-title {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-sm, 0.5rem);
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: var(--gray-800, #1f2937);
-        margin-bottom: var(--spacing-xl, 2rem);
-    }
-
-    .section-icon {
-        font-size: 1.25rem;
-    }
-
-    /* Grille des modules */
-    .modules-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: var(--spacing-xl, 2rem);
-        margin-bottom: var(--spacing-2xl, 3rem);
-    }
-
-    .module-card {
-        background: white;
-        border-radius: var(--radius-lg, 0.75rem);
-        box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
-        overflow: hidden;
-        transition: var(--transition-normal, 0.3s ease);
-        border: 1px solid var(--gray-200, #e5e7eb);
-    }
-
-    .module-card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
-    }
-
-    .module-card.module-restricted {
-        opacity: 0.8;
-        border-color: var(--gray-300, #d1d5db);
-    }
-
-    .module-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--spacing-lg, 1.5rem);
-        background: var(--gray-50, #f9fafb);
-    }
-
-    .module-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: var(--radius-md, 0.5rem);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-    }
-
-    .module-icon-blue { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
-    .module-icon-orange { background: linear-gradient(135deg, #fed7aa, #fdba74); }
-    .module-icon-green { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
-    .module-icon-purple { background: linear-gradient(135deg, #e0e7ff, #c7d2fe); }
-    .module-icon-gray { background: linear-gradient(135deg, #f3f4f6, #e5e7eb); }
-    .module-icon-red { background: linear-gradient(135deg, #fecaca, #fca5a5); }
-
-    .status-badge {
-        padding: 0.25rem 0.5rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .status-active {
-        background: var(--success, #10b981);
-        color: white;
-    }
-
-    .status-development {
-        background: var(--warning, #f59e0b);
-        color: white;
-    }
-
-    .status-restricted {
-        background: var(--error, #ef4444);
-        color: white;
-    }
-
-    .module-content {
-        padding: var(--spacing-lg, 1.5rem);
-    }
-
-    .module-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: var(--gray-900, #111827);
-        margin-bottom: var(--spacing-sm, 0.5rem);
-    }
-
-    .module-description {
-        color: var(--gray-600, #4b5563);
-        margin-bottom: var(--spacing-md, 1rem);
-        line-height: 1.6;
-    }
-
-    .module-features {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .module-features li {
-        padding: 0.25rem 0;
-        color: var(--gray-500, #6b7280);
-        font-size: 0.875rem;
-    }
-
-    .module-features li:before {
-        content: "✓";
-        color: var(--success, #10b981);
-        margin-right: 0.5rem;
-        font-weight: bold;
-    }
-
-    .module-actions {
-        padding: var(--spacing-lg, 1.5rem);
-        border-top: 1px solid var(--gray-200, #e5e7eb);
-    }
-
-    .module-btn {
-        display: inline-block;
-        width: 100%;
-        padding: 0.75rem 1rem;
-        border-radius: var(--radius-md, 0.5rem);
-        text-align: center;
-        text-decoration: none;
-        font-weight: 600;
-        transition: var(--transition-fast, 0.15s ease);
-    }
-
-    .module-btn-blue {
-        background: var(--primary-blue, #3182ce);
-        color: white;
-    }
-
-    .module-btn-blue:hover {
-        background: var(--primary-blue-dark, #2c5282);
-    }
-
-    .module-btn-orange {
-        background: #ea580c;
-        color: white;
-    }
-
-    .module-btn-orange:hover {
-        background: #c2410c;
-    }
-
-    .module-btn-green {
-        background: #059669;
-        color: white;
-    }
-
-    .module-btn-green:hover {
-        background: #047857;
-    }
-
-    .module-btn-purple {
-        background: #7c3aed;
-        color: white;
-    }
-
-    .module-btn-purple:hover {
-        background: #5b21b6;
-    }
-
-    .module-btn-gray {
-        background: var(--gray-600, #4b5563);
-        color: white;
-    }
-
-    .module-btn-gray:hover {
-        background: var(--gray-700, #374151);
-    }
-
-    .module-btn-red {
-        background: #dc2626;
-        color: white;
-    }
-
-    .module-btn-red:hover {
-        background: #b91c1c;
-    }
-
-    /* Statistiques */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--spacing-lg, 1.5rem);
-    }
-
-    .stat-card {
-        background: white;
-        padding: var(--spacing-lg, 1.5rem);
-        border-radius: var(--radius-lg, 0.75rem);
-        box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-md, 1rem);
-    }
-
-    .stat-icon {
-        font-size: 2rem;
-    }
-
-    .stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--gray-900, #111827);
-    }
-
-    .stat-label {
-        color: var(--gray-600, #4b5563);
-        font-size: 0.875rem;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .welcome-title {
-            font-size: 2rem;
-        }
-
-        .modules-grid {
-            grid-template-columns: 1fr;
-            gap: var(--spacing-lg, 1.5rem);
-        }
-
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @media (max-width: 480px) {
-        .container {
-            padding: 0 var(--spacing-md, 1rem);
-        }
-
-        .stats-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-
 <?php
-// ===============================
-// INCLUSION DU FOOTER
-// ===============================
+// Inclure le footer
 if (file_exists(ROOT_PATH . '/templates/footer.php')) {
     include ROOT_PATH . '/templates/footer.php';
 } else {
-    // Fallback footer minimal si template manquant
-    echo '<footer style="text-align: center; padding: 2rem; background: #f3f4f6; margin-top: 2rem;">';
-    echo '<p>&copy; ' . date('Y') . ' ' . htmlspecialchars($app_name) . ' - Version ' . htmlspecialchars(APP_VERSION) . '</p>';
-    echo '</footer></body></html>';
+    ?>
+    <footer class="portal-footer">
+        <div class="footer-container container">
+            <div class="footer-brand">
+                <h4 class="footer-title"><?= htmlspecialchars($app_name) ?></h4>
+                <p class="footer-subtitle"><?= htmlspecialchars($page_subtitle) ?></p>
+            </div>
+            
+            <div class="footer-info">
+                <div class="version-info">
+                    Version <?= htmlspecialchars($version_info['version']) ?> - Build #<?= htmlspecialchars($version_info['short_build']) ?>
+                </div>
+                <div class="build-info">
+                    Compilé le <?= htmlspecialchars($version_info['date']) ?>
+                </div>
+            </div>
+            
+            <div class="footer-copyright">
+                © <?= $version_info['year'] ?> <?= htmlspecialchars($app_author) ?><br>
+                Tous droits réservés
+            </div>
+        </div>
+    </footer>
+    </body>
+    </html>
+    <?php
 }
 ?>
