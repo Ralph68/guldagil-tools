@@ -27,7 +27,7 @@
    ============================================== */
 
 .user-dashboard {
-    max-width: 1400px;
+    max-width: 1400px; !important
     margin: 0 auto;
     padding: var(--spacing-lg);
 }
