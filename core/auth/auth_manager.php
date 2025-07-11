@@ -35,7 +35,7 @@ class AuthManager {
      * Authentification principale
      */
     public function login($email_or_username, $password, $remember_me = false) {
-        file_put_contents(__DIR__ . '/debug_login.txt', "Tentative: $email_or_username - $password\n", FILE_APPEND);
+        file_put_contents('/tmp/debug_login.txt', "Tentative: $email_or_username - $password\n", FILE_APPEND);
 
         try {
             // Vérifier tentatives
@@ -71,7 +71,7 @@ class AuthManager {
         } catch (Exception $e) {
             error_log("Erreur auth: " . $e->getMessage());
             echo '<pre>Erreur auth: ' . $e->getMessage() . '</pre>';
-            file_put_contents(__DIR__ . '/debug_login.txt', "Erreur: " . $e->getMessage() . "\n", FILE_APPEND);
+            file_put_contents('/tmp/debug_login.txt', "Erreur: " . $e->getMessage() . "\n", FILE_APPEND);
 
 
             return [
@@ -92,6 +92,7 @@ class AuthManager {
         ");
         $stmt->execute([$email_or_username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        file_put_contents('/tmp/debug_login.txt', "USER: " . var_export($user, true) . "\n", FILE_APPEND);
         var_dump($user); // Pour voir si la requête SQL retourne bien un user
         
         if ($user) {
