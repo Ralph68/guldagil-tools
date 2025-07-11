@@ -35,6 +35,8 @@ class AuthManager {
      * Authentification principale
      */
     public function login($email_or_username, $password, $remember_me = false) {
+        file_put_contents('/tmp/debug_login.txt', ">>> login() appelée avec : $email_or_username - $password\n", FILE_APPEND);
+
         file_put_contents('/tmp/debug_login.txt', "Tentative: $email_or_username - $password\n", FILE_APPEND);
 
         try {
