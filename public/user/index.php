@@ -1,13 +1,13 @@
 <?php
 /**
- * Titre: Dashboard utilisateur principal
+ * Titre: Dashboard utilisateur avec chemins corrigés
  * Chemin: /public/user/index.php
  * Version: 0.5 beta + build auto
  */
 
 session_start();
 
-// Configuration - CORRECTION ROOT_PATH
+// Configuration - CORRIGÉ
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 
 // Chargement configuration
@@ -123,7 +123,8 @@ $recent_activities = [
     
     <!-- CSS de base -->
     <link rel="stylesheet" href="/assets/css/app.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="/public/user/user.css?v=<?= $build_number ?>">
+    <!-- CSS module user - CHEMIN CORRIGÉ -->
+    <link rel="stylesheet" href="/public/user/assets/css/user.css?v=<?= $build_number ?>">
 </head>
 <body>
     <?php include ROOT_PATH . '/templates/header.php'; ?>
@@ -298,9 +299,15 @@ $recent_activities = [
 
     <?php include ROOT_PATH . '/templates/footer.php'; ?>
 
+    <!-- JavaScript - CHEMIN CORRIGÉ -->
+    <script src="/public/user/assets/js/user.js?v=<?= $build_number ?>"></script>
     <script>
-        // Animation d'entrée
+        // Initialisation spécifique au dashboard
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('👤 Dashboard utilisateur initialisé');
+            console.log('Modules disponibles:', <?= json_encode($current_user['modules'] ?? ['calculateur']) ?>);
+            
+            // Animation d'entrée des éléments
             const elements = document.querySelectorAll('.action-card, .stat-card, .module-item, .activity-item, .security-item, .link-card');
             elements.forEach((element, index) => {
                 element.style.opacity = '0';
@@ -326,60 +333,6 @@ $recent_activities = [
             // Actualiser toutes les minutes
             setInterval(updateTime, 60000);
         });
-
-        console.log('👤 Dashboard utilisateur initialisé');
-        console.log('Modules disponibles:', <?= json_encode($current_user['modules'] ?? ['calculateur']) ?>);
     </script>
-
-    <style>
-        /* Styles additionnels pour le dashboard */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-xl);
-            margin-bottom: var(--spacing-xl);
-        }
-        
-        .recent-activity {
-            margin-bottom: var(--spacing-xl);
-        }
-        
-        .useful-links {
-            margin-bottom: var(--spacing-xl);
-        }
-        
-        .links-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: var(--spacing-lg);
-        }
-        
-        .link-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: var(--spacing-md);
-            background: white;
-            padding: var(--spacing-xl);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-md);
-            text-decoration: none;
-            color: inherit;
-            transition: all var(--transition-normal);
-            border: 2px solid transparent;
-        }
-        
-        .link-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--user-primary);
-        }
-        
-        .link-icon {
-            font-size: 2rem;
-        }
-        
-        .link-title {
-            font-weight: 600;
-            text-align: center;
-        }
+</body>
+</html>
