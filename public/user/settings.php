@@ -1,36 +1,60 @@
 <?php
 /**
- * Titre: Page de paramètres utilisateur
+ * Titre: Page de paramètres utilisateur - Version complète
  * Chemin: /public/user/settings.php
  * Version: 0.5 beta + build auto
  */
 
 session_start();
 
-// Configuration - ROOT_PATH pour /public/user/
+// Configuration - ROOT_PATH corrigé
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 
 // Chargement configuration
-require_once ROOT_PATH . '/config/config.php';
-require_once ROOT_PATH . '/config/version.php';
+$required_files = [
+    ROOT_PATH . '/config/config.php',
+    ROOT_PATH . '/config/version.php'
+];
 
-// Vérification authentification
-if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
-    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
-    exit;
+foreach ($required_files as $file) {
+    if (!file_exists($file)) {
+        http_response_code(500);
+        die('<h1>❌ Configuration manquante</h1><p>Fichier requis : ' . basename($file) . '</p>');
+    }
+    require_once $file;
 }
 
-$current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
+// Authentification avec AuthManager
+try {
+    require_once ROOT_PATH . '/core/auth/AuthManager.php';
+    $auth = new AuthManager();
+    
+    if (!$auth->isAuthenticated()) {
+        header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+        exit;
+    }
+    
+    $current_user = $auth->getCurrentUser();
+} catch (Exception $e) {
+    if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
+        header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+        exit;
+    }
+    $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
+}
 
 // Variables pour template
+$version_info = getVersionInfo();
 $page_title = 'Paramètres';
 $page_subtitle = 'Configuration personnelle';
 $current_module = 'settings';
 $user_authenticated = true;
+$module_css = true;
 
 // Breadcrumbs
 $breadcrumbs = [
     ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => false],
+    ['icon' => '👤', 'text' => 'Mon Espace', 'url' => '/user/', 'active' => false],
     ['icon' => '⚙️', 'text' => 'Paramètres', 'url' => '/user/settings.php', 'active' => true]
 ];
 
@@ -39,8 +63,15 @@ $default_settings = [
     'theme' => 'light',
     'language' => 'fr',
     'notifications_email' => true,
+    'notifications_browser' => true,
     'items_per_page' => 25,
-    'default_module' => 'calculateur'
+    'default_module' => 'calculateur',
+    'auto_save' => true,
+    'show_tips' => true,
+    'compact_mode' => false,
+    'sidebar_collapsed' => false,
+    'timezone' => 'Europe/Paris',
+    'date_format' => 'dd/mm/yyyy'
 ];
 
 // Charger paramètres utilisateur
@@ -59,17 +90,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user_settings['language'] = $_POST['language'] ?? 'fr';
             $user_settings['items_per_page'] = (int)($_POST['items_per_page'] ?? 25);
             $user_settings['default_module'] = $_POST['default_module'] ?? 'calculateur';
+            $user_settings['timezone'] = $_POST['timezone'] ?? 'Europe/Paris';
+            $user_settings['date_format'] = $_POST['date_format'] ?? 'dd/mm/yyyy';
             $message = 'Paramètres généraux sauvegardés';
             break;
             
         case 'save_interface':
             $user_settings['theme'] = $_POST['theme'] ?? 'light';
+            $user_settings['compact_mode'] = isset($_POST['compact_mode']);
+            $user_settings['sidebar_collapsed'] = isset($_POST['sidebar_collapsed']);
+            $user_settings['show_tips'] = isset($_POST['show_tips']);
             $message = 'Interface mise à jour';
             break;
             
         case 'save_notifications':
             $user_settings['notifications_email'] = isset($_POST['notifications_email']);
+            $user_settings['notifications_browser'] = isset($_POST['notifications_browser']);
             $message = 'Notifications mises à jour';
+            break;
+            
+        case 'save_advanced':
+            $user_settings['auto_save'] = isset($_POST['auto_save']);
+            $message = 'Paramètres avancés mis à jour';
             break;
             
         case 'reset':
@@ -78,6 +120,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = 'Paramètres remis à zéro';
             } else {
                 $error = 'Confirmation incorrecte';
+            }
+            break;
+            
+        case 'export':
+            // Export des paramètres
+            $export_data = [
+                'settings' => $user_settings,
+                'user' => [
+                    'username' => $current_user['username'],
+                    'role' => $current_user['role']
+                ],
+                'export_date' => date('Y-m-d H:i:s'),
+                'version' => APP_VERSION
+            ];
+            
+            header('Content-Type: application/json');
+            header('Content-Disposition: attachment; filename="guldagil_settings_' . date('Y-m-d') . '.json"');
+            echo json_encode($export_data, JSON_PRETTY_PRINT);
+            exit;
+            
+        case 'import':
+            if (isset($_FILES['settings_file']) && $_FILES['settings_file']['error'] === UPLOAD_ERR_OK) {
+                $import_data = json_decode(file_get_contents($_FILES['settings_file']['tmp_name']), true);
+                
+                if ($import_data && isset($import_data['settings'])) {
+                    $user_settings = array_merge($default_settings, $import_data['settings']);
+                    $message = 'Paramètres importés avec succès';
+                } else {
+                    $error = 'Fichier de paramètres invalide';
+                }
+            } else {
+                $error = 'Erreur lors de l\'upload du fichier';
             }
             break;
     }
@@ -124,6 +198,12 @@ include ROOT_PATH . '/templates/header.php';
             <a href="#notifications" class="nav-item" data-tab="notifications">
                 <span>🔔</span> Notifications
             </a>
+            <a href="#advanced" class="nav-item" data-tab="advanced">
+                <span>🔬</span> Avancé
+            </a>
+            <a href="#import-export" class="nav-item" data-tab="import-export">
+                <span>📁</span> Import/Export
+            </a>
             <a href="#reset" class="nav-item" data-tab="reset">
                 <span>🔄</span> Réinitialiser
             </a>
@@ -144,6 +224,7 @@ include ROOT_PATH . '/templates/header.php';
                         <select name="language">
                             <option value="fr" <?= $user_settings['language'] === 'fr' ? 'selected' : '' ?>>Français</option>
                             <option value="en" <?= $user_settings['language'] === 'en' ? 'selected' : '' ?>>English</option>
+                            <option value="es" <?= $user_settings['language'] === 'es' ? 'selected' : '' ?>>Español</option>
                         </select>
                     </div>
                     
@@ -153,6 +234,7 @@ include ROOT_PATH . '/templates/header.php';
                             <option value="10" <?= $user_settings['items_per_page'] === 10 ? 'selected' : '' ?>>10</option>
                             <option value="25" <?= $user_settings['items_per_page'] === 25 ? 'selected' : '' ?>>25</option>
                             <option value="50" <?= $user_settings['items_per_page'] === 50 ? 'selected' : '' ?>>50</option>
+                            <option value="100" <?= $user_settings['items_per_page'] === 100 ? 'selected' : '' ?>>100</option>
                         </select>
                     </div>
                     
@@ -162,6 +244,24 @@ include ROOT_PATH . '/templates/header.php';
                             <option value="home" <?= $user_settings['default_module'] === 'home' ? 'selected' : '' ?>>Accueil</option>
                             <option value="calculateur" <?= $user_settings['default_module'] === 'calculateur' ? 'selected' : '' ?>>Calculateur</option>
                             <option value="adr" <?= $user_settings['default_module'] === 'adr' ? 'selected' : '' ?>>Module ADR</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>🕐 Fuseau horaire</label>
+                        <select name="timezone">
+                            <option value="Europe/Paris" <?= $user_settings['timezone'] === 'Europe/Paris' ? 'selected' : '' ?>>Europe/Paris</option>
+                            <option value="UTC" <?= $user_settings['timezone'] === 'UTC' ? 'selected' : '' ?>>UTC</option>
+                            <option value="America/New_York" <?= $user_settings['timezone'] === 'America/New_York' ? 'selected' : '' ?>>America/New_York</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>📅 Format de date</label>
+                        <select name="date_format">
+                            <option value="dd/mm/yyyy" <?= $user_settings['date_format'] === 'dd/mm/yyyy' ? 'selected' : '' ?>>DD/MM/YYYY</option>
+                            <option value="mm/dd/yyyy" <?= $user_settings['date_format'] === 'mm/dd/yyyy' ? 'selected' : '' ?>>MM/DD/YYYY</option>
+                            <option value="yyyy-mm-dd" <?= $user_settings['date_format'] === 'yyyy-mm-dd' ? 'selected' : '' ?>>YYYY-MM-DD</option>
                         </select>
                     </div>
                     
@@ -196,7 +296,40 @@ include ROOT_PATH . '/templates/header.php';
                                 </div>
                                 <span>Sombre</span>
                             </label>
+                            
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="auto" <?= $user_settings['theme'] === 'auto' ? 'checked' : '' ?>>
+                                <div class="theme-preview auto">
+                                    <div class="preview-header"></div>
+                                    <div class="preview-content"></div>
+                                </div>
+                                <span>Auto</span>
+                            </label>
                         </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="compact_mode" <?= $user_settings['compact_mode'] ? 'checked' : '' ?>>
+                            📱 Mode compact
+                        </label>
+                        <small>Interface plus dense avec moins d'espacement</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="sidebar_collapsed" <?= $user_settings['sidebar_collapsed'] ? 'checked' : '' ?>>
+                            📋 Sidebar réduite par défaut
+                        </label>
+                        <small>La barre latérale sera réduite au démarrage</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="show_tips" <?= $user_settings['show_tips'] ? 'checked' : '' ?>>
+                            💡 Afficher les conseils
+                        </label>
+                        <small>Bulles d'aide et conseils d'utilisation</small>
                     </div>
                     
                     <button type="submit" class="btn primary">🎨 Appliquer</button>
@@ -211,27 +344,103 @@ include ROOT_PATH . '/templates/header.php';
                     <input type="hidden" name="action" value="save_notifications">
                     
                     <div class="form-group">
-                        <label class="checkbox-label">
+                        <label>
                             <input type="checkbox" name="notifications_email" <?= $user_settings['notifications_email'] ? 'checked' : '' ?>>
-                            <span class="checkmark"></span>
                             📧 Notifications par email
                         </label>
-                        <div class="help-text">Recevoir des emails pour les événements importants</div>
+                        <small>Recevoir les alertes importantes par email</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="notifications_browser" <?= $user_settings['notifications_browser'] ? 'checked' : '' ?>>
+                            🔔 Notifications navigateur
+                        </label>
+                        <small>Notifications push dans le navigateur</small>
                     </div>
                     
                     <button type="submit" class="btn primary">🔔 Sauvegarder</button>
                 </form>
             </section>
 
-            <!-- Réinitialiser -->
+            <!-- Avancé -->
+            <section id="advanced" class="tab-section">
+                <h2>Paramètres avancés</h2>
+                
+                <form method="POST" class="settings-form">
+                    <input type="hidden" name="action" value="save_advanced">
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="auto_save" <?= $user_settings['auto_save'] ? 'checked' : '' ?>>
+                            💾 Sauvegarde automatique
+                        </label>
+                        <small>Sauvegarde automatique des formulaires</small>
+                    </div>
+                    
+                    <div class="info-section">
+                        <h3>Informations système</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Version :</span>
+                                <span class="info-value"><?= APP_VERSION ?></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Build :</span>
+                                <span class="info-value"><?= substr(BUILD_NUMBER, -8) ?></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Utilisateur :</span>
+                                <span class="info-value"><?= htmlspecialchars($current_user['username']) ?></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Rôle :</span>
+                                <span class="info-value"><?= htmlspecialchars($current_user['role']) ?></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn primary">🔬 Sauvegarder</button>
+                </form>
+            </section>
+
+            <!-- Import/Export -->
+            <section id="import-export" class="tab-section">
+                <h2>Import/Export des paramètres</h2>
+                
+                <div class="import-export-section">
+                    <div class="export-section">
+                        <h3>📤 Export</h3>
+                        <p>Exporter vos paramètres vers un fichier JSON</p>
+                        <form method="POST">
+                            <input type="hidden" name="action" value="export">
+                            <button type="submit" class="btn primary">📥 Télécharger mes paramètres</button>
+                        </form>
+                    </div>
+                    
+                    <div class="import-section">
+                        <h3>📥 Import</h3>
+                        <p>Importer des paramètres depuis un fichier JSON</p>
+                        <form method="POST" enctype="multipart/form-data">
+                            <input type="hidden" name="action" value="import">
+                            <div class="form-group">
+                                <input type="file" name="settings_file" accept=".json" required>
+                            </div>
+                            <button type="submit" class="btn warning">📤 Importer paramètres</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Réinitialisation -->
             <section id="reset" class="tab-section">
                 <h2>Réinitialisation</h2>
                 
-                <div class="warning-box">
-                    <h3>⚠️ Attention</h3>
-                    <p>Cette action remettra tous vos paramètres aux valeurs par défaut.</p>
+                <div class="danger-zone">
+                    <h3>⚠️ Zone dangereuse</h3>
+                    <p>Cette action remettra tous vos paramètres aux valeurs par défaut et supprimera toute personnalisation.</p>
                     
-                    <form method="POST" class="settings-form">
+                    <form method="POST" class="settings-form" onsubmit="return confirm('Êtes-vous sûr de vouloir réinitialiser tous vos paramètres ?')">
                         <input type="hidden" name="action" value="reset">
                         
                         <div class="form-group">
@@ -239,9 +448,7 @@ include ROOT_PATH . '/templates/header.php';
                             <input type="text" name="confirm" placeholder="RESET" required>
                         </div>
                         
-                        <button type="submit" class="btn warning" onclick="return confirm('Êtes-vous sûr ?')">
-                            🔄 Réinitialiser tout
-                        </button>
+                        <button type="submit" class="btn danger">🔄 Réinitialiser tout</button>
                     </form>
                 </div>
             </section>
@@ -249,321 +456,13 @@ include ROOT_PATH . '/templates/header.php';
     </div>
 </div>
 
-<style>
-/* CSS simplifié et efficace */
-.settings-page {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-}
+<!-- CSS externe -->
+<link rel="stylesheet" href="assets/css/user.css?v=<?= $build_number ?>">
 
-.alert {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
-}
+<!-- JavaScript externe -->
+<script src="assets/js/user.js?v=<?= $build_number ?>"></script>
 
-.alert.success {
-    background: #d1fae5;
-    color: #065f46;
-    border: 1px solid #10b981;
-}
-
-.alert.error {
-    background: #fef2f2;
-    color: #7f1d1d;
-    border: 1px solid #ef4444;
-}
-
-.page-header {
-    text-align: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.page-header h1 {
-    font-size: 2rem;
-    margin: 0 0 0.5rem;
-    color: #111827;
-}
-
-.page-header p {
-    color: #6b7280;
-    margin: 0;
-}
-
-.settings-layout {
-    display: grid;
-    grid-template-columns: 250px 1fr;
-    gap: 2rem;
-    align-items: start;
-}
-
-.settings-nav {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 1rem;
-    padding: 1rem;
-    position: sticky;
-    top: 1rem;
-}
-
-.nav-item {
-    display: block;
-    padding: 0.75rem 1rem;
-    color: #6b7280;
-    text-decoration: none;
-    border-radius: 0.5rem;
-    margin-bottom: 0.25rem;
-    transition: all 0.2s;
-}
-
-.nav-item:hover,
-.nav-item.active {
-    background: #3182ce;
-    color: white;
-}
-
-.settings-content {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 1rem;
-    padding: 2rem;
-}
-
-.tab-section {
-    display: none;
-}
-
-.tab-section.active {
-    display: block;
-}
-
-.tab-section h2 {
-    margin: 0 0 1.5rem;
-    color: #111827;
-}
-
-.settings-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.form-group label {
-    font-weight: 500;
-    color: #374151;
-}
-
-.form-group select,
-.form-group input[type="text"] {
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    font-size: 1rem;
-}
-
-.form-group select:focus,
-.form-group input:focus {
-    outline: none;
-    border-color: #3182ce;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 0.5rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    align-self: flex-start;
-}
-
-.btn.primary {
-    background: #3182ce;
-    color: white;
-}
-
-.btn.primary:hover {
-    background: #2563eb;
-}
-
-.btn.warning {
-    background: #f59e0b;
-    color: white;
-}
-
-.btn.warning:hover {
-    background: #d97706;
-}
-
-/* Thèmes */
-.theme-selector {
-    display: flex;
-    gap: 1rem;
-}
-
-.theme-option {
-    cursor: pointer;
-    text-align: center;
-}
-
-.theme-option input {
-    display: none;
-}
-
-.theme-preview {
-    width: 80px;
-    height: 60px;
-    border: 2px solid #d1d5db;
-    border-radius: 0.5rem;
-    margin-bottom: 0.5rem;
-    overflow: hidden;
-    transition: border-color 0.2s;
-}
-
-.theme-option input:checked + .theme-preview {
-    border-color: #3182ce;
-}
-
-.theme-preview.light {
-    background: #f9fafb;
-}
-
-.theme-preview.dark {
-    background: #1f2937;
-}
-
-.preview-header {
-    height: 15px;
-    background: #3182ce;
-}
-
-.preview-content {
-    height: 45px;
-    background: rgba(0,0,0,0.05);
-}
-
-.theme-preview.dark .preview-content {
-    background: rgba(255,255,255,0.1);
-}
-
-/* Checkbox */
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    cursor: pointer;
-}
-
-.checkbox-label input {
-    display: none;
-}
-
-.checkmark {
-    width: 20px;
-    height: 20px;
-    border: 2px solid #d1d5db;
-    border-radius: 0.25rem;
-    position: relative;
-}
-
-.checkbox-label input:checked + .checkmark {
-    background: #3182ce;
-    border-color: #3182ce;
-}
-
-.checkbox-label input:checked + .checkmark::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-size: 0.75rem;
-}
-
-.help-text {
-    font-size: 0.875rem;
-    color: #6b7280;
-    margin-left: 2.75rem;
-}
-
-.warning-box {
-    background: #fef3c7;
-    border: 1px solid #f59e0b;
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-}
-
-.warning-box h3 {
-    margin: 0 0 0.75rem;
-    color: #92400e;
-}
-
-.warning-box p {
-    margin: 0 0 1.5rem;
-    color: #92400e;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .settings-layout {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-    
-    .settings-nav {
-        display: flex;
-        overflow-x: auto;
-        position: static;
-    }
-    
-    .nav-item {
-        white-space: nowrap;
-        margin-right: 0.5rem;
-        margin-bottom: 0;
-    }
-    
-    .theme-selector {
-        justify-content: center;
-    }
-}
-</style>
-
-<script>
-// JavaScript simple pour les onglets
-document.addEventListener('DOMContentLoaded', function() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const sections = document.querySelectorAll('.tab-section');
-    
-    navItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            const targetTab = this.getAttribute('data-tab');
-            
-            // Retirer active
-            navItems.forEach(nav => nav.classList.remove('active'));
-            sections.forEach(section => section.classList.remove('active'));
-            
-            // Ajouter active
-            this.classList.add('active');
-            document.getElementById(targetTab).classList.add('active');
-        });
-    });
-});
-</script>
-
-<?php include ROOT_PATH . '/templates/footer.php'; ?>
+<?php
+// Inclure footer
+include ROOT_PATH . '/templates/footer.php';
+?>
