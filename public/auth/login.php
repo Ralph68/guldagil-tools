@@ -12,6 +12,7 @@ if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
     header('Location: /');
     exit;
 }
+file_put_contents('/tmp/debug_login.txt', ">>> login.php CHARGÉ\n", FILE_APPEND);
 
 // Configuration
 require_once __DIR__ . '/../../config/config.php';
