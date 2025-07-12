@@ -1,248 +1,224 @@
 <?php
 /**
- * Titre: Gestionnaire d'authentification avec base de données
+ * Titre: Gestionnaire d'authentification - Version corrigée
  * Chemin: /core/auth/AuthManager.php
  * Version: 0.5 beta + build auto
  */
 
-class AuthManager {
-    private static $instance = null;
+class AuthManager 
+{
     private $db;
-    private $currentUser = null;
+    private static $instance = null;
+    
+    const MAX_LOGIN_ATTEMPTS = 5;
+    const LOCKOUT_TIME = 900; // 15 minutes
+    const SESSION_LIFETIME = 7200; // 2 heures par défaut
 
-    // Configuration sécurité
-    const SESSION_TIMEOUT = 7200; // 2h par défaut
-    const MAX_LOGIN_ATTEMPTS = 3;
-    const LOCKOUT_TIME = 900; // 15min
-
-    /**
-     * Créer session utilisateur
-     */
-    private function createSession($user) {
-        session_regenerate_id(true);
-        
-        // Nettoyer anciennes sessions
-        $this->cleanupOldSessions($user['id']);
-        
-        // Créer nouvelle session
-        $session_id = session_id();
-        $session_duration = $user['session_duration'] ?: self::SESSION_TIMEOUT;
-        $expires_at = date('Y-m-d H:i:s', time() + $session_duration);
-        
-        $stmt = $this->db->prepare("
-            INSERT INTO auth_sessions (id, user_id, expires_at) 
-            VALUES (?, ?, ?)
-        ");
-        $stmt->execute([$session_id, $user['id'], $expires_at]);
-        
-        $_SESSION['auth'] = [
-            'logged_in' => true,
-            'user_id' => $user['id'],
-            'username' => $user['username'],
-            'role' => $user['role'],
-            'login_time' => time(),
-            'last_activity' => time(),
-            'session_duration' => $session_duration,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
-        ];
-        
-        $this->currentUser = $user;
+    public function __construct() {
+        $this->initSession();
+        $this->db = $this->getDatabase();
     }
 
     /**
-     * Vérifier authentification
+     * Singleton pattern (optionnel, pour compatibilité)
      */
-    public function isAuthenticated() {
-        if (!isset($_SESSION['auth']['logged_in']) || !$_SESSION['auth']['logged_in']) {
-            return false;
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
-
-        // Vérifier session en BDD
-        $session_id = session_id();
-        $stmt = $this->db->prepare("
-            SELECT user_id, expires_at 
-            FROM auth_sessions 
-            WHERE id = ? AND expires_at > NOW()
-        ");
-        $stmt->execute([$session_id]);
-        $session = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$session) {
-            $this->logout('expired');
-            return false;
-        }
-
-        // Vérifier timeout
-        $session_duration = $_SESSION['auth']['session_duration'] ?? self::SESSION_TIMEOUT;
-        if (time() - $_SESSION['auth']['last_activity'] > $session_duration) {
-            $this->logout('timeout');
-            return false;
-        }
-
-        // Renouveler activité
-        $_SESSION['auth']['last_activity'] = time();
-        return true;
+        return self::$instance;
     }
 
     /**
-     * Obtenir utilisateur actuel
+     * Initialisation base de données
      */
-    public function getCurrentUser() {
-        if ($this->currentUser) return $this->currentUser;
-        
-        if (!$this->isAuthenticated()) return null;
-        
+    private function getDatabase() {
         try {
-            $stmt = $this->db->prepare("
-                SELECT id, username, role, session_duration, created_at, last_login
-                FROM auth_users 
-                WHERE id = ? AND is_active = 1
-            ");
-            $stmt->execute([$_SESSION['auth']['user_id']]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($user) {
-                // Mapper vers format attendu
-                $this->currentUser = [
-                    'id' => $user['id'],
-                    'username' => $user['username'],
-                    'name' => $this->getUserDisplayName($user['username'], $user['role']),
-                    'role' => $user['role'],
-                    'modules' => $this->getUserModules($user['role']),
-                    'permissions' => $this->getUserPermissions($user['role'])
-                ];
+            if (function_exists('getDB')) {
+                return getDB();
             }
             
-            return $this->currentUser;
+            // Configuration directe si getDB() n'existe pas
+            $host = defined('DB_HOST') ? DB_HOST : 'localhost';
+            $name = defined('DB_NAME') ? DB_NAME : '';
+            $user = defined('DB_USER') ? DB_USER : '';
+            $pass = defined('DB_PASS') ? DB_PASS : '';
+            
+            if (empty($name)) {
+                throw new Exception("Configuration base de données manquante");
+            }
+            
+            $pdo = new PDO("mysql:host={$host};dbname={$name};charset=utf8mb4", $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false
+            ]);
+            
+            return $pdo;
             
         } catch (Exception $e) {
-            error_log('AuthManager getCurrentUser error: ' . $e->getMessage());
+            error_log("Erreur DB AuthManager: " . $e->getMessage());
             return null;
         }
     }
 
     /**
-     * Mappage des modules par rôle
+     * Authentification utilisateur
      */
-    private function getUserModules($role) {
-        $modules = [
-            'dev' => ['calculateur', 'adr', 'controle-qualite', 'epi', 'outillages', 'admin'],
-            'admin' => ['calculateur', 'adr', 'admin'],
-            'user' => ['calculateur']
+    public function login($username, $password, $remember = false) {
+        try {
+            // Vérification tentatives échouées
+            if ($this->isUserLocked($username)) {
+                return [
+                    'success' => false,
+                    'error' => 'Compte temporairement verrouillé. Réessayez dans 15 minutes.'
+                ];
+            }
+
+            // Recherche utilisateur en base
+            if ($this->db) {
+                $stmt = $this->db->prepare("
+                    SELECT id, username, password, role, session_duration, is_active 
+                    FROM auth_users 
+                    WHERE username = ? AND is_active = 1
+                ");
+                $stmt->execute([$username]);
+                $user = $stmt->fetch();
+
+                if ($user && password_verify($password, $user['password'])) {
+                    $this->clearFailedAttempts($username);
+                    
+                    // Créer session
+                    $this->createUserSession($user, $remember);
+                    
+                    // Mettre à jour dernière connexion
+                    $stmt = $this->db->prepare("UPDATE auth_users SET last_login = NOW() WHERE id = ?");
+                    $stmt->execute([$user['id']]);
+                    
+                    $this->logActivity('LOGIN_SUCCESS', $username);
+                    
+                    return [
+                        'success' => true,
+                        'user' => [
+                            'id' => $user['id'],
+                            'username' => $user['username'],
+                            'role' => $user['role']
+                        ]
+                    ];
+                } else {
+                    $this->recordFailedAttempt($username);
+                    return [
+                        'success' => false,
+                        'error' => 'Identifiants incorrects'
+                    ];
+                }
+            } else {
+                return [
+                    'success' => false,
+                    'error' => 'Service d\'authentification indisponible'
+                ];
+            }
+            
+        } catch (Exception $e) {
+            error_log("Erreur login: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Erreur système lors de la connexion'
+            ];
+        }
+    }
+
+    /**
+     * Vérifier si utilisateur est connecté
+     */
+    public function isAuthenticated() {
+        if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
+            return false;
+        }
+
+        // Vérifier expiration session
+        if (isset($_SESSION['expires_at']) && time() > $_SESSION['expires_at']) {
+            $this->logout('expired');
+            return false;
+        }
+
+        // Régénérer ID session périodiquement
+        if (!isset($_SESSION['last_regeneration']) || (time() - $_SESSION['last_regeneration']) > 1800) {
+            session_regenerate_id(true);
+            $_SESSION['last_regeneration'] = time();
+        }
+
+        return true;
+    }
+
+    /**
+     * Obtenir utilisateur connecté
+     */
+    public function getCurrentUser() {
+        if (!$this->isAuthenticated()) {
+            return null;
+        }
+        
+        return $_SESSION['user'] ?? null;
+    }
+
+    /**
+     * Créer session utilisateur
+     */
+    private function createUserSession($user, $remember = false) {
+        // Régénérer ID session pour sécurité
+        session_regenerate_id(true);
+        
+        $_SESSION['authenticated'] = true;
+        $_SESSION['user'] = [
+            'id' => $user['id'],
+            'username' => $user['username'],
+            'role' => $user['role']
         ];
+        $_SESSION['login_time'] = time();
+        $_SESSION['last_activity'] = time();
+        $_SESSION['last_regeneration'] = time();
         
-        return $modules[$role] ?? [];
-    }
-
-    /**
-     * Mappage des permissions par rôle
-     */
-    private function getUserPermissions($role) {
-        $permissions = [
-            'dev' => ['read', 'write', 'admin', 'dev'],
-            'admin' => ['read', 'write', 'admin'],
-            'user' => ['read']
-        ];
+        // Durée de session personnalisée
+        $session_duration = $user['session_duration'] ?? self::SESSION_LIFETIME;
+        if ($session_duration > 0) {
+            $_SESSION['expires_at'] = time() + $session_duration;
+        }
         
-        return $permissions[$role] ?? [];
-    }
-
-    /**
-     * Nom d'affichage selon utilisateur
-     */
-    private function getUserDisplayName($username, $role) {
-        $names = [
-            'dev' => 'Développeur',
-            'admin' => 'Administrateur',
-            'user' => 'Utilisateur'
-        ];
-        
-        return $names[$role] ?? ucfirst($username);
-    }
-
-    /**
-     * Vérifier accès module
-     */
-    public function canAccessModule($module) {
-        if (!$this->isAuthenticated()) return false;
-        
-        $user = $this->getCurrentUser();
-        return in_array($module, $user['modules']);
-    }
-
-    /**
-     * Vérifier permission
-     */
-    public function hasPermission($permission) {
-        if (!$this->isAuthenticated()) return false;
-        
-        $user = $this->getCurrentUser();
-        return in_array($permission, $user['permissions']);
+        // Cookie de session étendu si "Se souvenir"
+        if ($remember) {
+            $lifetime = $session_duration > 0 ? $session_duration : 86400 * 7; // 7 jours
+            ini_set('session.cookie_lifetime', $lifetime);
+        }
     }
 
     /**
      * Déconnexion
      */
     public function logout($reason = 'manual') {
-        $username = $_SESSION['auth']['username'] ?? 'unknown';
+        $username = $_SESSION['user']['username'] ?? 'unknown';
+        
+        // Nettoyer session
+        $_SESSION = array();
+        
+        // Détruire cookie session
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        
+        session_destroy();
+        
         $this->logActivity('LOGOUT', $username, ['reason' => $reason]);
         
-        // Supprimer session en BDD
-        if (isset($_SESSION['auth']['user_id'])) {
-            $session_id = session_id();
-            $stmt = $this->db->prepare("DELETE FROM auth_sessions WHERE id = ?");
-            $stmt->execute([$session_id]);
-        }
-        
-        unset($_SESSION['auth']);
-        $this->currentUser = null;
-        
-        if ($reason === 'timeout' || $reason === 'expired') {
-            session_destroy();
-        }
+        return true;
     }
 
     /**
-     * Mise à jour dernière connexion
-     */
-    private function updateLastLogin($user_id) {
-        try {
-            $stmt = $this->db->prepare("UPDATE auth_users SET last_login = NOW() WHERE id = ?");
-            $stmt->execute([$user_id]);
-        } catch (Exception $e) {
-            error_log('AuthManager updateLastLogin error: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Nettoyer anciennes sessions
-     */
-    private function cleanupOldSessions($user_id) {
-    try {
-        // Supprimer les sessions expirées depuis plus de 24h
-        $this->db->exec("DELETE FROM auth_sessions WHERE expires_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-        
-        // Garder seulement la session la plus récente par utilisateur
-        $stmt = $this->db->prepare("
-            DELETE FROM auth_sessions 
-            WHERE user_id = ? 
-            AND id NOT IN (
-                SELECT id FROM (
-                    SELECT id FROM auth_sessions 
-                    WHERE user_id = ? 
-                    ORDER BY created_at DESC 
-                    LIMIT 1
-                ) AS latest
-            )
-        ");
-        $stmt->execute([$user_id, $user_id]);
-    } catch (Exception $e) {
-        error_log('AuthManager cleanupOldSessions error: ' . $e->getMessage());
-    }
-}
-
-    /**
-     * Gestion tentatives échouées (en session)
+     * Gestion tentatives échouées
      */
     private function recordFailedAttempt($username) {
         if (!isset($_SESSION['failed_attempts'])) {
@@ -258,7 +234,9 @@ class AuthManager {
     }
 
     private function isUserLocked($username) {
-        if (!isset($_SESSION['failed_attempts'][$username])) return false;
+        if (!isset($_SESSION['failed_attempts'][$username])) {
+            return false;
+        }
         
         $attempts = $_SESSION['failed_attempts'][$username];
         if ($attempts['count'] >= self::MAX_LOGIN_ATTEMPTS) {
@@ -276,27 +254,36 @@ class AuthManager {
      * Logging des activités
      */
     private function logActivity($action, $username, $details = []) {
-    $logEntry = [
-        'timestamp' => date('Y-m-d H:i:s'),
-        'action' => $action,
-        'username' => $username,
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-        'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 200),
-        'details' => $details,
-        'session_id' => session_id() // Ajouter l'ID de session
-    ];
-    error_log('AUTH_' . $action . ': ' . json_encode($logEntry));
-}
+        $logEntry = [
+            'timestamp' => date('Y-m-d H:i:s'),
+            'action' => $action,
+            'username' => $username,
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 200),
+            'details' => $details,
+            'session_id' => session_id()
+        ];
+        error_log('AUTH_' . $action . ': ' . json_encode($logEntry));
+    }
 
     /**
-     * Initialisation session
+     * Initialisation session sécurisée
      */
     private function initSession() {
         if (session_status() === PHP_SESSION_NONE) {
             ini_set('session.cookie_httponly', 1);
             ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
             ini_set('session.use_strict_mode', 1);
+            ini_set('session.cookie_samesite', 'Strict');
             session_start();
         }
+    }
+
+    /**
+     * Vérification MFA (si implémenté)
+     */
+    public function verifyMFA($userId, $code) {
+        // À implémenter selon besoins
+        return true;
     }
 }
