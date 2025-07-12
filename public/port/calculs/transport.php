@@ -100,16 +100,12 @@ class Transport {
         }
         
         // 2. Récupération tarif de base selon le poids (LOGIQUE EXCEL GULDAGIL)
-        $baseTariff = $this->getBaseTariffByWeight($carrier, $params);
-        $this->debug[$carrier]['base_tariff_result'] = $baseTariff;
-        $this->debug[$carrier]['steps'][] = $baseTariff ? "✓ Tarif base: {$baseTariff}€" : "✗ Tarif base non trouvé";
-        
-        if ($baseTariff === null) {
-            return null;
-        }
-        
-        $finalPrice = $baseTariff;
-        $this->debug[$carrier]['price_after_base'] = $finalPrice;
+        // 2. Récupération tarif de base selon le poids
+$baseTariff = $this->getBaseTariffByWeight($carrier, $params);
+$this->debug[$carrier]['base_tariff_result'] = $baseTariff;
+$this->debug[$carrier]['steps'][] = $baseTariff ? 
+    "✓ Tarif base: {$baseTariff}€" : 
+    "✗ Tarif base non trouvé - " . ($this->debug[$carrier]['tariff_not_found'] ?? 'Erreur inconnue');
 
       // 3. Calcul pour poids <= 100kg
     if ($params['poids'] <= 100) {
@@ -149,56 +145,58 @@ class Transport {
      * Récupération selon tranches de poids
      */
     private function getBaseTariffByWeight(string $carrier, array $params): ?float {
-        try {
-            $table = $this->tables[$carrier];
-            $weight = $params['poids'];
-            $dept = $params['departement'];
-            
-            $this->debug[$carrier]['tariff_lookup'] = [
-                'table' => $table,
-                'weight' => $weight,
-                'dept' => $dept,
-                'type' => $params['type']
-            ];
-            
-            // Déterminer la colonne de poids selon la logique Guldagil
-            $weightColumn = $this->getWeightColumnGuldagil($weight, $params['type']);
-            $this->debug[$carrier]['weight_column_selected'] = $weightColumn;
-            
-            if (!$weightColumn) {
-                $this->debug[$carrier]['weight_error'] = 'Colonne non trouvée pour ' . $weight . 'kg, type: ' . $params['type'];
-                return null;
-            }
-            
-            // Requête BDD avec debug complet
-            $sql = "SELECT {$weightColumn} as tarif FROM {$table} WHERE num_departement = ? LIMIT 1";
-            $this->debug[$carrier]['sql_query'] = $sql;
-            $this->debug[$carrier]['sql_params'] = [$dept];
-            
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$dept]);
-            $row = $stmt->fetch();
-            
-            $this->debug[$carrier]['sql_result'] = $row;
-            
-            if ($row && isset($row['tarif']) && $row['tarif'] > 0) {
-                $tariff = (float)$row['tarif'];
-                $this->debug[$carrier]['tariff_found'] = $tariff;
-                return $tariff;
-            } else {
-                $this->debug[$carrier]['tariff_not_found'] = 'Aucun tarif trouvé ou tarif = 0';
-                return null;
-            }
-            
-        } catch (Exception $e) {
-            $this->debug[$carrier]['tariff_db_error'] = [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ];
+    try {
+        $table = $this->tables[$carrier];
+        $weight = $params['poids'];
+        $dept = $params['departement'];
+        
+        // Vérification du format du département
+        if (!preg_match('/^\d{2}$/', $dept)) {
+            throw new InvalidArgumentException("Format de département invalide. Doit être sur 2 chiffres.");
+        }
+        
+        // Détermination de la colonne de poids
+        $weightColumn = $this->getWeightColumnGuldagil($weight, $params['type']);
+        
+        if (!$weightColumn) {
+            throw new RuntimeException("Colonne de poids non trouvée pour {$weight}kg, type: {$params['type']}");
+        }
+        
+        // Requête BDD avec debug complet
+        $sql = "SELECT {$weightColumn} as tarif FROM {$table} WHERE num_departement = ? LIMIT 1";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$dept]);
+        
+        $row = $stmt->fetch();
+        
+        // Debug détaillé
+        $this->debug[$carrier]['sql_result'] = $row;
+        $this->debug[$carrier]['tariff_value'] = $row['tarif'] ?? 'null';
+        
+        if ($row && isset($row['tarif']) && $row['tarif'] > 0) {
+            $tariff = (float)$row['tarif'];
+            $this->debug[$carrier]['tariff_found'] = $tariff;
+            return $tariff;
+        }
+        
+        // Gestion des cas particuliers
+        if ($row && isset($row['tarif']) && $row['tarif'] === null) {
+            $this->debug[$carrier]['tariff_not_found'] = 'Tarif nul trouvé';
             return null;
         }
+        
+        $this->debug[$carrier]['tariff_not_found'] = 'Aucun tarif trouvé';
+        return null;
+    } catch (Exception $e) {
+        $this->debug[$carrier]['tariff_db_error'] = [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ];
+        return null;
     }
+}
     
     /**
      * LOGIQUE GULDAGIL - Colonnes selon poids et type
