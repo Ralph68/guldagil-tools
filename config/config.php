@@ -14,6 +14,15 @@ $isProduction = (getenv('APP_ENV') === 'production');
 $isDebug = !$isProduction && (isset($_GET['debug']) || getenv('DEBUG') === 'true');
 
 // Configuration des erreurs
+define('SESSION_COOKIE_SECURE', $isProduction);
+define('SESSION_COOKIE_HTTP_ONLY', true);
+define('SESSION_COOKIE_SAMESITE', 'Strict');
+
+if ($isProduction) {
+    if (!isset($_ENV['DB_HOST']) || !isset($_ENV['DB_NAME'])) {
+        throw new Exception('Variables d\'environnement requises manquantes');
+    }
+}
 if ($isDebug) {
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
@@ -73,28 +82,19 @@ $pdoOptions = [
 
 // Connexion PDO globale
 try {
-    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
     $db = new PDO($dsn, DB_USER, DB_PASS, $pdoOptions);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->exec("SET NAMES " . DB_CHARSET);
     
-    // Test de la connexion
+    // Test de connexion
     $db->query("SELECT 1");
     
 } catch (PDOException $e) {
-    $errorMessage = DEBUG ? 
-        'Erreur de connexion BDD : ' . $e->getMessage() : 
-        'Erreur de connexion à la base de données';
-    
     if (DEBUG) {
-        error_log("Erreur PDO: " . $e->getMessage());
+        error_log("Erreur BDD: " . $e->getMessage());
+        error_log("Trace: " . $e->getTraceAsString());
     }
-    
-    // En mode développement, on continue sans BDD
-    if (DEBUG) {
-        $db = null;
-        error_log("Mode debug : continuation sans BDD");
-    } else {
-        die($errorMessage);
-    }
+    throw new DatabaseException("Erreur de connexion à la base de données", 0, $e);
 }
 
 // Configuration des modules
@@ -138,6 +138,25 @@ const MODULES = [
 ];
 
 // Configuration cache
+const CACHE_PREFIX = 'guldagil_';
+const CACHE_DEFAULT_TTL = 3600; // 1 heure
+
+function getCacheKey($key) {
+    return CACHE_PREFIX . md5($key);
+}
+
+function cacheResult($key, $ttl = CACHE_DEFAULT_TTL) {
+    return function($func) use ($key, $ttl) {
+        $cacheKey = getCacheKey($key);
+        $cached = getFromCache($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+        $result = $func();
+        putInCache($cacheKey, $result, $ttl);
+        return $result;
+    };
+}
 const CACHE_CONFIG = [
     'enabled' => true,
     'default_ttl' => 3600, // 1 heure
@@ -158,6 +177,27 @@ const LOG_CONFIG = [
 ];
 
 // Fonctions utilitaires
+function logMessage($level, $message, $channel = 'app'): void {
+    if (!LOG_CONFIG['enabled']) return;
+    
+    $logFile = LOG_CONFIG['channels'][$channel] ?? LOG_CONFIG['channels']['app'];
+    $timestamp = date('Y-m-d H:i:s');
+    $logEntry = "[$timestamp] [$level] $message" . PHP_EOL;
+    
+    // Créer le dossier si nécessaire
+    $logDir = dirname($logFile);
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
+    
+    // Rotation des logs si trop volumineux
+    if (file_exists($logFile) && filesize($logFile) > LOG_CONFIG['max_file_size']) {
+        $backupFile = $logFile . '.' . date('Y-m-d-H-i-s');
+        rename($logFile, $backupFile);
+    }
+    
+    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+}
 function isModuleEnabled($module): bool {
     return isset(MODULES[$module]) && MODULES[$module]['status'] === 'active';
 }
