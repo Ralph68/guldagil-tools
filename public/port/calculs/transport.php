@@ -9,32 +9,29 @@ require_once __DIR__ . '/../Services/Calculators/XPOCalculator.php';
 require_once __DIR__ . '/../Services/Calculators/HeppnerCalculator.php';
 require_once __DIR__ . '/../Services/Calculators/KNCalculator.php';
 
-class TransportFactory {
-    public static function create(PDO $db): TransportService {
-        return new TransportService(
-            new DatabaseRepository($db),
-            new MemoryCache()
-        );
-    }
-}
-
-/**
- * WRAPPER RÉTROCOMPATIBILITÉ - API identique
- */
 class Transport {
-    private TransportService $service;
+    private array $calculators = [];
     public array $debug = [];
     
     public function __construct(PDO $db) {
-        $this->service = TransportFactory::create($db);
+        $this->calculators = [
+            'xpo' => new XPOCalculator($db),
+            'heppner' => new HeppnerCalculator($db),
+            'kn' => new KNCalculator($db)
+        ];
     }
     
-    /**
-     * SIGNATURE OBLIGATOIRE - Compatible calculateAll()
-     */
     public function calculateAll(array $params): array {
-        $result = $this->service->calculateAll($params);
-        $this->debug = $result['debug'];
-        return $result;
+        $results = [];
+        foreach ($this->calculators as $carrier => $calc) {
+            $results[$carrier] = $calc->calculate($params);
+        }
+        
+        return [
+            'results' => $results,
+            'debug' => $this->debug,
+            'best' => null
+        ];
     }
 }
+?>
