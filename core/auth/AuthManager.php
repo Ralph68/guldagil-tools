@@ -14,73 +14,64 @@ class AuthManager {
     const SESSION_TIMEOUT = 7200; // 2h par défaut
     const MAX_LOGIN_ATTEMPTS = 3;
     const LOCKOUT_TIME = 900; // 15min
+    const MFA_REQUIRED = false; // Activer/désactiver MFA
+    const MFA_CODE_LENGTH = 6; // Longueur du code MFA
+    const MFA_EXPIRATION = 300; // Durée de validité en secondes
 
-    public function __construct() {
-        $this->initDatabase();
-        $this->initSession();
+    private $mfaSecrets = [];
+    private $mfaCodes = [];
+
+    // Gestion MFA
+    public function generateMFASecret($user_id) {
+        if (!is_int($user_id) || $user_id <= 0) {
+            throw new InvalidArgumentException('User ID invalide');
+        }
+
+        $secret = random_bytes(16);
+        $this->mfaSecrets[$user_id] = $secret;
+        return $secret;
     }
 
-    public static function getInstance() {
-        if (self::$instance === null) {
-            self::$instance = new self();
+    public function verifyMFA($user_id, $code) {
+        if (!is_int($user_id) || $user_id <= 0) {
+            throw new InvalidArgumentException('User ID invalide');
         }
-        return self::$instance;
+
+        if (!isset($this->mfaCodes[$user_id])) {
+            return false;
+        }
+        
+        $storedCode = $this->mfaCodes[$user_id];
+        if ($storedCode['code'] !== $code || 
+            time() > $storedCode['expires_at']) {
+            return false;
+        }
+        
+        unset($this->mfaCodes[$user_id]);
+        return true;
     }
 
-    /**
-     * Initialisation base de données
-     */
-    private function initDatabase() {
-        if (function_exists('getDB')) {
-            $this->db = getDB();
-        } else {
-            // Fallback si fonction pas disponible
-            require_once __DIR__ . '/../../config/database.php';
-            $this->db = getDB();
-        }
-    }
-
-    /**
-     * Tentative de connexion avec BDD
-     */
-    public function login($username, $password) {
-        // Vérifier tentatives précédentes
-        if ($this->isUserLocked($username)) {
-            return ['success' => false, 'error' => 'Compte temporairement verrouillé'];
+    public function sendMFACode($user_id, $method = 'email') {
+        if (!is_int($user_id) || $user_id <= 0) {
+            throw new InvalidArgumentException('User ID invalide');
         }
 
-        try {
-            // Récupérer utilisateur depuis BDD
-            $stmt = $this->db->prepare("
-                SELECT id, username, password, role, session_duration, is_active 
-                FROM auth_users 
-                WHERE username = ? AND is_active = 1
-            ");
-            $stmt->execute([$username]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$user) {
-                $this->recordFailedAttempt($username);
-                return ['success' => false, 'error' => 'Identifiants incorrects'];
-            }
-
-            if (!password_verify($password, $user['password'])) {
-                $this->recordFailedAttempt($username);
-                return ['success' => false, 'error' => 'Identifiants incorrects'];
-            }
-
-            // Connexion réussie
-            $this->createSession($user);
-            $this->updateLastLogin($user['id']);
-            $this->clearFailedAttempts($username);
-            $this->logActivity('LOGIN', $username);
-
-            return ['success' => true, 'user' => $this->getCurrentUser()];
-
-        } catch (Exception $e) {
-            error_log('AuthManager login error: ' . $e->getMessage());
-            return ['success' => false, 'error' => 'Erreur système'];
-        }
+        $code = random_int(100000, 999999);
+        $expires_at = time() + self::MFA_EXPIRATION;
+        
+        $this->mfaCodes[$user_id] = [
+            'code' => $code,
+            'expires_at' => $expires_at
+        ];
+        
+        // À implémenter selon votre méthode préférée (email/SMS)
+        $to = $this->getUserEmail($user_id);
+        $subject = "Code de vérification MFA";
+        $message = "Votre code de vérification est : $code";
+        
+        mail($to, $subject, $message);
+        
+        return $code;
     }
 
     /**
