@@ -59,7 +59,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             throw new Exception('Poids invalide');
         }
         
-        $transport_file = __DIR__ . '/../../features/port/transport.php';
+        $transport_file = __DIR__ . '/calculs/transport.php';
         if (!file_exists($transport_file)) {
             throw new Exception('Transport non trouvé: ' . $transport_file);
         }
