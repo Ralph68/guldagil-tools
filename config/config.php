@@ -4,6 +4,12 @@
  * Chemin: /config/config.php
  */
 
+// Protection contre l'accès direct
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', dirname(__DIR__));
+    define('CONFIG_PATH', ROOT_PATH . '/config');
+}
+
 // Démarrage session sécurisé si pas déjà fait
 if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
     session_start();
@@ -14,15 +20,6 @@ $isProduction = (getenv('APP_ENV') === 'production');
 $isDebug = !$isProduction && (isset($_GET['debug']) || getenv('DEBUG') === 'true');
 
 // Configuration des erreurs
-define('SESSION_COOKIE_SECURE', $isProduction);
-define('SESSION_COOKIE_HTTP_ONLY', true);
-define('SESSION_COOKIE_SAMESITE', 'Strict');
-
-if ($isProduction) {
-    if (!isset($_ENV['DB_HOST']) || !isset($_ENV['DB_NAME'])) {
-        throw new Exception('Variables d\'environnement requises manquantes');
-    }
-}
 if ($isDebug) {
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
@@ -35,6 +32,21 @@ if ($isDebug) {
     define('DEBUG', false);
 }
 
+// Chargement des configurations
+require_once CONFIG_PATH . '/database.php';
+require_once CONFIG_PATH . '/auth_database.php';
+require_once CONFIG_PATH . '/functions.php';
+
+// Configuration des modules
+const MODULES = [
+    'calculateur' => [
+        'name' => 'Calculateur Frais de Port',
+        'description' => 'Calcul automatique des frais de transport',
+        'version' => '0.5.1',
+        'status' => 'active',
+        'public' => true,
+        'auth_required' => false,
+        'color' => '#3498db'
 // Timezone
 date_default_timezone_set('Europe/Paris');
 
@@ -140,6 +152,11 @@ const MODULES = [
 // Configuration cache
 const CACHE_PREFIX = 'guldagil_';
 const CACHE_DEFAULT_TTL = 3600; // 1 heure
+const CACHE_CONFIG = [
+    'enabled' => true,
+    'default_ttl' => 3600,
+    'path' => STORAGE_PATH . '/cache'
+];
 
 function getCacheKey($key) {
     return CACHE_PREFIX . md5($key);
@@ -167,7 +184,7 @@ const CACHE_CONFIG = [
 const LOG_CONFIG = [
     'enabled' => true,
     'level' => DEBUG ? 'debug' : 'error',
-    'max_file_size' => 10 * 1024 * 1024, // 10MB
+    'max_file_size' => 10 * 1024 * 1024,
     'max_files' => 5,
     'channels' => [
         'app' => STORAGE_PATH . '/logs/app.log',
@@ -175,6 +192,33 @@ const LOG_CONFIG = [
         'access' => STORAGE_PATH . '/logs/access.log'
     ]
 ];
+
+// Initialisation du système
+try {
+    // Test de connexion base de données
+    if (!testDBConnection()) {
+        throw new Exception('Erreur de connexion à la base de données');
+    }
+    
+    // Initialisation du cache
+    if (!is_dir(CACHE_CONFIG['path'])) {
+        mkdir(CACHE_CONFIG['path'], 0755, true);
+    }
+    
+    // Initialisation des logs
+    foreach (LOG_CONFIG['channels'] as $channel => $logFile) {
+        $logDir = dirname($logFile);
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+    }
+    
+} catch (Exception $e) {
+    if (DEBUG) {
+        error_log("Erreur d'initialisation: " . $e->getMessage());
+    }
+    die('Erreur d\'initialisation du système');
+}
 
 // Fonctions utilitaires
 function logMessage($level, $message, $channel = 'app'): void {
