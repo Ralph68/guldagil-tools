@@ -12,16 +12,6 @@ return [
         'httponly' => true,
         'samesite' => 'Strict'
     ],
-    'mfa' => [
-        'required' => false, // Activer/désactiver MFA
-        'code_length' => 6,
-        'expiration' => 300, // 5 minutes
-        'method' => 'email' // 'email' ou 'sms'
-    ],
-     'pages' => [
-        'mfa' => '/auth/mfa.php',
-        // ... autres configurations ...
-    ],
     
     'roles' => [
         'dev' => [
