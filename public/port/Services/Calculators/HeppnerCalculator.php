@@ -31,7 +31,7 @@ class HeppnerCalculator {
     
     private function validateConstraints(array $params): bool {
         $stmt = $this->db->prepare("
-            SELECT departements_blacklistes, poids_min, poids_max 
+            SELECT departements_blacklistes, poids_min, poids_maximum 
             FROM gul_taxes_transporteurs 
             WHERE transporteur = 'heppner'
         ");
@@ -46,7 +46,7 @@ class HeppnerCalculator {
         }
         
         return $params['poids'] >= ($constraints['poids_min'] ?? 0) 
-            && $params['poids'] <= ($constraints['poids_max'] ?? 32000);
+            && $params['poids'] <= ($constraints['poids_maximum'] ?? 32000);
     }
     
     private function getBasePrice(array $params): ?float {
@@ -106,7 +106,7 @@ class HeppnerCalculator {
     }
     
     private function getWeightCategory(float $weight): string {
-        $stmt = $this->db->prepare("SELECT categorie FROM gul_categories_poids WHERE transporteur = 'heppner' AND poids_min <= ? AND poids_max >= ? ORDER BY poids_min DESC LIMIT 1");
+        $stmt = $this->db->prepare("SELECT categorie FROM gul_categories_poids WHERE transporteur = 'heppner' AND poids_min <= ? AND poids_maximum >= ? ORDER BY poids_min DESC LIMIT 1");
         $stmt->execute([$weight, $weight]);
         $result = $stmt->fetch();
         return $result ? $result['categorie'] : 'Standard';
