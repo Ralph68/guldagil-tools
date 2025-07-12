@@ -13,11 +13,20 @@ ini_set('display_errors', 1);
 
 // Initialisation
 try {
-    require_once __DIR__ . '/../../core/auth/AuthManager.php';
-    $auth = AuthManager::getInstance();
+    // Chemin absolu pour éviter les problèmes de répertoire
+    $rootPath = dirname(__DIR__, 3);
+    
+    // Inclusion du fichier AuthManager
+    require_once $rootPath . '/core/auth/AuthManager.php';
+    
+    // Vérification que la classe est bien définie
+    if (!class_exists('AuthManager')) {
+        throw new Exception('Classe AuthManager non trouvée');
+    }
     
     // Test de la connexion à la base de données
     echo "Test de connexion à la base de données...\n";
+    $auth = AuthManager::getInstance();
     $auth->initDatabase();
     echo "✓ Connexion à la base de données réussie\n";
     
