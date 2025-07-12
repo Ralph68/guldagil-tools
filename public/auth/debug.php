@@ -11,37 +11,41 @@ define('DEBUG', true);
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Initialisation
+// Afficher la structure des fichiers
+echo "=== Structure des fichiers ===\n";
+$rootPath = dirname(__DIR__, 3);
+echo "Répertoire racine : " . $rootPath . "\n";
+
+// Vérifier l'existence des fichiers
+$authManagerPath = $rootPath . '/core/auth/AuthManager.php';
+echo "\nChemin AuthManager.php : " . $authManagerPath . "\n";
+echo "Existe ? " . (file_exists($authManagerPath) ? "Oui" : "Non") . "\n";
+
+// Afficher les permissions
+echo "\nPermissions des fichiers :\n";
+echo "debug.php : " . substr(sprintf('%o', fileperms(__FILE__)), -4) . "\n";
+echo "AuthManager.php : " . (file_exists($authManagerPath) ? substr(sprintf('%o', fileperms($authManagerPath)), -4) : "Non trouvé") . "\n";
+
+// Tentative d'inclusion
 try {
-    // Chemin absolu pour éviter les problèmes de répertoire
-    $rootPath = dirname(__DIR__, 3);
-    
-    // Inclusion du fichier AuthManager
-    require_once $rootPath . '/core/auth/AuthManager.php';
+    require_once $authManagerPath;
+    echo "\n✓ AuthManager.php inclus avec succès\n";
     
     // Vérification que la classe est bien définie
     if (!class_exists('AuthManager')) {
         throw new Exception('Classe AuthManager non trouvée');
     }
     
+    echo "✓ Classe AuthManager trouvée\n";
+    
     // Test de la connexion à la base de données
-    echo "Test de connexion à la base de données...\n";
+    echo "\nTest de connexion à la base de données...\n";
     $auth = AuthManager::getInstance();
     $auth->initDatabase();
     echo "✓ Connexion à la base de données réussie\n";
     
-    // Test de la session
-    echo "\nTest de la session...\n";
-    $auth->initSession();
-    echo "✓ Session initialisée\n";
-    
-    // Test de la validation d'un utilisateur
-    echo "\nTest de la validation...\n";
-    $result = $auth->login('test', 'test');
-    print_r($result);
-    
 } catch (Exception $e) {
-    echo "Erreur : " . $e->getMessage() . "\n";
+    echo "\nErreur : " . $e->getMessage() . "\n";
     echo "Fichier : " . $e->getFile() . "\n";
     echo "Ligne : " . $e->getLine() . "\n";
 }
