@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Calculateur XPO - Logique métier dédiée
+ * Titre: Calculateur XPO - Logique par tranches
  * Chemin: /public/port/Services/Calculators/XPOCalculator.php
  * Version: 0.5 beta + build auto
  */
@@ -9,16 +9,12 @@ class XPOCalculator {
     public function __construct(private PDO $db) {}
     
     public function calculate(array $params): ?float {
-        // 1. Validation contraintes XPO
-        if (!$this->validateConstraints($params)) {
-            return null;
-        }
+        if (!$this->validateConstraints($params)) return null;
         
-        // 2. Tarif de base XPO
         $basePrice = $this->getBasePrice($params);
         if (!$basePrice) return null;
         
-        // 3. LOGIQUE GULDAGIL XPO - Optimisation 100kg
+        // LOGIQUE GULDAGIL - Optimisation 100kg
         if ($params['poids'] <= 100) {
             $price100kg = $this->getBasePrice(array_merge($params, ['poids' => 100]));
             if ($price100kg && $price100kg < $basePrice) {
@@ -26,12 +22,11 @@ class XPOCalculator {
             }
         }
         
-        // 4. Ratio poids > 100kg
+        // Ratio poids > 100kg
         if ($params['poids'] > 100) {
             $basePrice *= ($params['poids'] / 100);
         }
         
-        // 5. Options et taxes XPO
         return $this->applyOptions($basePrice, $params);
     }
     
@@ -39,7 +34,7 @@ class XPOCalculator {
         $stmt = $this->db->prepare("
             SELECT departements_blacklistes, poids_minimum, poids_maximum 
             FROM gul_taxes_transporteurs 
-            WHERE transporteur = 'xpo'
+            WHERE transporteur = 'XPO'
         ");
         $stmt->execute();
         $constraints = $stmt->fetch();
@@ -51,65 +46,65 @@ class XPOCalculator {
             if (in_array($params['departement'], $blacklisted)) return false;
         }
         
-        return $params['poids'] >= ($constraints['poids_minimum'] ?? 0) 
+        return $params['poids'] >= ($constraints['poids_minimum'] ?? 1) 
             && $params['poids'] <= ($constraints['poids_maximum'] ?? 32000);
     }
     
     private function getBasePrice(array $params): ?float {
         $stmt = $this->db->prepare("
-            SELECT prix FROM gul_xpo_rates 
-            WHERE departement = ? AND poids_minimum <= ? AND poids_maximum >= ? AND type_transport = ? 
-            ORDER BY poids_minimum DESC LIMIT 1
+            SELECT * FROM gul_xpo_rates 
+            WHERE num_departement = ?
+            LIMIT 1
         ");
-        $stmt->execute([$params['departement'], $params['poids'], $params['poids'], $params['type']]);
-        $result = $stmt->fetch();
+        $stmt->execute([$params['departement']]);
+        $row = $stmt->fetch();
         
-        return $result ? (float)$result['prix'] : null;
+        if (!$row) return null;
+        
+        $poids = $params['poids'];
+        
+        if ($poids <= 99) return $row['tarif_0_99'];
+        if ($poids <= 499) return $row['tarif_100_499'];
+        if ($poids <= 999) return $row['tarif_500_999'];
+        if ($poids <= 1999) return $row['tarif_1000_1999'];
+        return $row['tarif_2000_2999'];
     }
     
     private function applyOptions(float $price, array $params): float {
         // Taxes XPO
-        $stmt = $this->db->prepare("SELECT * FROM gul_taxes_transporteurs WHERE transporteur = 'xpo'");
+        $stmt = $this->db->prepare("SELECT * FROM gul_taxes_transporteurs WHERE transporteur = 'XPO'");
         $stmt->execute();
         $taxes = $stmt->fetch();
         
         if ($taxes) {
-            if ($taxes['pase_montant']) $price += $taxes['pase_montant'];
-            if ($taxes['region_parisienne_montant'] && $this->isRegionParisienne($params['departement'])) {
-                $price += $taxes['region_parisienne_montant'];
-            }
-            if ($taxes['zfe_montant'] && $this->isZFE($params['departement'])) {
-                $price += $taxes['zfe_montant'];
+            if ($taxes['surete']) $price += $taxes['surete'];
+            if ($taxes['participation_transition_energetique']) $price += $taxes['participation_transition_energetique'];
+            
+            // Région Parisienne
+            if ($this->isRegionParisienne($params['departement']) && $taxes['majoration_idf_valeur']) {
+                if ($taxes['majoration_idf_type'] === 'Pourcentage') {
+                    $price *= (1 + $taxes['majoration_idf_valeur'] / 100);
+                } else {
+                    $price += $taxes['majoration_idf_valeur'];
+                }
             }
         }
         
-        // Options XPO spécifiques
-        if ($params['adr']) {
-            $stmt = $this->db->prepare("SELECT montant FROM gul_options_supplementaires WHERE transporteur = 'xpo' AND code_option = 'adr' AND actif = 1");
-            $stmt->execute();
-            $option = $stmt->fetch();
-            if ($option) $price += $option['montant'];
-        }
-        
-        if ($params['enlevement']) {
-            $stmt = $this->db->prepare("SELECT montant FROM gul_options_supplementaires WHERE transporteur = 'xpo' AND code_option = 'enlevement' AND actif = 1");
-            $stmt->execute();
-            $option = $stmt->fetch();
-            if ($option) $price += $option['montant'];
+        // ADR
+        if ($params['adr'] && $taxes['majoration_adr_taux']) {
+            $price *= (1 + $taxes['majoration_adr_taux'] / 100);
         }
         
         return $price;
     }
     
     private function isRegionParisienne(string $dept): bool {
-        $stmt = $this->db->prepare("SELECT 1 FROM gul_zones_speciales WHERE departement = ? AND type_zone = 'region_parisienne'");
-        $stmt->execute([$dept]);
-        return (bool)$stmt->fetch();
-    }
-    
-    private function isZFE(string $dept): bool {
-        $stmt = $this->db->prepare("SELECT 1 FROM gul_zones_speciales WHERE departement = ? AND type_zone = 'zfe'");
-        $stmt->execute([$dept]);
-        return (bool)$stmt->fetch();
-    }
+   $stmt = $this->db->prepare("
+       SELECT 1 FROM gul_taxes_transporteurs 
+       WHERE FIND_IN_SET(?, majoration_idf_departements) > 0 
+       LIMIT 1
+   ");
+   $stmt->execute([$dept]);
+   return (bool)$stmt->fetch();
+}
 }
