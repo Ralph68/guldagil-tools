@@ -32,7 +32,7 @@ class HeppnerCalculator {
     private function validateConstraints(array $params): bool {
         $stmt = $this->db->prepare("
             SELECT departements_blacklistes, poids_min, poids_max 
-            FROM gul_contraintes_transporteurs 
+            FROM gul_taxes_transporteurs 
             WHERE transporteur = 'heppner'
         ");
         $stmt->execute();
