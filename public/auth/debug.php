@@ -26,6 +26,20 @@ echo "\nPermissions des fichiers :\n";
 echo "debug.php : " . substr(sprintf('%o', fileperms(__FILE__)), -4) . "\n";
 echo "AuthManager.php : " . (file_exists($authManagerPath) ? substr(sprintf('%o', fileperms($authManagerPath)), -4) : "Non trouvé") . "\n";
 
+// Afficher le contenu du répertoire core/auth
+echo "\nContenu du répertoire core/auth :\n";
+$authDir = $rootPath . '/core/auth/';
+if (is_dir($authDir)) {
+    $files = scandir($authDir);
+    foreach ($files as $file) {
+        if ($file !== '.' && $file !== '..') {
+            echo "- " . $file . "\n";
+        }
+    }
+} else {
+    echo "Le répertoire n'existe pas\n";
+}
+
 // Tentative d'inclusion
 try {
     require_once $authManagerPath;
