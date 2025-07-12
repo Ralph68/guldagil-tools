@@ -1,3 +1,4 @@
+# .github/workflows/deploy.yml - VERSION ANTI-JEKYLL
 name: Déploiement FTP vers gul.runser.ovh
 
 on:
@@ -8,36 +9,35 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    
+
     steps:
-  # 1) Checkout et désactivation Jekyll
-  - name: Checkout code
-    uses: actions/checkout@v4
-    with:
-      fetch-depth: 1
-  
-  - name: Désactiver Jekyll
-    run: |
-      touch .nojekyll
-      rm -rf _site/ .sass-cache/ .jekyll-cache/ || true
-      echo "🚫 Jekyll désactivé"
-      
-      # 2) Sauvegarde rapide
-      - name: Sauvegarde rapide
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      # 1) Checkout du code
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          server:     ${{ secrets.FTP_SERVER_PROD }}
-          username:   ${{ secrets.FTP_USERNAME_PROD }}
-          password:   ${{ secrets.FTP_PASSWORD_PROD }}
-          local-dir:  './backup'
-          server-dir: 'backup/latest'
-          include: |
-            .env
-            config/**
-            public/index.html
-      
-      # 3) Déploiement FTP
+          fetch-depth: 1
+
+      # 2) DÉSACTIVER JEKYLL DE FORCE
+      - name: Désactiver Jekyll complètement
+        run: |
+          touch .nojekyll
+          rm -f _config.yml Gemfile* 2>/dev/null || true
+          rm -rf _site/ .sass-cache/ .jekyll-cache/ 2>/dev/null || true
+          echo "🚫 Jekyll désactivé définitivement"
+
+      # 3) Générer .env pour la BDD
+      - name: Générer .env pour la BDD
+        run: |
+          cat <<EOF > .env
+          DB_HOST="${{ secrets.DB_HOST }}"
+          DB_NAME="${{ secrets.DB_NAME }}"
+          DB_USER="${{ secrets.DB_USER }}"
+          DB_PASS="${{ secrets.DB_PASS }}"
+          DB_CHARSET="utf8mb4"
+          APP_ENV="production"
+          EOF
+
+      # 4) Déploiement FTP
       - name: Déployer vers PROD
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -46,8 +46,6 @@ jobs:
           password:   ${{ secrets.FTP_PASSWORD_PROD }}
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
           local-dir:  ./
-          clean:      false
-          dry-run:    false
           include: |
             public/**
             config/**
@@ -69,8 +67,8 @@ jobs:
             *.scss
             deploy-log.txt
 
-      # 4) Notification
-      - name: Notification
+      # 5) Notification échec
+      - name: Envoi email (échec)
         if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
@@ -78,11 +76,22 @@ jobs:
           server_port:    ${{ secrets.MAIL_PORT }}
           username:       ${{ secrets.MAIL_USERNAME }}
           password:       ${{ secrets.MAIL_PASSWORD }}
-          subject:        "❌ Échec déploiement"
+          subject:        "❌ Échec déploiement gul.runser.ovh"
           body: |
-            ⚠️ ÉCHEC DU DÉPLOIEMENT
+            ⚠️ ÉCHEC DU DÉPLOIEMENT ⚠️
+            
             Repository: ${{ github.repository }}
+            Branche: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
+            Auteur: ${{ github.actor }}
+            
             🔗 Logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to:   ${{ secrets.MAIL_TO }}
           from: GitHub Deploy Bot <${{ secrets.MAIL_USERNAME }}>
+
+      # 6) Log de succès
+      - name: Déploiement réussi
+        if: success()
+        run: |
+          echo "✅ Déploiement réussi vers gul.runser.ovh"
+          echo "🚫 Jekyll définitivement désactivé"
