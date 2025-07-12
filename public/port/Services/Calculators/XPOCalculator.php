@@ -37,7 +37,7 @@ class XPOCalculator {
     
     private function validateConstraints(array $params): bool {
         $stmt = $this->db->prepare("
-            SELECT departements_blacklistes, poids_min, poids_max 
+            SELECT departements_blacklistes, poids_min, poids_maximum 
             FROM gul_taxes_transporteurs 
             WHERE transporteur = 'xpo'
         ");
@@ -52,13 +52,13 @@ class XPOCalculator {
         }
         
         return $params['poids'] >= ($constraints['poids_min'] ?? 0) 
-            && $params['poids'] <= ($constraints['poids_max'] ?? 32000);
+            && $params['poids'] <= ($constraints['poids_maximum'] ?? 32000);
     }
     
     private function getBasePrice(array $params): ?float {
         $stmt = $this->db->prepare("
             SELECT prix FROM gul_xpo_rates 
-            WHERE departement = ? AND poids_min <= ? AND poids_max >= ? AND type_transport = ? 
+            WHERE departement = ? AND poids_min <= ? AND poids_maximum >= ? AND type_transport = ? 
             ORDER BY poids_min DESC LIMIT 1
         ");
         $stmt->execute([$params['departement'], $params['poids'], $params['poids'], $params['type']]);
