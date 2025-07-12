@@ -10,6 +10,18 @@ if (!defined('ROOT_PATH')) {
     http_response_code(403);
     exit('Accès direct interdit');
 }
+require_once ROOT_PATH . '/auth/auth.php';
+$auth = AuthManager::getInstance();
+
+// Vérifier l'authentification et le MFA si requis
+if (!$auth->isAuthenticated()) {
+    if (isset($_SESSION['mfa_required']) && $_SESSION['mfa_required']) {
+        header('Location: /auth/mfa.php');
+        exit;
+    }
+    header('Location: /auth/login.php');
+    exit;
+}
 
 // Variables par défaut avec fallbacks sécurisés
 $page_title         = htmlspecialchars($page_title ?? 'Portail Guldagil');
