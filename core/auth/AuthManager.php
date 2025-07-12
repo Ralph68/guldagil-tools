@@ -14,65 +14,6 @@ class AuthManager {
     const SESSION_TIMEOUT = 7200; // 2h par défaut
     const MAX_LOGIN_ATTEMPTS = 3;
     const LOCKOUT_TIME = 900; // 15min
-    const MFA_REQUIRED = false; // Activer/désactiver MFA
-    const MFA_CODE_LENGTH = 6; // Longueur du code MFA
-    const MFA_EXPIRATION = 300; // Durée de validité en secondes
-
-    private $mfaSecrets = [];
-    private $mfaCodes = [];
-
-    // Gestion MFA
-    public function generateMFASecret($user_id) {
-        if (!is_int($user_id) || $user_id <= 0) {
-            throw new InvalidArgumentException('User ID invalide');
-        }
-
-        $secret = random_bytes(16);
-        $this->mfaSecrets[$user_id] = $secret;
-        return $secret;
-    }
-
-    public function verifyMFA($user_id, $code) {
-        if (!is_int($user_id) || $user_id <= 0) {
-            throw new InvalidArgumentException('User ID invalide');
-        }
-
-        if (!isset($this->mfaCodes[$user_id])) {
-            return false;
-        }
-        
-        $storedCode = $this->mfaCodes[$user_id];
-        if ($storedCode['code'] !== $code || 
-            time() > $storedCode['expires_at']) {
-            return false;
-        }
-        
-        unset($this->mfaCodes[$user_id]);
-        return true;
-    }
-
-    public function sendMFACode($user_id, $method = 'email') {
-        if (!is_int($user_id) || $user_id <= 0) {
-            throw new InvalidArgumentException('User ID invalide');
-        }
-
-        $code = random_int(100000, 999999);
-        $expires_at = time() + self::MFA_EXPIRATION;
-        
-        $this->mfaCodes[$user_id] = [
-            'code' => $code,
-            'expires_at' => $expires_at
-        ];
-        
-        // À implémenter selon votre méthode préférée (email/SMS)
-        $to = $this->getUserEmail($user_id);
-        $subject = "Code de vérification MFA";
-        $message = "Votre code de vérification est : $code";
-        
-        mail($to, $subject, $message);
-        
-        return $code;
-    }
 
     /**
      * Créer session utilisateur
