@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Calculateur Heppner - Logique métier dédiée
+ * Titre: Calculateur Heppner - Logique par tranches
  * Chemin: /public/port/Services/Calculators/HeppnerCalculator.php
  * Version: 0.5 beta + build auto
  */
@@ -14,7 +14,7 @@ class HeppnerCalculator {
         $basePrice = $this->getBasePrice($params);
         if (!$basePrice) return null;
         
-        // LOGIQUE GULDAGIL Heppner
+        // LOGIQUE GULDAGIL
         if ($params['poids'] <= 100) {
             $price100kg = $this->getBasePrice(array_merge($params, ['poids' => 100]));
             if ($price100kg && $price100kg < $basePrice) {
@@ -33,7 +33,7 @@ class HeppnerCalculator {
         $stmt = $this->db->prepare("
             SELECT departements_blacklistes, poids_minimum, poids_maximum 
             FROM gul_taxes_transporteurs 
-            WHERE transporteur = 'heppner'
+            WHERE transporteur = 'Heppner'
         ");
         $stmt->execute();
         $constraints = $stmt->fetch();
@@ -45,82 +45,65 @@ class HeppnerCalculator {
             if (in_array($params['departement'], $blacklisted)) return false;
         }
         
-        return $params['poids'] >= ($constraints['poids_minimum'] ?? 0) 
+        return $params['poids'] >= ($constraints['poids_minimum'] ?? 1) 
             && $params['poids'] <= ($constraints['poids_maximum'] ?? 32000);
     }
     
     private function getBasePrice(array $params): ?float {
-        $zone = $this->getZone($params['departement']);
-        $weightCategory = $this->getWeightCategory($params['poids']);
-        
         $stmt = $this->db->prepare("
-            SELECT tarif FROM gul_heppner_rates 
-            WHERE zone_departement = ? AND tranche_poids = ? 
+            SELECT * FROM gul_heppner_rates 
+            WHERE num_departement = ?
             LIMIT 1
         ");
-        $stmt->execute([$zone, $weightCategory]);
-        $result = $stmt->fetch();
+        $stmt->execute([$params['departement']]);
+        $row = $stmt->fetch();
         
-        return $result ? (float)$result['tarif'] : null;
+        if (!$row) return null;
+        
+        $poids = $params['poids'];
+        
+        if ($poids <= 9) return $row['tarif_0_9'];
+        if ($poids <= 19) return $row['tarif_10_19'];
+        if ($poids <= 29) return $row['tarif_20_29'];
+        if ($poids <= 39) return $row['tarif_30_39'];
+        if ($poids <= 49) return $row['tarif_40_49'];
+        if ($poids <= 59) return $row['tarif_50_59'];
+        if ($poids <= 69) return $row['tarif_60_69'];
+        if ($poids <= 79) return $row['tarif_70_79'];
+        if ($poids <= 89) return $row['tarif_80_89'];
+        if ($poids <= 99) return $row['tarif_90_99'];
+        if ($poids <= 299) return $row['tarif_100_299'];
+        if ($poids <= 499) return $row['tarif_300_499'];
+        if ($poids <= 999) return $row['tarif_500_999'];
+        return $row['tarif_1000_1999'];
     }
     
     private function applyOptions(float $price, array $params): float {
-        // Taxes Heppner
-        $stmt = $this->db->prepare("SELECT * FROM gul_taxes_transporteurs WHERE transporteur = 'heppner'");
+        $stmt = $this->db->prepare("SELECT * FROM gul_taxes_transporteurs WHERE transporteur = 'Heppner'");
         $stmt->execute();
         $taxes = $stmt->fetch();
         
         if ($taxes) {
-            if ($taxes['pase_montant']) $price += $taxes['pase_montant'];
-            if ($taxes['region_parisienne_montant'] && $this->isRegionParisienne($params['departement'])) {
-                $price += $taxes['region_parisienne_montant'];
+            if ($taxes['surete']) $price += $taxes['surete'];
+            if ($taxes['participation_transition_energetique']) $price += $taxes['participation_transition_energetique'];
+            if ($taxes['contribution_sanitaire']) $price += $taxes['contribution_sanitaire'];
+            
+            // Région Parisienne
+            if ($this->isRegionParisienne($params['departement']) && $taxes['majoration_idf_valeur']) {
+                $price += $taxes['majoration_idf_valeur'];
             }
-            if ($taxes['zfe_montant'] && $this->isZFE($params['departement'])) {
-                $price += $taxes['zfe_montant'];
-            }
-        }
-        
-        // Options Heppner
-        if ($params['adr']) {
-            $stmt = $this->db->prepare("SELECT montant FROM gul_options_supplementaires WHERE transporteur = 'heppner' AND code_option = 'adr' AND actif = 1");
-            $stmt->execute();
-            $option = $stmt->fetch();
-            if ($option) $price += $option['montant'];
-        }
-        
-        if ($params['enlevement']) {
-            $stmt = $this->db->prepare("SELECT montant FROM gul_options_supplementaires WHERE transporteur = 'heppner' AND code_option = 'enlevement' AND actif = 1");
-            $stmt->execute();
-            $option = $stmt->fetch();
-            if ($option) $price += $option['montant'];
         }
         
         return $price;
     }
     
-    private function getZone(string $dept): string {
-        $stmt = $this->db->prepare("SELECT zone_heppner FROM gul_zones_departements WHERE departement = ? AND transporteur = 'heppner'");
-        $stmt->execute([$dept]);
-        $result = $stmt->fetch();
-        return $result ? $result['zone_heppner'] : 'Standard';
-    }
-    
-    private function getWeightCategory(float $weight): string {
-        $stmt = $this->db->prepare("SELECT categorie FROM gul_categories_poids WHERE transporteur = 'heppner' AND poids_minimum <= ? AND poids_maximum >= ? ORDER BY poids_minimum DESC LIMIT 1");
-        $stmt->execute([$weight, $weight]);
-        $result = $stmt->fetch();
-        return $result ? $result['categorie'] : 'Standard';
-    }
-    
     private function isRegionParisienne(string $dept): bool {
-        $stmt = $this->db->prepare("SELECT 1 FROM gul_zones_speciales WHERE departement = ? AND type_zone = 'region_parisienne'");
-        $stmt->execute([$dept]);
-        return (bool)$stmt->fetch();
-    }
-    
-    private function isZFE(string $dept): bool {
-        $stmt = $this->db->prepare("SELECT 1 FROM gul_zones_speciales WHERE departement = ? AND type_zone = 'zfe'");
-        $stmt->execute([$dept]);
-        return (bool)$stmt->fetch();
-    }
+   $stmt = $this->db->prepare("
+       SELECT 1 FROM gul_taxes_transporteurs 
+       WHERE FIND_IN_SET(?, majoration_idf_departements) > 0 
+       LIMIT 1
+   ");
+   $stmt->execute([$dept]);
+   return (bool)$stmt->fetch();
+}
 }
