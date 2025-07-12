@@ -15,10 +15,6 @@ $auth = AuthManager::getInstance();
 
 // Vérifier l'authentification et le MFA si requis
 if (!$auth->isAuthenticated()) {
-    if (isset($_SESSION['mfa_required']) && $_SESSION['mfa_required']) {
-        header('Location: /auth/mfa.php');
-        exit;
-    }
     header('Location: /auth/login.php');
     exit;
 }
