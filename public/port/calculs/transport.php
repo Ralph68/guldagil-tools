@@ -42,8 +42,26 @@ private const CACHE_MAX_SIZE = 1000; // Nombre maximum de résultats en cache
      * calculateAll(array $params) OBLIGATOIRE
      */
     public function calculateAll(array $params): array {
+    // Configuration du débogage
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+    ini_set('log_errors', 1);
+    
+    // Journalisation des paramètres
+    $debugFile = 'debug_' . date('Y-m-d_H-i-s') . '.txt';
+    file_put_contents($debugFile, json_encode([
+        'params' => $params,
+        'timestamp' => date('Y-m-d H:i:s'),
+        'memory_usage' => memory_get_usage() / 1024 / 1024 . ' MB'
+    ], JSON_PRETTY_PRINT));
+    
     try {
         $this->debug = ['params_received' => $params];
+        
+        // Validation des paramètres
+        if (!is_array($params)) {
+            throw new InvalidArgumentException('Les paramètres doivent être un tableau');
+        }
         
         // Normalisation des paramètres
         $normalizedParams = $this->normalizeParams($params);
@@ -61,26 +79,38 @@ private const CACHE_MAX_SIZE = 1000; // Nombre maximum de résultats en cache
                 $this->debug[$carrier]['error'] = [
                     'message' => $e->getMessage(),
                     'file' => $e->getFile(),
-                    'line' => $e->getLine()
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
                 ];
             }
         }
         
-        // Format de retour
-        return [
+        // Format de retour avec validation
+        $response = [
             'results' => $results,
             'debug' => $this->debug,
             'best' => $this->findBestRate($results)
         ];
+        
+        // Vérification de la réponse
+        if (!is_array($response)) {
+            throw new RuntimeException('La réponse n\'est pas un tableau valide');
+        }
+        
+        return $response;
     } catch (Exception $e) {
         $this->debug['error'] = [
             'message' => $e->getMessage(),
             'file' => $e->getFile(),
-            'line' => $e->getLine()
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
         ];
+        
+        // Retour JSON valide même en cas d'erreur
         return [
             'error' => 'Une erreur est survenue lors du calcul',
-            'debug' => $this->debug
+            'debug' => $this->debug,
+            'status' => 500
         ];
     }
 }
