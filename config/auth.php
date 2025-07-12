@@ -13,7 +13,7 @@ return [
         'samesite' => 'Strict'
     ],
     'mfa' => [
-        'required' => true, // Activer/désactiver MFA
+        'required' => false, // Activer/désactiver MFA
         'code_length' => 6,
         'expiration' => 300, // 5 minutes
         'method' => 'email' // 'email' ou 'sms'
