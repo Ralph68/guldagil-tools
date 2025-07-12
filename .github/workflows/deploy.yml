@@ -1,5 +1,5 @@
 # .github/workflows/deploy.yml - VERSION ANTI-JEKYLL
-name: Déploiement FTP vers port.gul.runser.ovh
+name: Déploiement FTP vers gul.runser.ovh
 
 on:
   push:
@@ -93,5 +93,5 @@ jobs:
       - name: Déploiement réussi
         if: success()
         run: |
-          echo "✅ Déploiement réussi vers port.gul.runser.ovh"
+          echo "✅ Déploiement réussi vers gul.runser.ovh"
           echo "🚫 Jekyll définitivement désactivé"
