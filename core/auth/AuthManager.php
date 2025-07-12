@@ -218,28 +218,28 @@ class AuthManager {
      * Nettoyer anciennes sessions
      */
     private function cleanupOldSessions($user_id) {
-        try {
-            // Supprimer sessions expirées
-            $this->db->exec("DELETE FROM auth_sessions WHERE expires_at < NOW()");
-            
-            // Garder seulement la session la plus récente par utilisateur
-            $stmt = $this->db->prepare("
-                DELETE FROM auth_sessions 
-                WHERE user_id = ? 
-                AND id NOT IN (
-                    SELECT id FROM (
-                        SELECT id FROM auth_sessions 
-                        WHERE user_id = ? 
-                        ORDER BY created_at DESC 
-                        LIMIT 1
-                    ) AS latest
-                )
-            ");
-            $stmt->execute([$user_id, $user_id]);
-        } catch (Exception $e) {
-            error_log('AuthManager cleanupOldSessions error: ' . $e->getMessage());
-        }
+    try {
+        // Supprimer les sessions expirées depuis plus de 24h
+        $this->db->exec("DELETE FROM auth_sessions WHERE expires_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+        
+        // Garder seulement la session la plus récente par utilisateur
+        $stmt = $this->db->prepare("
+            DELETE FROM auth_sessions 
+            WHERE user_id = ? 
+            AND id NOT IN (
+                SELECT id FROM (
+                    SELECT id FROM auth_sessions 
+                    WHERE user_id = ? 
+                    ORDER BY created_at DESC 
+                    LIMIT 1
+                ) AS latest
+            )
+        ");
+        $stmt->execute([$user_id, $user_id]);
+    } catch (Exception $e) {
+        error_log('AuthManager cleanupOldSessions error: ' . $e->getMessage());
     }
+}
 
     /**
      * Gestion tentatives échouées (en session)
@@ -276,17 +276,17 @@ class AuthManager {
      * Logging des activités
      */
     private function logActivity($action, $username, $details = []) {
-        $logEntry = [
-            'timestamp' => date('Y-m-d H:i:s'),
-            'action' => $action,
-            'username' => $username,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-            'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 200),
-            'details' => $details
-        ];
-        
-        error_log('AUTH_' . $action . ': ' . json_encode($logEntry));
-    }
+    $logEntry = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'action' => $action,
+        'username' => $username,
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 200),
+        'details' => $details,
+        'session_id' => session_id() // Ajouter l'ID de session
+    ];
+    error_log('AUTH_' . $action . ': ' . json_encode($logEntry));
+}
 
     /**
      * Initialisation session
