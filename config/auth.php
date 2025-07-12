@@ -18,6 +18,10 @@ return [
         'expiration' => 300, // 5 minutes
         'method' => 'email' // 'email' ou 'sms'
     ],
+     'pages' => [
+        'mfa' => '/auth/mfa.php',
+        // ... autres configurations ...
+    ],
     
     'roles' => [
         'dev' => [
