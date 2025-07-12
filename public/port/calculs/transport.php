@@ -5,9 +5,9 @@
  * Version: 0.5 beta + build auto
  */
 
-require_once __DIR__ . '/../Services/TransportInterfaces.php';
-require_once __DIR__ . '/../Services/DatabaseRepository.php';
-require_once __DIR__ . '/../Services/TransportService.php';
+require_once __DIR__ . '/../Services/Calculators/XPOCalculator.php';
+require_once __DIR__ . '/../Services/Calculators/HeppnerCalculator.php';
+require_once __DIR__ . '/../Services/Calculators/KNCalculator.php';
 
 class TransportFactory {
     public static function create(PDO $db): TransportService {
