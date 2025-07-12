@@ -12,6 +12,12 @@ return [
         'httponly' => true,
         'samesite' => 'Strict'
     ],
+    'mfa' => [
+        'required' => true, // Activer/désactiver MFA
+        'code_length' => 6,
+        'expiration' => 300, // 5 minutes
+        'method' => 'email' // 'email' ou 'sms'
+    ],
     
     'roles' => [
         'dev' => [
