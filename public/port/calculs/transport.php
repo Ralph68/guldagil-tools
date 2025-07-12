@@ -6,6 +6,17 @@
  */
 
 class Transport {
+    private const ERROR_DEPARTMENT_FORMAT = 'FORMAT_DEPT_INVALID';
+    private const ERROR_WEIGHT_RANGE = 'WEIGHT_OUT_OF_RANGE';
+    private const ERROR_CARRIER_NOT_FOUND = 'CARRIER_NOT_FOUND';
+    private const ERROR_BLACKLISTED_DEPARTMENT = 'BLACKLISTED_DEPARTMENT';
+    private const ERROR_ADR_NOT_FOUND = 'ADR_NOT_FOUND';
+    private const ERROR_PICKUP_NOT_FOUND = 'PICKUP_NOT_FOUND';
+    private const ERROR_TARIFF_NOT_FOUND = 'TARIFF_NOT_FOUND';
+    
+    private array $memoizedResults = [];
+private const CACHE_MAX_SIZE = 1000; // Nombre maximum de résultats en cache
+    
     private PDO $db;
     public array $debug = [];
     
@@ -31,15 +42,15 @@ class Transport {
      * calculateAll(array $params) OBLIGATOIRE
      */
     public function calculateAll(array $params): array {
+    try {
         $this->debug = ['params_received' => $params];
         
-        // Normalisation des paramètres selon l'attendu
+        // Normalisation des paramètres
         $normalizedParams = $this->normalizeParams($params);
         $this->debug['params_normalized'] = $normalizedParams;
         
-        $results = [];
-        
         // Calcul pour chaque transporteur
+        $results = [];
         foreach ($this->tables as $carrier => $table) {
             try {
                 $price = $this->calculateForCarrier($carrier, $normalizedParams);
@@ -47,17 +58,32 @@ class Transport {
                 $this->debug[$carrier]['final_result'] = $price;
             } catch (Exception $e) {
                 $results[$carrier] = null;
-                $this->debug[$carrier]['error'] = $e->getMessage();
+                $this->debug[$carrier]['error'] = [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ];
             }
         }
         
-        // FORMAT ATTENDU par public/port/index.php
+        // Format de retour
         return [
             'results' => $results,
             'debug' => $this->debug,
             'best' => $this->findBestRate($results)
         ];
+    } catch (Exception $e) {
+        $this->debug['error'] = [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ];
+        return [
+            'error' => 'Une erreur est survenue lors du calcul',
+            'debug' => $this->debug
+        ];
     }
+}
     
     /**
      * Normalisation compatible avec les paramètres de public/port/index.php
@@ -103,6 +129,13 @@ class Transport {
         // 2. Récupération tarif de base selon le poids
 $baseTariff = $this->getBaseTariffByWeight($carrier, $params);
 $this->debug[$carrier]['base_tariff_result'] = $baseTariff;
+        // Debug détaillé
+        if ($baseTariff === null) {
+            $this->debug[$carrier]['error_details'] = [
+                'tariff_not_found' => $this->debug[$carrier]['tariff_not_found'] ?? 'Inconnu',
+                'sql_query' => $this->debug[$carrier]['sql_query'] ?? 'Non défini',
+                'sql_params' => $this->debug[$carrier]['sql_params'] ?? 'Non définis'
+            ];
 $this->debug[$carrier]['steps'][] = $baseTariff ? 
     "✓ Tarif base: {$baseTariff}€" : 
     "✗ Tarif base non trouvé - " . ($this->debug[$carrier]['tariff_not_found'] ?? 'Erreur inconnue');
@@ -145,57 +178,49 @@ $this->debug[$carrier]['steps'][] = $baseTariff ?
      * Récupération selon tranches de poids
      */
     private function getBaseTariffByWeight(string $carrier, array $params): ?float {
-    try {
-        $table = $this->tables[$carrier];
-        $weight = $params['poids'];
-        $dept = $params['departement'];
-        
-        // Vérification du format du département
-        if (!preg_match('/^\d{2}$/', $dept)) {
-            throw new InvalidArgumentException("Format de département invalide. Doit être sur 2 chiffres.");
-        }
-        
-        // Détermination de la colonne de poids
-        $weightColumn = $this->getWeightColumnGuldagil($weight, $params['type']);
-        
-        if (!$weightColumn) {
-            throw new RuntimeException("Colonne de poids non trouvée pour {$weight}kg, type: {$params['type']}");
-        }
-        
-        // Requête BDD avec debug complet
-        $sql = "SELECT {$weightColumn} as tarif FROM {$table} WHERE num_departement = ? LIMIT 1";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$dept]);
-        
-        $row = $stmt->fetch();
-        
-        // Debug détaillé
-        $this->debug[$carrier]['sql_result'] = $row;
-        $this->debug[$carrier]['tariff_value'] = $row['tarif'] ?? 'null';
-        
-        if ($row && isset($row['tarif']) && $row['tarif'] > 0) {
-            $tariff = (float)$row['tarif'];
-            $this->debug[$carrier]['tariff_found'] = $tariff;
-            return $tariff;
-        }
-        
-        // Gestion des cas particuliers
-        if ($row && isset($row['tarif']) && $row['tarif'] === null) {
-            $this->debug[$carrier]['tariff_not_found'] = 'Tarif nul trouvé';
-            return null;
-        }
-        
-        $this->debug[$carrier]['tariff_not_found'] = 'Aucun tarif trouvé';
-        return null;
-    } catch (Exception $e) {
-        $this->debug[$carrier]['tariff_db_error'] = [
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ];
+    $table = $this->tables[$carrier];
+    $weight = $params['poids'];
+    $dept = $params['departement'];
+    
+    // Vérification du format du département
+    if (!preg_match('/^\\d{2}$/', $dept)) {
+        throw new InvalidArgumentException("Format de département invalide. Doit être sur 2 chiffres.");
+    }
+    
+    // Détermination de la colonne de poids
+    $weightColumn = $this->getWeightColumnGuldagil($weight, $params['type']);
+    
+    if (!$weightColumn) {
+        throw new RuntimeException("Colonne de poids non trouvée pour {$weight}kg, type: {$params['type']}");
+    }
+    
+    // Requête BDD avec debug complet
+    $sql = "SELECT {$weightColumn} as tarif FROM {$table} WHERE num_departement = ? LIMIT 1";
+    
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute([$dept]);
+    
+    $row = $stmt->fetch();
+    
+    // Debug détaillé
+    $this->debug[$carrier]['sql_result'] = $row;
+    $this->debug[$carrier]['tariff_value'] = $row['tarif'] ?? 'null';
+    
+    if ($row && isset($row['tarif']) && $row['tarif'] > 0) {
+        $tariff = (float)$row['tarif'];
+        $this->debug[$carrier]['tariff_found'] = $tariff;
+        return $tariff;
+    }
+    
+    // Gestion des cas particuliers
+    if ($row && isset($row['tarif']) && $row['tarif'] === null) {
+        $this->debug[$carrier]['tariff_not_found'] = 'Tarif nul trouvé';
         return null;
     }
+    
+    $this->debug[$carrier]['tariff_not_found'] = 'Aucun tarif trouvé';
+    return null;
+}
 }
     
     /**
@@ -341,50 +366,50 @@ $this->debug[$carrier]['steps'][] = $baseTariff ?
      * Validation contraintes transporteur
      */
     private function validateCarrierConstraints(string $carrier, array $params): bool {
-        $this->debug[$carrier]['constraint_checks'] = [];
-        
-        // Vérifier si le transporteur existe
-        if (!isset($this->tables[$carrier])) {
-            $this->debug[$carrier]['constraint_checks']['carrier_exists'] = false;
-            return false;
-        }
-        $this->debug[$carrier]['constraint_checks']['carrier_exists'] = true;
-      
-      // Vérification département 06 pour XPO
-    if ($carrier === 'xpo' && $params['departement'] === '06') {
-        $this->debug[$carrier]['constraint_checks']['department_06'] = false;
+    $this->debug[$carrier]['errors'] = [];
+    
+    // Vérification du transporteur
+    if (!isset($this->tables[$carrier])) {
+        $this->debug[$carrier]['errors'][] = [
+            'code' => self::ERROR_CARRIER_NOT_FOUND,
+            'message' => "Transporteur {$carrier} non reconnu"
+        ];
         return false;
     }
-    $this->debug[$carrier]['constraint_checks']['department_06'] = true;
-        
-        // Poids maximum
-        $maxWeights = ['heppner' => 3000, 'xpo' => 32000, 'kn' => 32000];
-        $maxWeight = $maxWeights[$carrier] ?? 32000;
-        $weightOk = $params['poids'] <= $maxWeight && $params['poids'] > 0;
-        $this->debug[$carrier]['constraint_checks']['weight'] = [
-            'current' => $params['poids'],
-            'max_allowed' => $maxWeight,
-            'valid' => $weightOk
+    
+    // Vérification du département 06 pour XPO
+    if ($carrier === 'xpo' && $params['departement'] === '06') {
+        $this->debug[$carrier]['errors'][] = [
+            'code' => self::ERROR_BLACKLISTED_DEPARTMENT,
+            'message' => "Le département 06 n'est pas desservi par XPO"
         ];
-        
-        if (!$weightOk) {
-            return false;
-        }
-        
-        // Départements blacklistés
-        $deptBlacklisted = $this->isDepartmentBlacklisted($carrier, $params['departement']);
-        $this->debug[$carrier]['constraint_checks']['department'] = [
-            'dept' => $params['departement'],
-            'blacklisted' => $deptBlacklisted
-        ];
-        
-        if ($deptBlacklisted) {
-            return false;
-        }
-        
-        $this->debug[$carrier]['constraint_checks']['all_valid'] = true;
-        return true;
+        return false;
     }
+    
+    // Vérification du poids
+    $maxWeights = ['heppner' => 3000, 'xpo' => 32000, 'kn' => 32000];
+    $maxWeight = $maxWeights[$carrier] ?? 32000;
+    
+    if ($params['poids'] <= 0 || $params['poids'] > $maxWeight) {
+        $this->debug[$carrier]['errors'][] = [
+            'code' => self::ERROR_WEIGHT_RANGE,
+            'message' => "Poids invalide ({$params['poids']}kg). 
+                         Le poids doit être entre 1 et {$maxWeight}kg"
+        ];
+        return false;
+    }
+    
+    // Vérification des départements blacklistés
+    if ($this->isDepartmentBlacklisted($carrier, $params['departement'])) {
+        $this->debug[$carrier]['errors'][] = [
+            'code' => self::ERROR_BLACKLISTED_DEPARTMENT,
+            'message' => "Le département {$params['departement']} est en liste noire"
+        ];
+        return false;
+    }
+    
+    return true;
+}
     
     /**
      * Vérification départements blacklistés
