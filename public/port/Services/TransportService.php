@@ -5,7 +5,9 @@
  * Version: 0.5 beta + build auto
  */
 
-require_once __DIR__ . '/TransportInterfaces.php';
+require_once __DIR__ . '/Calculators/XPOCalculator.php';
+require_once __DIR__ . '/Calculators/HeppnerCalculator.php';
+require_once __DIR__ . '/Calculators/KNCalculator.php';
 
 class MemoryCache implements CacheManager {
     private array $cache = [];
