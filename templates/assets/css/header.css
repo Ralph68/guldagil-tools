@@ -1,29 +1,65 @@
 /**
- * Titre: CSS Header portal - Version modulaire
+ * Titre: CSS Header portal - Version corrigée et optimisée
  * Chemin: /templates/assets/css/header.css  
  * Version: 0.5 beta + build auto
  */
 
+/* === VARIABLES CSS GLOBALES === */
 :root {
+    /* Palette couleurs principale */
     --primary-blue: #3182ce;
     --primary-blue-dark: #2c5282;
     --primary-blue-light: #63b3ed;
-    --spacing-xs: 0.25rem;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 1.5rem;
-    --spacing-xl: 2rem;
-    --border-radius: 8px;
+    
+    /* Palette grays */
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    
+    /* Système d'espacement */
+    --spacing-xs: 0.25rem;   /* 4px */
+    --spacing-sm: 0.5rem;    /* 8px */
+    --spacing-md: 1rem;      /* 16px */
+    --spacing-lg: 1.5rem;    /* 24px */
+    --spacing-xl: 2rem;      /* 32px */
+    --spacing-2xl: 3rem;     /* 48px */
+    
+    /* Border radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    
+    /* Ombres */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    
+    /* Transitions */
+    --transition-fast: all 0.15s ease;
+    --transition-normal: all 0.3s ease;
+    
+    /* Z-index system */
+    --z-dropdown: 1001;
+    --z-header: 1000;
+    --z-modal: 2000;
 }
 
+/* === HEADER PRINCIPAL === */
 .portal-header {
     background: linear-gradient(135deg, var(--primary-blue-dark), var(--primary-blue));
     color: white;
     padding: var(--spacing-md) 0;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
     position: sticky;
     top: 0;
-    z-index: 1000;
+    z-index: var(--z-header);
 }
 
 .header-container {
@@ -34,8 +70,10 @@
     grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: var(--spacing-lg);
+    min-height: 64px;
 }
 
+/* === BRANDING === */
 .header-brand {
     display: flex;
     align-items: center;
@@ -43,23 +81,41 @@
     text-decoration: none;
     color: white;
     font-weight: 600;
-    transition: opacity 0.2s;
+    transition: var(--transition-fast);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
 }
 
 .header-brand:hover {
-    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
 }
 
 .header-logo {
     font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.header-logo img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
 }
 
 .header-brand-text {
     font-size: 1.125rem;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
+/* === PAGE INFO === */
 .header-page-info {
     text-align: center;
+    min-width: 0; /* Permet le shrinking */
 }
 
 .page-main-title {
@@ -70,17 +126,30 @@
     align-items: center;
     justify-content: center;
     gap: var(--spacing-sm);
+    line-height: 1.25;
+}
+
+.module-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
 }
 
 .page-subtitle {
     font-size: 0.875rem;
     opacity: 0.9;
     margin-top: var(--spacing-xs);
+    line-height: 1.4;
 }
 
-/* Navigation utilisateur */
+.page-subtitle-text {
+    display: inline;
+}
+
+/* === NAVIGATION UTILISATEUR === */
 .header-user-nav {
     position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .user-menu-trigger {
@@ -90,16 +159,23 @@
     padding: var(--spacing-sm) var(--spacing-md);
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: var(--transition-normal);
     text-decoration: none;
     color: white;
+    min-height: 48px;
 }
 
 .user-menu-trigger:hover {
     background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
     transform: translateY(-1px);
+}
+
+.user-menu-trigger:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
 }
 
 .user-avatar {
@@ -112,50 +188,59 @@
     justify-content: center;
     font-size: 0.875rem;
     font-weight: 600;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .user-details {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    min-width: 0;
 }
 
 .user-name {
     font-weight: 600;
     font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
 }
 
 .user-role {
     font-size: 0.75rem;
     opacity: 0.8;
+    text-transform: capitalize;
 }
 
 .dropdown-icon {
     font-size: 0.75rem;
     opacity: 0.8;
-    transition: transform 0.2s;
+    transition: transform var(--transition-fast);
+    flex-shrink: 0;
 }
 
 .user-menu-trigger[aria-expanded="true"] .dropdown-icon {
     transform: rotate(180deg);
 }
 
-/* Menu déroulant */
+/* === MENU DÉROULANT === */
 .user-dropdown {
     position: absolute;
-    top: 100%;
+    top: calc(100% + var(--spacing-sm));
     right: 0;
-    margin-top: var(--spacing-sm);
     background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: var(--border-radius);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
     min-width: 280px;
-    z-index: 1001;
+    z-index: var(--z-dropdown);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    overflow: hidden;
 }
 
 .user-dropdown.active {
@@ -166,19 +251,21 @@
 
 .dropdown-header {
     padding: var(--spacing-md);
-    border-bottom: 1px solid #f3f4f6;
-    background: #f9fafb;
+    border-bottom: 1px solid var(--gray-100);
+    background: var(--gray-50);
 }
 
 .dropdown-user-name {
     font-weight: 600;
-    color: #1f2937;
+    color: var(--gray-900);
     margin-bottom: var(--spacing-xs);
+    font-size: 0.875rem;
 }
 
 .dropdown-user-email {
-    font-size: 0.875rem;
-    color: #6b7280;
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    word-break: break-word;
 }
 
 .dropdown-section {
@@ -191,45 +278,60 @@
     gap: var(--spacing-md);
     padding: var(--spacing-sm) var(--spacing-md);
     text-decoration: none;
-    color: #374151;
-    transition: background-color 0.2s;
+    color: var(--gray-700);
+    transition: background-color var(--transition-fast);
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
 }
 
 .dropdown-item:hover {
-    background: #f9fafb;
+    background: var(--gray-50);
+}
+
+.dropdown-item:focus {
+    outline: none;
+    background: var(--gray-100);
 }
 
 .dropdown-item-icon {
     font-size: 1.125rem;
     width: 20px;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .dropdown-item-text {
     flex: 1;
+    min-width: 0;
 }
 
 .dropdown-title {
     font-weight: 500;
     font-size: 0.875rem;
+    color: var(--gray-900);
 }
 
 .dropdown-subtitle {
     font-size: 0.75rem;
-    color: #9ca3af;
+    color: var(--gray-500);
     margin-top: 2px;
+    line-height: 1.3;
 }
 
 .dropdown-divider {
     height: 1px;
-    background: #e5e7eb;
+    background: var(--gray-200);
     margin: var(--spacing-xs) 0;
 }
 
-/* Actions auth (non connecté) */
+/* === ACTIONS AUTH (NON CONNECTÉ) === */
 .header-auth-actions {
     display: flex;
     gap: var(--spacing-sm);
+    align-items: center;
 }
 
 .login-btn {
@@ -239,22 +341,25 @@
     padding: var(--spacing-sm) var(--spacing-md);
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-md);
     color: white;
     text-decoration: none;
     font-weight: 500;
-    transition: all 0.2s;
+    font-size: 0.875rem;
+    transition: var(--transition-normal);
+    min-height: 40px;
 }
 
 .login-btn:hover {
     background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
     transform: translateY(-1px);
 }
 
-/* Fil d'Ariane */
+/* === FIL D'ARIANE === */
 .breadcrumb-nav {
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
     padding: var(--spacing-sm) 0;
 }
 
@@ -266,15 +371,17 @@
     align-items: center;
     gap: var(--spacing-sm);
     font-size: 0.875rem;
+    flex-wrap: wrap;
 }
 
 .breadcrumb-item {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
-    color: #64748b;
+    color: var(--gray-600);
     text-decoration: none;
-    transition: color 0.2s;
+    transition: color var(--transition-fast);
+    padding: var(--spacing-xs) 0;
 }
 
 .breadcrumb-item:hover:not(.active) {
@@ -282,16 +389,17 @@
 }
 
 .breadcrumb-item.active {
-    color: #1e293b;
+    color: var(--gray-900);
     font-weight: 500;
 }
 
 .breadcrumb-separator {
-    color: #cbd5e1;
+    color: var(--gray-400);
     margin: 0 var(--spacing-xs);
+    user-select: none;
 }
 
-/* Responsive Design */
+/* === RESPONSIVE DESIGN === */
 @media (max-width: 1024px) {
     .header-container {
         grid-template-columns: auto 1fr auto;
@@ -313,6 +421,7 @@
         grid-template-columns: 1fr;
         text-align: center;
         gap: var(--spacing-md);
+        padding: 0 var(--spacing-sm);
     }
     
     .header-brand,
@@ -340,28 +449,3 @@
     .user-dropdown {
         min-width: 240px;
         right: 50%;
-        transform: translateX(50%) translateY(-10px);
-    }
-    
-    .user-dropdown.active {
-        transform: translateX(50%) translateY(0);
-    }
-}
-
-@media (max-width: 480px) {
-    .header-container {
-        padding: var(--spacing-md);
-    }
-    
-    .header-brand-text {
-        display: none;
-    }
-    
-    .page-subtitle-text {
-        display: none;
-    }
-    
-    .user-dropdown {
-        min-width: 200px;
-    }
-}
