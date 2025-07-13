@@ -241,27 +241,7 @@ try {
 }
 
 // Fonctions utilitaires
-function logMessage($level, $message, $channel = 'app'): void {
-    if (!LOG_CONFIG['enabled']) return;
-    
-    $logFile = LOG_CONFIG['channels'][$channel] ?? LOG_CONFIG['channels']['app'];
-    $timestamp = date('Y-m-d H:i:s');
-    $logEntry = "[$timestamp] [$level] $message" . PHP_EOL;
-    
-    // Créer le dossier si nécessaire
-    $logDir = dirname($logFile);
-    if (!is_dir($logDir)) {
-        mkdir($logDir, 0755, true);
-    }
-    
-    // Rotation des logs si trop volumineux
-    if (file_exists($logFile) && filesize($logFile) > LOG_CONFIG['max_file_size']) {
-        $backupFile = $logFile . '.' . date('Y-m-d-H-i-s');
-        rename($logFile, $backupFile);
-    }
-    
-    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
-}
+
 function isModuleEnabled($module): bool {
     return isset(MODULES[$module]) && MODULES[$module]['status'] === 'active';
 }
