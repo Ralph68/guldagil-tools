@@ -20,8 +20,8 @@ if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
 define('ROOT_PATH', dirname(__DIR__, 2));
 
 $required_files = [
-    ROOT_PATH . '/config/config.php',
-    ROOT_PATH . '/config/version.php'
+    ROOT_PATH . 'config/config.php',
+    ROOT_PATH . 'config/version.php'
 ];
 
 foreach ($required_files as $file) {
