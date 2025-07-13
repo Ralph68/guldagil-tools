@@ -2,7 +2,7 @@
 /**
  * Titre: Configuration base de données
  * Chemin: /config/database.php
- * Version: 0.5 beta + build
+ * Version: 0.5 beta + build auto
  */
 
 // Protection directe
@@ -31,7 +31,8 @@ define('DB_PASS', $_ENV['DB_PASS'] ?? '');
 define('DB_CHARSET', $_ENV['DB_CHARSET'] ?? 'utf8mb4');
 
 // Options PDO
-$pdoOptions = [
+$dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+$options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     PDO::ATTR_EMULATE_PREPARES   => false,
@@ -41,8 +42,7 @@ $pdoOptions = [
 
 // Connexion PDO globale
 try {
-    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-    $db = new PDO($dsn, DB_USER, DB_PASS, $pdoOptions);
+    $db = new PDO($dsn, DB_USER, DB_PASS, $options);
     
     // Test simple de la connexion
     $db->query("SELECT 1");
