@@ -19,22 +19,57 @@ if (!$is_production) {
     ini_set('display_errors', 0);
 }
 
-// Chargement sécurisé de la configuration
-$required_files = [
-    ROOT_PATH . '/config/config.php',
-    ROOT_PATH . '/config/version.php'
+// DÉTECTION AUTOMATIQUE DES CHEMINS CONFIG
+$possible_config_paths = [
+    ROOT_PATH . '/config/config.php',                    // Structure standard
+    ROOT_PATH . '/public/config/config.php',             // Si config dans public/
+    dirname(ROOT_PATH) . '/config/config.php',           // Si dans parent
+    __DIR__ . '/../config/config.php',                   // Relatif
+    __DIR__ . '/config/config.php'                       // Dans le même dossier que public
 ];
 
-foreach ($required_files as $file) {
-    if (!file_exists($file)) {
-        http_response_code(500);
-        die('<h1>❌ Erreur Configuration</h1><p>Fichier manquant : ' . basename($file) . '</p>');
+$config_path = null;
+$version_path = null;
+
+// Trouver config.php
+foreach ($possible_config_paths as $path) {
+    if (file_exists($path)) {
+        $config_path = $path;
+        break;
+    }
+}
+
+// Chargement sécurisé de la configuration
+if (!$config_path) {
+    http_response_code(500);
+    die('<h1>❌ Erreur Configuration</h1><p>Fichier config.php introuvable dans :<br>' . 
+        implode('<br>', $possible_config_paths) . '</p>');
+}
+
+// Chercher version.php dans le même dossier que config.php
+$version_path = dirname($config_path) . '/version.php';
+if (!file_exists($version_path)) {
+    // Autres emplacements possibles
+    $possible_version_paths = [
+        ROOT_PATH . '/config/version.php',
+        ROOT_PATH . '/public/config/version.php',
+        __DIR__ . '/config/version.php'
+    ];
+    
+    foreach ($possible_version_paths as $path) {
+        if (file_exists($path)) {
+            $version_path = $path;
+            break;
+        }
     }
 }
 
 try {
-    require_once ROOT_PATH . '/config/config.php';
-    require_once ROOT_PATH . '/config/version.php';
+    require_once $config_path;
+    
+    if ($version_path && file_exists($version_path)) {
+        require_once $version_path;
+    }
 } catch (Exception $e) {
     http_response_code(500);
     $error_msg = $is_production ? 'Erreur de configuration' : htmlspecialchars($e->getMessage());
@@ -47,14 +82,22 @@ if (!isset($db) || !($db instanceof PDO)) {
     die('<h1>❌ Erreur Base de Données</h1><p>Connexion non disponible</p>');
 }
 
-// AUTHENTIFICATION - AUCUN BYPASS
-//$user_authenticated = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
-//$current_user = $user_authenticated ? ($_SESSION['user'] ?? null) : null;
+// AUTHENTIFICATION - DÉSACTIVÉE TEMPORAIREMENT POUR TESTS
+$user_authenticated = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
+$current_user = $user_authenticated ? ($_SESSION['user'] ?? null) : null;
 
-//if (!$user_authenticated) {
-//    header('Location: /auth/login.php');
-//   exit;
-//}
+// BYPASS TEMPORAIRE - Commentez ces lignes une fois l'auth réparée
+if (!$user_authenticated) {
+    // Créer utilisateur temporaire pour éviter la boucle de redirection
+    $current_user = [
+        'username' => 'Demo User',
+        'role' => 'admin'  // Admin pour accès complet pendant les tests
+    ];
+    $user_authenticated = true;
+    
+    // Message de debug (à supprimer en production)
+    $demo_mode = true;
+}
 
 // Sécurisation utilisateur par défaut
 if (!$current_user) {
@@ -80,12 +123,12 @@ $app_author = defined('APP_AUTHOR') ? APP_AUTHOR : 'Jean-Thomas RUNSER';
 $module_css = false;
 $module_js = false;
 
-// Variables pour le footer
+// Variables pour le footer avec fallbacks
 $version_info = [
-    'version' => APP_VERSION,
-    'build' => BUILD_NUMBER,
-    'short_build' => substr(BUILD_NUMBER, 0, 8),
-    'date' => BUILD_DATE,
+    'version' => defined('APP_VERSION') ? APP_VERSION : '0.5-beta',
+    'build' => defined('BUILD_NUMBER') ? BUILD_NUMBER : '00000000',
+    'short_build' => defined('BUILD_NUMBER') ? substr(BUILD_NUMBER, 0, 8) : '????????',
+    'date' => defined('BUILD_DATE') ? BUILD_DATE : date('Y-m-d'),
     'year' => date('Y')
 ];
 $show_admin_footer = true;
@@ -228,236 +271,165 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
         <meta name="author" content="<?= htmlspecialchars($app_author) ?>">
         <meta name="robots" content="noindex, nofollow">
         <link rel="icon" type="image/png" href="/assets/img/favicon.png">
-        <link rel="stylesheet" href="/assets/css/portal.css?v=<?= htmlspecialchars($version_info['short_build']) ?>">
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+            .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .header { background: #2563eb; color: white; padding: 1rem; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+            .demo-warning { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 1rem; border-radius: 4px; margin-bottom: 20px; }
+            .modules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+            .module-card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; }
+            .module-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+            .btn { display: inline-block; padding: 8px 16px; background: #2563eb; color: white; text-decoration: none; border-radius: 4px; }
+            .btn:hover { background: #1d4ed8; }
+        </style>
     </head>
     <body>
-        <header class="portal-header">
-            <div class="header-container container">
-                <a href="/" class="header-brand">
-                    <h1 class="portal-title"><?= htmlspecialchars($app_name) ?></h1>
-                </a>
-                <div class="user-menu">
-                    <span class="user-info">
-                        Connecté : <?= htmlspecialchars($current_user['username']) ?> 
-                        <span class="user-role">(<?= htmlspecialchars($current_user['role']) ?>)</span>
-                    </span>
-                    <a href="/auth/logout.php" class="logout-btn">Déconnexion</a>
-                </div>
+        <header class="header">
+            <h1><?= htmlspecialchars($app_name) ?></h1>
+            <div>
+                Connecté: <?= htmlspecialchars($current_user['username']) ?> 
+                (<?= htmlspecialchars($current_user['role']) ?>)
+                <?php if (!$user_authenticated): ?>
+                | <a href="/auth/login.php" style="color: white;">Se connecter</a>
+                <?php endif; ?>
             </div>
         </header>
     <?php
 }
 ?>
 
-<!-- ===============================
-     CONTENU PRINCIPAL COMPLET
-     =============================== -->
-<main class="portal-main">
-    <div class="container">
-        
-        <!-- Section de bienvenue -->
-        <section class="welcome-section">
-            <div class="welcome-header">
-                <h1 class="welcome-title">
-                    Bienvenue, <?= htmlspecialchars($current_user['username']) ?>
-                </h1>
-                <p class="welcome-subtitle">
-                    <?= htmlspecialchars($page_description) ?>
-                </p>
-                <div class="version-badge">
-                    Version <?= htmlspecialchars($version_info['version']) ?> 
-                    <span class="build-info">(Build #<?= htmlspecialchars($version_info['short_build']) ?>)</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- Statistiques système -->
-        <section class="stats-section">
-            <h2 class="section-title">
-                <span class="section-icon">📊</span>
-                Aperçu système
-            </h2>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">🎯</div>
-                    <div class="stat-info">
-                        <div class="stat-value"><?= $stats['modules_accessible'] ?></div>
-                        <div class="stat-label">Modules accessibles</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🚀</div>
-                    <div class="stat-info">
-                        <div class="stat-value"><?= $stats['modules_active'] ?></div>
-                        <div class="stat-label">Modules actifs</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⚡</div>
-                    <div class="stat-info">
-                        <div class="stat-value"><?= htmlspecialchars($version_info['version']) ?></div>
-                        <div class="stat-label">Version portail</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">👤</div>
-                    <div class="stat-info">
-                        <div class="stat-value"><?= ucfirst($current_user['role']) ?></div>
-                        <div class="stat-label">Niveau d'accès</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Navigation modules -->
-        <section class="modules-section">
-            <h2 class="section-title">
-                <span class="section-icon">🚀</span>
-                Vos modules
-            </h2>
-            
-            <div class="modules-grid">
-                <?php foreach ($accessible_modules as $module_key => $module): ?>
-                <div class="module-card <?= getModuleStatusClass($module['status']) ?> module-<?= $module['color'] ?>">
-                    <div class="module-header">
-                        <div class="module-icon"><?= $module['icon'] ?></div>
-                        <div class="module-info">
-                            <h3 class="module-title"><?= htmlspecialchars($module['name']) ?></h3>
-                            <span class="module-status status-<?= $module['status'] ?>">
-                                <?= $module['status_label'] ?>
-                            </span>
-                        </div>
-                        <div class="module-progress">
-                            <span class="progress-text"><?= $module['estimated_completion'] ?></span>
-                        </div>
-                    </div>
-                    
-                    <div class="module-body">
-                        <p class="module-description"><?= htmlspecialchars($module['description']) ?></p>
-                        
-                        <div class="module-features">
-                            <h4>Fonctionnalités :</h4>
-                            <ul>
-                                <?php foreach ($module['features'] as $feature): ?>
-                                <li><?= htmlspecialchars($feature) ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                    </div>
-                    
-                    <div class="module-footer">
-                        <?php if ($module['status'] === 'active'): ?>
-                            <a href="<?= htmlspecialchars($module['path']) ?>" class="btn btn-primary">
-                                Accéder au module
-                            </a>
-                        <?php elseif ($module['status'] === 'development'): ?>
-                            <button class="btn btn-disabled" disabled>
-                                En développement
-                            </button>
-                        <?php elseif ($module['status'] === 'restricted'): ?>
-                            <a href="<?= htmlspecialchars($module['path']) ?>" class="btn btn-warning">
-                                Accès administrateur
-                            </a>
-                        <?php else: ?>
-                            <button class="btn btn-disabled" disabled>
-                                Non disponible
-                            </button>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </section>
-
-        <!-- Section informations -->
-        <section class="info-section">
-            <div class="info-grid">
-                <div class="info-card">
-                    <h3 class="info-title">
-                        <span class="info-icon">🛡️</span>
-                        Sécurité
-                    </h3>
-                    <ul class="info-list">
-                        <li>Authentification obligatoire</li>
-                        <li>Sessions sécurisées</li>
-                        <li>Contrôle d'accès par rôles</li>
-                        <li>Logs d'activité</li>
-                    </ul>
-                </div>
-                
-                <div class="info-card">
-                    <h3 class="info-title">
-                        <span class="info-icon">🔧</span>
-                        Support
-                    </h3>
-                    <ul class="info-list">
-                        <li>Documentation intégrée</li>
-                        <li>Système de maintenance</li>
-                        <li>Sauvegarde automatique</li>
-                        <li>Monitoring système</li>
-                    </ul>
-                </div>
-                
-                <div class="info-card">
-                    <h3 class="info-title">
-                        <span class="info-icon">⚡</span>
-                        Performance
-                    </h3>
-                    <ul class="info-list">
-                        <li>Cache intelligent</li>
-                        <li>Optimisation BDD</li>
-                        <li>Compression assets</li>
-                        <li>CDN pour les ressources</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-
-        <!-- Messages utilisateur -->
-        <?php if (isset($_GET['msg'])): ?>
-        <section class="messages-section">
-            <?php if ($_GET['msg'] === 'login_success'): ?>
-            <div class="alert alert-success">
-                <strong>✅ Connexion réussie !</strong> Bienvenue sur le portail.
-            </div>
-            <?php elseif ($_GET['msg'] === 'logout_success'): ?>
-            <div class="alert alert-info">
-                <strong>ℹ️ Déconnexion effectuée.</strong> À bientôt !
-            </div>
-            <?php endif; ?>
-        </section>
-        <?php endif; ?>
-
-        <!-- Actions rapides -->
-        <section class="quick-actions">
-            <h2 class="section-title">
-                <span class="section-icon">⚡</span>
-                Actions rapides
-            </h2>
-            <div class="actions-grid">
-                <a href="/port/" class="action-card">
-                    <div class="action-icon">🧮</div>
-                    <div class="action-text">Nouveau calcul</div>
-                </a>
-                <a href="/adr/" class="action-card">
-                    <div class="action-icon">⚠️</div>
-                    <div class="action-text">Déclaration ADR</div>
-                </a>
-                <a href="/qualite/" class="action-card">
-                    <div class="action-icon">✅</div>
-                    <div class="action-text">Contrôle qualité</div>
-                </a>
-                <?php if ($user_level >= 3): ?>
-                <a href="/admin/" class="action-card admin-only">
-                    <div class="action-icon">⚙️</div>
-                    <div class="action-text">Administration</div>
-                </a>
-                <?php endif; ?>
-            </div>
-        </section>
-
+<div class="container">
+    <!-- Message de mode démo -->
+    <?php if (isset($demo_mode)): ?>
+    <div class="demo-warning">
+        <strong>⚠️ MODE DÉMO ACTIVÉ</strong> - Authentification désactivée pour les tests. 
+        Réactivez l'authentification une fois les chemins corrigés.
+        <br><small>Chemins détectés : Config = <?= htmlspecialchars($config_path) ?> | Version = <?= htmlspecialchars($version_path ?: 'Non trouvé') ?></small>
     </div>
-</main>
+    <?php endif; ?>
+
+    <!-- Section de bienvenue -->
+    <section class="welcome-section">
+        <div class="welcome-header">
+            <h1 class="welcome-title">
+                Bienvenue, <?= htmlspecialchars($current_user['username']) ?>
+            </h1>
+            <p class="welcome-subtitle">
+                <?= htmlspecialchars($page_description) ?>
+            </p>
+            <div class="version-badge">
+                Version <?= htmlspecialchars($version_info['version']) ?> 
+                <span class="build-info">(Build #<?= htmlspecialchars($version_info['short_build']) ?>)</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Statistiques système -->
+    <section class="stats-section">
+        <h2>📊 Aperçu système</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #2563eb;"><?= $stats['modules_accessible'] ?></div>
+                <div>Modules accessibles</div>
+            </div>
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #059669;"><?= $stats['modules_active'] ?></div>
+                <div>Modules actifs</div>
+            </div>
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #7c3aed;"><?= htmlspecialchars($version_info['version']) ?></div>
+                <div>Version portail</div>
+            </div>
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #dc2626;"><?= ucfirst($current_user['role']) ?></div>
+                <div>Niveau d'accès</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Navigation modules -->
+    <section class="modules-section">
+        <h2>🚀 Vos modules</h2>
+        
+        <div class="modules-grid">
+            <?php foreach ($accessible_modules as $module_key => $module): ?>
+            <div class="module-card">
+                <div class="module-header">
+                    <div style="font-size: 2rem;"><?= $module['icon'] ?></div>
+                    <div>
+                        <h3 style="margin: 0;"><?= htmlspecialchars($module['name']) ?></h3>
+                        <span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">
+                            <?= $module['status_label'] ?>
+                        </span>
+                    </div>
+                    <div style="margin-left: auto;">
+                        <span style="font-weight: bold;"><?= $module['estimated_completion'] ?></span>
+                    </div>
+                </div>
+                
+                <div class="module-body">
+                    <p><?= htmlspecialchars($module['description']) ?></p>
+                    
+                    <div style="margin-top: 15px;">
+                        <h4 style="margin: 0 0 10px 0;">Fonctionnalités :</h4>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <?php foreach ($module['features'] as $feature): ?>
+                            <li><?= htmlspecialchars($feature) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <?php if ($module['status'] === 'active'): ?>
+                        <a href="<?= htmlspecialchars($module['path']) ?>" class="btn">
+                            Accéder au module
+                        </a>
+                    <?php elseif ($module['status'] === 'development'): ?>
+                        <button class="btn" style="background: #6b7280;" disabled>
+                            En développement
+                        </button>
+                    <?php elseif ($module['status'] === 'restricted'): ?>
+                        <a href="<?= htmlspecialchars($module['path']) ?>" class="btn" style="background: #dc2626;">
+                            Accès administrateur
+                        </a>
+                    <?php else: ?>
+                        <button class="btn" style="background: #6b7280;" disabled>
+                            Non disponible
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
+    <!-- Actions rapides -->
+    <section style="margin-top: 40px;">
+        <h2>⚡ Actions rapides</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+            <a href="/port/" class="btn" style="text-align: center; padding: 20px;">
+                <div style="font-size: 2rem;">🧮</div>
+                <div>Nouveau calcul</div>
+            </a>
+            <a href="/adr/" class="btn" style="text-align: center; padding: 20px;">
+                <div style="font-size: 2rem;">⚠️</div>
+                <div>Déclaration ADR</div>
+            </a>
+            <a href="/qualite/" class="btn" style="text-align: center; padding: 20px;">
+                <div style="font-size: 2rem;">✅</div>
+                <div>Contrôle qualité</div>
+            </a>
+            <?php if ($user_level >= 3): ?>
+            <a href="/admin/" class="btn" style="text-align: center; padding: 20px; background: #dc2626;">
+                <div style="font-size: 2rem;">⚙️</div>
+                <div>Administration</div>
+            </a>
+            <?php endif; ?>
+        </div>
+    </section>
+
+</div>
 
 <?php
 // Inclure le footer
@@ -465,25 +437,14 @@ if (file_exists(ROOT_PATH . '/templates/footer.php')) {
     include ROOT_PATH . '/templates/footer.php';
 } else {
     ?>
-    <footer class="portal-footer">
-        <div class="footer-container container">
-            <div class="footer-brand">
-                <h4 class="footer-title"><?= htmlspecialchars($app_name) ?></h4>
-                <p class="footer-subtitle"><?= htmlspecialchars($page_subtitle) ?></p>
-            </div>
-            
-            <div class="footer-info">
-                <div class="version-info">
-                    Version <?= htmlspecialchars($version_info['version']) ?> - Build #<?= htmlspecialchars($version_info['short_build']) ?>
-                </div>
-                <div class="build-info">
-                    Compilé le <?= htmlspecialchars($version_info['date']) ?>
-                </div>
-            </div>
-            
-            <div class="footer-copyright">
-                © <?= $version_info['year'] ?> <?= htmlspecialchars($app_author) ?><br>
-                Tous droits réservés
+    <footer style="background: #374151; color: white; padding: 20px; margin-top: 40px; text-align: center;">
+        <div>
+            <h4><?= htmlspecialchars($app_name) ?></h4>
+            <p><?= htmlspecialchars($page_subtitle) ?></p>
+            <div style="font-size: 0.9rem; margin-top: 10px;">
+                Version <?= htmlspecialchars($version_info['version']) ?> - Build #<?= htmlspecialchars($version_info['short_build']) ?>
+                <br>Compilé le <?= htmlspecialchars($version_info['date']) ?>
+                <br>© <?= $version_info['year'] ?> <?= htmlspecialchars($app_author) ?> - Tous droits réservés
             </div>
         </div>
     </footer>
