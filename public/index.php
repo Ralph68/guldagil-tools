@@ -10,7 +10,8 @@ session_start();
 define('ROOT_PATH', dirname(__DIR__));
 
 // Configuration des erreurs selon l'environnement
-$is_production = (getenv('APP_ENV') === 'production');
+//$is_production = (getenv('APP_ENV') === 'production');
+$is_production = false
 if (!$is_production) {
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
