@@ -22,11 +22,11 @@ if (!$is_production) {
 // DÉTECTION AUTOMATIQUE DES CHEMINS CONFIG
 // Structure O2Switch avec config à la racine du serveur
 $possible_config_paths = [
-    '/config/config.php',                                // O2Switch - racine serveur
-    ROOT_PATH . '/config/config.php',                    // Structure standard
+    //'/config/config.php',                                // O2Switch - racine serveur
+    //ROOT_PATH . '/config/config.php',                    // Structure standard
     __DIR__ . '/../config/config.php',                   // Relatif depuis public/
-    dirname($_SERVER['DOCUMENT_ROOT']) . '/config/config.php', // Parent du document root
-    $_SERVER['DOCUMENT_ROOT'] . '/../config/config.php'  // Document root parent
+    //dirname($_SERVER['DOCUMENT_ROOT']) . '/config/config.php', // Parent du document root
+    //$_SERVER['DOCUMENT_ROOT'] . '/../config/config.php'  // Document root parent
 ];
 
 $config_path = null;
