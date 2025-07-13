@@ -20,12 +20,14 @@ if (!$is_production) {
 }
 
 // DÉTECTION AUTOMATIQUE DES CHEMINS CONFIG
+// Avec .htaccess dans /public/, le ROOT_PATH doit être ajusté
 $possible_config_paths = [
     ROOT_PATH . '/config/config.php',                    // Structure standard
     ROOT_PATH . '/public/config/config.php',             // Si config dans public/
     dirname(ROOT_PATH) . '/config/config.php',           // Si dans parent
-    __DIR__ . '/../config/config.php',                   // Relatif
-    __DIR__ . '/config/config.php'                       // Dans le même dossier que public
+    __DIR__ . '/../config/config.php',                   // Relatif depuis public/
+    __DIR__ . '/config/config.php',                      // Dans public/
+    '/home/sc1ruje0226/public_html/config/config.php'    // Chemin absolu détecté
 ];
 
 $config_path = null;
@@ -41,9 +43,30 @@ foreach ($possible_config_paths as $path) {
 
 // Chargement sécurisé de la configuration
 if (!$config_path) {
+    // Debug amélioré pour voir la structure réelle
+    $debug_info = [
+        'Document Root détecté' => $_SERVER['DOCUMENT_ROOT'] ?? 'Non défini',
+        'Script actuel' => __FILE__,
+        'Dossier script' => __DIR__,
+        'ROOT_PATH calculé' => ROOT_PATH,
+        'Structure' => []
+    ];
+    
+    // Analyser la structure des dossiers
+    foreach ([ROOT_PATH, dirname(ROOT_PATH), __DIR__] as $dir) {
+        if (is_dir($dir)) {
+            $debug_info['Structure'][$dir] = array_filter(scandir($dir), function($item) {
+                return $item !== '.' && $item !== '..';
+            });
+        }
+    }
+    
     http_response_code(500);
-    die('<h1>❌ Erreur Configuration</h1><p>Fichier config.php introuvable dans :<br>' . 
-        implode('<br>', $possible_config_paths) . '</p>');
+    echo '<h1>❌ Erreur Configuration</h1>';
+    echo '<p>Fichier config.php introuvable dans :<br>' . implode('<br>', $possible_config_paths) . '</p>';
+    echo '<h2>🔍 Debug Structure</h2>';
+    echo '<pre>' . print_r($debug_info, true) . '</pre>';
+    die();
 }
 
 // Chercher version.php dans le même dossier que config.php
