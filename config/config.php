@@ -47,6 +47,26 @@ const MODULES = [
         'public' => true,
         'auth_required' => false,
         'color' => '#3498db'
+    ],
+    'adr' => [
+        'name' => 'Gestion ADR',
+        'description' => 'Transport de marchandises dangereuses',
+        'version' => '0.5.0',
+        'status' => 'development',
+        'public' => false,
+        'auth_required' => true,
+        'color' => '#e74c3c'
+    ],
+    'admin' => [
+        'name' => 'Administration',
+        'description' => 'Gestion et configuration du portail',
+        'version' => '0.5.0',
+        'status' => 'active',
+        'public' => false,
+        'auth_required' => true,
+        'color' => '#9b59b6'
+    ]
+];
 // Timezone
 date_default_timezone_set('Europe/Paris');
 
