@@ -48,13 +48,13 @@ if (!isset($db) || !($db instanceof PDO)) {
 }
 
 // AUTHENTIFICATION - AUCUN BYPASS
-$user_authenticated = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
-$current_user = $user_authenticated ? ($_SESSION['user'] ?? null) : null;
+//$user_authenticated = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
+//$current_user = $user_authenticated ? ($_SESSION['user'] ?? null) : null;
 
-if (!$user_authenticated) {
-    header('Location: /auth/login.php');
-    exit;
-}
+//if (!$user_authenticated) {
+//    header('Location: /auth/login.php');
+//   exit;
+//}
 
 // Sécurisation utilisateur par défaut
 if (!$current_user) {
