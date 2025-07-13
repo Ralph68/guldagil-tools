@@ -20,14 +20,13 @@ if (!$is_production) {
 }
 
 // DÉTECTION AUTOMATIQUE DES CHEMINS CONFIG
-// Avec .htaccess dans /public/, le ROOT_PATH doit être ajusté
+// Structure O2Switch avec config à la racine du serveur
 $possible_config_paths = [
+    '/config/config.php',                                // O2Switch - racine serveur
     ROOT_PATH . '/config/config.php',                    // Structure standard
-    ROOT_PATH . '/public/config/config.php',             // Si config dans public/
-    dirname(ROOT_PATH) . '/config/config.php',           // Si dans parent
     __DIR__ . '/../config/config.php',                   // Relatif depuis public/
-    __DIR__ . '/config/config.php',                      // Dans public/
-    '/home/sc1ruje0226/public_html/config/config.php'    // Chemin absolu détecté
+    dirname($_SERVER['DOCUMENT_ROOT']) . '/config/config.php', // Parent du document root
+    $_SERVER['DOCUMENT_ROOT'] . '/../config/config.php'  // Document root parent
 ];
 
 $config_path = null;
@@ -70,19 +69,21 @@ if (!$config_path) {
 }
 
 // Chercher version.php dans le même dossier que config.php
-$version_path = dirname($config_path) . '/version.php';
-if (!file_exists($version_path)) {
-    // Autres emplacements possibles
-    $possible_version_paths = [
-        ROOT_PATH . '/config/version.php',
-        ROOT_PATH . '/public/config/version.php',
-        __DIR__ . '/config/version.php'
-    ];
-    
-    foreach ($possible_version_paths as $path) {
-        if (file_exists($path)) {
-            $version_path = $path;
-            break;
+if ($config_path) {
+    $version_path = dirname($config_path) . '/version.php';
+    if (!file_exists($version_path)) {
+        // Autres emplacements possibles pour O2Switch
+        $possible_version_paths = [
+            '/config/version.php',
+            ROOT_PATH . '/config/version.php',
+            dirname($_SERVER['DOCUMENT_ROOT']) . '/config/version.php'
+        ];
+        
+        foreach ($possible_version_paths as $path) {
+            if (file_exists($path)) {
+                $version_path = $path;
+                break;
+            }
         }
     }
 }
