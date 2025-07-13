@@ -34,32 +34,22 @@ $config_path = null;
 $version_path = null;
 
 // Trouver config.php
-foreach ($possible_config_paths as $path) {
-    if (file_exists($path)) {
-        $config_path = $path;
-        break;
-    }
+
+// Définition du chemin de configuration
+$config_path = dirname(__DIR__) . '/config/config.php';
+
+// Vérification et chargement du fichier de configuration
+if (!file_exists($config_path)) {
+    http_response_code(500);
+    die("❌ Erreur : Le fichier config.php n'a pas été trouvé à l'emplacement : " . $config_path);
 }
 
-// Chargement sécurisé de la configuration
-if (!$config_path) {
-    // Debug amélioré pour voir la structure réelle
-    $debug_info = [
-        'Document Root détecté' => $_SERVER['DOCUMENT_ROOT'] ?? 'Non défini',
-        'Script actuel' => __FILE__,
-        'Dossier script' => __DIR__,
-        'ROOT_PATH calculé' => ROOT_PATH,
-        'Structure' => []
-    ];
-    
-    // Analyser la structure des dossiers
-    foreach ([ROOT_PATH, dirname(ROOT_PATH), __DIR__] as $dir) {
-        if (is_dir($dir)) {
-            $debug_info['Structure'][$dir] = array_filter(scandir($dir), function($item) {
-                return $item !== '.' && $item !== '..';
-            });
-        }
-    }
+try {
+    require_once $config_path;
+} catch (Exception $e) {
+    http_response_code(500);
+    die("❌ Erreur : Impossible de charger le fichier de configuration : " . $e->getMessage());
+}
     
     http_response_code(500);
     echo '<h1>❌ Erreur Configuration</h1>';
