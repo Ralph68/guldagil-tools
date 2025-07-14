@@ -178,7 +178,7 @@ $module_status = $all_modules[$current_module]['status'] ?? 'active';
     $module_css_loaded = false;
     if ($module_css && $current_module !== 'home') {
         // Priorité : chemin public/nommodule/assets/css/nommodule.css (nouveau)
-        $module_css_path = "/public/{$current_module}/assets/css/{$current_module}.css";
+        $module_css_path = "/{$current_module}/assets/css/{$current_module}.css";
         if (file_exists(ROOT_PATH . $module_css_path)) {
             echo '<link rel="stylesheet" href="' . $module_css_path . '?v=' . $build_number . '">';
             $module_css_loaded = true;
