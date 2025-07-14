@@ -5,6 +5,7 @@
  * Version: 0.5 beta + build auto
  */
 
+require_once ROOT_PATH . '/config/error_handler_simple.php';
 // Gestion session sécurisée
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -23,8 +24,6 @@ $required_files = [
     ROOT_PATH . '/config/config.php',
     ROOT_PATH . '/config/version.php'
 ];
-
-require_once ROOT_PATH . '/config/error_handler_simple.php';
 
 foreach ($required_files as $file) {
     if (!file_exists($file)) {
