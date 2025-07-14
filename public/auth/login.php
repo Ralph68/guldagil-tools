@@ -17,7 +17,7 @@ if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
 }
 
 // Protection et chargement configuration
-define('ROOT_PATH', dirname(__DIR__, 3));
+define('ROOT_PATH', dirname(__DIR__, 2));
 
 $required_files = [
     ROOT_PATH . '/config/config.php',
