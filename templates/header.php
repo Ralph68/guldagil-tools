@@ -97,14 +97,14 @@ $module_icon = match($current_module) {
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 
     <!-- CSS principal du portail -->
-    <link rel="stylesheet" href="/public/assets/css/portal.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     
     <!-- CSS Header et Footer globaux -->
     <link rel="stylesheet" href="/templates/assets/css/header.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/templates/assets/css/footer.css?v=<?= $build_number ?>">
     
     <!-- CSS Composants globaux -->
-    <link rel="stylesheet" href="/public/assets/css/components.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
     
     <!-- CSS spécifique au module -->
     <?php if ($module_css): ?>
@@ -112,7 +112,7 @@ $module_icon = match($current_module) {
         // Ordre de priorité pour trouver le CSS du module
         $module_css_paths = [
             "/public/{$current_module}/assets/css/{$current_module}.css",
-            "/public/assets/css/modules/{$current_module}.css"
+            "/assets/css/modules/{$current_module}.css"
         ];
         
         foreach ($module_css_paths as $css_path) {
@@ -130,8 +130,8 @@ $module_icon = match($current_module) {
             <!-- Logo et branding -->
             <a href="/" class="header-brand">
                 <div class="header-logo">
-                    <?php if (file_exists(ROOT_PATH . '/public/assets/img/logo.png')): ?>
-                        <img src="/public/assets/img/logo.png" alt="Logo" width="32" height="32">
+                    <?php if (file_exists(ROOT_PATH . '/assets/img/logo.png')): ?>
+                        <img src="/assets/img/logo.png" alt="Logo" width="32" height="32">
                     <?php else: ?>
                         🌊
                     <?php endif; ?>
@@ -261,7 +261,7 @@ $module_icon = match($current_module) {
         // Ordre de priorité pour trouver le JS du module
         $module_js_paths = [
             "/public/{$current_module}/assets/js/{$current_module}.js",
-            "/public/assets/js/modules/{$current_module}.js"
+            "/assets/js/modules/{$current_module}.js"
         ];
         
         foreach ($module_js_paths as $js_path) {
