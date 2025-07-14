@@ -25,7 +25,79 @@ if (file_exists(ROOT_PATH . '/config/version.php')) {
             'version' => defined('APP_VERSION') ? APP_VERSION : '0.5-beta',
             'build' => defined('BUILD_NUMBER') ? substr(BUILD_NUMBER, 0, 8) : '????????',
             'date' => defined('BUILD_DATE') ? BUILD_DATE : date('Y-m-d')
-        ];
+        
+    // Ajout d'informations système avancées pour résolution rapide
+    if (function_exists('disk_free_space')) {
+        $error_details['disk_free'] = round(disk_free_space('.') / 1024 / 1024 / 1024, 2) . ' GB';
+    }
+    
+    // Vérifications spécifiques selon le type d'erreur
+    switch ($error_type) {
+        case 'db':
+            $error_details['db_check'] = 'Tentative de connexion...';
+            if (file_exists(ROOT_PATH . '/config/config.php')) {
+                try {
+                    require_once ROOT_PATH . '/config/config.php';
+                    if (isset($db) && $db instanceof PDO) {
+                        $error_details['db_check'] = 'Connexion BDD OK - Erreur ailleurs';
+                    } else {
+                        $error_details['db_check'] = 'Variable $db non définie ou invalide';
+                    }
+                } catch (Exception $e) {
+                    $error_details['db_check'] = 'Exception: ' . $e->getMessage();
+                }
+            } else {
+                $error_details['db_check'] = 'Fichier config.php manquant';
+            }
+            break;
+            
+        case 'config':
+            $error_details['config_files'] = [];
+            $config_files = [
+                '/config/config.php',
+                '/config/version.php',
+                '/config/database.php',
+                '/.env'
+            ];
+            foreach ($config_files as $file) {
+                $path = ROOT_PATH . $file;
+                $error_details['config_files'][] = $file . ': ' . (file_exists($path) ? 
+                    'Existe (' . filesize($path) . ' bytes)' : 'MANQUANT');
+            }
+            break;
+            
+        case 'auth':
+            $error_details['auth_details'] = [
+                'session_id' => session_id(),
+                'session_status' => session_status(),
+                'session_vars' => isset($_SESSION) ? array_keys($_SESSION) : 'Aucune',
+                'cookies' => isset($_COOKIE) ? array_keys($_COOKIE) : 'Aucun'
+            ];
+            break;
+    }
+    
+    // Vérification des logs récents
+    $log_files = [
+        '/storage/logs/app.log',
+        '/storage/logs/error.log',
+        ini_get('error_log')
+    ];
+    
+    $recent_logs = [];
+    foreach ($log_files as $log_file) {
+        if ($log_file && file_exists($log_file) && is_readable($log_file)) {
+            $lines = file($log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            if ($lines) {
+                $recent_logs[] = "=== " . basename($log_file) . " (5 dernières lignes) ===";
+                $recent_logs = array_merge($recent_logs, array_slice($lines, -5));
+                $recent_logs[] = "";
+            }
+        }
+    }
+    
+    if (empty($recent_logs)) {
+        $recent_logs[] = "Aucun log récent accessible";
+    }
     } catch (Exception $e) {
         error_log("Erreur chargement version: " . $e->getMessage());
     }
@@ -46,44 +118,149 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $error_details = [
         'timestamp' => date('Y-m-d H:i:s'),
         'url' => $_SERVER['REQUEST_URI'] ?? 'N/A',
+        'full_url' => (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'unknown') . ($_SERVER['REQUEST_URI'] ?? ''),
         'method' => $_SERVER['REQUEST_METHOD'] ?? 'N/A',
         'ip' => $_SERVER['REMOTE_ADDR'] ?? 'N/A',
+        'real_ip' => $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? 'N/A',
         'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'N/A',
         'referer' => $_SERVER['HTTP_REFERER'] ?? 'N/A',
         'error_type' => $error_type,
         'session_data' => isset($_SESSION['user']) ? $_SESSION['user']['username'] ?? 'Inconnu' : 'Non connecté',
+        'session_id' => session_id(),
         'version' => $version_info['version'],
-        'build' => $version_info['build']
+        'build' => $version_info['build'],
+        'server' => $_SERVER['SERVER_NAME'] ?? 'N/A',
+        'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'N/A',
+        'php_version' => phpversion(),
+        'memory_usage' => round(memory_get_usage(true) / 1024 / 1024, 2) . ' MB',
+        'memory_peak' => round(memory_get_peak_usage(true) / 1024 / 1024, 2) . ' MB',
+        'loaded_extensions' => implode(', ', array_slice(get_loaded_extensions(), 0, 10)) . '...',
+        'error_reporting' => error_reporting(),
+        'display_errors' => ini_get('display_errors'),
+        'log_errors' => ini_get('log_errors'),
+        'post_data' => !empty($_POST) ? 'POST: ' . json_encode(array_keys($_POST)) : 'Aucune données POST',
+        'get_data' => !empty($_GET) ? 'GET: ' . json_encode($_GET) : 'Aucune données GET',
+        'cookies' => !empty($_COOKIE) ? 'Cookies: ' . count($_COOKIE) . ' présents' : 'Aucun cookie',
+        'accept_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'N/A',
+        'accept_encoding' => $_SERVER['HTTP_ACCEPT_ENCODING'] ?? 'N/A'
     ];
     
     // Construction du message mail
     $subject = "🚨 Erreur signalée - Portail Guldagil (" . strtoupper($error_type) . ")";
     
-    $body = "Une erreur a été signalée sur le portail Guldagil.\n\n";
-    $body .= "=== DÉTAILS DE L'ERREUR ===\n";
+    $body = "🚨 ERREUR SIGNALÉE - PORTAIL GULDAGIL 🚨\n\n";
+    $body .= "=== RÉSUMÉ EXÉCUTIF ===\n";
     $body .= "Type: " . strtoupper($error_type) . "\n";
-    $body .= "URL: " . $error_details['url'] . "\n";
+    $body .= "URL: " . $error_details['full_url'] . "\n";
+    $body .= "Utilisateur: " . $error_details['session_data'] . "\n";
+    $body .= "Timestamp: " . $error_details['timestamp'] . "\n\n";
+    
+    $body .= "=== DÉTAILS TECHNIQUES COMPLETS ===\n";
+    $body .= "🌐 REQUÊTE\n";
+    $body .= "URL complète: " . $error_details['full_url'] . "\n";
     $body .= "Méthode: " . $error_details['method'] . "\n";
-    $body .= "Timestamp: " . $error_details['timestamp'] . "\n";
-    $body .= "IP utilisateur: " . $error_details['ip'] . "\n";
+    $body .= "Referer: " . $error_details['referer'] . "\n";
+    $body .= "Données POST: " . $error_details['post_data'] . "\n";
+    $body .= "Données GET: " . $error_details['get_data'] . "\n\n";
+    
+    $body .= "👤 UTILISATEUR\n";
+    $body .= "IP réelle: " . $error_details['real_ip'] . "\n";
+    $body .= "IP apparente: " . $error_details['ip'] . "\n";
     $body .= "User-Agent: " . $error_details['user_agent'] . "\n";
-    $body .= "Page précédente: " . $error_details['referer'] . "\n";
-    $body .= "Utilisateur connecté: " . $error_details['session_data'] . "\n";
-    $body .= "Version: " . $error_details['version'] . " (build " . $error_details['build'] . ")\n\n";
+    $body .= "Langue: " . $error_details['accept_language'] . "\n";
+    $body .= "Encodage: " . $error_details['accept_encoding'] . "\n";
+    $body .= "Session ID: " . $error_details['session_id'] . "\n";
+    $body .= $error_details['cookies'] . "\n\n";
+    
+    $body .= "🖥️ SERVEUR & SYSTÈME\n";
+    $body .= "Serveur: " . $error_details['server'] . "\n";
+    $body .= "Software: " . $error_details['server_software'] . "\n";
+    $body .= "PHP: " . $error_details['php_version'] . "\n";
+    $body .= "Mémoire utilisée: " . $error_details['memory_usage'] . "\n";
+    $body .= "Pic mémoire: " . $error_details['memory_peak'] . "\n";
+    if (isset($error_details['disk_free'])) {
+        $body .= "Espace libre: " . $error_details['disk_free'] . "\n";
+    }
+    $body .= "Extensions PHP: " . $error_details['loaded_extensions'] . "\n";
+    $body .= "Error reporting: " . $error_details['error_reporting'] . "\n";
+    $body .= "Display errors: " . $error_details['display_errors'] . "\n";
+    $body .= "Log errors: " . $error_details['log_errors'] . "\n\n";
+    
+    $body .= "🔧 VERSION & BUILD\n";
+    $body .= "Version: " . $error_details['version'] . "\n";
+    $body .= "Build: " . $error_details['build'] . "\n\n";
+    
+    // Informations spécifiques selon le type d'erreur
+    switch ($error_type) {
+        case 'db':
+            $body .= "🗃️ DIAGNOSTIC BASE DE DONNÉES\n";
+            $body .= "Test connexion: " . $error_details['db_check'] . "\n\n";
+            break;
+            
+        case 'config':
+            $body .= "⚙️ DIAGNOSTIC CONFIGURATION\n";
+            foreach ($error_details['config_files'] as $file_info) {
+                $body .= $file_info . "\n";
+            }
+            $body .= "\n";
+            break;
+            
+        case 'auth':
+            $body .= "🔐 DIAGNOSTIC AUTHENTIFICATION\n";
+            $body .= "Session ID: " . $error_details['auth_details']['session_id'] . "\n";
+            $body .= "Session status: " . $error_details['auth_details']['session_status'] . "\n";
+            $body .= "Variables session: " . (is_array($error_details['auth_details']['session_vars']) ? 
+                implode(', ', $error_details['auth_details']['session_vars']) : 
+                $error_details['auth_details']['session_vars']) . "\n";
+            $body .= "Cookies: " . (is_array($error_details['auth_details']['cookies']) ? 
+                implode(', ', $error_details['auth_details']['cookies']) : 
+                $error_details['auth_details']['cookies']) . "\n\n";
+            break;
+    }
+    
+    $body .= "📋 LOGS RÉCENTS\n";
+    $body .= implode("\n", $recent_logs) . "\n\n";
     
     if (!empty($user_message)) {
-        $body .= "=== MESSAGE UTILISATEUR ===\n";
+        $body .= "💬 MESSAGE UTILISATEUR\n";
         $body .= $user_message . "\n\n";
     }
     
     if (!empty($user_email)) {
-        $body .= "=== CONTACT UTILISATEUR ===\n";
+        $body .= "📧 CONTACT UTILISATEUR\n";
         $body .= "Email: " . $user_email . "\n\n";
     }
     
-    $body .= "=== LIEN DIRECT ===\n";
-    $body .= "https://gul.runser.ovh" . $error_details['url'] . "\n\n";
-    $body .= "Ce signalement a été généré automatiquement par le système d'erreurs du portail Guldagil.\n";
+    $body .= "🔗 ACTIONS RAPIDES\n";
+    $body .= "Lien direct: " . $error_details['full_url'] . "\n";
+    $body .= "Logs serveur: ssh et vérifier /var/log/apache2/error.log\n";
+    $body .= "Monitoring: https://gul.runser.ovh/admin/logs.php\n\n";
+    
+    $body .= "🚀 SUGGESTIONS RÉSOLUTION\n";
+    switch ($error_type) {
+        case 'db':
+            $body .= "- Vérifier statut MySQL/MariaDB\n";
+            $body .= "- Contrôler /config/config.php\n";
+            $body .= "- Tester connexion BDD manuellement\n";
+            break;
+        case 'config':
+            $body .= "- Vérifier permissions fichiers config\n";
+            $body .= "- Recréer fichiers manquants\n";
+            $body .= "- Contrôler syntaxe PHP\n";
+            break;
+        case 'auth':
+            $body .= "- Vérifier configuration session PHP\n";
+            $body .= "- Contrôler table auth_users\n";
+            $body .= "- Nettoyer sessions expirées\n";
+            break;
+        default:
+            $body .= "- Vérifier logs PHP et Apache\n";
+            $body .= "- Contrôler permissions fichiers\n";
+            $body .= "- Redémarrer services si nécessaire\n";
+    }
+    $body .= "\n";
+    
+    $body .= "Ce rapport automatique a été généré par le système d'erreurs Guldagil v" . $error_details['version'] . "\n";
     
     // Headers mail
     $headers = [
