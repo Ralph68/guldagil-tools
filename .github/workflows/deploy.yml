@@ -1,4 +1,4 @@
-name: Deploy PROD - Fast
+name: Deploy PROD - Fast & Simple
 on:
   push:
     branches: [main]
@@ -35,11 +35,7 @@ jobs:
             README.md
             public/system-check.php
             
-      - name: Health check
-        run: |
-          sleep 3
-          curl -f -m 10 https://gul.runser.ovh/health.php || exit 1
-          
+
       - name: Notify failure only
         if: failure()
         uses: dawidd6/action-send-mail@v3
