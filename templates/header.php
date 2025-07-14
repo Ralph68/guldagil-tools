@@ -42,16 +42,6 @@ try {
     // Continue sans auth si erreur
 }
 
-// À ajouter temporairement dans votre header.php
-foreach ([
-    '/assets/css/portal.css',
-    '/templates/assets/css/header.css'
-] as $cssFile) {
-    echo "<pre>Test du fichier {$cssFile}: ";
-    echo file_exists($_SERVER['DOCUMENT_ROOT'] . $cssFile) ? '✅ Existe' : '❌ Introuvable';
-    echo "\nPermissions: " . substr(sprintf('%o', fileperms($_SERVER['DOCUMENT_ROOT'] . $cssFile)), -4);
-    echo "</pre>";
-}
 // Variables avec fallbacks sécurisés
 $page_title = htmlspecialchars($page_title ?? 'Portail Guldagil');
 $page_subtitle = htmlspecialchars($page_subtitle ?? 'Solutions professionnelles');
