@@ -5,7 +5,7 @@
  * Version: 0.5 beta + build auto
  */
 
-define('ROOT_PATH', dirname(__DIR__, 1));
+//define('ROOT_PATH', dirname(__DIR__, 1));
 
 // Protection contre l'accès direct
 if (!defined('ROOT_PATH')) {
