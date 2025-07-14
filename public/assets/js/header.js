@@ -181,3 +181,73 @@ class HeaderNotifications {
         `;
 
         // Bouton fermer
+        const closeBtn = notification.querySelector('button');
+        closeBtn.addEventListener('click', () => this.remove(notification));
+
+        this.container.appendChild(notification);
+
+        // Animation d'entrée
+        requestAnimationFrame(() => {
+            notification.style.transform = 'translateX(0)';
+            notification.style.opacity = '1';
+        });
+
+        // Auto-suppression
+        if (duration > 0) {
+            setTimeout(() => this.remove(notification), duration);
+        }
+
+        return notification;
+    }
+
+    remove(notification) {
+        if (!notification || !notification.parentNode) return;
+
+        notification.style.transform = 'translateX(100%)';
+        notification.style.opacity = '0';
+
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }
+
+    success(message, duration) {
+        return this.show(message, 'success', duration);
+    }
+
+    error(message, duration) {
+        return this.show(message, 'error', duration);
+    }
+
+    warning(message, duration) {
+        return this.show(message, 'warning', duration);
+    }
+
+    info(message, duration) {
+        return this.show(message, 'info', duration);
+    }
+}
+
+// Instances globales
+let headerManager;
+let breadcrumbManager;
+let headerNotifications;
+
+// Initialisation du module header
+document.addEventListener('DOMContentLoaded', function() {
+    headerManager = new HeaderManager();
+    breadcrumbManager = new BreadcrumbManager();
+    headerNotifications = new HeaderNotifications();
+    
+    // Exposer les notifications globalement
+    window.headerNotifications = headerNotifications;
+    
+    console.log('Header module initialisé');
+});
+
+// Export pour utilisation modulaire
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { HeaderManager, BreadcrumbManager, HeaderNotifications };
+}
