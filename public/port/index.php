@@ -12,7 +12,6 @@ error_reporting(E_ALL);
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../config/version.php';
-require_once ROOT_PATH . '/config/error_handler_simple.php';
 
 // Variables pour header/footer
 $version_info = getVersionInfo();
