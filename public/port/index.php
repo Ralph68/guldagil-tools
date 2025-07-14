@@ -88,6 +88,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
         $carrier_results = $results['results'] ?? $results;
         
         foreach ($carrier_results as $carrier => $price) {
+            // Masquer temporairement K+N qui ne sera pas utilisé
+    if ($carrier === 'kuehne_nagel' || $carrier === 'kn') {
+        continue; // Module désactivé - non utilisé
+    }
             $response['carriers'][$carrier] = [
                 'name' => $carrier_names[$carrier] ?? strtoupper($carrier),
                 'price' => $price,
