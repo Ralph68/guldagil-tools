@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Page d'erreur centralisée
+ * Titre: Page d'erreur centralisée avec signalement
  * Chemin: /public/error.php
  * Version: 0.5 beta + build auto
  */
@@ -28,6 +28,85 @@ if (file_exists(ROOT_PATH . '/config/version.php')) {
         ];
     } catch (Exception $e) {
         error_log("Erreur chargement version: " . $e->getMessage());
+    }
+}
+
+// Configuration mail admin
+$admin_email = 'runser.jean.thomas@guldagil.com';
+$mail_sent = false;
+$mail_error = '';
+
+// Traitement signalement
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'report') {
+    $user_message = trim($_POST['user_message'] ?? '');
+    $user_email = trim($_POST['user_email'] ?? '');
+    
+    // Collecte des informations de l'erreur
+    $error_type = $_GET['type'] ?? 'server';
+    $error_details = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'url' => $_SERVER['REQUEST_URI'] ?? 'N/A',
+        'method' => $_SERVER['REQUEST_METHOD'] ?? 'N/A',
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'N/A',
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'N/A',
+        'referer' => $_SERVER['HTTP_REFERER'] ?? 'N/A',
+        'error_type' => $error_type,
+        'session_data' => isset($_SESSION['user']) ? $_SESSION['user']['username'] ?? 'Inconnu' : 'Non connecté',
+        'version' => $version_info['version'],
+        'build' => $version_info['build']
+    ];
+    
+    // Construction du message mail
+    $subject = "🚨 Erreur signalée - Portail Guldagil (" . strtoupper($error_type) . ")";
+    
+    $body = "Une erreur a été signalée sur le portail Guldagil.\n\n";
+    $body .= "=== DÉTAILS DE L'ERREUR ===\n";
+    $body .= "Type: " . strtoupper($error_type) . "\n";
+    $body .= "URL: " . $error_details['url'] . "\n";
+    $body .= "Méthode: " . $error_details['method'] . "\n";
+    $body .= "Timestamp: " . $error_details['timestamp'] . "\n";
+    $body .= "IP utilisateur: " . $error_details['ip'] . "\n";
+    $body .= "User-Agent: " . $error_details['user_agent'] . "\n";
+    $body .= "Page précédente: " . $error_details['referer'] . "\n";
+    $body .= "Utilisateur connecté: " . $error_details['session_data'] . "\n";
+    $body .= "Version: " . $error_details['version'] . " (build " . $error_details['build'] . ")\n\n";
+    
+    if (!empty($user_message)) {
+        $body .= "=== MESSAGE UTILISATEUR ===\n";
+        $body .= $user_message . "\n\n";
+    }
+    
+    if (!empty($user_email)) {
+        $body .= "=== CONTACT UTILISATEUR ===\n";
+        $body .= "Email: " . $user_email . "\n\n";
+    }
+    
+    $body .= "=== LIEN DIRECT ===\n";
+    $body .= "https://gul.runser.ovh" . $error_details['url'] . "\n\n";
+    $body .= "Ce signalement a été généré automatiquement par le système d'erreurs du portail Guldagil.\n";
+    
+    // Headers mail
+    $headers = [
+        'From' => 'noreply@guldagil.com',
+        'Reply-To' => !empty($user_email) ? $user_email : 'noreply@guldagil.com',
+        'X-Mailer' => 'Guldagil Portal Error Reporter',
+        'Content-Type' => 'text/plain; charset=UTF-8'
+    ];
+    
+    // Tentative d'envoi
+    try {
+        $mail_sent = mail($admin_email, $subject, $body, implode("\r\n", array_map(
+            function($k, $v) { return "$k: $v"; }, 
+            array_keys($headers), 
+            array_values($headers)
+        )));
+        
+        if (!$mail_sent) {
+            $mail_error = "Erreur d'envoi de mail";
+        }
+    } catch (Exception $e) {
+        $mail_error = "Exception mail: " . $e->getMessage();
+        error_log("Erreur envoi mail signalement: " . $e->getMessage());
     }
 }
 
@@ -141,6 +220,7 @@ error_log($log_message);
             --gray-900: #111827;
             --error: #ef4444;
             --warning: #f59e0b;
+            --success: #10b981;
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
             --radius: 8px;
         }
@@ -185,18 +265,11 @@ error_log($log_message);
             margin-bottom: 10px;
         }
 
-        .error-code {
-            font-size: 1.25rem;
-            color: var(--error);
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
         .error-message {
             font-size: 1.125rem;
-            color: var(--gray-700);
-            margin-bottom: 10px;
-            font-weight: 500;
+            font-weight: 600;
+            color: var(--error);
+            margin-bottom: 15px;
         }
 
         .error-description {
@@ -209,8 +282,8 @@ error_log($log_message);
             display: flex;
             gap: 15px;
             justify-content: center;
-            flex-wrap: wrap;
             margin-bottom: 30px;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -220,10 +293,10 @@ error_log($log_message);
             padding: 12px 24px;
             border-radius: var(--radius);
             text-decoration: none;
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
+            font-weight: 600;
             transition: all 0.2s;
+            cursor: pointer;
+            border: none;
             font-size: 0.95rem;
         }
 
@@ -238,36 +311,112 @@ error_log($log_message);
         }
 
         .btn-secondary {
-            background: var(--gray-100);
+            background: var(--gray-200);
             color: var(--gray-700);
-            border: 1px solid var(--gray-300);
         }
 
         .btn-secondary:hover {
-            background: var(--gray-200);
-            border-color: var(--gray-400);
+            background: var(--gray-300);
+            transform: translateY(-1px);
+        }
+
+        .btn-report {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-report:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+        }
+
+        .report-section {
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            padding: 25px;
+            margin: 30px 0;
+            text-align: left;
+            border: 1px solid var(--gray-200);
+        }
+
+        .report-section h3 {
+            color: var(--gray-900);
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .form-group input, 
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
         }
 
         .debug-info {
-            margin-top: 30px;
-            padding: 20px;
             background: var(--gray-50);
+            border: 1px solid var(--gray-200);
             border-radius: var(--radius);
-            border-left: 4px solid var(--warning);
+            padding: 20px;
+            margin: 30px 0;
             text-align: left;
         }
 
         .debug-info h3 {
-            color: var(--warning);
+            color: var(--gray-900);
             margin-bottom: 15px;
-            font-size: 1rem;
         }
 
         .debug-info dl {
             display: grid;
             grid-template-columns: auto 1fr;
-            gap: 8px;
-            font-size: 0.875rem;
+            gap: 8px 15px;
         }
 
         .debug-info dt {
@@ -277,21 +426,28 @@ error_log($log_message);
 
         .debug-info dd {
             color: var(--gray-600);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
             word-break: break-all;
         }
 
         .footer {
-            margin-top: 30px;
-            padding-top: 20px;
             border-top: 1px solid var(--gray-200);
-            font-size: 0.875rem;
+            padding-top: 20px;
+            margin-top: 30px;
             color: var(--gray-500);
+            font-size: 0.9rem;
         }
 
         .version-info {
             margin-top: 10px;
-            font-size: 0.75rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
             color: var(--gray-400);
+        }
+
+        .hidden {
+            display: none;
         }
 
         @media (max-width: 640px) {
@@ -299,12 +455,9 @@ error_log($log_message);
                 padding: 30px 20px;
             }
             
-            .error-title {
-                font-size: 1.5rem;
-            }
-            
             .error-actions {
                 flex-direction: column;
+                align-items: center;
             }
             
             .btn {
@@ -316,13 +469,22 @@ error_log($log_message);
 </head>
 <body>
     <div class="error-container">
-        <span class="error-icon"><?= $error['icon'] ?></span>
-        
+        <span class="error-icon"><?= htmlspecialchars($error['icon']) ?></span>
         <h1 class="error-title"><?= htmlspecialchars($error['title']) ?></h1>
-        <div class="error-code">Erreur <?= $error['code'] ?></div>
-        
         <p class="error-message"><?= htmlspecialchars($error['message']) ?></p>
         <p class="error-description"><?= htmlspecialchars($error['description']) ?></p>
+        
+        <?php if ($mail_sent): ?>
+        <div class="alert alert-success">
+            <span>✅</span>
+            <span>Le problème a été signalé à l'équipe technique. Nous vous répondrons rapidement si vous avez fourni votre email.</span>
+        </div>
+        <?php elseif (!empty($mail_error)): ?>
+        <div class="alert alert-error">
+            <span>❌</span>
+            <span>Erreur lors de l'envoi du signalement. Veuillez contacter directement l'administrateur.</span>
+        </div>
+        <?php endif; ?>
         
         <div class="error-actions">
             <a href="/" class="btn btn-primary">
@@ -339,11 +501,54 @@ error_log($log_message);
             </a>
             <?php endif; ?>
             
+            <button onclick="toggleReportForm()" class="btn btn-report" id="reportBtn">
+                📧 Signaler le problème
+            </button>
+            
             <?php if (!$is_production): ?>
             <a href="?<?= http_build_query(array_merge($_GET, ['debug' => '1'])) ?>" class="btn btn-secondary">
                 🔧 Infos debug
             </a>
             <?php endif; ?>
+        </div>
+        
+        <div id="reportForm" class="report-section hidden">
+            <h3>📧 Signaler ce problème à l'équipe technique</h3>
+            <p style="color: var(--gray-600); margin-bottom: 20px;">
+                Décrivez brièvement le problème rencontré. Les détails techniques seront automatiquement inclus.
+            </p>
+            
+            <form method="POST" action="">
+                <input type="hidden" name="action" value="report">
+                
+                <div class="form-group">
+                    <label for="user_message">Description du problème (optionnel) :</label>
+                    <textarea 
+                        id="user_message" 
+                        name="user_message" 
+                        placeholder="Que faisiez-vous quand l'erreur s'est produite ? Autres détails utiles..."
+                    ></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="user_email">Votre email (optionnel, pour suivi) :</label>
+                    <input 
+                        type="email" 
+                        id="user_email" 
+                        name="user_email" 
+                        placeholder="votre.email@exemple.com"
+                    >
+                </div>
+                
+                <div class="error-actions">
+                    <button type="submit" class="btn btn-report">
+                        📧 Envoyer le signalement
+                    </button>
+                    <button type="button" onclick="toggleReportForm()" class="btn btn-secondary">
+                        Annuler
+                    </button>
+                </div>
+            </form>
         </div>
         
         <?php if (!empty($debug_info)): ?>
@@ -369,5 +574,29 @@ error_log($log_message);
             </div>
         </footer>
     </div>
+
+    <script>
+        function toggleReportForm() {
+            const form = document.getElementById('reportForm');
+            const btn = document.getElementById('reportBtn');
+            
+            if (form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+                btn.textContent = '📧 Masquer le formulaire';
+                form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                form.classList.add('hidden');
+                btn.textContent = '📧 Signaler le problème';
+            }
+        }
+        
+        // Auto-scroll vers les alertes si présentes
+        document.addEventListener('DOMContentLoaded', function() {
+            const alert = document.querySelector('.alert');
+            if (alert) {
+                alert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    </script>
 </body>
 </html>
