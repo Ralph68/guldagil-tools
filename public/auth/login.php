@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="icon" type="image/png" href="/assets/img/favicon.png">
     
     <!-- CSS modulaire -->
-    <link rel="stylesheet" href="/public/auth/assets/css/login.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="../assets/css/login.css?v=<?= $build_number ?>">
 </head>
 <body>
     <div class="login-container">
