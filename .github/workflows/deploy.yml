@@ -37,10 +37,10 @@ jobs:
             README.md
             public/system-check.php
             
-      - name: Quick health check
-        run: |
-          sleep 3
-          curl -f -m 10 https://gul.runser.ovh/health.php || curl -f -m 10 https://gul.runser.ovh/?health=check || exit 1
+      - name: Health check
+  run: |
+    sleep 3
+    curl -f -m 10 https://gul.runser.ovh/health.php || exit 1
           
       - name: Notify failure only
         if: failure()
