@@ -261,8 +261,28 @@ function cacheResult($key, $ttl = CACHE_DEFAULT_TTL) {
     };
 }
 
+function testDBConnection(): bool {
+    global $db;
+    if (!$db || !($db instanceof PDO)) {
+        return false;
+    }
+    
+    try {
+        $db->query("SELECT 1");
+        return true;
+    } catch (PDOException $e) {
+        error_log("Test connexion DB échoué: " . $e->getMessage());
+        return false;
+    }
+}
+
 // Initialisation du système
 try {
+    // Test de connexion base de données
+    if (!testDBConnection()) {
+        throw new Exception('Erreur de connexion à la base de données');
+    }
+    
     // Initialisation du cache
     if (!is_dir(CACHE_CONFIG['path'])) {
         mkdir(CACHE_CONFIG['path'], 0755, true);
@@ -280,6 +300,7 @@ try {
     if (DEBUG) {
         error_log("Erreur d'initialisation: " . $e->getMessage());
     }
+    die('Erreur d\'initialisation du système');
 }
 
 // Chargement automatique du fichier version
