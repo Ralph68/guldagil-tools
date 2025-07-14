@@ -5,6 +5,7 @@
  * Version: 0.5 beta + build auto
  */
 
+require_once ROOT_PATH . '/config/error_handler_simple.php';
 session_start();
 
 // Vérification authentification portail
