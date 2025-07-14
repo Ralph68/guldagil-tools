@@ -119,9 +119,9 @@ foreach ($dirs as $dir) {
 
 // Chargement fichiers config
 $config_files = [
-    CONFIG_PATH . '/database.php',
-    CONFIG_PATH . '/auth_database.php', 
-    CONFIG_PATH . '/functions.php'
+    ROOT_PATH . '/config/database.php',
+    ROOT_PATH . '/config/auth_database.php', 
+    ROOT_PATH . '/config/functions.php'
 ];
 
 echo "🔍 Chargement fichiers config...\n";
