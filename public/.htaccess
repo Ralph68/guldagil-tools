@@ -57,10 +57,10 @@ RewriteRule ^(.*)$ /error.php?type=403 [R=403,L]
 # =====================================
 # PAGES D'ERREUR
 # =====================================
-ErrorDocument 404 /error.php?type=404
-ErrorDocument 403 /error.php?type=403
-ErrorDocument 500 /error.php?type=500
-ErrorDocument 503 /error.php?type=503
+#ErrorDocument 404 /error.php?type=404
+#ErrorDocument 403 /error.php?type=403
+#ErrorDocument 500 /error.php?type=500
+#ErrorDocument 503 /error.php?type=503
 
 # =====================================
 # MODULES
