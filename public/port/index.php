@@ -51,6 +51,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             'option_sup' => trim($post_data['option_sup'] ?? 'standard'),
             'enlevement' => ($post_data['enlevement'] ?? 'non') === 'oui',
             'palettes' => max(1, intval($post_data['palettes'] ?? 1)),
+            'palette_eur' => intval($post_data['palette_eur'] ?? 0),
         ];
         
         if (empty($params['departement']) || !preg_match('/^[0-9]{2,3}$/', $params['departement'])) {
@@ -597,6 +598,17 @@ require_once ROOT_PATH . '/templates/header.php';
                         <input type="number" id="palettes" name="palettes" class="form-input" 
                                min="1" max="20" value="1">
                     </div>
+                    <div class="form-group" id="paletteEurGroup" style="display: none;">
+    <label class="form-label" for="palette_eur">
+        🏷️ Palettes EUR consignées
+        <span style="font-size: 12px; color: var(--gray-500);">- Facultatif</span>
+    </label>
+    <input type="number" id="palette_eur" name="palette_eur" class="form-input" 
+           min="0" value="0" step="1" placeholder="Nombre de palettes EUR">
+    <small style="color: var(--gray-500); font-size: 12px;">
+        💡 <strong>0 = palette perdue</strong> (économise 1,80€ de consigne XPO par palette)
+    </small>
+</div>
                     
                     <div class="form-group">
                         <label class="form-label">Transport ADR (matières dangereuses) *</label>
