@@ -1,0 +1,582 @@
+/**
+ * Titre: CSS Admin - Module Administration
+ * Chemin: /public/admin/assets/css/admin.css
+ * Version: 0.5 beta + build auto
+ */
+
+:root {
+    --admin-primary: #2c3e50;
+    --admin-secondary: #3498db;
+    --admin-success: #27ae60;
+    --admin-warning: #f39c12;
+    --admin-danger: #e74c3c;
+    --admin-light: #ecf0f1;
+    --admin-white: #ffffff;
+    --admin-text: #2c3e50;
+    --admin-border: #bdc3c7;
+    --admin-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    --admin-transition: all 0.3s ease;
+}
+
+/* ================================
+   NAVIGATION ADMIN
+   ================================ */
+
+.admin-nav {
+    background: var(--admin-white);
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--admin-border);
+    margin-bottom: 2rem;
+    box-shadow: var(--admin-shadow);
+}
+
+.nav-tabs {
+    list-style: none;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-tab {
+    padding: 0.75rem 1.5rem;
+    background: var(--admin-light);
+    border: 1px solid var(--admin-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--admin-transition);
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-tab::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: left 0.5s;
+}
+
+.nav-tab:hover::before {
+    left: 100%;
+}
+
+.nav-tab:hover,
+.nav-tab.active {
+    background: var(--admin-secondary);
+    color: var(--admin-white);
+    border-color: var(--admin-secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+/* ================================
+   LAYOUT ADMIN
+   ================================ */
+
+.admin-content {
+    padding: 0 2rem 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tab-content h2 {
+    color: var(--admin-primary);
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+    font-weight: 600;
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+.tab-content h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: var(--admin-secondary);
+    border-radius: 2px;
+}
+
+/* ================================
+   GRILLES ET CARTES
+   ================================ */
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.admin-card {
+    background: var(--admin-white);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--admin-shadow);
+    border: 1px solid var(--admin-border);
+    transition: var(--admin-transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--admin-secondary), var(--admin-success));
+}
+
+.admin-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.admin-card h3 {
+    color: var(--admin-primary);
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, var(--admin-white) 0%, #f8f9fa 100%);
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: var(--admin-shadow);
+    border: 1px solid var(--admin-border);
+    transition: var(--admin-transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(52, 152, 219, 0.1) 0%, transparent 70%);
+    transform: scale(0);
+    transition: transform 0.6s ease;
+}
+
+.stat-card:hover::before {
+    transform: scale(1);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(52, 152, 219, 0.2);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--admin-secondary);
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.stat-label {
+    color: var(--admin-text);
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1;
+}
+
+/* ================================
+   TABLEAUX
+   ================================ */
+
+.table-container {
+    background: var(--admin-white);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--admin-shadow);
+    border: 1px solid var(--admin-border);
+}
+
+.table-header {
+    background: linear-gradient(135deg, var(--admin-primary) 0%, #34495e 100%);
+    color: var(--admin-white);
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.table-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+th, td {
+    padding: 1rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--admin-border);
+    vertical-align: middle;
+}
+
+th {
+    background: var(--admin-light);
+    font-weight: 600;
+    color: var(--admin-primary);
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+tr {
+    transition: var(--admin-transition);
+}
+
+tr:hover {
+    background: rgba(52, 152, 219, 0.05);
+    transform: scale(1.01);
+}
+
+tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+/* ================================
+   BOUTONS
+   ================================ */
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: var(--admin-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+}
+
+.btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--admin-secondary) 0%, #2980b9 100%);
+    color: var(--admin-white);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--admin-success) 0%, #229954 100%);
+    color: var(--admin-white);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, var(--admin-warning) 0%, #e67e22 100%);
+    color: var(--admin-white);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--admin-danger) 0%, #c0392b 100%);
+    color: var(--admin-white);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* ================================
+   ÉLÉMENTS DE STATUT
+   ================================ */
+
+.module-status {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-active {
+    background: linear-gradient(135deg, var(--admin-success) 0%, #229954 100%);
+    color: var(--admin-white);
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+}
+
+.status-inactive {
+    background: linear-gradient(135deg, var(--admin-danger) 0%, #c0392b 100%);
+    color: var(--admin-white);
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
+/* ================================
+   FORMULAIRES
+   ================================ */
+
+select, input[type="text"], input[type="email"], input[type="password"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--admin-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--admin-transition);
+    background: var(--admin-white);
+}
+
+select:focus, input:focus {
+    outline: none;
+    border-color: var(--admin-secondary);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* ================================
+   ÉTATS DE CHARGEMENT
+   ================================ */
+
+.loading {
+    text-align: center;
+    padding: 3rem;
+    color: var(--admin-secondary);
+    font-size: 1.1rem;
+    position: relative;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--admin-light);
+    border-top: 2px solid var(--admin-secondary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ================================
+   SYSTÈME STATUS
+   ================================ */
+
+#system-status {
+    line-height: 2;
+}
+
+#system-status div {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    transition: var(--admin-transition);
+}
+
+#system-status div:hover {
+    background: rgba(52, 152, 219, 0.05);
+    padding-left: 0.5rem;
+}
+
+#system-status div:last-child {
+    border-bottom: none;
+}
+
+/* ================================
+   RESPONSIVE
+   ================================ */
+
+@media (max-width: 1200px) {
+    .admin-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-content {
+        padding: 0 1rem 2rem;
+    }
+    
+    .admin-nav {
+        padding: 1rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .nav-tabs {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .nav-tab {
+        text-align: center;
+    }
+    
+    .table-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .btn {
+        justify-content: center;
+    }
+    
+    .admin-card {
+        padding: 1.5rem;
+    }
+    
+    th, td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-card {
+        padding: 1.5rem;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .admin-card h3 {
+        font-size: 1.1rem;
+    }
+    
+    .tab-content h2 {
+        font-size: 1.5rem;
+    }
+}
+
+/* ================================
+   DARK MODE (préparation future)
+   ================================ */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --admin-primary: #34495e;
+        --admin-light: #2c3e50;
+        --admin-white: #1a252f;
+        --admin-text: #ecf0f1;
+        --admin-border: #34495e;
+    }
+}
+
+/* ================================
+   ANIMATIONS D'ENTRÉE
+   ================================ */
+
+.admin-card, .stat-card, .table-container {
+    animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Délais d'animation pour effet en cascade */
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+.admin-card:nth-child(1) { animation-delay: 0.1s; }
+.admin-card:nth-child(2) { animation-delay: 0.2s; }
