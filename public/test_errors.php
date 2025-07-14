@@ -16,22 +16,22 @@ $test_type = $_GET['test'] ?? '';
 switch ($test_type) {
     case '404':
         header('HTTP/1.0 404 Not Found');
-        include '404.php';
+        include __DIR__ . '/errors/404.php';
         break;
         
     case '403':
         header('HTTP/1.0 403 Forbidden');
-        include '403.php';
+        include __DIR__ . '/errors/403.php';
         break;
         
     case '500':
         header('HTTP/1.0 500 Internal Server Error');
-        include '500.php';
+        include __DIR__ . '/errors/500.php';
         break;
         
     case '503':
         header('HTTP/1.0 503 Service Unavailable');
-        include '503.php';
+        include __DIR__ . '/errors/503.php';
         break;
         
     case 'php_error':
