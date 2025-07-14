@@ -100,8 +100,8 @@ $module_icon = match($current_module) {
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     
     <!-- CSS Header et Footer globaux -->
-    <link rel="stylesheet" href="../templates/assets/css/header.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="../templates/assets/css/footer.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/footer.css?v=<?= $build_number ?>">
     
     <!-- CSS Composants globaux -->
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
