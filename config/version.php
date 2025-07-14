@@ -17,7 +17,7 @@ define('BUILD_TIMESTAMP', $build_info['timestamp']);
 // Constantes fixes
 define('COPYRIGHT_YEAR', date('Y'));
 define('APP_ENV', $_ENV['APP_ENV'] ?? 'development');
-define('DEBUG', APP_ENV === 'development');
+//define('DEBUG', APP_ENV === 'development');
 define('APP_NAME', 'Portail Guldagil - Achats et Logistique');
 define('APP_DESCRIPTION', 'Calc frais port, ADR, contrôle qualité...');
 define('APP_AUTHOR', 'Jean-Thomas RUNSER');
