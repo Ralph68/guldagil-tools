@@ -7,7 +7,7 @@
 
 // Sécurité et configuration
 session_start();
-define('ROOT_PATH', dirname(__DIR__, 2));
+define('ROOT_PATH', dirname(__DIR__, 3));
 
 // Authentification admin obligatoire
 if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
