@@ -1,9 +1,7 @@
 name: Deploy PROD - Fast
-
 on:
   push:
     branches: [main]
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -38,9 +36,9 @@ jobs:
             public/system-check.php
             
       - name: Health check
-  run: |
-    sleep 3
-    curl -f -m 10 https://gul.runser.ovh/health.php || exit 1
+        run: |
+          sleep 3
+          curl -f -m 10 https://gul.runser.ovh/health.php || exit 1
           
       - name: Notify failure only
         if: failure()
