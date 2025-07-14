@@ -5,11 +5,18 @@
  * Version: 0.5 beta + build auto
  */
 
+define('ENVIRONMENT', getenv('APP_ENV') ?: 'production');
+define('ERROR_LOG_FILE', 'php_errors_' . ENVIRONMENT . '.log');
+
 // Gestionnaire d'erreurs PHP personnalisé
 function customErrorHandler($severity, $message, $file, $line) {
     // Ne pas traiter les erreurs supprimées avec @
     if (!(error_reporting() & $severity)) {
         return false;
+    if (in_array($severity, [E_WARNING, E_NOTICE])) {
+    // Journalisation mais pas de redirection
+    error_log($log_message);
+    return true;
     }
     
     $error_types = [
@@ -42,7 +49,7 @@ function customErrorHandler($severity, $message, $file, $line) {
         $line
     );
     
-    error_log($log_message);
+    error_log($log_message, 3, ERROR_LOG_FILE);
     
     // Redirection vers page d'erreur selon la gravité
     if (in_array($severity, [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR])) {
@@ -64,12 +71,13 @@ function customErrorHandler($severity, $message, $file, $line) {
 // Gestionnaire d'exceptions non capturées
 function customExceptionHandler($exception) {
     $error_params = [
-        'type' => 'general',
-        'code' => $exception->getCode() ?: 500,
-        'message' => $exception->getMessage(),
-        'file' => basename($exception->getFile()),
-        'line' => $exception->getLine()
-    ];
+    'type' => 'general',
+    'code' => $exception->getCode() ?: 500,
+    'message' => $exception->getMessage(),
+    'file' => basename($exception->getFile()),
+    'line' => $exception->getLine(),
+    'environment' => ENVIRONMENT
+];
     
     error_log(sprintf(
         "[%s] Uncaught Exception: %s in %s on line %d",
@@ -89,12 +97,13 @@ function customShutdownHandler() {
     
     if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE])) {
         $error_params = [
-            'type' => 'general',
-            'code' => 500,
-            'message' => $error['message'],
-            'file' => basename($error['file']),
-            'line' => $error['line']
-        ];
+    'type' => 'general',
+    'code' => $exception->getCode() ?: 500,
+    'message' => $exception->getMessage(),
+    'file' => basename($exception->getFile()),
+    'line' => $exception->getLine(),
+    'environment' => ENVIRONMENT
+];
         
         // Ne pas rediriger si les headers sont déjà envoyés
         if (!headers_sent()) {
