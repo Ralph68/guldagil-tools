@@ -26,7 +26,9 @@ $breadcrumbs = [
     ['icon' => '🚛', 'text' => 'Calculateur', 'url' => '/port/', 'active' => true]
 ];
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Authentification
 if (!$user_authenticated) {
@@ -154,8 +156,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delay') {
 // Chargement header
 require_once ROOT_PATH . '/templates/header.php';
 ?>
-
-<link rel="stylesheet" href="./assets/css/calculateur.css?v=<?= $build_number ?>">
 
 <div class="calc-container">
     <header class="calc-header">
