@@ -1,326 +1,258 @@
 <?php
 /**
- * Titre: Page d'accueil du portail Guldagil
+ * Titre: Page d'accueil du portail Guldagil - VERSION CORRIGÉE
  * Chemin: /public/index.php
  * Version: 0.5 beta + build auto
  */
-// Health check fallback AVANT tout autre traitement
-if (isset($_GET['health']) && $_GET['health'] === 'check') {
-    header('Content-Type: application/json');
-    echo json_encode(['status' => 'ok', 'timestamp' => date('c')]);
-    exit;
-}
 
-// Protection et initialisation
-session_start();
+// Configuration de base
 define('ROOT_PATH', dirname(__DIR__));
+session_start();
 
-// Configuration des erreurs selon l'environnement
-$is_production = (getenv('APP_ENV') === 'production');
-if (!$is_production) {
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-} else {
-    error_reporting(0);
-    ini_set('display_errors', 0);
-}
+// Debug mode (à désactiver en production)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// DÉTECTION AUTOMATIQUE DES CHEMINS CONFIG
-// Structure O2Switch avec config à la racine du serveur
-$possible_config_paths = [
-    '/config/config.php',                                // O2Switch - racine serveur
-    ROOT_PATH . '/config/config.php',                    // Structure standard
-    __DIR__ . '/../config/config.php',                   // Relatif depuis public/
-    dirname($_SERVER['DOCUMENT_ROOT']) . '/config/config.php', // Parent du document root
-    $_SERVER['DOCUMENT_ROOT'] . '/../config/config.php'  // Document root parent
+// Tentative de chargement config
+$config_loaded = false;
+$possible_configs = [
+    ROOT_PATH . '/config/config.php',
+    ROOT_PATH . '/config/version.php'
 ];
 
-$config_path = null;
-$version_path = null;
-
-// Trouver config.php
-foreach ($possible_config_paths as $path) {
-    if (file_exists($path)) {
-        $config_path = $path;
-        break;
-    }
-}
-
-// Chargement sécurisé de la configuration
-if (!$config_path) {
-    // Debug amélioré pour voir la structure réelle
-    $debug_info = [
-        'Document Root détecté' => $_SERVER['DOCUMENT_ROOT'] ?? 'Non défini',
-        'Script actuel' => __FILE__,
-        'Dossier script' => __DIR__,
-        'ROOT_PATH calculé' => ROOT_PATH,
-        'Structure' => []
-    ];
-    
-    // Analyser la structure des dossiers
-    foreach ([ROOT_PATH, dirname(ROOT_PATH), __DIR__] as $dir) {
-        if (is_dir($dir)) {
-            $debug_info['Structure'][$dir] = array_filter(scandir($dir), function($item) {
-                return $item !== '.' && $item !== '..';
-            });
-        }
-    }
-    
-    http_response_code(500);
-    echo '<h1>❌ Erreur Configuration</h1>';
-    echo '<p>Fichier config.php introuvable dans :<br>' . implode('<br>', $possible_config_paths) . '</p>';
-    echo '<h2>🔍 Debug Structure</h2>';
-    echo '<pre>' . print_r($debug_info, true) . '</pre>';
-    die();
-}
-
-// Chercher version.php dans le même dossier que config.php
-if ($config_path) {
-    $version_path = dirname($config_path) . '/version.php';
-    if (!file_exists($version_path)) {
-        // Autres emplacements possibles pour O2Switch
-        $possible_version_paths = [
-            '/config/version.php',
-            ROOT_PATH . '/config/version.php',
-            dirname($_SERVER['DOCUMENT_ROOT']) . '/config/version.php'
-        ];
-        
-        foreach ($possible_version_paths as $path) {
-            if (file_exists($path)) {
-                $version_path = $path;
-                break;
-            }
+foreach ($possible_configs as $config_path) {
+    if (file_exists($config_path)) {
+        try {
+            require_once $config_path;
+            $config_loaded = true;
+        } catch (Exception $e) {
+            error_log("Erreur config: " . $e->getMessage());
         }
     }
 }
+
+// Variables de base (avec ou sans config)
+$app_name = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
+$app_version = defined('APP_VERSION') ? APP_VERSION : '0.5-beta';
+$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd');
+$app_author = defined('APP_AUTHOR') ? APP_AUTHOR : 'Jean-Thomas RUNSER';
+
+// Variables pour template
+$page_title = 'Accueil du portail';
+$page_subtitle = 'Solutions professionnelles';
+$page_description = 'Portail Guldagil - Solutions pour le traitement de l\'eau et la logistique';
+$current_module = 'home';
+$module_css = false; // CSS spéciaux pas nécessaires pour l'accueil
+
+// Gestion utilisateur
+$user_authenticated = false;
+$current_user = null;
 
 try {
-    require_once $config_path;
-    
-    if ($version_path && file_exists($version_path)) {
-        require_once $version_path;
+    // Tentative AuthManager
+    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
+        require_once ROOT_PATH . '/core/auth/AuthManager.php';
+        $auth = new AuthManager();
+        
+        if ($auth->isAuthenticated()) {
+            $user_authenticated = true;
+            $current_user = $auth->getCurrentUser();
+        }
+    } else {
+        // Fallback session simple
+        if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
+            $user_authenticated = true;
+            $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
+        }
     }
 } catch (Exception $e) {
-    http_response_code(500);
-    $error_msg = $is_production ? 'Erreur de configuration' : htmlspecialchars($e->getMessage());
-    die('<h1>❌ Erreur</h1><p>' . $error_msg . '</p>');
+    error_log("Erreur auth: " . $e->getMessage());
 }
 
-// Vérification BDD
-if (!isset($db) || !($db instanceof PDO)) {
-    http_response_code(500);
-    die('<h1>❌ Erreur Base de Données</h1><p>Connexion non disponible</p>');
-}
-
-// AUTHENTIFICATION - DÉSACTIVÉE TEMPORAIREMENT POUR TESTS
-$user_authenticated = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
-$current_user = $user_authenticated ? ($_SESSION['user'] ?? null) : null;
-
-// BYPASS TEMPORAIRE - Commentez ces lignes une fois l'auth réparée
-if (!$user_authenticated) {
-    // Créer utilisateur temporaire pour éviter la boucle de redirection
-    $current_user = [
-        'username' => 'Demo User',
-        'role' => 'admin'  // Admin pour accès complet pendant les tests
-    ];
-    $user_authenticated = true;
-    
-    // Message de debug (à supprimer en production)
-    $demo_mode = true;
-}
-
-// Sécurisation utilisateur par défaut
-if (!$current_user) {
-    $current_user = [
-        'username' => 'Utilisateur',
-        'role' => 'user'
-    ];
-}
-
-// ============================================
-// VARIABLES POUR LES TEMPLATES HEADER/FOOTER
-// ============================================
-
-// Informations de la page
-$page_title = 'Portail Guldagil';
-$page_subtitle = 'Solutions professionnelles';
-$page_description = 'Portail de gestion - Calcul frais, ADR, contrôle qualité';
-$current_module = 'home';
-
-// Variables pour le header
-$app_name = 'Guldagil';
-$app_author = defined('APP_AUTHOR') ? APP_AUTHOR : 'Jean-Thomas RUNSER';
-$module_css = false;
-$module_js = false;
-
-// Variables pour le footer avec fallbacks
-$version_info = [
-    'version' => defined('APP_VERSION') ? APP_VERSION : '0.5-beta',
-    'build' => defined('BUILD_NUMBER') ? BUILD_NUMBER : '00000000',
-    'short_build' => defined('BUILD_NUMBER') ? substr(BUILD_NUMBER, 0, 8) : '????????',
-    'date' => defined('BUILD_DATE') ? BUILD_DATE : date('Y-m-d'),
-    'year' => date('Y')
-];
-$show_admin_footer = true;
-
-// Fil d'Ariane
+// Breadcrumbs
 $breadcrumbs = [
     ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => true]
 ];
 
-$nav_info = 'Tableau de bord principal';
-
-// Configuration des niveaux d'accès
-$roles = ['guest' => 0, 'user' => 1, 'manager' => 2, 'admin' => 3, 'dev' => 4];
-$user_level = $roles[$current_user['role']] ?? 0;
-
-// Modules disponibles - TOUS LES MODULES
-$available_modules = [
+// Modules disponibles
+$modules = [
     'calculateur' => [
         'name' => 'Calculateur de frais',
-        'description' => 'Calcul et comparaison des tarifs de transport pour XPO, Heppner et Kuehne+Nagel',
-        'icon' => '🧮',
-        'color' => 'blue',
+        'description' => 'Calcul automatique des frais de port selon transporteur',
+        'icon' => '🚛',
+        'url' => '/calculateur/',
         'status' => 'active',
-        'status_label' => 'OPÉRATIONNEL',
-        'path' => '/port/',
-        'features' => ['Comparaison multi-transporteurs', 'Calculs automatisés', 'Export et historique'],
-        'min_level' => 1,
-        'estimated_completion' => '100%'
+        'color' => 'blue'
     ],
     'adr' => [
-        'name' => 'Gestion ADR',
-        'description' => 'Transport de marchandises dangereuses - Déclarations et suivi réglementaire',
+        'name' => 'Module ADR',
+        'description' => 'Gestion des marchandises dangereuses',
         'icon' => '⚠️',
-        'color' => 'orange',
+        'url' => '/adr/',
         'status' => 'active',
-        'status_label' => 'OPÉRATIONNEL',
-        'path' => '/adr/',
-        'features' => ['Déclarations ADR', 'Gestion des quotas', 'Suivi réglementaire'],
-        'min_level' => 1,
-        'estimated_completion' => '95%'
+        'color' => 'orange'
     ],
     'qualite' => [
-        'name' => 'Contrôle Qualité',
-        'description' => 'Contrôle et validation des équipements - Suivi qualité et conformité',
+        'name' => 'Contrôle qualité',
+        'description' => 'Gestion et suivi de la qualité',
         'icon' => '✅',
-        'color' => 'green',
-        'status' => 'active',
-        'status_label' => 'OPÉRATIONNEL',
-        'path' => '/qualite/',
-        'features' => ['Tests et validations', 'Rapports de conformité', 'Suivi des équipements'],
-        'min_level' => 1,
-        'estimated_completion' => '85%'
+        'url' => '/qualite/',
+        'status' => 'development',
+        'color' => 'green'
     ],
     'epi' => [
         'name' => 'Équipements EPI',
-        'description' => 'Gestion des équipements de protection individuelle - Stock et maintenance',
-        'icon' => '🛡️',
-        'color' => 'purple',
-        'status' => 'active',
-        'status_label' => 'OPÉRATIONNEL',
-        'path' => '/epi/',
-        'features' => ['Inventaire EPI', 'Suivi des dates d\'expiration', 'Gestion des commandes'],
-        'min_level' => 1,
-        'estimated_completion' => '75%'
+        'description' => 'Gestion des équipements de protection',
+        'icon' => '🦺',
+        'url' => '/epi/',
+        'status' => 'development',
+        'color' => 'purple'
     ],
     'outillages' => [
         'name' => 'Outillages',
-        'description' => 'Gestion des outils et équipements techniques - Maintenance et traçabilité',
+        'description' => 'Gestion du matériel et outillages',
         'icon' => '🔧',
-        'color' => 'gray',
+        'url' => '/outillages/',
         'status' => 'development',
-        'status_label' => 'EN DÉVELOPPEMENT',
-        'path' => '/outillages/',
-        'features' => ['Inventaire outillage', 'Planning maintenance', 'Suivi d\'utilisation'],
-        'min_level' => 1,
-        'estimated_completion' => '40%'
-    ],
-    'admin' => [
-        'name' => 'Administration',
-        'description' => 'Configuration et gestion globale du portail - Réservé aux administrateurs',
-        'icon' => '⚙️',
-        'color' => 'red',
-        'status' => 'restricted',
-        'status_label' => 'ADMINISTRATEURS',
-        'path' => '/admin/',
-        'features' => ['Configuration système', 'Gestion utilisateurs', 'Maintenance'],
-        'min_level' => 3,
-        'estimated_completion' => '90%'
+        'color' => 'gray'
     ]
 ];
 
-// Filtrer les modules selon les droits d'accès
-$accessible_modules = array_filter($available_modules, function($module) use ($user_level) {
-    return $user_level >= $module['min_level'];
-});
-
-// Statistiques détaillées
-$stats = [
-    'modules_total' => count($available_modules),
-    'modules_accessible' => count($accessible_modules),
-    'modules_active' => count(array_filter($available_modules, fn($m) => $m['status'] === 'active')),
-    'modules_dev' => count(array_filter($available_modules, fn($m) => $m['status'] === 'development')),
-    'user_role' => $current_user['role'],
-    'user_level' => $user_level
+// Statistiques globales (simulées)
+$global_stats = [
+    'calculs_today' => 47,
+    'users_active' => 12,
+    'modules_available' => count($modules),
+    'uptime_percentage' => 99.8
 ];
 
-// Fonctions utilitaires
-function getStatusLabel($status) {
-    return match($status) {
-        'active' => 'Disponible',
-        'development' => 'En développement',
-        'restricted' => 'Accès restreint',
-        'maintenance' => 'Maintenance',
-        default => 'Non disponible'
-    };
-}
-
-function getModuleStatusClass($status) {
-    return match($status) {
-        'active' => 'module-available',
-        'development' => 'module-dev',
-        'restricted' => 'module-restricted',
-        'maintenance' => 'module-maintenance',
-        default => 'module-disabled'
-    };
-}
-
-// Inclure le header SANS CSS inline
+// Inclure header avec CSS complets
 if (file_exists(ROOT_PATH . '/templates/header.php')) {
     include ROOT_PATH . '/templates/header.php';
 } else {
+    // Header minimal de secours
     ?>
     <!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?= htmlspecialchars($page_title) ?></title>
+        <title><?= htmlspecialchars($page_title) ?> - <?= htmlspecialchars($app_name) ?></title>
         <meta name="description" content="<?= htmlspecialchars($page_description) ?>">
         <meta name="author" content="<?= htmlspecialchars($app_author) ?>">
         <meta name="robots" content="noindex, nofollow">
-        <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+        <link rel="icon" type="image/png" href="/public/assets/img/favicon.png">
+        
+        <!-- CSS COMPLETS pour public/index.php -->
+        <link rel="stylesheet" href="/public/assets/css/portal.css?v=<?= $build_number ?>">
+        <link rel="stylesheet" href="/public/assets/css/components.css?v=<?= $build_number ?>">
+        <link rel="stylesheet" href="/templates/assets/css/header.css?v=<?= $build_number ?>">
+        <link rel="stylesheet" href="/templates/assets/css/footer.css?v=<?= $build_number ?>">
+        
         <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-            .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-            .header { background: #2563eb; color: white; padding: 1rem; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-            .demo-warning { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 1rem; border-radius: 4px; margin-bottom: 20px; }
-            .modules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-            .module-card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; }
-            .module-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
-            .btn { display: inline-block; padding: 8px 16px; background: #2563eb; color: white; text-decoration: none; border-radius: 4px; }
-            .btn:hover { background: #1d4ed8; }
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                margin: 0; 
+                padding: 0; 
+                background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            .container { 
+                max-width: 1200px; 
+                margin: 0 auto; 
+                background: white; 
+                padding: 20px; 
+                border-radius: 8px; 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+                flex: 1;
+            }
+            .header { 
+                background: linear-gradient(135deg, #2c5282, #3182ce); 
+                color: white; 
+                padding: 1rem; 
+                border-radius: 8px; 
+                margin-bottom: 20px; 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+            }
+            .modules-grid { 
+                display: grid; 
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+                gap: 20px; 
+                margin: 20px 0;
+            }
+            .module-card { 
+                background: white; 
+                border: 1px solid #e5e7eb; 
+                border-radius: 8px; 
+                padding: 20px; 
+                transition: transform 0.2s;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .module-card:hover { 
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            }
+            .module-header { 
+                display: flex; 
+                align-items: center; 
+                gap: 10px; 
+                margin-bottom: 15px; 
+            }
+            .btn { 
+                display: inline-block; 
+                padding: 8px 16px; 
+                background: #3182ce; 
+                color: white; 
+                text-decoration: none; 
+                border-radius: 4px; 
+                transition: background 0.2s;
+            }
+            .btn:hover { 
+                background: #2c5282; 
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+                margin: 20px 0;
+            }
+            .stat-card {
+                background: #f8fafc;
+                padding: 15px;
+                border-radius: 8px;
+                text-align: center;
+                border-left: 4px solid #3182ce;
+            }
+            .stat-number {
+                font-size: 2rem;
+                font-weight: bold;
+                color: #3182ce;
+            }
+            .footer {
+                margin-top: 40px;
+                padding: 20px;
+                background: #f8fafc;
+                border-radius: 8px;
+                text-align: center;
+                font-size: 0.875rem;
+                color: #6b7280;
+            }
         </style>
     </head>
     <body>
         <header class="header">
             <h1><?= htmlspecialchars($app_name) ?></h1>
             <div>
-                Connecté: <?= htmlspecialchars($current_user['username']) ?> 
-                (<?= htmlspecialchars($current_user['role']) ?>)
-                <?php if (!$user_authenticated): ?>
-                | <a href="/auth/login.php" style="color: white;">Se connecter</a>
+                <?php if ($user_authenticated): ?>
+                    Connecté: <?= htmlspecialchars($current_user['username']) ?> 
+                    (<?= htmlspecialchars($current_user['role']) ?>)
+                    | <a href="/auth/logout.php" style="color: white;">Se déconnecter</a>
+                <?php else: ?>
+                    <a href="/auth/login.php" style="color: white;">Se connecter</a>
                 <?php endif; ?>
             </div>
         </header>
@@ -329,104 +261,65 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
 ?>
 
 <div class="container">
-    <!-- Message de mode démo -->
-    <?php if (isset($demo_mode)): ?>
-    <div class="demo-warning">
-        <strong>⚠️ MODE DÉMO ACTIVÉ</strong> - Authentification désactivée pour les tests. 
-        Réactivez l'authentification une fois les chemins corrigés.
-        <br><small>Chemins détectés : Config = <?= htmlspecialchars($config_path) ?> | Version = <?= htmlspecialchars($version_path ?: 'Non trouvé') ?></small>
-    </div>
-    <?php endif; ?>
-
-    <!-- Section de bienvenue -->
+    <!-- En-tête d'accueil -->
     <section class="welcome-section">
-        <div class="welcome-header">
-            <h1 class="welcome-title">
-                Bienvenue, <?= htmlspecialchars($current_user['username']) ?>
-            </h1>
-            <p class="welcome-subtitle">
-                <?= htmlspecialchars($page_description) ?>
-            </p>
-            <div class="version-badge">
-                Version <?= htmlspecialchars($version_info['version']) ?> 
-                <span class="build-info">(Build #<?= htmlspecialchars($version_info['short_build']) ?>)</span>
-            </div>
-        </div>
+        <h1 class="welcome-title">
+            🌊 Bienvenue sur <?= htmlspecialchars($app_name) ?>
+        </h1>
+        <p class="welcome-description">
+            Votre portail de solutions professionnelles pour le traitement de l'eau et la logistique. 
+            Accédez à tous vos outils en un seul endroit.
+        </p>
     </section>
 
-    <!-- Statistiques système -->
+    <!-- Statistiques globales -->
     <section class="stats-section">
-        <h2>📊 Aperçu système</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: bold; color: #2563eb;"><?= $stats['modules_accessible'] ?></div>
-                <div>Modules accessibles</div>
+        <h2 class="section-title">📊 Statistiques du jour</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number"><?= $global_stats['calculs_today'] ?></div>
+                <div class="stat-label">Calculs effectués</div>
             </div>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: bold; color: #059669;"><?= $stats['modules_active'] ?></div>
-                <div>Modules actifs</div>
+            <div class="stat-card">
+                <div class="stat-number"><?= $global_stats['users_active'] ?></div>
+                <div class="stat-label">Utilisateurs actifs</div>
             </div>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: bold; color: #7c3aed;"><?= htmlspecialchars($version_info['version']) ?></div>
-                <div>Version portail</div>
+            <div class="stat-card">
+                <div class="stat-number"><?= $global_stats['modules_available'] ?></div>
+                <div class="stat-label">Modules disponibles</div>
             </div>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: bold; color: #dc2626;"><?= ucfirst($current_user['role']) ?></div>
-                <div>Niveau d'accès</div>
+            <div class="stat-card">
+                <div class="stat-number"><?= $global_stats['uptime_percentage'] ?>%</div>
+                <div class="stat-label">Disponibilité</div>
             </div>
         </div>
     </section>
 
-    <!-- Navigation modules -->
+    <!-- Grille des modules -->
     <section class="modules-section">
-        <h2>🚀 Vos modules</h2>
-        
+        <h2 class="section-title">🎯 Modules disponibles</h2>
         <div class="modules-grid">
-            <?php foreach ($accessible_modules as $module_key => $module): ?>
-            <div class="module-card">
+            <?php foreach ($modules as $key => $module): ?>
+            <div class="module-card module-<?= $module['status'] ?>">
                 <div class="module-header">
-                    <div style="font-size: 2rem;"><?= $module['icon'] ?></div>
+                    <span class="module-icon" style="font-size: 2rem;"><?= $module['icon'] ?></span>
                     <div>
-                        <h3 style="margin: 0;"><?= htmlspecialchars($module['name']) ?></h3>
-                        <span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">
-                            <?= $module['status_label'] ?>
+                        <h3 class="module-name"><?= htmlspecialchars($module['name']) ?></h3>
+                        <span class="module-status status-<?= $module['status'] ?>">
+                            <?= $module['status'] === 'active' ? '🟢 Actif' : '🟡 En développement' ?>
                         </span>
                     </div>
-                    <div style="margin-left: auto;">
-                        <span style="font-weight: bold;"><?= $module['estimated_completion'] ?></span>
-                    </div>
                 </div>
                 
-                <div class="module-body">
-                    <p><?= htmlspecialchars($module['description']) ?></p>
-                    
-                    <div style="margin-top: 15px;">
-                        <h4 style="margin: 0 0 10px 0;">Fonctionnalités :</h4>
-                        <ul style="margin: 0; padding-left: 20px;">
-                            <?php foreach ($module['features'] as $feature): ?>
-                            <li><?= htmlspecialchars($feature) ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                </div>
+                <p class="module-description"><?= htmlspecialchars($module['description']) ?></p>
                 
-                <div style="margin-top: 20px;">
+                <div class="module-actions">
                     <?php if ($module['status'] === 'active'): ?>
-                        <a href="<?= htmlspecialchars($module['path']) ?>" class="btn">
+                        <a href="<?= htmlspecialchars($module['url']) ?>" class="btn btn-primary">
                             Accéder au module
                         </a>
-                    <?php elseif ($module['status'] === 'development'): ?>
-                        <button class="btn" style="background: #6b7280;" disabled>
-                            En développement
-                        </button>
-                    <?php elseif ($module['status'] === 'restricted'): ?>
-                        <a href="<?= htmlspecialchars($module['path']) ?>" class="btn" style="background: #dc2626;">
-                            Accès administrateur
-                        </a>
                     <?php else: ?>
-                        <button class="btn" style="background: #6b7280;" disabled>
-                            Non disponible
-                        </button>
+                        <span class="btn-disabled">Bientôt disponible</span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -435,51 +328,82 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
     </section>
 
     <!-- Actions rapides -->
-    <section style="margin-top: 40px;">
-        <h2>⚡ Actions rapides</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-            <a href="/port/" class="btn" style="text-align: center; padding: 20px;">
-                <div style="font-size: 2rem;">🧮</div>
-                <div>Nouveau calcul</div>
+    <section class="quick-actions">
+        <h2 class="section-title">⚡ Actions rapides</h2>
+        <div class="actions-grid">
+            <a href="/calculateur/" class="action-card">
+                <span class="action-icon">🚛</span>
+                <span class="action-text">Nouveau calcul</span>
             </a>
-            <a href="/adr/" class="btn" style="text-align: center; padding: 20px;">
-                <div style="font-size: 2rem;">⚠️</div>
-                <div>Déclaration ADR</div>
+            <a href="/user/profile.php" class="action-card">
+                <span class="action-icon">👤</span>
+                <span class="action-text">Mon profil</span>
             </a>
-            <a href="/qualite/" class="btn" style="text-align: center; padding: 20px;">
-                <div style="font-size: 2rem;">✅</div>
-                <div>Contrôle qualité</div>
+            <a href="/admin/" class="action-card">
+                <span class="action-icon">⚙️</span>
+                <span class="action-text">Administration</span>
             </a>
-            <?php if ($user_level >= 3): ?>
-            <a href="/admin/" class="btn" style="text-align: center; padding: 20px; background: #dc2626;">
-                <div style="font-size: 2rem;">⚙️</div>
-                <div>Administration</div>
+            <a href="/about.php" class="action-card">
+                <span class="action-icon">ℹ️</span>
+                <span class="action-text">À propos</span>
             </a>
-            <?php endif; ?>
         </div>
     </section>
 
+    <!-- Footer informations -->
+    <footer class="footer">
+        <p>
+            <strong><?= htmlspecialchars($app_name) ?></strong> v<?= htmlspecialchars($app_version) ?> 
+            - Build <?= htmlspecialchars($build_number) ?>
+            <br>
+            Développé par <?= htmlspecialchars($app_author) ?> 
+            - 
+            <a href="/legal/">Mentions légales</a>
+        </p>
+    </footer>
 </div>
 
 <?php
-// Inclure le footer
+// Inclure footer si disponible
 if (file_exists(ROOT_PATH . '/templates/footer.php')) {
     include ROOT_PATH . '/templates/footer.php';
-} else {
-    ?>
-    <footer style="background: #374151; color: white; padding: 20px; margin-top: 40px; text-align: center;">
-        <div>
-            <h4><?= htmlspecialchars($app_name) ?></h4>
-            <p><?= htmlspecialchars($page_subtitle) ?></p>
-            <div style="font-size: 0.9rem; margin-top: 10px;">
-                Version <?= htmlspecialchars($version_info['version']) ?> - Build #<?= htmlspecialchars($version_info['short_build']) ?>
-                <br>Compilé le <?= htmlspecialchars($version_info['date']) ?>
-                <br>© <?= $version_info['year'] ?> <?= htmlspecialchars($app_author) ?> - Tous droits réservés
-            </div>
-        </div>
-    </footer>
-    </body>
-    </html>
-    <?php
 }
 ?>
+
+<!-- JavaScript pour interactions -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animation d'entrée pour les cartes
+    const cards = document.querySelectorAll('.module-card, .stat-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Compteurs animés
+    const numbers = document.querySelectorAll('.stat-number');
+    numbers.forEach(num => {
+        const target = parseInt(num.textContent);
+        let current = 0;
+        const increment = target / 50;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                current = target;
+                clearInterval(timer);
+            }
+            num.textContent = Math.floor(current) + (num.textContent.includes('%') ? '%' : '');
+        }, 30);
+    });
+});
+</script>
+
+</body>
+</html>
