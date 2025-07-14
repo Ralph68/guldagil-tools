@@ -8,6 +8,7 @@
 // Configuration de base
 define('ROOT_PATH', dirname(__DIR__));
 session_start();
+require_once ROOT_PATH . '/config/error_handler_simple.php';
 
 // Debug mode (à désactiver en production)
 error_reporting(E_ALL);
