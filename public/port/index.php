@@ -155,7 +155,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delay') {
 require_once ROOT_PATH . '/templates/header.php';
 ?>
 
-<link rel="stylesheet" href="assets/css/calculateur.css?v=<?= $version_info['build'] ?>">
+<link rel="stylesheet" href="/assets/css/calculateur.css?v=<?= $version_info['build'] ?>">
+//<link rel="stylesheet" href="/public/port/assets/css/calculateur.css?v=<?= $build_number ?>">
 
 <div class="calc-container">
     <header class="calc-header">
