@@ -22,6 +22,9 @@ RewriteRule ^\.\./ - [F,L]
         Require all granted
     </RequireAll>
 </Files>
+<Files "*.log">
+    Require all denied
+</Files>
 
 # Page d'accueil par défaut
 DirectoryIndex index.php index.html
