@@ -142,11 +142,11 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
         <meta name="description" content="<?= htmlspecialchars($page_description) ?>">
         <meta name="author" content="<?= htmlspecialchars($app_author) ?>">
         <meta name="robots" content="noindex, nofollow">
-        <link rel="icon" type="image/png" href="/public/assets/img/favicon.png">
+        <link rel="icon" type="image/png" href="/assets/img/favicon.png">
         
         <!-- CSS MINIMAUX pour public/index.php - AJOUT UNIQUEMENT -->
-        <link rel="stylesheet" href="/public/assets/css/portal.css?v=<?= $build_number ?>">
-        <link rel="stylesheet" href="/public/assets/css/components.css?v=<?= $build_number ?>">
+        <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
+        <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
         
         <style>
             body { 
