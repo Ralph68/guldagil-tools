@@ -77,11 +77,11 @@ $breadcrumbs = [
 
 // Modules disponibles
 $modules = [
-    'calculateur' => [
+    'port' => [
         'name' => 'Calculateur de frais',
         'description' => 'Calcul automatique des frais de port selon transporteur',
         'icon' => '🚛',
-        'url' => '/calculateur/',
+        'url' => '/port/',
         'status' => 'active',
         'color' => 'blue'
     ],
@@ -330,7 +330,7 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
     <section class="quick-actions">
         <h2 class="section-title">⚡ Actions rapides</h2>
         <div class="actions-grid">
-            <a href="/calculateur/" class="action-card">
+            <a href="/port/" class="action-card">
                 <span class="action-icon">🚛</span>
                 <span class="action-text">Nouveau calcul</span>
             </a>
