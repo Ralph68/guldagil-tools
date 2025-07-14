@@ -54,7 +54,7 @@ function customErrorHandler($severity, $message, $file, $line) {
             'line' => $line
         ];
         
-        header('Location: /error.php?' . http_build_query($error_params));
+        header('Location: /errors/error.php?' . http_build_query($error_params));
         exit;
     }
     
@@ -79,7 +79,7 @@ function customExceptionHandler($exception) {
         $exception->getLine()
     ));
     
-    header('Location: /error.php?' . http_build_query($error_params));
+    header('Location: /errors/error.php?' . http_build_query($error_params));
     exit;
 }
 
@@ -98,7 +98,7 @@ function customShutdownHandler() {
         
         // Ne pas rediriger si les headers sont déjà envoyés
         if (!headers_sent()) {
-            header('Location: /error.php?' . http_build_query($error_params));
+            header('Location: /errors/error.php?' . http_build_query($error_params));
             exit;
         }
     }
