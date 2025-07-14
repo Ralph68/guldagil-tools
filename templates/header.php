@@ -5,6 +5,8 @@
  * Version: 0.5 beta + build auto
  */
 
+define('ROOT_PATH', dirname(__DIR__, 1));
+
 // Protection contre l'accès direct
 if (!defined('ROOT_PATH')) {
     http_response_code(403);
@@ -93,10 +95,10 @@ $module_icon = match($current_module) {
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 
     <!-- CSS principal du portail -->
-    <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/public/assets/css/portal.css?v=<?= $build_number ?>">
     
     <!-- CSS Header modulaire -->
-    <link rel="stylesheet" href="/templates/assets/css/header.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
     
     <!-- CSS spécifique au module -->
     <?php if ($module_css): ?>
