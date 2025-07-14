@@ -15,7 +15,7 @@ RewriteRule ^(.*)$ index.php [L]
 
 # Accès templates depuis public/
 RewriteRule ^\.\./ - [F,L]
-RewriteRule ^templates/ ../templates/ [L]
+RewriteRule ^templates/(.*)$ ../templates/$1 [L]
 
 # =====================================
 # ASSETS STATIQUES - CORRECTION 403
