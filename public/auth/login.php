@@ -160,13 +160,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </button>
             </form>
 
-            <?php if ($is_debug): ?>
-                <div class="alert" style="background: #fff3cd; border-color: #ffeaa7; color: #856404; margin-top: 1rem;">
-                    <strong>Mode debug :</strong><br>
-                    admin/admin123, user/user123, dev/dev123
-                </div>
-            <?php endif; ?>
-
             <div class="login-footer">
                 <div class="version-info">
                     <span>Version <?= $app_version ?></span>
