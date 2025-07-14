@@ -100,8 +100,8 @@ $module_icon = match($current_module) {
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     
     <!-- CSS Header et Footer globaux -->
-    <link rel="stylesheet" href="/templates/assets/css/header.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="/templates/assets/css/footer.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="../templates/assets/css/header.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="../templates/assets/css/footer.css?v=<?= $build_number ?>">
     
     <!-- CSS Composants globaux -->
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
@@ -111,7 +111,7 @@ $module_icon = match($current_module) {
         <?php 
         // Ordre de priorité pour trouver le CSS du module
         $module_css_paths = [
-            "/public/{$current_module}/assets/css/{$current_module}.css",
+            "/{$current_module}/assets/css/{$current_module}.css",
             "/assets/css/modules/{$current_module}.css"
         ];
         
@@ -253,14 +253,14 @@ $module_icon = match($current_module) {
     <main class="portal-main">
 
     <!-- JavaScript Header modulaire (chargé en fin de header) -->
-    <script src="/templates/assets/js/header.js?v=<?= $build_number ?>"></script>
+    <script src="../templates/assets/js/header.js?v=<?= $build_number ?>"></script>
     
     <!-- JavaScript spécifique au module -->
     <?php if ($module_js): ?>
         <?php 
         // Ordre de priorité pour trouver le JS du module
         $module_js_paths = [
-            "/public/{$current_module}/assets/js/{$current_module}.js",
+            "/{$current_module}/assets/js/{$current_module}.js",
             "/assets/js/modules/{$current_module}.js"
         ];
         
