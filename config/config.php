@@ -61,7 +61,7 @@ if ($isDebug) {
     define('DEBUG', false);
 }
 
-// Démarrage session sécurisé si pas déjà fait
+// Démarrage session sécurisé
 if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
     session_start();
 }
@@ -278,11 +278,6 @@ function testDBConnection(): bool {
 
 // Initialisation du système
 try {
-    // Test de connexion base de données
-    if (!testDBConnection()) {
-        throw new Exception('Erreur de connexion à la base de données');
-    }
-    
     // Initialisation du cache
     if (!is_dir(CACHE_CONFIG['path'])) {
         mkdir(CACHE_CONFIG['path'], 0755, true);
@@ -300,7 +295,6 @@ try {
     if (DEBUG) {
         error_log("Erreur d'initialisation: " . $e->getMessage());
     }
-    die('Erreur d\'initialisation du système');
 }
 
 // Chargement automatique du fichier version
