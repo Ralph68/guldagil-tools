@@ -55,7 +55,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
         if (empty($params['departement']) || !preg_match('/^[0-9]{2,3}$/', $params['departement'])) {
             throw new Exception('Département invalide');
         }
-        if ($params['poids'] <= 0 || $params['poids'] > 32000) {
+        if ($params['poids'] <= 0 || $params['poids'] > 3200) {
             throw new Exception('Poids invalide');
         }
         
@@ -201,7 +201,7 @@ require_once ROOT_PATH . '/templates/header.php';
                         <label class="calc-label" for="poids">Poids total (kg) *</label>
                         <input type="number" id="poids" name="poids" class="calc-input" 
                                min="0.1" max="32000" step="0.1" placeholder="Ex: 25.5" required>
-                        <small class="calc-help">Entre 0.1 et 32000 kg</small>
+                        <small class="calc-help">Entre 0.1 et 3200 kg</small>
                     </div>
                     
                     <div class="calc-form-group">
