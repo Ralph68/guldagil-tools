@@ -261,20 +261,7 @@ function cacheResult($key, $ttl = CACHE_DEFAULT_TTL) {
     };
 }
 
-function testDBConnection(): bool {
-    global $db;
-    if (!$db || !($db instanceof PDO)) {
-        return false;
-    }
-    
-    try {
-        $db->query("SELECT 1");
-        return true;
-    } catch (PDOException $e) {
-        error_log("Test connexion DB échoué: " . $e->getMessage());
-        return false;
-    }
-}
+// testDBConnection() définie dans database.php
 
 // Initialisation du système
 try {
