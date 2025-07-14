@@ -13,6 +13,10 @@ RewriteRule ^health\.php$ - [L]
 RewriteCond %{QUERY_STRING} ^health=check$
 RewriteRule ^(.*)$ index.php [L]
 
+# Accès templates depuis public/
+RewriteRule ^\.\./ - [F,L]
+RewriteRule ^templates/ ../templates/ [L]
+
 # =====================================
 # ASSETS STATIQUES - CORRECTION 403
 # =====================================
