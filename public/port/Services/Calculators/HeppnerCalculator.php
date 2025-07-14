@@ -5,102 +5,188 @@
  * Version: 0.5 beta + build auto
  */
 
+declare(strict_types=1);
+
 class HeppnerCalculator {
-    private static $cacheRates = [];
-    private static $cacheTaxes = [];
+    private PDO $db;
+    private array $cache = [];
     private const WEIGHT_THRESHOLD = 100;
     
-    public function __construct(private PDO $db) {}
+    public function __construct(PDO $db) {
+        $this->db = $db;
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    }
     
     public function calculate(array $params): ?float {
-        if (!$this->validateConstraints($params)) return null;
+        if (!$this->validateConstraints($params)) {
+            return null;
+        }
         
-        $cacheKey = "heppner_rate_{$params['departement']}_{$params['poids']}";
-        $basePrice = self::$cacheRates[$cacheKey] ?? null;
-        
+        $basePrice = $this->getBasePrice($params);
         if ($basePrice === null) {
-            $basePrice = $this->getBasePrice($params);
-            self::$cacheRates[$cacheKey] = $basePrice;
+            return null;
         }
         
         return $this->processPrice($basePrice, $params['poids'], $params);
     }
     
-    private function processPrice(?float $price, float $weight, array $params): ?float {
-        if (!$price || $weight <= 0) return null;
+    private function validateConstraints(array $params): bool {
+        $constraintsKey = 'constraints_heppner';
         
-        if ($weight <= self::WEIGHT_THRESHOLD) {
-            $price100kg = $this->getBasePrice(['departement' => $params['departement'], 'poids' => self::WEIGHT_THRESHOLD]);
-            $price = min($price, $price100kg ?? $price);
-        } else {
-            $price *= ($weight / self::WEIGHT_THRESHOLD);
+        if (!isset($this->cache[$constraintsKey])) {
+            $stmt = $this->db->prepare("
+                SELECT departements_blacklistes, poids_minimum, poids_maximum 
+                FROM gul_taxes_transporteurs 
+                WHERE transporteur = 'Heppner'
+            ");
+            $stmt->execute();
+            $this->cache[$constraintsKey] = $stmt->fetch() ?: [];
+        }
+
+        $constraints = $this->cache[$constraintsKey];
+        
+        if (isset($constraints['departements_blacklistes'])) {
+            $blacklisted = explode(',', $constraints['departements_blacklistes']);
+            if (in_array($params['departement'], $blacklisted)) {
+                return false;
+            }
+        }
+
+        $minPoids = $constraints['poids_minimum'] ?? 1;
+        $maxPoids = $constraints['poids_maximum'] ?? 32000;
+
+        return $params['poids'] >= $minPoids && $params['poids'] <= $maxPoids;
+    }
+    
+    private function processPrice(?float $price, float $weight, array $params): ?float {
+        if (!$price || $weight <= 0) {
+            return null;
         }
         
-        return $this->applyOptions($price, $params);
+        // LOGIQUE HEPPNER : ≤100kg = FORFAIT, >100kg = au poids au 100kg
+        if ($weight <= self::WEIGHT_THRESHOLD) {
+            // Forfait : on garde le prix de la tranche exacte
+            return $this->applyOptions($price, $params);
+        } else {
+            // Au poids au 100kg : ratio sur tarif 100kg
+            $price *= ($weight / self::WEIGHT_THRESHOLD);
+            return $this->applyOptions($price, $params);
+        }
     }
     
     private function getBasePrice(array $params): ?float {
-        $stmt = $this->db->prepare("
-            SELECT *
-            FROM gul_heppner_rates
-            WHERE num_departement = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$params['departement']]);
-        $row = $stmt->fetch();
+        $rateCacheKey = 'rates_heppner_' . $params['departement'];
         
-        if (!$row) return null;
+        if (!isset($this->cache[$rateCacheKey])) {
+            $stmt = $this->db->prepare("
+                SELECT * FROM gul_heppner_rates
+                WHERE num_departement = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$params['departement']]);
+            $this->cache[$rateCacheKey] = $stmt->fetch() ?: null;
+        }
+
+        $row = $this->cache[$rateCacheKey];
+        if (!$row) {
+            return null;
+        }
         
         $poids = $params['poids'];
-        return $row['tarif_0_9'] ?? $row['tarif_10_19'] ?? $row['tarif_20_29'] ?? 
-               $row['tarif_30_39'] ?? $row['tarif_40_49'] ?? $row['tarif_50_59'] ??
-               $row['tarif_60_69'] ?? $row['tarif_70_79'] ?? $row['tarif_80_89'] ??
-               $row['tarif_90_99'] ?? $row['tarif_100_299'] ?? $row['tarif_300_499'] ??
-               $row['tarif_500_999'] ?? $row['tarif_1000_1999'];
+        
+        // Sélection par tranche selon structure BDD réelle
+        $priceField = match(true) {
+            $poids <= 9 => 'tarif_0_9',
+            $poids <= 19 => 'tarif_10_19', 
+            $poids <= 29 => 'tarif_20_29',
+            $poids <= 39 => 'tarif_30_39',
+            $poids <= 49 => 'tarif_40_49',
+            $poids <= 59 => 'tarif_50_59',
+            $poids <= 69 => 'tarif_60_69',
+            $poids <= 79 => 'tarif_70_79',
+            $poids <= 89 => 'tarif_80_89',
+            $poids <= 99 => 'tarif_90_99',
+            $poids <= 299 => 'tarif_100_299',
+            $poids <= 499 => 'tarif_300_499',
+            $poids <= 999 => 'tarif_500_999',
+            default => 'tarif_1000_1999'
+        };
+
+        return $this->convertToFloat($row[$priceField]);
+    }
+
+    /**
+     * Convertit une valeur en float avec validation
+     */
+    private function convertToFloat($value): ?float {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        
+        if (is_numeric($value)) {
+            $floatValue = (float) $value;
+            return $floatValue > 0 ? $floatValue : null;
+        }
+        
+        return null;
     }
     
     private function applyOptions(float $price, array $params): float {
-        static $taxes = null;
+        $taxesCacheKey = 'taxes_heppner';
         
-        if ($taxes === null) {
+        if (!isset($this->cache[$taxesCacheKey])) {
             $stmt = $this->db->prepare("
-                SELECT surete, participation_transition_energetique, 
-                       contribution_sanitaire, majoration_idf_valeur
-                FROM gul_taxes_transporteurs 
+                SELECT * FROM gul_taxes_transporteurs 
                 WHERE transporteur = 'Heppner'
                 LIMIT 1
             ");
             $stmt->execute();
-            $taxes = $stmt->fetch(PDO::FETCH_ASSOC);
+            $this->cache[$taxesCacheKey] = $stmt->fetch() ?: [];
         }
-        
-        $total = $price;
-        foreach ($taxes as $tax => $value) {
-            if ($value > 0) {
-                $total += $value;
-                if ($tax === 'majoration_idf_valeur' && !$this->isRegionParisienne($params['departement'])) {
-                    $total -= $value;
-                }
+
+        $taxes = $this->cache[$taxesCacheKey];
+        $finalPrice = $price;
+
+        // Application des taxes de base
+        foreach (['surete', 'participation_transition_energetique', 'contribution_sanitaire'] as $taxType) {
+            if (isset($taxes[$taxType]) && $taxes[$taxType] > 0) {
+                $finalPrice += (float) $taxes[$taxType];
             }
         }
-        
-        return round($total, 2);
+
+        // Majoration Île-de-France
+        if (
+            isset($taxes['majoration_idf_valeur']) 
+            && $taxes['majoration_idf_valeur'] > 0 
+            && $this->isRegionParisienne($params['departement'], $taxes)
+        ) {
+            $idfValue = (float) $taxes['majoration_idf_valeur'];
+            $finalPrice = $taxes['majoration_idf_type'] === 'Pourcentage'
+                ? $finalPrice * (1 + $idfValue / 100)
+                : $finalPrice + $idfValue;
+        }
+
+        // ADR si applicable
+        if (
+            $params['adr'] 
+            && isset($taxes['majoration_adr_taux']) 
+            && $taxes['majoration_adr_taux'] > 0
+        ) {
+            $finalPrice *= (1 + (float) $taxes['majoration_adr_taux'] / 100);
+        }
+
+        return $finalPrice;
     }
     
-    private function isRegionParisienne(string $dept): bool {
-        static $idfDepts = null;
-        
-        if ($idfDepts === null) {
-            $stmt = $this->db->prepare("
-                SELECT majoration_idf_departements
-                FROM gul_taxes_transporteurs
-                WHERE transporteur = 'Heppner'
-                LIMIT 1
-            ");
-            $stmt->execute();
-            $idfDepts = explode(',', $stmt->fetchColumn());
+    /**
+     * Vérifie si le département est en région parisienne via BDD
+     */
+    private function isRegionParisienne(string $departement, array $taxes): bool {
+        if (!isset($taxes['majoration_idf_departements'])) {
+            return false;
         }
         
-        return in_array($dept, $idfDepts);
+        $departementsIdf = explode(',', $taxes['majoration_idf_departements']);
+        return in_array($departement, $departementsIdf);
     }
 }
