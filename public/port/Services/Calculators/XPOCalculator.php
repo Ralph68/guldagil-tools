@@ -154,12 +154,23 @@ class XPOCalculator {
         if (
             isset($taxes['majoration_idf_valeur']) 
             && $taxes['majoration_idf_valeur'] > 0 
-            && $this->isRegionParisienne($params['departement'])
+            && $this->isRegionParisienne($params['departement'], $taxes)
         ) {
             $idfValue = (float) $taxes['majoration_idf_valeur'];
             $finalPrice = $taxes['majoration_idf_type'] === 'Pourcentage'
                 ? $finalPrice * (1 + $idfValue / 100)
                 : $finalPrice + $idfValue;
+        }
+
+        // NOUVEAU : Gestion palette EUR
+        if ($params['type'] === 'palette' && isset($params['palette_eur'])) {
+            $paletteEurCount = (int) $params['palette_eur'];
+            if ($paletteEurCount > 0) {
+                // Recherche tarif consigne XPO en BDD
+                $consigneTarif = $this->getPaletteEurTarif();
+                $finalPrice += $paletteEurCount * $consigneTarif;
+            }
+            // Si palette_eur = 0 : palette perdue, pas de consigne
         }
 
         // ADR si applicable
@@ -172,6 +183,35 @@ class XPOCalculator {
         }
 
         return $finalPrice;
+    }
+
+    /**
+     * Récupère le tarif consigne palette EUR pour XPO
+     */
+    private function getPaletteEurTarif(): float {
+        static $tarifConsigne = null;
+        
+        if ($tarifConsigne === null) {
+            try {
+                $stmt = $this->db->prepare("
+                    SELECT consigne_palette_eur 
+                    FROM gul_taxes_transporteurs 
+                    WHERE transporteur = 'XPO'
+                    LIMIT 1
+                ");
+                $stmt->execute();
+                $result = $stmt->fetch();
+                
+                $tarifConsigne = $result && isset($result['consigne_palette_eur']) 
+                    ? (float) $result['consigne_palette_eur'] 
+                    : 0.00; // 0 par défaut si pas en BDD
+                    
+            } catch (PDOException $e) {
+                $tarifConsigne = 0.00;
+            }
+        }
+        
+        return $tarifConsigne;
     }
 
     /**
