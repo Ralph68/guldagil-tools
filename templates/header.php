@@ -320,7 +320,7 @@ $module_status = $all_modules[$current_module]['status'] ?? 'active';
                         $has_access = ($module_data['status'] === 'active');
                     }
                     if ($has_access): ?>
-                        <a href="/public/<?= $module_key ?>/" 
+                        <a href="/<?= $module_key ?>/" 
                            class="module-nav-item <?= $current_module === $module_key ? 'active' : '' ?>"
                            data-module="<?= $module_key ?>"
                            style="--module-color: <?= $module_data['color'] ?>">
