@@ -5,8 +5,11 @@
  */
 
 // Protection contre l'accès direct
+// Configuration des chemins
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(__DIR__));
+}
+if (!defined('CONFIG_PATH')) {
     define('CONFIG_PATH', ROOT_PATH . '/config');
 }
 
