@@ -62,8 +62,8 @@ $breadcrumbs = $breadcrumbs ?? [
 ];
 
 // Configuration CSS et JS modulaire
-$module_css = $module_css ?? false;
-$module_js = $module_js ?? false;
+$module_css = $module_css ?? true;
+$module_js = $module_js ?? true;
 
 // Titre complet
 $full_title = $page_title . ' - Guldagil v' . $app_version;
