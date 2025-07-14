@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: Page d'accueil du portail Guldagil - Version corrigée avec authentification
- * Chemin: /public/index.php
+ * Chemin: /public/index.php20250708.bak
  * Version: 0.5 beta + build auto
  */
 
