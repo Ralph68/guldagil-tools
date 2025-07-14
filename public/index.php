@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: Page d'accueil du portail Guldagil
- * Chemin: /public/index.php
+ * Chemin: /public/index.php.backupfonctionnel
  * Version: 0.5 beta + build auto
  */
 
