@@ -209,7 +209,7 @@ if (empty($legal_links)) {
     </footer>
 
     <!-- JavaScript Footer modulaire -->
-    <script src="/templates/assets/js/footer.js?v=<?= $build_number ?>"></script>
+    <script src="/assets/js/footer.js?v=<?= $build_number ?>"></script>
     
     <!-- JavaScript spécifique au module (chargé depuis header si activé) -->
     
