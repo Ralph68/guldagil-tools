@@ -18,7 +18,7 @@ RewriteRule ^(.*)$ index.php [L]
 # =====================================
 <FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$">
     Require all granted
-    RewriteEngine Off
+    #RewriteEngine Off
 </FilesMatch>
 
 RewriteRule ^assets/ - [L]
