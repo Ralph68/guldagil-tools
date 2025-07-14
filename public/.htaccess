@@ -1,31 +1,33 @@
-# .htaccess pour /public/ (document root) - CORRIGÉ 403
+# .htaccess pour /public/ (document root)
 # Version: 0.5 beta + build auto
 # Chemin: /public/.htaccess
 
-# Pages d'erreur personnalisées
-ErrorDocument 404 /errors/404.php
-ErrorDocument 403 /errors/403.php
-ErrorDocument 500 /errors/500.php
-ErrorDocument 503 /errors/503.php
-
 RewriteEngine On
 
-# ===== AUTORISER LES ASSETS STATIQUES EXPLICITEMENT =====
-# CORRECTION 403 : Autoriser l'accès aux CSS/JS/Images AVANT toute restriction
+# =====================================
+# HEALTH CHECK - PRIORITÉ ABSOLUE
+# =====================================
+RewriteRule ^health\.php$ - [L]
+
+# Health check alternatif via paramètre
+RewriteCond %{QUERY_STRING} ^health=check$
+RewriteRule ^(.*)$ index.php [L]
+
+# =====================================
+# ASSETS STATIQUES - CORRECTION 403
+# =====================================
 <FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$">
     Require all granted
-    # Désactiver le rewriting pour les assets
     RewriteEngine Off
 </FilesMatch>
 
-# Règles spécifiques pour assets
 RewriteRule ^assets/ - [L]
 RewriteRule ^.*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$ - [L]
 
-# Sécurité - Bloquer accès aux dossiers parents
-RewriteRule ^\.\./ - [F,L]
-
-# Protection fichiers sensibles (APRÈS assets)
+# =====================================
+# SÉCURITÉ
+# =====================================
+# Protection fichiers sensibles
 <Files ".env">
     Require all denied
 </Files>
@@ -33,14 +35,36 @@ RewriteRule ^\.\./ - [F,L]
     Require all denied
 </Files>
 
-# Autoriser PHP dans public/ mais pas dans sous-dossiers sensibles
-<Files "*.php">
-    <RequireAll>
-        Require all granted
-    </RequireAll>
-</Files>
+# Bloquer accès dossiers parents
+RewriteRule ^\.\./ - [F,L]
 
-# Page d'accueil par défaut
+# Bloquer dossiers système
+RedirectMatch 404 ^/(config|core|storage|vendor)/
+
+# Protection contre injections (PHP uniquement)
+RewriteCond %{REQUEST_FILENAME} \.(php)$ [NC]
+RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} ^.*(\[|\]|\(|\)|<|>|ê|"|;|\?|\*|=$).* [NC,OR]
+RewriteCond %{QUERY_STRING} ^.*(&#x22;|&#x27;|&#x3C;|&#x3E;|&#x5C;|&#x7B;|&#x7C;).* [NC,OR]
+RewriteCond %{QUERY_STRING} ^.*(%24&x).* [NC,OR]
+RewriteCond %{QUERY_STRING} ^.*(%0|%A|%B|%C|%D|%E|%F|127\.0).* [NC,OR]
+RewriteCond %{QUERY_STRING} ^.*(globals|encode|localhost|loopback).* [NC,OR]
+RewriteCond %{QUERY_STRING} ^.*(request|select|concat|union|declare).* [NC]
+RewriteRule ^(.*)$ /error.php?type=403 [R=403,L]
+
+# =====================================
+# PAGES D'ERREUR
+# =====================================
+ErrorDocument 404 /error.php?type=404
+ErrorDocument 403 /error.php?type=403
+ErrorDocument 500 /error.php?type=500
+ErrorDocument 503 /error.php?type=503
+
+# =====================================
+# MODULES
+# =====================================
 DirectoryIndex index.php index.html
 
 # URLs propres pour modules
@@ -56,32 +80,22 @@ RewriteRule ^user/(.+)$ user/$1 [L]
 RewriteRule ^auth/?$ auth/login.php [L]
 RewriteRule ^auth/(.+)$ auth/$1 [L]
 
-# Protection contre les injections (UNIQUEMENT sur les pages PHP)
-RewriteCond %{REQUEST_FILENAME} \.(php)$ [NC]
-RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
-RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
-RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2}) [OR]
-RewriteCond %{QUERY_STRING} ^.*(\[|\]|\(|\)|<|>|ê|"|;|\?|\*|=$).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(&#x22;|&#x27;|&#x3C;|&#x3E;|&#x5C;|&#x7B;|&#x7C;).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(%24&x).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(%0|%A|%B|%C|%D|%E|%F|127\.0).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(globals|encode|localhost|loopback).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(request|select|concat|union|declare).* [NC]
-RewriteRule ^(.*)$ /403.php [R=403,L]
-
-# Gestion des modules (UNIQUEMENT si pas d'asset)
+# Gestion modules génériques (exclure assets)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$ [NC]
-RewriteRule ^([a-zA-Z0-9_-]+)/?$ /index.php?module=$1 [QSA,L]
+RewriteRule ^([a-zA-Z0-9_-]+)/?$ index.php?module=$1 [QSA,L]
 
-# Gestion des actions de modules
+# Gestion actions modules
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$ [NC]
-RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/?$ /index.php?module=$1&action=$2 [QSA,L]
+RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/?$ index.php?module=$1&action=$2 [QSA,L]
 
-# Cache pour les assets statiques
+# =====================================
+# OPTIMISATION
+# =====================================
+# Cache assets
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType text/css "access plus 1 month"
@@ -96,14 +110,13 @@ RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/?$ /index.php?module=$1&action=$2
     ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>
 
-# Compression GZIP
+# Compression
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html text/css application/javascript
 </IfModule>
 
-# Headers pour CORS si nécessaire
+# Headers CORS
 <IfModule mod_headers.c>
-    # Permettre l'accès aux assets depuis le même domaine
     <FilesMatch "\.(css|js)$">
         Header set Access-Control-Allow-Origin "*"
     </FilesMatch>
