@@ -253,7 +253,7 @@ $module_icon = match($current_module) {
     <main class="portal-main">
 
     <!-- JavaScript Header modulaire (chargé en fin de header) -->
-    <script src="../templates/assets/js/header.js?v=<?= $build_number ?>"></script>
+    <script src="/assets/js/header.js?v=<?= $build_number ?>"></script>
     
     <!-- JavaScript spécifique au module -->
     <?php if ($module_js): ?>
