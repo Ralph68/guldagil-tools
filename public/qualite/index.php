@@ -5,6 +5,7 @@
  * Version: 0.5 beta + build auto
  */
 
+require_once ROOT_PATH . '/config/error_handler_simple.php';
 // Sécurité et configuration
 session_start();
 define('PORTAL_ACCESS', true);
@@ -16,7 +17,7 @@ if (file_exists(__DIR__ . '/../../config/config.php')) {
 if (file_exists(__DIR__ . '/../../config/version.php')) {
     require_once __DIR__ . '/../../config/version.php';
 }
-require_once ROOT_PATH . '/config/error_handler_simple.php';
+
 
 // Configuration du module qualité
 $qualite_config = [
