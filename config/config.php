@@ -5,11 +5,8 @@
  */
 
 // Protection contre l'accès direct
-// Configuration des chemins
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(__DIR__));
-}
-if (!defined('CONFIG_PATH')) {
     define('CONFIG_PATH', ROOT_PATH . '/config');
 }
 
@@ -40,12 +37,14 @@ if (file_exists($envFile)) {
     }
 }
 
-// Configuration base de données
-define('DB_HOST', $_ENV['DB_HOST'] ?? 'localhost');
-define('DB_NAME', $_ENV['DB_NAME'] ?? 'guldagil_portal');
-define('DB_USER', $_ENV['DB_USER'] ?? 'root');
-define('DB_PASS', $_ENV['DB_PASS'] ?? '');
-define('DB_CHARSET', $_ENV['DB_CHARSET'] ?? 'utf8mb4');
+// Configuration base de données (définie ici pour éviter doublons)
+if (!defined('DB_HOST')) {
+    define('DB_HOST', $_ENV['DB_HOST'] ?? 'localhost');
+    define('DB_NAME', $_ENV['DB_NAME'] ?? 'guldagil_portal');
+    define('DB_USER', $_ENV['DB_USER'] ?? 'root');
+    define('DB_PASS', $_ENV['DB_PASS'] ?? '');
+    define('DB_CHARSET', $_ENV['DB_CHARSET'] ?? 'utf8mb4');
+}
 
 // Détection environnement
 $isProduction = (getenv('APP_ENV') === 'production');
@@ -69,60 +68,72 @@ if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
     session_start();
 }
 
-// Chargement des configurations séparées
-require_once CONFIG_PATH . '/database.php';
-require_once CONFIG_PATH . '/auth_database.php';
-require_once CONFIG_PATH . '/functions.php';
+// Chargement des configurations séparées avec vérification
+$config_files = [
+    CONFIG_PATH . '/database.php',
+    CONFIG_PATH . '/auth_database.php', 
+    CONFIG_PATH . '/functions.php'
+];
 
-// Configuration des modules
-const MODULES = [
+foreach ($config_files as $file) {
+    if (file_exists($file)) {
+        require_once $file;
+    }
+}
+
+// Configuration des modules (compatible avec structure existante)
+define('MODULES', [
     'calculateur' => [
+        'enabled' => true,
+        'public' => true,
         'name' => 'Calculateur Frais de Port',
         'description' => 'Calcul automatique des frais de transport',
         'version' => '0.5.1',
         'status' => 'active',
-        'public' => true,
         'auth_required' => false,
         'color' => '#3498db'
     ],
+    'port' => [
+        'enabled' => true,
+        'public' => true,
+        'name' => 'Calculateur Port',
+        'description' => 'Module de calcul des frais de port',
+        'version' => '0.5.0',
+        'status' => 'active',
+        'auth_required' => false,
+        'color' => '#2ecc71'
+    ],
     'adr' => [
+        'enabled' => true,
+        'public' => false,
         'name' => 'Module ADR',
         'description' => 'Gestion des matières dangereuses',
         'version' => '0.5.0',
         'status' => 'development',
-        'public' => false,
         'auth_required' => true,
         'color' => '#e74c3c'
     ],
-    'controle-qualite' => [
-        'name' => 'Contrôle Qualité',
-        'description' => 'Suivi qualité des marchandises',
-        'version' => '0.5.0',
-        'status' => 'active',
-        'public' => true,
-        'auth_required' => false,
-        'color' => '#2ecc71'
-    ],
     'admin' => [
+        'enabled' => true,
+        'public' => false,
         'name' => 'Administration',
         'description' => 'Gestion et configuration',
         'version' => '0.5.0',
         'status' => 'active',
-        'public' => false,
         'auth_required' => true,
         'color' => '#9b59b6'
     ]
-];
+]);
 
 // Configuration cache
-const CACHE_CONFIG = [
-    'enabled' => true,
+define('CACHE_CONFIG', [
+    'enabled' => !DEBUG,
     'default_ttl' => 3600,
     'path' => STORAGE_PATH . '/cache'
-];
+]);
 
 // Configuration logs
-const LOG_CONFIG = [
+define('LOG_CONFIG', [
     'enabled' => true,
     'level' => DEBUG ? 'debug' : 'error',
     'max_file_size' => 10 * 1024 * 1024,
@@ -132,58 +143,26 @@ const LOG_CONFIG = [
         'error' => STORAGE_PATH . '/logs/error.log',
         'access' => STORAGE_PATH . '/logs/access.log'
     ]
-];
+]);
 
-// Fonctions utilitaires
-function isModuleEnabled($module): bool {
-    return isset(MODULES[$module]) && MODULES[$module]['status'] === 'active';
+// Fonctions utilitaires compatibles
+function isModuleEnabled($module) {
+    $modules = MODULES;
+    return isset($modules[$module]) && $modules[$module]['enabled'];
 }
 
-function getModuleInfo($module): ?array {
-    return MODULES[$module] ?? null;
+function getModuleInfo($module) {
+    $modules = MODULES;
+    return $modules[$module] ?? null;
 }
 
-function logMessage($level, $message, $channel = 'app'): void {
-    if (!LOG_CONFIG['enabled']) return;
-    
-    $logFile = LOG_CONFIG['channels'][$channel] ?? LOG_CONFIG['channels']['app'];
-    $timestamp = date('Y-m-d H:i:s');
-    $logEntry = "[$timestamp] [$level] $message" . PHP_EOL;
-    
-    $logDir = dirname($logFile);
-    if (!is_dir($logDir)) {
-        mkdir($logDir, 0755, true);
-    }
-    
-    if (file_exists($logFile) && filesize($logFile) > LOG_CONFIG['max_file_size']) {
-        $backupFile = $logFile . '.' . date('Y-m-d-H-i-s');
-        rename($logFile, $backupFile);
-        cleanOldLogFiles($logDir, LOG_CONFIG['max_files']);
-    }
-    
-    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
-}
-
-function cleanOldLogFiles($directory, $maxFiles): void {
-    $files = glob($directory . '/*.log.*');
-    if (count($files) > $maxFiles) {
-        usort($files, function($a, $b) {
-            return filemtime($a) - filemtime($b);
-        });
-        
-        $filesToDelete = array_slice($files, 0, count($files) - $maxFiles);
-        foreach ($filesToDelete as $file) {
-            unlink($file);
-        }
-    }
-}
-
-function hasModuleAccess($module, $user = null): bool {
+function hasModuleAccess($module, $user = null) {
     if (!isModuleEnabled($module)) {
         return false;
     }
     
-    $moduleConfig = MODULES[$module];
+    $modules = MODULES;
+    $moduleConfig = $modules[$module];
     
     if ($moduleConfig['public']) {
         return true;
@@ -200,8 +179,21 @@ function hasModuleAccess($module, $user = null): bool {
     return false;
 }
 
+// Fonction getDB() pour compatibilité
+if (!function_exists('getDB')) {
+    function getDB() {
+        global $db;
+        if (!isset($db) || !($db instanceof PDO)) {
+            throw new Exception('Connexion base de données non initialisée');
+        }
+        return $db;
+    }
+}
+
+// Fonctions cache compatibles
 function getFromCache($key, $default = null) {
-    if (!CACHE_CONFIG['enabled']) {
+    $config = CACHE_CONFIG;
+    if (!$config['enabled']) {
         return $default;
     }
     
@@ -221,12 +213,13 @@ function getFromCache($key, $default = null) {
     return $data['value'];
 }
 
-function putInCache($key, $value, $ttl = null): bool {
-    if (!CACHE_CONFIG['enabled']) {
+function putInCache($key, $value, $ttl = null) {
+    $config = CACHE_CONFIG;
+    if (!$config['enabled']) {
         return false;
     }
     
-    $ttl = $ttl ?? CACHE_CONFIG['default_ttl'];
+    $ttl = $ttl ?? $config['default_ttl'];
     $cacheDir = STORAGE_PATH . '/cache';
     
     if (!is_dir($cacheDir)) {
@@ -243,57 +236,35 @@ function putInCache($key, $value, $ttl = null): bool {
     return file_put_contents($cacheFile, serialize($data), LOCK_EX) !== false;
 }
 
-// Configuration cache avancée
-const CACHE_PREFIX = 'guldagil_';
-const CACHE_DEFAULT_TTL = 3600;
-
-function getCacheKey($key) {
-    return CACHE_PREFIX . md5($key);
-}
-
-function cacheResult($key, $ttl = CACHE_DEFAULT_TTL) {
-    return function($func) use ($key, $ttl) {
-        $cacheKey = getCacheKey($key);
-        $cached = getFromCache($cacheKey);
-        if ($cached !== null) {
-            return $cached;
-        }
-        $result = $func();
-        putInCache($cacheKey, $result, $ttl);
-        return $result;
-    };
-}
-
-// testDBConnection() définie dans database.php
-
-// Initialisation du système
-try {
-    // Initialisation du cache
-    if (!is_dir(CACHE_CONFIG['path'])) {
-        mkdir(CACHE_CONFIG['path'], 0755, true);
-    }
-    
-    // Initialisation des logs
-    foreach (LOG_CONFIG['channels'] as $channel => $logFile) {
+// Fonction de log compatible
+if (!function_exists('logMessage')) {
+    function logMessage($level, $message, $channel = 'app') {
+        $config = LOG_CONFIG;
+        if (!$config['enabled']) return;
+        
+        $logFile = $config['channels'][$channel] ?? $config['channels']['app'];
+        $timestamp = date('Y-m-d H:i:s');
+        $logEntry = "[$timestamp] [$level] $message" . PHP_EOL;
+        
         $logDir = dirname($logFile);
         if (!is_dir($logDir)) {
             mkdir($logDir, 0755, true);
         }
-    }
-    
-} catch (Exception $e) {
-    if (DEBUG) {
-        error_log("Erreur d'initialisation: " . $e->getMessage());
+        
+        if (file_exists($logFile) && filesize($logFile) > $config['max_file_size']) {
+            $backupFile = $logFile . '.' . date('Y-m-d-H-i-s');
+            rename($logFile, $backupFile);
+        }
+        
+        file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
     }
 }
 
-// Chargement automatique du fichier version
-if (file_exists(CONFIG_PATH . '/version.php')) {
-    require_once CONFIG_PATH . '/version.php';
+// Chargement version
+if (file_exists(__DIR__ . '/version.php')) {
+    require_once __DIR__ . '/version.php';
 }
 
 // Log du démarrage
-if (function_exists('logMessage')) {
-    logMessage('info', 'Configuration chargée - Version: ' . (defined('APP_VERSION') ? APP_VERSION : 'inconnue'));
-}
+logMessage('info', 'Configuration chargée');
 ?>
