@@ -11,6 +11,10 @@ if (!defined('ROOT_PATH')) {
     exit('Accès direct interdit');
 }
 
+if (file_exists(ROOT_PATH . '/config/error_handler_simple.php')) {
+    require_once ROOT_PATH . '/config/error_handler_simple.php';
+}
+
 // Initialisation des variables par défaut
 $user_authenticated = false;
 $current_user = null;
