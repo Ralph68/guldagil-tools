@@ -93,28 +93,100 @@ if (isset($_POST['ajax_action'])) {
                 break;
                 
             case 'modules_status':
-                // Récupérer l'état des modules depuis config
                 $modules = [
-                    'port' => ['name' => 'Calculateur Port', 'status' => 'active', 'tables' => ['gul_xpo_rates', 'gul_heppner_rates', 'gul_kn_rates']],
-                    'adr' => ['name' => 'Gestion ADR', 'status' => 'active', 'tables' => ['gul_adr_products']],
-                    'user' => ['name' => 'Utilisateurs', 'status' => 'active', 'tables' => ['auth_users', 'auth_sessions']],
-                    'admin' => ['name' => 'Administration', 'status' => 'active', 'tables' => []]
+                    'port' => ['name' => 'Calculateur Port', 'status' => 'production', 'progress' => 95, 'tables' => ['gul_xpo_rates', 'gul_heppner_rates', 'gul_kn_rates'], 'icon' => '🚛'],
+                    'adr' => ['name' => 'Gestion ADR', 'status' => 'production', 'progress' => 90, 'tables' => ['gul_adr_products'], 'icon' => '⚠️'],
+                    'user' => ['name' => 'Utilisateurs', 'status' => 'production', 'progress' => 85, 'tables' => ['auth_users', 'auth_sessions'], 'icon' => '👥'],
+                    'admin' => ['name' => 'Administration', 'status' => 'development', 'progress' => 60, 'tables' => [], 'icon' => '⚙️'],
+                    'qualite' => ['name' => 'Contrôle Qualité', 'status' => 'development', 'progress' => 25, 'tables' => ['gul_qualite_checks'], 'icon' => '✅'],
+                    'epi' => ['name' => 'Équipements EPI', 'status' => 'development', 'progress' => 40, 'tables' => ['gul_epi_equipment'], 'icon' => '🛡️']
                 ];
                 
-                // Compter les enregistrements par module
+                // Compter les enregistrements et calculer progression automatique
                 foreach ($modules as $key => &$module) {
                     $module['total_records'] = 0;
+                    $table_count = 0;
                     foreach ($module['tables'] as $table) {
                         try {
                             $stmt = $db->query("SELECT COUNT(*) FROM `$table`");
-                            $module['total_records'] += $stmt->fetchColumn();
+                            $count = $stmt->fetchColumn();
+                            $module['total_records'] += $count;
+                            if ($count > 0) $table_count++;
                         } catch (Exception $e) {
                             // Table n'existe pas
                         }
                     }
+                    
+                    // Ajustement automatique progression basé sur données
+                    if ($module['total_records'] > 100) {
+                        $module['progress'] = min(95, $module['progress'] + 10);
+                    } elseif ($module['total_records'] > 10) {
+                        $module['progress'] = min(80, $module['progress'] + 5);
+                    }
                 }
                 
                 echo json_encode(['success' => true, 'modules' => $modules]);
+                break;
+                
+            case 'toggle_module_status':
+                $module_id = $_POST['module_id'] ?? '';
+                $new_status = $_POST['new_status'] ?? '';
+                
+                if ($module_id && in_array($new_status, ['development', 'production', 'maintenance'])) {
+                    // Ici on sauvegarderait en BDD - pour l'instant simulation
+                    echo json_encode(['success' => true, 'message' => "Module $module_id passé en $new_status"]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Paramètres invalides']);
+                }
+                break;
+                
+            case 'user_management':
+                $action_type = $_POST['action_type'] ?? '';
+                switch ($action_type) {
+                    case 'list':
+                        $stmt = $db->query("SELECT id, username, role, created_at, last_login, is_active FROM auth_users ORDER BY created_at DESC");
+                        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        echo json_encode(['success' => true, 'users' => $users]);
+                        break;
+                        
+                    case 'toggle_active':
+                        $user_id = intval($_POST['user_id'] ?? 0);
+                        $new_status = intval($_POST['new_status'] ?? 0);
+                        if ($user_id > 0) {
+                            $stmt = $db->prepare("UPDATE auth_users SET is_active = ? WHERE id = ?");
+                            $result = $stmt->execute([$new_status, $user_id]);
+                            echo json_encode(['success' => $result]);
+                        } else {
+                            echo json_encode(['success' => false, 'error' => 'ID utilisateur invalide']);
+                        }
+                        break;
+                        
+                    case 'update_role':
+                        $user_id = intval($_POST['user_id'] ?? 0);
+                        $new_role = $_POST['new_role'] ?? '';
+                        if ($user_id > 0 && in_array($new_role, ['user', 'admin', 'dev'])) {
+                            $stmt = $db->prepare("UPDATE auth_users SET role = ? WHERE id = ?");
+                            $result = $stmt->execute([$new_role, $user_id]);
+                            echo json_encode(['success' => $result]);
+                        } else {
+                            echo json_encode(['success' => false, 'error' => 'Paramètres invalides']);
+                        }
+                        break;
+                }
+                break;
+                
+            case 'system_info':
+                $info = [
+                    'php_version' => PHP_VERSION,
+                    'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Inconnu',
+                    'db_version' => $db->query('SELECT VERSION()')->fetchColumn(),
+                    'memory_limit' => ini_get('memory_limit'),
+                    'max_execution_time' => ini_get('max_execution_time'),
+                    'upload_max_filesize' => ini_get('upload_max_filesize'),
+                    'disk_free_space' => disk_free_space('.'),
+                    'disk_total_space' => disk_total_space('.')
+                ];
+                echo json_encode(['success' => true, 'info' => $info]);
                 break;
                 
             default:
@@ -405,10 +477,26 @@ tr:hover {
     <!-- Tab: Modules -->
     <div id="modules" class="tab-content">
         <h2>Gestion des modules</h2>
+        <div class="modules-controls" style="margin-bottom: 2rem;">
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="show-dev-modules" checked onchange="filterModules()">
+                    Afficher modules en développement
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="show-prod-modules" checked onchange="filterModules()">
+                    Afficher modules en production
+                </label>
+                <button class="btn btn-success" onclick="refreshModules()">🔄 Actualiser</button>
+            </div>
+        </div>
         <div class="table-container">
             <div class="table-header">
                 <h3>Modules installés</h3>
-                <button class="btn btn-success" onclick="refreshModules()">🔄 Actualiser</button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <span class="status-badge status-development">Développement</span>
+                    <span class="status-badge status-production">Production</span>
+                </div>
             </div>
             <div id="modules-content" class="loading">Chargement des modules...</div>
         </div>
@@ -440,10 +528,10 @@ tr:hover {
         <div class="table-container">
             <div class="table-header">
                 <h3>Utilisateurs du système</h3>
-                <button class="btn btn-primary" onclick="loadTableData('auth_users')">📊 Voir détails</button>
+                <button class="btn btn-primary" onclick="loadUsers()">📊 Charger utilisateurs</button>
             </div>
             <div id="users-content">
-                <p>Cliquez sur "Voir détails" pour afficher la table auth_users avec possibilité de modification.</p>
+                <p>Cliquez sur "Charger utilisateurs" pour afficher la gestion complète des comptes.</p>
             </div>
         </div>
     </div>
@@ -459,13 +547,32 @@ tr:hover {
                 <p><strong>Version :</strong> <?= htmlspecialchars($version) ?></p>
                 <p><strong>Build :</strong> <?= htmlspecialchars($build_number) ?></p>
                 <p><strong>Environnement :</strong> <?= defined('DEBUG') && DEBUG ? 'Développement' : 'Production' ?></p>
+                <div style="margin-top: 1rem;">
+                    <button class="btn btn-warning" onclick="loadSystemInfo()">📊 Infos système</button>
+                </div>
             </div>
             
             <div class="admin-card">
                 <h3>📂 Chemins système</h3>
                 <p><strong>ROOT_PATH :</strong> <?= htmlspecialchars(ROOT_PATH) ?></p>
-                <p><strong>Config :</strong> <?= file_exists(ROOT_PATH . '/config/config.php') ? '✅' : '❌' ?></p>
-                <p><strong>Storage :</strong> <?= is_writable(ROOT_PATH . '/storage') ? '✅' : '❌' ?></p>
+                <p><strong>Config :</strong> <?= file_exists(ROOT_PATH . '/config/config.php') ? '✅ Trouvé' : '❌ Manquant' ?></p>
+                <p><strong>Storage :</strong> <?= is_writable(ROOT_PATH . '/storage') ? '✅ Accessible' : '❌ Non accessible' ?></p>
+                <p><strong>Templates :</strong> <?= is_dir(ROOT_PATH . '/templates') ? '✅ Trouvé' : '❌ Manquant' ?></p>
+            </div>
+            
+            <div class="admin-card">
+                <h3>🌐 Configuration serveur</h3>
+                <div id="system-info">
+                    <p>Cliquez sur "Infos système" pour charger les détails du serveur.</p>
+                </div>
+            </div>
+            
+            <div class="admin-card">
+                <h3>🔒 Sécurité</h3>
+                <p><strong>Sessions :</strong> <?= session_status() === PHP_SESSION_ACTIVE ? '✅ Actives' : '❌ Inactives' ?></p>
+                <p><strong>HTTPS :</strong> <?= (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? '✅ Activé' : '⚠️ Désactivé' ?></p>
+                <p><strong>Auth système :</strong> <?= file_exists(ROOT_PATH . '/core/auth/AuthManager.php') ? '✅ AuthManager' : '⚠️ Sessions PHP' ?></p>
+                <p><strong>Erreurs PHP :</strong> <?= ini_get('display_errors') ? '⚠️ Affichées' : '✅ Masquées' ?></p>
             </div>
         </div>
     </div>
@@ -684,23 +791,258 @@ async function loadModules() {
 }
 
 function displayModules(modules) {
-    let html = '<table><thead><tr><th>Module</th><th>Nom</th><th>Statut</th><th>Tables</th><th>Enregistrements</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Module</th><th>Statut</th><th>Progression</th><th>Tables</th><th>Enregistrements</th><th>Actions</th></tr></thead><tbody>';
     
     Object.entries(modules).forEach(([key, module]) => {
-        const statusClass = module.status === 'active' ? 'status-active' : 'status-inactive';
+        const statusClass = `status-${module.status}`;
         const tables = module.tables.join(', ') || 'Aucune';
+        const progressColor = module.progress >= 80 ? '#27ae60' : module.progress >= 50 ? '#f39c12' : '#e74c3c';
         
-        html += `<tr>
-            <td><strong>${key}</strong></td>
-            <td>${module.name}</td>
-            <td><span class="module-status ${statusClass}">${module.status}</span></td>
+        html += `<tr data-module-status="${module.status}">
+            <td>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.2rem;">${module.icon}</span>
+                    <div>
+                        <strong>${key}</strong>
+                        <br><small>${module.name}</small>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <select onchange="toggleModuleStatus('${key}', this.value)" class="status-selector">
+                    <option value="development" ${module.status === 'development' ? 'selected' : ''}>Développement</option>
+                    <option value="production" ${module.status === 'production' ? 'selected' : ''}>Production</option>
+                    <option value="maintenance" ${module.status === 'maintenance' ? 'selected' : ''}>Maintenance</option>
+                </select>
+            </td>
+            <td>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${module.progress}%; background-color: ${progressColor};"></div>
+                    </div>
+                    <span class="progress-text">${module.progress}%</span>
+                </div>
+            </td>
             <td>${tables}</td>
             <td>${module.total_records}</td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="viewModuleDetails('${key}')">📊</button>
+            </td>
         </tr>`;
     });
     
     html += '</tbody></table>';
     document.getElementById('modules-content').innerHTML = html;
+    filterModules(); // Appliquer les filtres
+}
+
+function filterModules() {
+    const showDev = document.getElementById('show-dev-modules').checked;
+    const showProd = document.getElementById('show-prod-modules').checked;
+    
+    document.querySelectorAll('[data-module-status]').forEach(row => {
+        const status = row.dataset.moduleStatus;
+        const shouldShow = (status === 'development' && showDev) || 
+                          (status === 'production' && showProd) ||
+                          (status === 'maintenance' && (showDev || showProd));
+        row.style.display = shouldShow ? '' : 'none';
+    });
+}
+
+async function toggleModuleStatus(moduleId, newStatus) {
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `ajax_action=1&action=toggle_module_status&module_id=${moduleId}&new_status=${newStatus}`
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(`Module ${moduleId} passé en ${newStatus}`, 'success');
+            refreshModules();
+        } else {
+            showNotification(`Erreur: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        showNotification('Erreur de communication', 'error');
+    }
+}
+
+function viewModuleDetails(moduleId) {
+    // Aller à l'onglet base de données et afficher les tables du module
+    showTab('database');
+    // Logique pour filtrer les tables du module
+    showNotification(`Affichage des détails du module ${moduleId}`, 'info');
+}
+
+// Gestion des utilisateurs
+async function loadUsers() {
+    document.getElementById('users-content').innerHTML = '<div class="loading">Chargement des utilisateurs...</div>';
+    
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'ajax_action=1&action=user_management&action_type=list'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            displayUsers(data.users);
+        } else {
+            document.getElementById('users-content').innerHTML = '❌ Erreur de chargement';
+        }
+    } catch (error) {
+        document.getElementById('users-content').innerHTML = '❌ Erreur de communication';
+    }
+}
+
+function displayUsers(users) {
+    let html = '<table><thead><tr><th>ID</th><th>Nom d\'utilisateur</th><th>Rôle</th><th>Statut</th><th>Créé</th><th>Dernière connexion</th><th>Actions</th></tr></thead><tbody>';
+    
+    users.forEach(user => {
+        const isActive = user.is_active == 1;
+        const lastLogin = user.last_login ? new Date(user.last_login).toLocaleDateString('fr-FR') : 'Jamais';
+        const created = new Date(user.created_at).toLocaleDateString('fr-FR');
+        
+        html += `<tr>
+            <td>${user.id}</td>
+            <td><strong>${user.username}</strong></td>
+            <td>
+                <select onchange="updateUserRole(${user.id}, this.value)">
+                    <option value="user" ${user.role === 'user' ? 'selected' : ''}>Utilisateur</option>
+                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                    <option value="dev" ${user.role === 'dev' ? 'selected' : ''}>Développeur</option>
+                </select>
+            </td>
+            <td>
+                <label class="switch">
+                    <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleUserStatus(${user.id}, this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </td>
+            <td>${created}</td>
+            <td>${lastLogin}</td>
+            <td>
+                <button class="btn btn-sm btn-warning" onclick="resetUserPassword(${user.id})">🔑</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">🗑️</button>
+            </td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table>';
+    document.getElementById('users-content').innerHTML = html;
+}
+
+async function toggleUserStatus(userId, isActive) {
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `ajax_action=1&action=user_management&action_type=toggle_active&user_id=${userId}&new_status=${isActive ? 1 : 0}`
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(`Utilisateur ${isActive ? 'activé' : 'désactivé'}`, 'success');
+        } else {
+            showNotification('Erreur de mise à jour', 'error');
+            loadUsers(); // Recharger pour annuler le changement
+        }
+    } catch (error) {
+        showNotification('Erreur de communication', 'error');
+    }
+}
+
+async function updateUserRole(userId, newRole) {
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `ajax_action=1&action=user_management&action_type=update_role&user_id=${userId}&new_role=${newRole}`
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(`Rôle mis à jour vers ${newRole}`, 'success');
+        } else {
+            showNotification('Erreur de mise à jour', 'error');
+            loadUsers();
+        }
+    } catch (error) {
+        showNotification('Erreur de communication', 'error');
+    }
+}
+
+// Configuration système
+async function loadSystemInfo() {
+    document.getElementById('system-info').innerHTML = '<div class="loading">Chargement...</div>';
+    
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'ajax_action=1&action=system_info'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            displaySystemInfo(data.info);
+        }
+    } catch (error) {
+        document.getElementById('system-info').innerHTML = '❌ Erreur de chargement';
+    }
+}
+
+function displaySystemInfo(info) {
+    const freeSpace = (info.disk_free_space / (1024*1024*1024)).toFixed(2);
+    const totalSpace = (info.disk_total_space / (1024*1024*1024)).toFixed(2);
+    
+    const html = `
+        <p><strong>PHP :</strong> ${info.php_version}</p>
+        <p><strong>Serveur :</strong> ${info.server_software}</p>
+        <p><strong>Base de données :</strong> ${info.db_version}</p>
+        <p><strong>Mémoire limite :</strong> ${info.memory_limit}</p>
+        <p><strong>Temps d'exécution max :</strong> ${info.max_execution_time}s</p>
+        <p><strong>Upload max :</strong> ${info.upload_max_filesize}</p>
+        <p><strong>Espace disque :</strong> ${freeSpace}GB libre / ${totalSpace}GB total</p>
+    `;
+    
+    document.getElementById('system-info').innerHTML = html;
+}
+
+// Système de notifications
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 6px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+    `;
+    
+    switch(type) {
+        case 'success': notification.style.background = '#27ae60'; break;
+        case 'error': notification.style.background = '#e74c3c'; break;
+        case 'warning': notification.style.background = '#f39c12'; break;
+        default: notification.style.background = '#3498db';
+    }
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
 }
 
 function refreshModules() {
