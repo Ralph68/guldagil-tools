@@ -1,11 +1,9 @@
 <?php
 /**
- * Titre: Header du portail Guldagil - Version modulaire
+ * Titre: Header du portail Guldagil - Version modulaire CORRIGÉE
  * Chemin: /templates/header.php
  * Version: 0.5 beta + build auto
  */
-
-//define('ROOT_PATH', dirname(__DIR__, 1));
 
 // Protection contre l'accès direct
 if (!defined('ROOT_PATH')) {
@@ -97,16 +95,28 @@ $module_icon = match($current_module) {
     <!-- CSS principal du portail -->
     <link rel="stylesheet" href="/public/assets/css/portal.css?v=<?= $build_number ?>">
     
-    <!-- CSS Header modulaire -->
-    <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
+    <!-- CSS Header et Footer globaux -->
+    <link rel="stylesheet" href="/templates/assets/css/header.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/templates/assets/css/footer.css?v=<?= $build_number ?>">
+    
+    <!-- CSS Composants globaux -->
+    <link rel="stylesheet" href="/public/assets/css/components.css?v=<?= $build_number ?>">
     
     <!-- CSS spécifique au module -->
     <?php if ($module_css): ?>
-        <?php if (file_exists(ROOT_PATH . "/public/assets/css/modules/{$current_module}.css")): ?>
-        <link rel="stylesheet" href="/public/assets/css/modules/<?= $current_module ?>.css?v=<?= $build_number ?>">
-        <?php elseif (file_exists(ROOT_PATH . "/public/{$current_module}/assets/css/{$current_module}.css")): ?>
-        <link rel="stylesheet" href="/public/<?= $current_module ?>/assets/css/<?= $current_module ?>.css?v=<?= $build_number ?>">
-        <?php endif; ?>
+        <?php 
+        // Ordre de priorité pour trouver le CSS du module
+        $module_css_paths = [
+            "/public/{$current_module}/assets/css/{$current_module}.css",
+            "/public/assets/css/modules/{$current_module}.css"
+        ];
+        
+        foreach ($module_css_paths as $css_path) {
+            if (file_exists(ROOT_PATH . $css_path)): ?>
+                <link rel="stylesheet" href="<?= $css_path ?>?v=<?= $build_number ?>">
+                <?php break; ?>
+            <?php endif;
+        } ?>
     <?php endif; ?>
 </head>
 <body>
@@ -116,8 +126,8 @@ $module_icon = match($current_module) {
             <!-- Logo et branding -->
             <a href="/" class="header-brand">
                 <div class="header-logo">
-                    <?php if (file_exists(ROOT_PATH . '/assets/img/logo.png')): ?>
-                        <img src="/assets/img/logo.png" alt="Logo" width="32" height="32">
+                    <?php if (file_exists(ROOT_PATH . '/public/assets/img/logo.png')): ?>
+                        <img src="/public/assets/img/logo.png" alt="Logo" width="32" height="32">
                     <?php else: ?>
                         🌊
                     <?php endif; ?>
@@ -158,19 +168,20 @@ $module_icon = match($current_module) {
                         <div class="dropdown-user-email"><?= htmlspecialchars($current_user['email'] ?? '') ?></div>
                     </div>
                     
+                    <div class="dropdown-divider"></div>
                     <div class="dropdown-section">
-                        <a href="/user/" class="dropdown-item">
+                        <a href="/user/profile.php" class="dropdown-item">
                             <div class="dropdown-item-icon">👤</div>
                             <div class="dropdown-item-text">
-                                <div class="dropdown-title">Mon Espace</div>
-                                <div class="dropdown-subtitle">Dashboard personnel</div>
+                                <div class="dropdown-title">Mon profil</div>
+                                <div class="dropdown-subtitle">Paramètres personnels</div>
                             </div>
                         </a>
-                        <a href="/user/profile.php" class="dropdown-item">
-                            <div class="dropdown-item-icon">⚙️</div>
+                        <a href="/user/" class="dropdown-item">
+                            <div class="dropdown-item-icon">🏠</div>
                             <div class="dropdown-item-text">
-                                <div class="dropdown-title">Mon Profil</div>
-                                <div class="dropdown-subtitle">Paramètres compte</div>
+                                <div class="dropdown-title">Dashboard</div>
+                                <div class="dropdown-subtitle">Vue d'ensemble</div>
                             </div>
                         </a>
                     </div>
@@ -242,9 +253,17 @@ $module_icon = match($current_module) {
     
     <!-- JavaScript spécifique au module -->
     <?php if ($module_js): ?>
-        <?php if (file_exists(ROOT_PATH . "/public/assets/js/modules/{$current_module}.js")): ?>
-        <script src="/public/assets/js/modules/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
-        <?php elseif (file_exists(ROOT_PATH . "/public/{$current_module}/assets/js/{$current_module}.js")): ?>
-        <script src="/public/<?= $current_module ?>/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
-        <?php endif; ?>
+        <?php 
+        // Ordre de priorité pour trouver le JS du module
+        $module_js_paths = [
+            "/public/{$current_module}/assets/js/{$current_module}.js",
+            "/public/assets/js/modules/{$current_module}.js"
+        ];
+        
+        foreach ($module_js_paths as $js_path) {
+            if (file_exists(ROOT_PATH . $js_path)): ?>
+                <script src="<?= $js_path ?>?v=<?= $build_number ?>"></script>
+                <?php break; ?>
+            <?php endif;
+        } ?>
     <?php endif; ?>
