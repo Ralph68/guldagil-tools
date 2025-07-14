@@ -16,6 +16,7 @@ session_start([
 // Configuration - CORRIGÉ
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 define('APP_NAME', 'VotreApplication'); // À définir dans config.php
+require_once ROOT_PATH . '/config/error_handler_simple.php';
 
 // Configuration de la gestion des erreurs
 ini_set('display_errors', 'off');
