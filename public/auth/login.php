@@ -24,6 +24,8 @@ $required_files = [
     ROOT_PATH . '/config/version.php'
 ];
 
+require_once ROOT_PATH . '/config/error_handler_simple.php';
+
 foreach ($required_files as $file) {
     if (!file_exists($file)) {
         http_response_code(500);
