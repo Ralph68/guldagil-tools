@@ -4,6 +4,12 @@
  * Chemin: /public/index.php
  * Version: 0.5 beta + build auto
  */
+// Health check fallback AVANT tout autre traitement
+if (isset($_GET['health']) && $_GET['health'] === 'check') {
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'ok', 'timestamp' => date('c')]);
+    exit;
+}
 
 // Protection et initialisation
 session_start();
