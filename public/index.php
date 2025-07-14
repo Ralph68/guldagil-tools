@@ -78,7 +78,7 @@ $breadcrumbs = [
 // Modules disponibles
 $modules = [
     'port' => [
-        'name' => 'Calculateur de frais',
+        'name' => 'Frais de port',
         'description' => 'Calcul automatique des frais de port selon transporteur',
         'icon' => '🚛',
         'url' => '/port/',
