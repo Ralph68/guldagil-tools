@@ -89,17 +89,37 @@ class XPOCalculator {
             default => 'tarif_2000_2999'
         };
 
-        $basePrice = $row[$priceField];
+        // FIX: Conversion explicite en float avec validation
+        $basePrice = $this->convertToFloat($row[$priceField]);
+        if ($basePrice === null) {
+            return null;
+        }
 
         // Optimisation pour ≤ 100kg
         if ($weight <= 100) {
-            $price100kg = $row['tarif_100_499'] ?? null;
+            $price100kg = $this->convertToFloat($row['tarif_100_499'] ?? null);
             if ($price100kg !== null && $price100kg < $basePrice) {
                 $basePrice = $price100kg;
             }
         }
 
         return $basePrice;
+    }
+
+    /**
+     * Convertit une valeur en float avec validation
+     */
+    private function convertToFloat($value): ?float {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        
+        if (is_numeric($value)) {
+            $floatValue = (float) $value;
+            return $floatValue > 0 ? $floatValue : null;
+        }
+        
+        return null;
     }
 
     private function calculateWeightBasedPrice(float $basePrice, array $params): float {
@@ -126,7 +146,7 @@ class XPOCalculator {
         // Application des taxes de base
         foreach (['surete', 'participation_transition_energetique'] as $taxType) {
             if (isset($taxes[$taxType]) && $taxes[$taxType] > 0) {
-                $finalPrice += $taxes[$taxType];
+                $finalPrice += (float) $taxes[$taxType];
             }
         }
 
@@ -136,7 +156,7 @@ class XPOCalculator {
             && $taxes['majoration_idf_valeur'] > 0 
             && $this->isRegionParisienne($params['departement'])
         ) {
-            $idfValue = $taxes['majoration_idf_valeur'];
+            $idfValue = (float) $taxes['majoration_idf_valeur'];
             $finalPrice = $taxes['majoration_idf_type'] === 'Pourcentage'
                 ? $finalPrice * (1 + $idfValue / 100)
                 : $finalPrice + $idfValue;
@@ -148,9 +168,32 @@ class XPOCalculator {
             && isset($taxes['majoration_adr_taux']) 
             && $taxes['majoration_adr_taux'] > 0
         ) {
-            $finalPrice *= (1 + $taxes['majoration_adr_taux'] / 100);
+            $finalPrice *= (1 + (float) $taxes['majoration_adr_taux'] / 100);
         }
 
         return $finalPrice;
+    }
+
+    /**
+     * Vérifie si le département est en région parisienne via BDD
+     */
+    private function isRegionParisienne(string $departement): bool {
+        $taxesCacheKey = 'taxes_XPO';
+        
+        // Utilise le cache déjà chargé dans applyAllOptions
+        if (!isset($this->cache[$taxesCacheKey])) {
+            $stmt = $this->db->prepare("SELECT * FROM gul_taxes_transporteurs WHERE transporteur = 'XPO'");
+            $stmt->execute();
+            $this->cache[$taxesCacheKey] = $stmt->fetch() ?: [];
+        }
+
+        $taxes = $this->cache[$taxesCacheKey];
+        
+        if (!isset($taxes['majoration_idf_departements'])) {
+            return false;
+        }
+        
+        $departementsIdf = explode(',', $taxes['majoration_idf_departements']);
+        return in_array($departement, $departementsIdf);
     }
 }
