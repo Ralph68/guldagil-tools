@@ -1,5 +1,4 @@
-# .github/workflows/deploy.yml - VERSION RAPIDE
-name: Deploy PROD
+name: Deploy PROD - Fast
 
 on:
   push:
@@ -36,13 +35,14 @@ jobs:
             .github/**
             .gitignore
             README.md
+            public/system-check.php
             
-      - name: Health check
+      - name: Quick health check
         run: |
-          sleep 10
-          curl -f https://gul.runser.ovh/ || exit 1
+          sleep 3
+          curl -f -m 10 https://gul.runser.ovh/health.php || curl -f -m 10 https://gul.runser.ovh/?health=check || exit 1
           
-      - name: Notify
+      - name: Notify failure only
         if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
@@ -50,7 +50,7 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "❌ Deploy failed"
-          body: "Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          subject: "❌ Deploy failed - Guldagil"
+          body: "Deploy failed. Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           to: ${{ secrets.MAIL_TO }}
           from: Deploy Bot <${{ secrets.MAIL_USERNAME }}>
