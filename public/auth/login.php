@@ -5,7 +5,9 @@
  * Version: 0.5 beta + build auto
  */
 
-require_once ROOT_PATH . '/config/error_handler_simple.php';
+// Protection et chargement configuration
+define('ROOT_PATH', dirname(__DIR__, 2));
+
 // Gestion session sécurisée
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -16,9 +18,6 @@ if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
     header('Location: /index.php');
     exit;
 }
-
-// Protection et chargement configuration
-define('ROOT_PATH', dirname(__DIR__, 2));
 
 $required_files = [
     ROOT_PATH . '/config/config.php',
