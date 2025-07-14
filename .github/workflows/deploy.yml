@@ -21,7 +21,7 @@ jobs:
           DB_USER="${{ secrets.DB_USER }}"
           DB_PASS="${{ secrets.DB_PASS }}"
           DB_CHARSET="utf8mb4"
-          APP_ENV="development"
+          APP_ENV="production"
           EOF
           
       - name: Deploy
