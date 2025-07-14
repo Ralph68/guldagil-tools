@@ -7,13 +7,6 @@
  * ⚠️ SUPPRIMER EN PRODUCTION !
  */
 
-// Sécurité - localhost uniquement
-if (!in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1']) && 
-    !in_array($_SERVER['SERVER_NAME'], ['localhost', 'dev.guldagil.local'])) {
-    http_response_code(403);
-    die('🚫 Accès interdit - Développement uniquement');
-}
-
 // Mode debug forcé
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
