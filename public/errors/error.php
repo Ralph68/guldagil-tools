@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: Page d'erreur centralisée avec signalement
- * Chemin: /public/error.php
+ * Chemin: /public/erors/error.php
  * Version: 0.5 beta + build auto
  */
 
