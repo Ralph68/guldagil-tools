@@ -56,14 +56,19 @@ const CalculateurModule = {
             this.dom.departement.classList.remove('valid');
             
             this.deptTimeout = setTimeout(() => {
-                if (this.validateDepartement()) {
-                    this.dom.departement.classList.add('valid');
-                    setTimeout(() => {
-                        this.activateStep(2);
-                        this.dom.poids.focus();
-                    }, 500);
+    if (this.validateDepartement()) {
+        this.dom.departement.classList.add('valid');
+        setTimeout(() => {
+            this.activateStep(2);
+            // Ajoute le focus SEULEMENT si visible
+            setTimeout(() => {
+                if (this.dom.poids.offsetParent !== null) {
+                    this.dom.poids.focus();
                 }
-            }, 300);
+            }, 50);
+        }, 300);
+    }
+}, 300);
         });
 
         // Validation poids + mise à jour palette EUR
