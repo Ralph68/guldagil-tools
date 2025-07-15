@@ -10,7 +10,7 @@ $modules = [
         'name' => 'Calculateur de frais',
         'description' => 'Calcul et comparaison des tarifs de transport',
         'class' => 'PortModule',
-        'status' => 'beta', // Statut mis à jour : beta
+        'status' => 'beta', // BETA - Accessible par logistique
         'icon' => '📦',
         'color' => '#3498db',
         'routes' => ['port', 'calculateur', 'frais'],
@@ -24,7 +24,7 @@ $modules = [
         'name' => 'Gestion ADR',
         'description' => 'Transport de marchandises dangereuses',
         'class' => 'ADRModule',
-        'status' => 'development', // Statut : development (pas d'accès pour logistique)
+        'status' => 'development', // DÉVELOPPEMENT - Visible pour logistique mais pas accessible
         'icon' => '⚠️',
         'color' => '#e74c3c',
         'routes' => ['adr', 'dangereuses'],
@@ -34,50 +34,63 @@ $modules = [
         ]
     ],
     
-    'qualite' => [
-        'name' => 'Contrôle Qualité',
-        'description' => 'Suivi qualité des marchandises',
-        'class' => 'QualiteModule',
-        'status' => 'development', // Statut : development (pas d'accès pour logistique)
-        'icon' => '✅',
-        'color' => '#2ecc71',
-        'routes' => ['qualite', 'controle-qualite']
-    ],
-    
     'epi' => [
         'name' => 'Équipements EPI',
         'description' => 'Gestion des équipements de protection',
         'class' => 'EPIModule',
-        'status' => 'development',
+        'status' => 'development', // DÉVELOPPEMENT - Visible pour logistique mais pas accessible
         'icon' => '🦺',
         'color' => '#f39c12',
-        'routes' => ['epi', 'equipements']
+        'routes' => ['epi', 'equipements'],
+        'assets' => [
+            'css' => ['epi.css'],
+            'js' => ['epi.js']
+        ]
     ],
     
     'outillages' => [
         'name' => 'Outillages',
         'description' => 'Gestion des outillages industriels',
         'class' => 'OutillagesModule',
-        'status' => 'development',
+        'status' => 'development', // DÉVELOPPEMENT - Visible pour logistique mais pas accessible
         'icon' => '🔧',
         'color' => '#95a5a6',
-        'routes' => ['outillages', 'outils']
+        'routes' => ['outillages', 'outils'],
+        'assets' => [
+            'css' => ['outillages.css'],
+            'js' => ['outillages.js']
+        ]
+    ],
+    
+    'qualite' => [
+        'name' => 'Contrôle Qualité',
+        'description' => 'Suivi qualité des marchandises',
+        'class' => 'QualiteModule',
+        'status' => 'development', // DÉVELOPPEMENT - Visible pour logistique mais pas accessible
+        'icon' => '✅',
+        'color' => '#2ecc71',
+        'routes' => ['qualite', 'controle-qualite'],
+        'assets' => [
+            'css' => ['qualite.css'],
+            'js' => ['qualite.js']
+        ]
     ],
     
     'admin' => [
         'name' => 'Administration',
-        'description' => 'Gestion et configuration',
+        'description' => 'Gestion et configuration du portail',
         'class' => 'AdminModule',
-        'status' => 'active',
+        'status' => 'active', // ACTIF - Accessible par admin et dev uniquement
         'icon' => '⚙️',
         'color' => '#9b59b6',
         'routes' => ['admin', 'administration'],
-        'auth_required' => true
+        'auth_required' => true,
+        'min_role' => 'admin' // Restriction explicite admin+dev
     ]
 ];
 
 /**
- * DÉFINITION DES ACCÈS PAR RÔLE
+ * DÉFINITION DES ACCÈS PAR RÔLE - MISE À JOUR COMPLÈTE
  * Cette fonction détermine quels modules sont accessibles selon le rôle utilisateur
  */
 function getModuleAccessByRole($user_role, $modules) {
@@ -89,36 +102,34 @@ function getModuleAccessByRole($user_role, $modules) {
         
         switch ($user_role) {
             case 'dev':
-                // DEV : Accès total sans restriction
+                // DEV : Accès total sans restriction (y compris admin)
                 $has_access = true;
                 $access_reason = 'Développeur - Accès complet';
                 break;
                 
             case 'admin':
-                // ADMIN : Accès à tous modules sauf /dev (statuts 'active' et 'beta')
-                if ($module_key !== 'dev') {
-                    $has_access = in_array($module_data['status'], ['active', 'beta']);
-                    $access_reason = $has_access ? 'Admin - Module ' . $module_data['status'] : 'Admin - Module en développement';
+                // ADMIN : Accès à tous modules (active et beta) + module admin
+                if ($module_key === 'admin' || in_array($module_data['status'], ['active', 'beta'])) {
+                    $has_access = true;
+                    $access_reason = $module_key === 'admin' ? 'Admin - Module administration' : 'Admin - Module ' . $module_data['status'];
                 }
                 break;
                 
             case 'logistique':
-                // LOGISTIQUE : Accès à port (beta) + adr + qualité (mais développement = pas d'accès réel)
-                if (in_array($module_key, ['port', 'adr', 'qualite'])) {
-                    if ($module_key === 'port' && $module_data['status'] === 'beta') {
-                        $has_access = true;
-                        $access_reason = 'Logistique - Module en bêta';
-                    } else if (in_array($module_key, ['adr', 'qualite']) && $module_data['status'] === 'development') {
-                        $has_access = false; // Développement = pas d'accès
-                        $access_reason = 'Logistique - Module en développement (pas d\'accès)';
-                    }
+                // LOGISTIQUE : Accès à port (beta) + voir adr, epi, outillages, qualité (dev mais pas d'accès)
+                if ($module_key === 'port' && $module_data['status'] === 'beta') {
+                    $has_access = true;
+                    $access_reason = 'Logistique - Module en bêta accessible';
+                } else if (in_array($module_key, ['adr', 'epi', 'outillages', 'qualite']) && $module_data['status'] === 'development') {
+                    $has_access = false; // Visible mais pas accessible
+                    $access_reason = 'Logistique - Module en développement (visible mais pas accessible)';
                 }
                 break;
                 
             case 'user':
-                // USER : Accès uniquement aux modules actifs (pour le moment seul 'port' si actif)
-                $has_access = ($module_data['status'] === 'active');
-                $access_reason = $has_access ? 'Utilisateur - Module actif' : 'Utilisateur - Module non actif';
+                // USER : Accès uniquement aux modules actifs (aucun pour le moment)
+                $has_access = ($module_data['status'] === 'active' && $module_key !== 'admin');
+                $access_reason = $has_access ? 'Utilisateur - Module actif' : 'Utilisateur - Module non disponible';
                 break;
                 
             default:
@@ -127,10 +138,11 @@ function getModuleAccessByRole($user_role, $modules) {
                 $access_reason = 'Non connecté - Authentification requise';
         }
         
-        if ($has_access) {
+        if ($has_access || ($user_role === 'logistique' && in_array($module_key, ['adr', 'epi', 'outillages', 'qualite']))) {
             $accessible_modules[$module_key] = array_merge($module_data, [
-                'access_granted' => true,
-                'access_reason' => $access_reason
+                'access_granted' => $has_access,
+                'access_reason' => $access_reason,
+                'visible_only' => !$has_access && $user_role === 'logistique'
             ]);
         }
     }
@@ -139,7 +151,7 @@ function getModuleAccessByRole($user_role, $modules) {
 }
 
 /**
- * LOGIQUE D'AFFICHAGE MENU SELON RÔLE
+ * LOGIQUE D'AFFICHAGE MENU SELON RÔLE - MISE À JOUR COMPLÈTE
  * À utiliser dans templates/header.php
  */
 function shouldShowModuleInMenu($module_key, $module_data, $user_role) {
@@ -148,27 +160,22 @@ function shouldShowModuleInMenu($module_key, $module_data, $user_role) {
         return false;
     }
     
-    // Logique d'accès selon rôle
+    // Logique d'affichage selon rôle
     switch ($user_role) {
         case 'dev':
             return true; // Tout voir
             
         case 'admin':
-            return ($module_key !== 'dev' && in_array($module_data['status'], ['active', 'beta']));
+            // Voir tous modules active/beta + admin
+            return ($module_key === 'admin' || in_array($module_data['status'], ['active', 'beta']));
             
         case 'logistique':
-            // Voir seulement port (beta), adr et qualité mais sans accès aux modules en dev
-            if (in_array($module_key, ['port', 'adr', 'qualite'])) {
-                if ($module_key === 'port' && $module_data['status'] === 'beta') {
-                    return true; // Accès réel
-                } else if (in_array($module_key, ['adr', 'qualite'])) {
-                    return true; // Affiché mais grisé/désactivé car en développement
-                }
-            }
-            return false;
+            // Voir port (beta) + adr, epi, outillages, qualité (dev)
+            return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite']);
             
         case 'user':
-            return ($module_data['status'] === 'active');
+            // Voir seulement les modules actifs (sauf admin)
+            return ($module_data['status'] === 'active' && $module_key !== 'admin');
             
         default:
             return false;
