@@ -15,8 +15,8 @@ $page_title = 'Accueil du portail';
 $page_subtitle = 'Solutions professionnelles';
 $page_description = 'Portail Guldagil - Solutions pour le traitement de l\'eau et la logistique';
 $current_module = 'home';
-$module_css = true; // Activer le CSS du module home
-$module_js = true;  // Activer le JS du module home
+$module_css = true; // IMPORTANT : Activer le CSS spécifique au module home
+$module_js = true;  // IMPORTANT : Activer le JS spécifique au module home
 
 // Breadcrumbs
 $breadcrumbs = [
@@ -38,6 +38,9 @@ foreach ($config_paths as $config_path) {
         }
     }
 }
+
+// Chargement configuration modules
+require_once ROOT_PATH . '/config/modules.php';
 
 // Variables avec fallbacks
 $app_name = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
@@ -182,65 +185,6 @@ $all_modules = [
         'admin_only' => true
     ]
 ];
-
-// ========================================
-// 🎯 FONCTIONS UTILITAIRES
-// ========================================
-
-function canAccessModule($module_key, $module_data, $user_role) {
-    if (!$user_role || $user_role === 'guest') {
-        return false;
-    }
-    
-    switch ($user_role) {
-        case 'dev':
-            return true;
-            
-        case 'admin':
-            return ($module_key !== 'dev' && in_array($module_data['status'] ?? 'active', ['active', 'beta']));
-            
-        case 'logistique':
-            if (in_array($module_key, ['port', 'adr', 'qualite', 'epi', 'outillages', 'user'])) {
-                if ($module_key === 'port' && ($module_data['status'] ?? 'active') === 'beta') {
-                    return true;
-                }
-                if (in_array($module_key, ['qualite', 'epi', 'outillages', 'user']) && ($module_data['status'] ?? 'active') === 'active') {
-                    return true;
-                }
-                return false;
-            }
-            return false;
-            
-        case 'user':
-            return (($module_data['status'] ?? 'active') === 'active');
-            
-        default:
-            return false;
-    }
-}
-
-function shouldShowModule($module_key, $module_data, $user_role) {
-    if (!$user_role || $user_role === 'guest') {
-        return false;
-    }
-    
-    switch ($user_role) {
-        case 'dev':
-            return true;
-            
-        case 'admin':
-            return ($module_key === 'admin' || in_array($module_data['status'] ?? 'active', ['active', 'beta']));
-            
-        case 'logistique':
-            return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite', 'user']);
-            
-        case 'user':
-            return (($module_data['status'] ?? 'active') === 'active');
-            
-        default:
-            return false;
-    }
-}
 
 // ========================================
 // 🎨 INCLUSION TEMPLATE ET AUTHENTIFICATION
@@ -489,6 +433,25 @@ if (!empty($restricted_modules)) {
 if (file_exists(ROOT_PATH . '/templates/footer.php')) {
     include ROOT_PATH . '/templates/footer.php';
 } else {
-    echo '</body></html>';
+    echo '
+    <!-- Footer simple si fichier manquant -->
+    <footer class="portal-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <div class="footer-title">' . htmlspecialchars($app_name) . '</div>
+                <div class="footer-copyright">© ' . date('Y') . ' ' . htmlspecialchars($app_author) . '</div>
+            </div>
+            <div class="footer-info">
+                <div class="version-info">Version ' . htmlspecialchars($app_version) . '</div>
+                <div class="build-info">Build ' . htmlspecialchars($build_number) . '</div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- JavaScript du portail -->
+    <script src="/assets/js/portal.js?v=' . htmlspecialchars($build_number) . '"></script>
+    <script src="/assets/js/home.js?v=' . htmlspecialchars($build_number) . '"></script>
+    </body>
+    </html>';
 }
 ?>
