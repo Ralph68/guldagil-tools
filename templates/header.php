@@ -10,9 +10,6 @@ if (!defined('ROOT_PATH')) {
     http_response_code(403);
     exit('Accès direct interdit');
 }
-echo "<!-- ROOT_PATH = " . ROOT_PATH . " -->";
-echo "<!-- CSS test: " . ROOT_PATH . $module_css_path . " -->";
-echo "<!-- Fichier existe ? " . (file_exists(ROOT_PATH . $module_css_path) ? "OUI" : "NON") . " -->";
 
 // Gestion erreur simple
 if (file_exists(ROOT_PATH . '/config/error_handler_simple.php')) {
@@ -183,6 +180,9 @@ if ($module_css && $current_module !== 'home') {
     // Nouveau chemin
     $module_css_path = "/$current_module/assets/css/$current_module.css";
     $module_css_file = ROOT_PATH . $module_css_path;
+    echo "<!-- ROOT_PATH = " . ROOT_PATH . " -->";
+echo "<!-- CSS test: " . ROOT_PATH . $module_css_path . " -->";
+echo "<!-- Fichier existe ? " . (file_exists(ROOT_PATH . $module_css_path) ? "OUI" : "NON") . " -->";
 
     // DEBUG CHEMIN CSS
     echo "<!-- ROOT_PATH = " . ROOT_PATH . " -->";
