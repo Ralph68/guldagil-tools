@@ -1,0 +1,1329 @@
+/**
+ * Titre: CSS Dashboard Accueil - Extension du portal.css existant
+ * Chemin: /assets/css/home.css
+ * Version: 0.5 beta + build auto
+ * Usage: Page d'accueil dashboard - COMBINE avec portal.css existant
+ */
+
+/* ========================================
+   🎨 VARIABLES CSS ÉTENDUES POUR HOME
+   Hérite des variables portal.css existantes
+======================================== */
+:root {
+    /* Variables supplémentaires pour dashboard home */
+    --home-welcome-gradient-start: var(--primary-blue, #3182ce);
+    --home-welcome-gradient-end: var(--primary-blue-dark, #2c5282);
+    --home-card-hover-transform: translateY(-6px);
+    --home-animation-duration: 0.6s;
+    --home-animation-stagger: 100ms;
+    
+    /* Couleurs modules spécifiques au thème eau */
+    --module-transport: #3498db;
+    --module-adr: #e74c3c;
+    --module-qualite: #2ecc71;
+    --module-epi: #f39c12;
+    --module-outillages: #95a5a6;
+    --module-user: #9b59b6;
+    --module-admin: #34495e;
+}
+
+/* ========================================
+   📱 CONTAINER DASHBOARD - Intégration avec portal-main
+======================================== */
+.dashboard-container {
+    /* Utilise la même largeur que .main-container de portal.css */
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg, 1.5rem);
+    min-height: calc(100vh - 300px);
+    font-family: var(--font-family-base, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    line-height: 1.6;
+}
+
+/* ========================================
+   👋 SECTION BIENVENUE - Extension welcome-section existant
+======================================== */
+.welcome-section {
+    /* Hérite de .welcome-section de portal.css et l'enrichit */
+    background: linear-gradient(135deg, var(--home-welcome-gradient-start), var(--home-welcome-gradient-end));
+    color: white;
+    padding: var(--spacing-2xl, 3rem);
+    border-radius: var(--radius-2xl, 1rem);
+    margin-bottom: var(--spacing-xl, 2rem);
+    box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
+    position: relative;
+    overflow: hidden;
+    text-align: left; /* Override du portal.css qui centre */
+}
+
+.welcome-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transform: translate(50px, -50px);
+}
+
+.welcome-content {
+    position: relative;
+    z-index: 1;
+}
+
+.welcome-content h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-md, 1rem);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-subtitle {
+    font-size: 1.125rem;
+    margin: var(--spacing-md, 1rem) 0;
+    opacity: 0.95;
+    font-weight: 500;
+}
+
+.welcome-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-lg, 1.5rem);
+    font-size: 0.875rem;
+    opacity: 0.9;
+    margin-top: var(--spacing-lg, 1.5rem);
+}
+
+.welcome-meta span {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs, 0.25rem);
+}
+
+/* ========================================
+   📊 STATISTIQUES - Extension des .stat-card existants
+======================================== */
+.stats-grid {
+    /* Utilise la même grille que portal.css mais avec plus d'options */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg, 1.5rem);
+    margin-bottom: var(--spacing-xl, 2rem);
+}
+
+.stat-card {
+    /* Hérite et enrichit .stat-card de portal.css */
+    background: white;
+    padding: var(--spacing-xl, 2rem);
+    border-radius: var(--radius-xl, 0.75rem);
+    box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+    text-align: center;
+    border-left: 4px solid var(--primary-blue, #3182ce);
+    transition: var(--transition-normal, 0.3s ease);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    height: 60px;
+    background: var(--gray-50, #f9fafb);
+    border-radius: 50%;
+    transform: translate(20px, -20px);
+}
+
+.stat-card:hover {
+    transform: var(--home-card-hover-transform);
+    box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
+    border-left-color: var(--primary-blue-light, #63b3ed);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-blue, #3182ce);
+    line-height: 1;
+    margin-bottom: var(--spacing-sm, 0.5rem);
+    position: relative;
+    z-index: 1;
+}
+
+.stat-label {
+    font-size: 1rem;
+    color: var(--gray-700, #374151);
+    font-weight: 500;
+    margin-bottom: var(--spacing-xs, 0.25rem);
+}
+
+.stat-sublabel {
+    font-size: 0.8rem;
+    color: var(--gray-500, #6b7280);
+    font-weight: 400;
+}
+
+/* ========================================
+   📋 EN-TÊTES DE SECTION - Compatible portal.css
+======================================== */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-xl, 2rem);
+    padding-bottom: var(--spacing-md, 1rem);
+    border-bottom: 2px solid var(--gray-200, #e5e7eb);
+}
+
+.section-title {
+    /* Compatible avec .section-title de portal.css */
+    font-size: 1.75rem;
+    color: var(--gray-800, #1f2937);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm, 0.5rem);
+}
+
+/* Préservation du style portal.css section-title::before si présent */
+.section-title:not(.no-before)::before {
+    content: '';
+    width: 4px;
+    height: 2rem;
+    background: var(--primary-blue, #3182ce);
+    border-radius: var(--radius-sm, 0.25rem);
+}
+
+/* ========================================
+   👤 INFORMATIONS RÔLE UTILISATEUR
+======================================== */
+.role-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-lg, 1.5rem);
+    padding: var(--spacing-lg, 1.5rem);
+    background: var(--gray-50, #f9fafb);
+    border-radius: var(--radius-lg, 0.5rem);
+    border-left: 4px solid var(--primary-blue, #3182ce);
+    margin-bottom: var(--spacing-xl, 2rem);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+}
+
+.role-badge {
+    /* Compatible avec les classes rôle du header existant */
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-md, 1rem);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs, 0.25rem);
+}
+
+/* Styles rôles compatibles avec header.css existant */
+.role-user { 
+    background: #dbeafe; 
+    color: #1e40af; 
+}
+
+.role-admin { 
+    background: #fef3c7; 
+    color: #92400e; 
+}
+
+.role-dev { 
+    background: #f3e8ff; 
+    color: #7c3aed; 
+}
+
+.role-logistique { 
+    background: #dcfce7; 
+    color: #166534; 
+}
+
+.role-description {
+    font-size: 0.875rem;
+    color: var(--gray-600, #4b5563);
+    font-style: italic;
+}
+
+/* ========================================
+   📂 SECTIONS CATÉGORIES
+======================================== */
+.category-section {
+    margin-bottom: var(--spacing-2xl, 3rem);
+}
+
+.category-title {
+    font-size: 1.25rem;
+    color: var(--gray-700, #374151);
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm, 0.5rem);
+    font-weight: 600;
+}
+
+.category-stats {
+    font-size: 0.8rem;
+    color: var(--gray-500, #6b7280);
+    background: var(--gray-100, #f3f4f6);
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+/* ========================================
+   🗂️ GRILLE MODULES - Compatible avec modules-grid existant
+======================================== */
+.modules-grid {
+    /* Hérite de .modules-grid de portal.css et l'améliore */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--spacing-xl, 2rem);
+}
+
+.module-card {
+    /* Enrichit .module-card existant de portal.css */
+    background: white;
+    border-radius: var(--radius-xl, 0.75rem);
+    box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+    padding: var(--spacing-xl, 2rem);
+    transition: var(--transition-normal, 0.3s ease);
+    text-decoration: none;
+    color: inherit;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.module-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--module-color, var(--primary-blue, #3182ce));
+}
+
+.module-card:hover {
+    transform: var(--home-card-hover-transform);
+    box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
+    border-color: var(--primary-blue, #3182ce);
+}
+
+.module-card.no-access {
+    opacity: 0.7;
+    border: 2px dashed var(--gray-300, #d1d5db);
+    background: var(--gray-50, #f9fafb);
+}
+
+.module-card.no-access:hover {
+    opacity: 1;
+    border-color: var(--color-warning, #f59e0b);
+    cursor: not-allowed;
+    transform: translateY(-2px);
+}
+
+.module-link {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* ========================================
+   📋 CONTENU DES CARTES MODULE
+======================================== */
+.module-header {
+    /* Compatible avec .module-header de portal.css */
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    gap: var(--spacing-md, 1rem);
+}
+
+.module-icon {
+    /* Enrichit .module-icon existant */
+    font-size: 2.5rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: var(--gray-50, #f9fafb);
+    border-radius: var(--radius-lg, 0.5rem);
+    border: 2px solid var(--gray-200, #e5e7eb);
+}
+
+.module-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.module-name {
+    /* Compatible avec .module-name de portal.css */
+    font-weight: 700;
+    color: var(--gray-800, #1f2937);
+    font-size: 1.125rem;
+    margin-bottom: var(--spacing-xs, 0.25rem);
+    line-height: 1.4;
+}
+
+.module-status-badge {
+    /* Compatible avec .module-status de portal.css */
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Styles status compatibles avec portal.css */
+.status-active { 
+    background: #dcfce7; 
+    color: #166534; 
+}
+
+.status-beta { 
+    background: #fef3c7; 
+    color: #92400e; 
+}
+
+.status-development { 
+    background: #fee2e2; 
+    color: #991b1b; 
+}
+
+.module-description {
+    /* Compatible avec .module-description de portal.css */
+    color: var(--gray-600, #4b5563);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    flex-grow: 1;
+}
+
+/* ========================================
+   ✨ FONCTIONNALITÉS MODULE
+======================================== */
+.module-features {
+    margin: var(--spacing-lg, 1.5rem) 0;
+    flex-grow: 1;
+}
+
+.module-features h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gray-700, #374151);
+    margin-bottom: var(--spacing-sm, 0.5rem);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.features-list {
+    /* Compatible avec .module-features de portal.css */
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs, 0.25rem);
+}
+
+.features-list li {
+    font-size: 0.8rem;
+    color: var(--gray-600, #4b5563);
+    position: relative;
+    padding-left: var(--spacing-md, 1rem);
+    line-height: 1.5;
+}
+
+.features-list li::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: var(--primary-blue, #3182ce);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+/* ========================================
+   🔐 PIED DE CARTE MODULE
+======================================== */
+.module-footer {
+    margin-top: auto;
+    padding-top: var(--spacing-lg, 1.5rem);
+    border-top: 1px solid var(--gray-200, #e5e7eb);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.access-status {
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs, 0.25rem);
+}
+
+.status-available { 
+    color: var(--color-success, #10b981); 
+}
+
+.status-restricted { 
+    color: var(--color-danger, #ef4444); 
+}
+
+.status-coming-soon { 
+    color: var(--color-warning, #f59e0b); 
+}
+
+/* ========================================
+   🚨 ALERTES SYSTÈME - Compatible avec portal.css
+======================================== */
+.alert {
+    padding: var(--spacing-lg, 1.5rem);
+    border-radius: var(--radius-lg, 0.5rem);
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-lg, 1.5rem);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+}
+
+.alert-info { 
+    background: #eff6ff; 
+    border-left: 4px solid var(--color-info, #3b82f6);
+    color: var(--gray-700, #374151);
+}
+
+.alert-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.alert strong {
+    color: var(--gray-800, #1f2937);
+    font-weight: 600;
+}
+
+.alert small {
+    color: var(--gray-600, #4b5563);
+    font-size: 0.875rem;
+}
+
+/* ========================================
+   📱 RESPONSIVE DESIGN - Extension des media queries portal.css
+======================================== */
+@media (max-width: 1024px) {
+    .dashboard-container {
+        padding: 0 var(--spacing-lg, 1.5rem);
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--spacing-md, 1rem);
+    }
+    
+    .modules-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: var(--spacing-lg, 1.5rem);
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 0 var(--spacing-md, 1rem);
+    }
+    
+    .welcome-section {
+        padding: var(--spacing-xl, 2rem);
+        text-align: center; /* Recentrer sur mobile */
+    }
+    
+    .welcome-content h1 {
+        font-size: 1.875rem;
+    }
+    
+    .welcome-meta {
+        flex-direction: column;
+        gap: var(--spacing-sm, 0.5rem);
+    }
+    
+    .stats-grid,
+    .modules-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md, 1rem);
+    }
+    
+    .role-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md, 1rem);
+    }
+    
+    .category-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm, 0.5rem);
+    }
+    
+    .module-header {
+        gap: var(--spacing-sm, 0.5rem);
+    }
+    
+    .module-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-container {
+        padding: 0 var(--spacing-sm, 0.5rem);
+    }
+    
+    .welcome-section {
+        padding: var(--spacing-lg, 1.5rem);
+    }
+    
+    .welcome-content h1 {
+        font-size: 1.5rem;
+    }
+    
+    .stat-card {
+        padding: var(--spacing-lg, 1.5rem);
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .module-card {
+        padding: var(--spacing-lg, 1.5rem);
+    }
+}
+
+/* ========================================
+   🎨 ANIMATIONS ET MICROINTERACTIONS
+======================================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Animation séquentielle compatible avec portal.js */
+.dashboard-container > * {
+    animation: fadeInUp var(--home-animation-duration) ease-out;
+}
+
+.stat-card:hover .stat-number {
+    animation: pulse 2s infinite;
+}
+
+.module-card:hover .module-icon {
+    transform: scale(1.1);
+    transition: var(--transition-normal, 0.3s ease);
+}
+
+/* ========================================
+   🎯 ÉTATS DE FOCUS ACCESSIBILITÉ
+   Compatible avec portal.css
+======================================== */
+.module-card:focus,
+.module-link:focus {
+    outline: 2px solid var(--primary-blue, #3182ce);
+    outline-offset: 2px;
+}
+
+.role-badge:focus {
+    outline: 2px solid var(--primary-blue-light, #63b3ed);
+    outline-offset: 1px;
+}
+
+/* ========================================
+   🔧 CLASSES UTILITAIRES SPÉCIFIQUES HOME
+======================================== */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+.font-medium { font-weight: 500; }
+
+.text-primary { color: var(--primary-blue, #3182ce); }
+.text-success { color: var(--color-success, #10b981); }
+.text-warning { color: var(--color-warning, #f59e0b); }
+.text-danger { color: var(--color-danger, #ef4444); }
+
+/* ========================================
+   🌙 MODE SOMBRE (Compatible portal.css)
+======================================== */
+@media (prefers-color-scheme: dark) {
+    /* Variables mode sombre désactivées par défaut */
+    /* Utilise les variables portal.css si présentes */
+}
+
+/* ========================================
+   🚀 OPTIMISATIONS PERFORMANCE
+======================================== */
+.module-card,
+.stat-card {
+    will-change: transform;
+}
+
+/* Lazy loading pour images */
+.module-card img[loading="lazy"] {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.module-card img[loading="lazy"].loaded {
+    opacity: 1;
+}spacing-md) 0;
+    opacity: 0.95;
+    font-weight: var(--font-weight-medium);
+}
+
+.welcome-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-lg);
+    font-size: 0.875rem;
+    opacity: 0.9;
+    margin-top: var(--spacing-lg);
+}
+
+.welcome-meta span {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+/* ========================================
+   📊 STATISTIQUES RAPIDES
+======================================== */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.stat-card {
+    background: white;
+    padding: var(--spacing-xl);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    text-align: center;
+    border-left: 4px solid var(--color-primary);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    height: 60px;
+    background: var(--color-gray-50);
+    border-radius: 50%;
+    transform: translate(20px, -20px);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+    border-left-color: var(--color-accent);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    line-height: 1;
+    margin-bottom: var(--spacing-sm);
+    position: relative;
+    z-index: 1;
+}
+
+.stat-label {
+    font-size: 1rem;
+    color: var(--color-gray-700);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--spacing-xs);
+}
+
+.stat-sublabel {
+    font-size: 0.8rem;
+    color: var(--color-gray-500);
+    font-weight: var(--font-weight-normal);
+}
+
+/* ========================================
+   📋 EN-TÊTES DE SECTION
+======================================== */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 2px solid var(--color-gray-200);
+}
+
+.section-title {
+    font-size: 1.75rem;
+    color: var(--color-gray-800);
+    font-weight: var(--font-weight-bold);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+/* ========================================
+   👤 INFORMATIONS RÔLE UTILISATEUR
+======================================== */
+.role-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background: var(--color-gray-50);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--color-primary);
+    margin-bottom: var(--spacing-xl);
+    box-shadow: var(--shadow-sm);
+}
+
+.role-badge {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.role-user { 
+    background: #dbeafe; 
+    color: #1e40af; 
+}
+
+.role-admin { 
+    background: #fef3c7; 
+    color: #92400e; 
+}
+
+.role-dev { 
+    background: #f3e8ff; 
+    color: #7c3aed; 
+}
+
+.role-logistique { 
+    background: #dcfce7; 
+    color: #166534; 
+}
+
+.role-description {
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+    font-style: italic;
+}
+
+/* ========================================
+   📂 SECTIONS CATÉGORIES
+======================================== */
+.category-section {
+    margin-bottom: var(--spacing-2xl);
+}
+
+.category-title {
+    font-size: 1.25rem;
+    color: var(--color-gray-700);
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.category-stats {
+    font-size: 0.8rem;
+    color: var(--color-gray-500);
+    background: var(--color-gray-100);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 12px;
+    font-weight: var(--font-weight-medium);
+}
+
+/* ========================================
+   🗂️ GRILLE DES MODULES
+======================================== */
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--spacing-xl);
+}
+
+.module-card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-xl);
+    transition: var(--transition);
+    text-decoration: none;
+    color: inherit;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.module-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--module-color, var(--color-primary));
+}
+
+.module-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--color-primary);
+}
+
+.module-card.no-access {
+    opacity: 0.7;
+    border: 2px dashed var(--color-gray-300);
+    background: var(--color-gray-50);
+}
+
+.module-card.no-access:hover {
+    opacity: 1;
+    border-color: var(--color-warning);
+    cursor: not-allowed;
+    transform: translateY(-2px);
+}
+
+.module-link {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* ========================================
+   📋 CONTENU DES CARTES MODULE
+======================================== */
+.module-header {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-lg);
+    gap: var(--spacing-md);
+}
+
+.module-icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: var(--color-gray-50);
+    border-radius: var(--border-radius);
+    border: 2px solid var(--color-gray-200);
+}
+
+.module-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.module-name {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-gray-800);
+    font-size: 1.125rem;
+    margin-bottom: var(--spacing-xs);
+    line-height: 1.4;
+}
+
+.module-status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: var(--font-weight-bold);
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-active { 
+    background: #dcfce7; 
+    color: #166534; 
+}
+
+.status-beta { 
+    background: #fef3c7; 
+    color: #92400e; 
+}
+
+.status-development { 
+    background: #fee2e2; 
+    color: #991b1b; 
+}
+
+.module-description {
+    color: var(--color-gray-600);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: var(--spacing-lg);
+    flex-grow: 1;
+}
+
+/* ========================================
+   ✨ FONCTIONNALITÉS MODULE
+======================================== */
+.module-features {
+    margin: var(--spacing-lg) 0;
+    flex-grow: 1;
+}
+
+.module-features h4 {
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-gray-700);
+    margin-bottom: var(--spacing-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.features-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.features-list li {
+    font-size: 0.8rem;
+    color: var(--color-gray-600);
+    position: relative;
+    padding-left: var(--spacing-md);
+    line-height: 1.5;
+}
+
+.features-list li::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: var(--color-primary);
+    font-weight: var(--font-weight-bold);
+    font-size: 0.9rem;
+}
+
+/* ========================================
+   🔐 PIED DE CARTE MODULE
+======================================== */
+.module-footer {
+    margin-top: auto;
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.access-status {
+    font-size: 0.8rem;
+    font-weight: var(--font-weight-semibold);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.status-available { 
+    color: var(--color-success); 
+}
+
+.status-restricted { 
+    color: var(--color-danger); 
+}
+
+.status-coming-soon { 
+    color: var(--color-warning); 
+}
+
+/* ========================================
+   🚨 ALERTES SYSTÈME
+======================================== */
+.alert {
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.alert-info { 
+    background: #eff6ff; 
+    border-left: 4px solid var(--color-info);
+    color: var(--color-gray-700);
+}
+
+.alert-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.alert strong {
+    color: var(--color-gray-800);
+    font-weight: var(--font-weight-semibold);
+}
+
+.alert small {
+    color: var(--color-gray-600);
+    font-size: 0.875rem;
+}
+
+/* ========================================
+   📱 RESPONSIVE DESIGN
+======================================== */
+@media (max-width: 1024px) {
+    .dashboard-container {
+        padding: var(--spacing-lg);
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--spacing-md);
+    }
+    
+    .modules-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: var(--spacing-lg);
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: var(--spacing-md);
+    }
+    
+    .welcome-section {
+        padding: var(--spacing-xl);
+    }
+    
+    .welcome-content h1 {
+        font-size: 1.875rem;
+    }
+    
+    .welcome-meta {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .stats-grid,
+    .modules-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+    
+    .role-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+    
+    .category-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+    
+    .module-header {
+        gap: var(--spacing-sm);
+    }
+    
+    .module-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-container {
+        padding: var(--spacing-sm);
+    }
+    
+    .welcome-section {
+        padding: var(--spacing-lg);
+    }
+    
+    .welcome-content h1 {
+        font-size: 1.5rem;
+    }
+    
+    .stat-card {
+        padding: var(--spacing-lg);
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .module-card {
+        padding: var(--spacing-lg);
+    }
+}
+
+/* ========================================
+   🎨 ANIMATIONS ET MICROINTERACTIONS
+======================================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.dashboard-container > * {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.stat-card:hover .stat-number {
+    animation: pulse 2s infinite;
+}
+
+.module-card:hover .module-icon {
+    transform: scale(1.1);
+    transition: var(--transition);
+}
+
+/* ========================================
+   🌙 PRÉPARATION MODE SOMBRE (OPTIONNEL)
+======================================== */
+@media (prefers-color-scheme: dark) {
+    /* Variables mode sombre désactivées par défaut */
+    /* Décommenter si besoin d'un mode sombre automatique */
+    /*
+    :root {
+        --color-gray-50: #1f2937;
+        --color-gray-100: #374151;
+        --color-gray-200: #4b5563;
+        --color-gray-300: #6b7280;
+        --color-gray-700: #d1d5db;
+        --color-gray-800: #f9fafb;
+        --color-gray-900: #ffffff;
+    }
+    */
+}
+
+/* ========================================
+   🎯 ÉTATS DE FOCUS ACCESSIBILITÉ
+======================================== */
+.module-card:focus,
+.module-link:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.role-badge:focus {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+}
+
+/* ========================================
+   🔧 UTILITAIRES SPÉCIFIQUES
+======================================== */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.font-bold { font-weight: var(--font-weight-bold); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-medium { font-weight: var(--font-weight-medium); }
+
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-secondary); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-danger { color: var(--color-danger); }
