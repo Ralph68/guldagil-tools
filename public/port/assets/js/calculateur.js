@@ -56,19 +56,19 @@ const CalculateurModule = {
             this.dom.departement.classList.remove('valid');
             
             this.deptTimeout = setTimeout(() => {
-    if (this.validateDepartement()) {
-        this.dom.departement.classList.add('valid');
-        setTimeout(() => {
-            this.activateStep(2);
-            // Ajoute le focus SEULEMENT si visible
-            setTimeout(() => {
-                if (this.dom.poids.offsetParent !== null) {
-                    this.dom.poids.focus();
+                if (this.validateDepartement()) {
+                    this.dom.departement.classList.add('valid');
+                    setTimeout(() => {
+                        this.activateStep(2);
+                        // Ajoute le focus SEULEMENT si visible
+                        setTimeout(() => {
+                            if (this.dom.poids.offsetParent !== null) {
+                                this.dom.poids.focus();
+                            }
+                        }, 50);
+                    }, 300);
                 }
-            }, 50);
-        }, 300);
-    }
-}, 300);
+            }, 300);
         });
 
         // Validation poids + mise à jour palette EUR
@@ -161,39 +161,38 @@ const CalculateurModule = {
                 this.dom.paletteEur.value = '0';
             }
         }
-    }
+    },
 
     /**
      * Navigation séquentielle
      */
     activateStep(step) {
-    activateStep(step) {
-    document.querySelectorAll('.calc-form-step').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.calc-step-btn').forEach(el => {
-        el.classList.remove('active');
-        el.classList.add('disabled');
-    });
+        document.querySelectorAll('.calc-form-step').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.calc-step-btn').forEach(el => {
+            el.classList.remove('active');
+            el.classList.add('disabled');
+        });
 
-    for (let i = 1; i <= step; i++) {
-        const stepEl = document.querySelector(`.calc-form-step[data-step="${i}"]`);
-        const btnEl = document.querySelector(`.calc-step-btn[data-step="${i}"]`);
-        if (!btnEl || !stepEl) continue; // Protection anti-null
+        for (let i = 1; i <= step; i++) {
+            const stepEl = document.querySelector(`.calc-form-step[data-step="${i}"]`);
+            const btnEl = document.querySelector(`.calc-step-btn[data-step="${i}"]`);
+            if (!btnEl || !stepEl) continue; // Protection anti-null
 
-        const indicator = btnEl.querySelector('.calc-step-indicator');
-        if (!indicator) continue;
+            const indicator = btnEl.querySelector('.calc-step-indicator');
+            if (!indicator) continue;
 
-        if (i < step) {
-            btnEl.classList.remove('disabled');
-            btnEl.classList.add('completed');
-            indicator.textContent = '✓';
-        } else if (i === step) {
-            stepEl.classList.add('active');
-            btnEl.classList.add('active');
-            btnEl.classList.remove('disabled');
-            indicator.textContent = i;
+            if (i < step) {
+                btnEl.classList.remove('disabled');
+                btnEl.classList.add('completed');
+                indicator.textContent = '✓';
+            } else if (i === step) {
+                stepEl.classList.add('active');
+                btnEl.classList.add('active');
+                btnEl.classList.remove('disabled');
+                indicator.textContent = i;
+            }
         }
-    }
-    this.state.currentStep = step;
+        this.state.currentStep = step;
     },
 
     /**
