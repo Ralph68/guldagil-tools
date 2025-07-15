@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="icon" type="image/png" href="/assets/img/favicon.png">
     
     <!-- CSS modulaire -->
-    <link rel="stylesheet" href="../assets/css/login.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/login.css?v=<?= $build_number ?>">
 </head>
 <body>
     <div class="login-container">
@@ -171,6 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <!-- JavaScript modulaire -->
-    <script src="/public/auth/assets/js/login.js?v=<?= $build_number ?>"></script>
+    <script src="/assets/js/login.js?v=<?= $build_number ?>"></script>
 </body>
 </html>
