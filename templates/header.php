@@ -10,6 +10,9 @@ if (!defined('ROOT_PATH')) {
     http_response_code(403);
     exit('Accès direct interdit');
 }
+echo "<!-- ROOT_PATH = " . ROOT_PATH . " -->";
+echo "<!-- CSS test: " . ROOT_PATH . $module_css_path . " -->";
+echo "<!-- Fichier existe ? " . (file_exists(ROOT_PATH . $module_css_path) ? "OUI" : "NON") . " -->";
 
 // Gestion erreur simple
 if (file_exists(ROOT_PATH . '/config/error_handler_simple.php')) {
