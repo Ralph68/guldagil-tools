@@ -174,22 +174,20 @@ $module_status = $all_modules[$current_module]['status'] ?? 'active';
     </style>
     
     <!-- CSS spécifique au module (compatible ancien ET nouveau système) -->
-    <?php
-    $module_css_loaded = false;
+<?php
+$module_css_loaded = false;
 if ($module_css && $current_module !== 'home') {
     // Nouveau chemin
-    $module_css_path = "/$current_module/assets/css/$current_module.css";
-    $module_css_file = ROOT_PATH . $module_css_path;
-    echo "<!-- ROOT_PATH = " . ROOT_PATH . " -->";
-echo "<!-- CSS test: " . ROOT_PATH . $module_css_path . " -->";
-echo "<!-- Fichier existe ? " . (file_exists(ROOT_PATH . $module_css_path) ? "OUI" : "NON") . " -->";
+    $web_css_path = "/$current_module/assets/css/$current_module.css";
+    $physical_css_path = ROOT_PATH . "/public" . $web_css_path; // <-- CORRECTION ici
 
-    // DEBUG CHEMIN CSS
     echo "<!-- ROOT_PATH = " . ROOT_PATH . " -->";
-    echo "<!-- Test file_exists: $module_css_file -->";
+    echo "<!-- CSS web: " . $web_css_path . " -->";
+    echo "<!-- CSS physical: " . $physical_css_path . " -->";
+    echo "<!-- Fichier existe ? " . (file_exists($physical_css_path) ? "OUI" : "NON") . " -->";
 
-    if (file_exists($module_css_file)) {
-        echo '<link rel="stylesheet" href="' . $module_css_path . '?v=' . $build_number . '">';
+    if (file_exists($physical_css_path)) {
+        echo '<link rel="stylesheet" href="' . $web_css_path . '?v=' . $build_number . '">';
         $module_css_loaded = true;
     }
     if (!$module_css_loaded) {
@@ -198,7 +196,7 @@ echo "<!-- Fichier existe ? " . (file_exists(ROOT_PATH . $module_css_path) ? "OU
             "/assets/css/modules/{$current_module}.css"
         ];
         foreach ($legacy_paths as $css_path) {
-            $legacy_file = ROOT_PATH . $css_path;
+            $legacy_file = ROOT_PATH . "/public" . $css_path; // <-- Ajoute aussi /public ici !
             echo "<!-- Test legacy file_exists: $legacy_file -->";
             if (file_exists($legacy_file)) {
                 echo '<link rel="stylesheet" href="' . $css_path . '?v=' . $build_number . '">';
@@ -207,6 +205,7 @@ echo "<!-- Fichier existe ? " . (file_exists(ROOT_PATH . $module_css_path) ? "OU
         }
     }
 }
+?>
 
     ?>
 </head>
