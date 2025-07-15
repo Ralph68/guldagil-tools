@@ -202,33 +202,6 @@ $module_icon = $all_modules[$current_module]['icon'] ?? match($current_module) {
 $module_color = $all_modules[$current_module]['color'] ?? '#3182ce';
 $module_status = $all_modules[$current_module]['status'] ?? 'active';
 
-// === FONCTION D'ACCÈS AUX MODULES SELON RÔLE (PRÉSERVÉE) ===
-
-function shouldShowModule($module_key, $module_data, $user_role) {
-    if (!$user_role || $user_role === 'guest') {
-        return false;
-    }
-    
-    switch ($user_role) {
-        case 'dev':
-            return true; // Tout voir
-            
-        case 'admin':
-            // Voir tous modules active/beta + admin (exclu dev)
-            return ($module_key === 'admin' || in_array($module_data['status'] ?? 'active', ['active', 'beta']));
-            
-        case 'logistique':
-            // Voir port + adr + epi + outillages + qualité (même si pas d'accès pour certains)
-            return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite']);
-            
-        case 'user':
-            return (($module_data['status'] ?? 'active') === 'active');
-            
-        default:
-            return false;
-    }
-}
-
 // === GESTION ROLE BADGE CSS (PRÉSERVÉE) ===
 function getRoleBadgeClass($role) {
     return match($role) {
