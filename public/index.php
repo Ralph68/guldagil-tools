@@ -709,6 +709,8 @@ if (!empty($restricted_modules)) {
             <div class="stat-label">Modules accessibles</div>
             <div class="stat-sublabel">Selon votre rôle : <?= ucfirst($user_role) ?></div>
         </div>
+        <div class="stat-sublabel">
+        </div>
         <div class="stat-card">
             <div class="stat-number"><?= $portal_stats['modules_actifs'] ?></div>
             <div class="stat-label">Modules actifs</div>
@@ -798,3 +800,75 @@ if (!empty($restricted_modules)) {
                                 <div class="module-name"><?= htmlspecialchars($module['name']) ?></div>
                                 <div class="module-status-badge status-<?= $module['status'] ?>">
                                     <?php
+                                    switch ($module['status']) {
+                                        case 'active': echo 'Actif'; break;
+                                        case 'beta': echo 'Bêta'; break;
+                                        case 'development': echo 'En développement'; break;
+                                    }
+                                    ?>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="module-description">
+                            <?= htmlspecialchars($module['description']) ?>
+                        </div>
+                        
+                        <div class="module-features">
+                            <h4>Fonctionnalités</h4>
+                            <ul class="features-list">
+                                <?php foreach ($module['features'] as $feature): ?>
+                                <li><?= htmlspecialchars($feature) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        
+                        <div class="module-footer">
+                            <div class="access-status">
+                                <?php if ($module['can_access']): ?>
+                                    <span class="status-available">✅ Accès autorisé</span>
+                                else: ?>
+                                    <span class="status-restricted">🔒 Accès restreint</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        
+                    <?php if ($module['can_access'] && $module['status'] === 'active'): ?>
+                    </a>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endforeach; ?>
+        
+        <?php if (!empty($system_alerts)): ?>
+        <div class="alert alert-info">
+            <span style="font-size: 1.5rem;">ℹ️</span>
+            <div>
+                <strong><?= htmlspecialchars($system_alerts[0]['message']) ?></strong><br>
+                <small><?= htmlspecialchars($system_alerts[0]['action']) ?></small>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        </section>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="system-info">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <p>© <?= date('Y') ?> <?= htmlspecialchars($app_name) ?> - Version <?= htmlspecialchars($app_version) ?></p>
+            </div>
+            <div class="col-md-6 text-md-right">
+                <p>Conçu par <?= htmlspecialchars($app_author) ?></p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>
