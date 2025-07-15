@@ -151,11 +151,12 @@ function shouldShowModule($module_key, $module_data, $user_role) {
             return true; // Tout voir
             
         case 'admin':
-            return ($module_key !== 'dev' && in_array($module_data['status'], ['active', 'beta']));
+            // Voir tous modules active/beta + admin (exclu dev)
+            return ($module_key === 'admin' || in_array($module_data['status'], ['active', 'beta']));
             
         case 'logistique':
-            // Voir port, adr, qualité (même si pas d'accès pour certains)
-            return in_array($module_key, ['port', 'adr', 'qualite']);
+            // Voir port + adr + epi + outillages + qualité (même si pas d'accès pour certains)
+            return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite']);
             
         case 'user':
             return ($module_data['status'] === 'active');
