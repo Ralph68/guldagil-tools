@@ -192,13 +192,13 @@ function getRoleBadgeClass($role) {
     <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
     
     <!-- CSS principal -->
-    <link rel="stylesheet" href="/public/assets/css/portal.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="/public/assets/css/header.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
     
     <!-- CSS modulaire -->
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
-        $module_css_path = "/public/{$current_module}/assets/css/{$current_module}.css";
+        $module_css_path = "/{$current_module}/assets/css/{$current_module}.css";
         if (file_exists(ROOT_PATH . $module_css_path)): ?>
             <link rel="stylesheet" href="<?= $module_css_path ?>?v=<?= $build_number ?>">
         <?php endif; ?>
