@@ -70,10 +70,21 @@ const CalculateurModule = {
             }, 300);
         });
 
-        // NOUVELLE LOGIQUE POIDS : Si > 60kg = forcément palette
+        // NOUVELLE LOGIQUE POIDS : Si > 60kg = forcément palette + Limites
         this.dom.poids.addEventListener('input', () => {
             this.dom.poids.classList.remove('valid');
             const poids = parseFloat(this.dom.poids.value) || 0;
+            
+            // Gestion limite 3000kg
+            const limitWarning = document.getElementById('limitWarning');
+            if (poids > 3000) {
+                limitWarning.classList.add('show');
+                this.dom.form.classList.add('disabled');
+                return;
+            } else {
+                limitWarning.classList.remove('show');
+                this.dom.form.classList.remove('disabled');
+            }
             
             if (poids > 0) {
                 this.dom.poids.classList.add('valid');
@@ -85,8 +96,11 @@ const CalculateurModule = {
                     this.dom.type.disabled = true;
                     
                     // Calcul automatique nombre de palettes (1 palette = ~300kg max)
-                    const nbPalettes = Math.ceil(poids / 300);
+                    const nbPalettes = Math.min(6, Math.ceil(poids / 300));
                     this.dom.palettes.value = nbPalettes;
+                    
+                    // Vérification limite 6 palettes
+                    this.checkPalettesLimit(nbPalettes);
                     
                 } else {
                     // ≤ 60kg : réactiver le choix type
@@ -95,18 +109,36 @@ const CalculateurModule = {
                         this.dom.type.value = '';
                         this.dom.type.classList.remove('valid');
                     }
+                    
+                    // Masquer limite palettes
+                    const limitPalettesWarning = document.getElementById('limitPalettesWarning');
+                    if (limitPalettesWarning) {
+                        limitPalettesWarning.classList.remove('show');
+                    }
                 }
                 
                 this.updatePaletteVisibility();
             }
         });
 
-        // Gestion type 
+        // Gestion type + vérification palettes
         this.dom.type.addEventListener('change', () => {
             if (this.dom.type.value) {
                 this.dom.type.classList.add('valid');
                 this.updatePaletteVisibility();
+                
+                // Vérification palettes si type palette
+                if (this.dom.type.value === 'palette') {
+                    const nbPalettes = parseInt(this.dom.palettes.value) || 1;
+                    this.checkPalettesLimit(nbPalettes);
+                }
             }
+        });
+
+        // Gestion nombre de palettes avec limite
+        this.dom.palettes.addEventListener('input', () => {
+            const nbPalettes = parseInt(this.dom.palettes.value) || 1;
+            this.checkPalettesLimit(nbPalettes);
         });
 
         // Gestion toggles ADR
@@ -154,6 +186,26 @@ const CalculateurModule = {
             e.preventDefault();
             this.handleCalculate();
         });
+    },
+
+    /**
+     * NOUVELLE : Vérification limite palettes
+     */
+    checkPalettesLimit(nbPalettes) {
+        const limitPalettesWarning = document.getElementById('limitPalettesWarning');
+        
+        if (nbPalettes > 6) {
+            this.dom.palettes.value = 6; // Forcer max 6
+            if (limitPalettesWarning) {
+                limitPalettesWarning.classList.add('show');
+            }
+            this.dom.form.classList.add('disabled');
+        } else {
+            if (limitPalettesWarning) {
+                limitPalettesWarning.classList.remove('show');
+            }
+            this.dom.form.classList.remove('disabled');
+        }
     },
 
     /**
@@ -507,6 +559,14 @@ window.resetForm = function() {
     // Réactiver type
     document.getElementById('type').disabled = false;
     
+    // Masquer warnings limites
+    document.getElementById('limitWarning').classList.remove('show');
+    const limitPalettesWarning = document.getElementById('limitPalettesWarning');
+    if (limitPalettesWarning) {
+        limitPalettesWarning.classList.remove('show');
+    }
+    document.getElementById('calculatorForm').classList.remove('disabled');
+    
     // Reset toggles
     document.querySelectorAll('[data-adr]').forEach(btn => btn.classList.remove('active'));
     document.querySelector('[data-adr="non"]').classList.add('active');
@@ -534,6 +594,132 @@ window.resetForm = function() {
     CalculateurModule.activateStep(1);
     document.getElementById('departement').focus();
 };
+
+window.contactExpress = function() {
+    const subject = 'Demande Express Dédié - Livraison 12h';
+    const body = `Bonjour,
+
+Je souhaite obtenir un devis pour un transport express dédié :
+
+- Type : Express 12h (chargé après-midi → livré lendemain 8h)
+- Poids approximatif : [à compléter] kg
+- Département destination : [à compléter]
+- Date souhaitée : [à compléter]
+- Détails urgence : [à compléter]
+
+Merci de me communiquer le tarif et les modalités.
+
+Cordialement`;
+    
+    window.location.href = `mailto:achats@guldaigl.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
+
+// NOUVELLES FONCTIONS AFFRÈTEMENT
+window.showAffretement = function() {
+    document.querySelector('.calc-form-panel').style.display = 'none';
+    document.getElementById('resultsPanel').style.display = 'none';
+    document.getElementById('affretementPanel').style.display = 'block';
+    
+    // Pré-remplir avec les données du calculateur si disponibles
+    const poids = document.getElementById('poids')?.value;
+    const palettes = document.getElementById('palettes')?.value;
+    
+    if (poids) {
+        document.getElementById('affret_poids').value = poids;
+    }
+    if (palettes) {
+        document.getElementById('affret_palettes').value = palettes;
+    }
+    
+    // Définir date minimum à aujourd'hui
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('affret_date_souhaite').min = today;
+};
+
+window.closeAffretement = function() {
+    document.getElementById('affretementPanel').style.display = 'none';
+    document.querySelector('.calc-form-panel').style.display = 'block';
+    document.getElementById('resultsPanel').style.display = 'block';
+};
+
+window.mailLibre = function() {
+    const subject = 'Demande de transport - Contact libre';
+    const body = `Bonjour,
+
+Je souhaite obtenir des informations pour un transport :
+
+[Décrivez votre besoin ici]
+
+Cordialement`;
+    
+    window.location.href = `mailto:achats@guldaigl.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
+
+// GESTION FORMULAIRE AFFRÈTEMENT
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion toggles ADR affrètement
+    document.querySelectorAll('[data-affret-adr]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-affret-adr]').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            document.getElementById('affret_adr').value = e.target.dataset.affretAdr;
+            
+            // Afficher/masquer détails ADR
+            const adrDetails = document.getElementById('affretAdrDetails');
+            if (e.target.dataset.affretAdr === 'oui') {
+                adrDetails.style.display = 'block';
+                document.getElementById('affret_adr_details').required = true;
+            } else {
+                adrDetails.style.display = 'none';
+                document.getElementById('affret_adr_details').required = false;
+            }
+        });
+    });
+
+    // Gestion toggle hayon affrètement
+    document.querySelectorAll('[data-affret-hayon]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-affret-hayon]').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            document.getElementById('affret_hayon').value = e.target.dataset.affretHayon;
+        });
+    });
+
+    // Soumission formulaire affrètement
+    document.getElementById('affretementForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.innerHTML = '⏳ Envoi en cours...';
+        submitBtn.disabled = true;
+        
+        try {
+            const response = await fetch('?ajax=affretement', {
+                method: 'POST',
+                body: new URLSearchParams(Object.fromEntries(formData.entries()))
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('✅ Demande d\'affrètement envoyée avec succès !');
+                document.getElementById('affretementForm').reset();
+                closeAffretement();
+            } else {
+                alert('❌ Erreur : ' + (data.error || 'Impossible d\'envoyer la demande'));
+            }
+            
+        } catch (error) {
+            alert('❌ Erreur de connexion : ' + error.message);
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    });
+});
 
 window.toggleOtherCarriers = function() {
     const content = document.getElementById('otherCarriersContent');
