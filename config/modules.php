@@ -206,3 +206,64 @@ function getModuleDisplayClass($module_key, $module_data, $user_role) {
     
     return implode(' ', $classes);
 }
+/**
+ * FONCTIONS COMMUNES D'ACCÈS AUX MODULES - VERSION UNIQUE
+ * Centralisation pour éviter les redéclarations
+ */
+
+if (!function_exists('canAccessModule')) {
+    /**
+     * Vérifie si un utilisateur peut accéder à un module
+     */
+    function canAccessModule($module_key, $module_data, $user_role) {
+        if (!$user_role || $user_role === 'guest') {
+            return false;
+        }
+        
+        switch ($user_role) {
+            case 'dev':
+                return true;
+                
+            case 'admin':
+                return ($module_key === 'admin' || in_array($module_data['status'] ?? 'active', ['active', 'beta']));
+                
+            case 'logistique':
+                return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite', 'user']);
+                
+            case 'user':
+                return (($module_data['status'] ?? 'active') === 'active');
+                
+            default:
+                return false;
+        }
+    }
+}
+
+if (!function_exists('shouldShowModule')) {
+    /**
+     * Détermine si un module doit être affiché dans le menu
+     */
+    function shouldShowModule($module_key, $module_data, $user_role) {
+        if (!$user_role || $user_role === 'guest') {
+            return false;
+        }
+        
+        switch ($user_role) {
+            case 'dev':
+                return true;
+                
+            case 'admin':
+                return ($module_key === 'admin' || in_array($module_data['status'] ?? 'active', ['active', 'beta']));
+                
+            case 'logistique':
+                return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite', 'user']);
+                
+            case 'user':
+                return (($module_data['status'] ?? 'active') === 'active');
+                
+            default:
+                return false;
+        }
+    }
+}
+
