@@ -158,12 +158,6 @@ require_once ROOT_PATH . '/templates/header.php';
 ?>
 
 <div class="calc-container">
-    <header class="calc-header">
-        <div class="calc-header-content">
-            <h1 class="calc-title">🚛 Calculateur de Frais de Port</h1>
-            <p class="calc-subtitle">Comparez instantanément les tarifs XPO, Heppner et Kuehne+Nagel</p>
-        </div>
-    </header>
     
     <main class="calc-main">
         <!-- FORMULAIRE -->
