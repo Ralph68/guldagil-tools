@@ -325,41 +325,7 @@ if (file_exists(ROOT_PATH . '/templates/header.php')) {
             <?php endforeach; ?>
         </div>
     </section>
-
-    <!-- Actions rapides -->
-    <section class="quick-actions">
-        <h2 class="section-title">⚡ Actions rapides</h2>
-        <div class="actions-grid">
-            <a href="/port/" class="action-card">
-                <span class="action-icon">🚛</span>
-                <span class="action-text">Nouveau calcul</span>
-            </a>
-            <a href="/user/profile.php" class="action-card">
-                <span class="action-icon">👤</span>
-                <span class="action-text">Mon profil</span>
-            </a>
-            <a href="/admin/" class="action-card">
-                <span class="action-icon">⚙️</span>
-                <span class="action-text">Administration</span>
-            </a>
-            <a href="/about.php" class="action-card">
-                <span class="action-icon">ℹ️</span>
-                <span class="action-text">À propos</span>
-            </a>
-        </div>
-    </section>
-
-    <!-- Footer informations -->
-    <footer class="footer">
-        <p>
-            <strong><?= htmlspecialchars($app_name) ?></strong> v<?= htmlspecialchars($app_version) ?> 
-            - Build <?= htmlspecialchars($build_number) ?>
-            <br>
-            Développé par <?= htmlspecialchars($app_author) ?> 
-            - 
-            <a href="/legal/">Mentions légales</a>
-        </p>
-    </footer>
+    
 </div>
 
 <?php
