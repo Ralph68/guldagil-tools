@@ -114,7 +114,7 @@ const CalculateurModule = {
         });
 
         // Navigation par étapes
-        document.querySelectorAll('.step-btn').forEach(btn => {
+        document.querySelectorAll('.calc-step-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('disabled')) {
                     const step = parseInt(e.target.dataset.step);
@@ -162,29 +162,33 @@ const CalculateurModule = {
      * Navigation séquentielle
      */
     activateStep(step) {
-        document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.step-btn').forEach(el => {
-            el.classList.remove('active');
-            el.classList.add('disabled');
-        });
-        
-        for (let i = 1; i <= step; i++) {
-            const stepEl = document.querySelector(`.form-step[data-step="${i}"]`);
-            const btnEl = document.querySelector(`.step-btn[data-step="${i}"]`);
-            const indicator = btnEl.querySelector('.step-indicator');
-            
-            if (i < step) {
-                btnEl.classList.remove('disabled');
-                btnEl.classList.add('completed');
-                indicator.textContent = '✓';
-            } else if (i === step) {
-                stepEl.classList.add('active');
-                btnEl.classList.add('active');
-                btnEl.classList.remove('disabled');
-                indicator.textContent = i;
-            }
+    activateStep(step) {
+    document.querySelectorAll('.calc-form-step').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.calc-step-btn').forEach(el => {
+        el.classList.remove('active');
+        el.classList.add('disabled');
+    });
+
+    for (let i = 1; i <= step; i++) {
+        const stepEl = document.querySelector(`.calc-form-step[data-step="${i}"]`);
+        const btnEl = document.querySelector(`.calc-step-btn[data-step="${i}"]`);
+        if (!btnEl || !stepEl) continue; // Protection anti-null
+
+        const indicator = btnEl.querySelector('.calc-step-indicator');
+        if (!indicator) continue;
+
+        if (i < step) {
+            btnEl.classList.remove('disabled');
+            btnEl.classList.add('completed');
+            indicator.textContent = '✓';
+        } else if (i === step) {
+            stepEl.classList.add('active');
+            btnEl.classList.add('active');
+            btnEl.classList.remove('disabled');
+            indicator.textContent = i;
         }
-        this.state.currentStep = step;
+    }
+    this.state.currentStep = step;
     },
 
     /**
