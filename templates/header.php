@@ -40,6 +40,7 @@ foreach ($exempt_paths as $exempt_path) {
 // === CHARGEMENT CONFIGURATION ET MODULES ===
 $config_loaded = false;
 $all_modules = [];
+require_once ROOT_PATH . '/config/modules.php';
 
 // Chargement configuration modules
 if (file_exists(ROOT_PATH . '/config/modules.php')) {
@@ -202,38 +203,6 @@ $module_color = $all_modules[$current_module]['color'] ?? '#3182ce';
 $module_status = $all_modules[$current_module]['status'] ?? 'active';
 
 // === FONCTION D'ACCÈS AUX MODULES SELON RÔLE (PRÉSERVÉE) ===
-function canAccessModule($module_key, $module_data, $user_role) {
-    if (!$user_role || $user_role === 'guest') {
-        return false; // Non connecté = pas d'accès
-    }
-    
-    switch ($user_role) {
-        case 'dev':
-            return true; // Accès total sans restriction
-            
-        case 'admin':
-            // Accès à tous modules sauf /dev, statuts 'active' et 'beta'
-            return ($module_key !== 'dev' && in_array($module_data['status'] ?? 'active', ['active', 'beta']));
-            
-        case 'logistique':
-            // Accès à port (beta), adr et qualité mais seulement si pas en développement
-            if (in_array($module_key, ['port', 'adr', 'qualite'])) {
-                if ($module_key === 'port' && ($module_data['status'] ?? 'active') === 'beta') {
-                    return true; // Port en beta = accès
-                }
-                // ADR et Qualité en développement = pas d'accès pour l'instant
-                return false;
-            }
-            return false;
-            
-        case 'user':
-            // Accès uniquement aux modules actifs
-            return (($module_data['status'] ?? 'active') === 'active');
-            
-        default:
-            return false;
-    }
-}
 
 function shouldShowModule($module_key, $module_data, $user_role) {
     if (!$user_role || $user_role === 'guest') {
