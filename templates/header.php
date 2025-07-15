@@ -181,10 +181,10 @@ if ($module_css && $current_module !== 'home') {
     $web_css_path = "/$current_module/assets/css/$current_module.css";
     $physical_css_path = ROOT_PATH . "/public" . $web_css_path; // <-- CORRECTION ici
 
-    echo "<!-- ROOT_PATH = " . ROOT_PATH . " -->";
-    echo "<!-- CSS web: " . $web_css_path . " -->";
-    echo "<!-- CSS physical: " . $physical_css_path . " -->";
-    echo "<!-- Fichier existe ? " . (file_exists($physical_css_path) ? "OUI" : "NON") . " -->";
+    //echo "<!-- ROOT_PATH = " . ROOT_PATH . " -->";
+    //echo "<!-- CSS web: " . $web_css_path . " -->";
+    //echo "<!-- CSS physical: " . $physical_css_path . " -->";
+    //echo "<!-- Fichier existe ? " . (file_exists($physical_css_path) ? "OUI" : "NON") . " -->";
 
     if (file_exists($physical_css_path)) {
         echo '<link rel="stylesheet" href="' . $web_css_path . '?v=' . $build_number . '">';
@@ -206,8 +206,6 @@ if ($module_css && $current_module !== 'home') {
     }
 }
 ?>
-
-    ?>
 </head>
 <body data-module="<?= $current_module ?>" data-module-status="<?= $module_status ?>">
     <!-- Header principal -->
