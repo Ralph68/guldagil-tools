@@ -1,4 +1,144 @@
-<?php
+<!-- FORMULAIRE AFFRÈTEMENT SIMPLIFIÉ -->
+        <section class="calc-affretement-panel" id="affretementPanel" style="display: none;">
+            <div class="calc-affret-header">
+                <div class="calc-affret-icon">🚛</div>
+                <div>
+                    <h2 class="calc-affret-title">Demande d'Affrètement</h2>
+                    <p class="calc-affret-subtitle">Transport > 3000kg ou > 6 palettes</p>
+                </div>
+                <button type="button" class="calc-affret-close" onclick="closeAffretement()">✕</button>
+            </div>
+            
+            <form id="affretementForm" class="calc-affret-form">
+                <!-- TRAJET -->
+                <div class="calc-affret-section">
+                    <h3 class="calc-affret-section-title">🗺️ Trajet</h3>
+                    <div class="calc-affret-grid">
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_cp_depart">Code postal départ *</label>
+                            <input type="text" id="affret_cp_depart" name="cp_depart" class="calc-input" 
+                                   placeholder="67000" pattern="[0-9]{5}" maxlength="5" required>
+                        </div>
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_ville_depart">Ville départ *</label>
+                            <input type="text" id="affret_ville_depart" name="ville_depart" class="calc-input" 
+                                   placeholder="Strasbourg" required>
+                        </div>
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_cp_arrivee">Code postal arrivée *</label>
+                            <input type="text" id="affret_cp_arrivee" name="cp_arrivee" class="calc-input" 
+                                   placeholder="75001" pattern="[0-9]{5}" maxlength="5" required>
+                        </div>
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_ville_arrivee">Ville arrivée *</label>
+                            <input type="text" id="affret_ville_arrivee" name="ville_arrivee" class="calc-input" 
+                                   placeholder="Paris" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- MARCHANDISE -->
+                <div class="calc-affret-section">
+                    <h3 class="calc-affret-section-title">📦 Marchandise</h3>
+                    <div class="calc-affret-grid">
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_poids">Poids total (kg) *</label>
+                            <input type="number" id="affret_poids" name="poids_total" class="calc-input" 
+                                   min="1" step="0.1" placeholder="3500" required>
+                        </div>
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_palettes">Nombre de palettes *</label>
+                            <input type="number" id="affret_palettes" name="nb_palettes" class="calc-input" 
+                                   min="1" placeholder="8" required>
+                        </div>
+                    </div>
+                    
+                    <div class="calc-form-group">
+                        <label class="calc-label">Transport ADR (matières dangereuses) *</label>
+                        <div class="calc-toggle-group">
+                            <button type="button" class="calc-toggle-btn active" data-affret-adr="non">Non</button>
+                            <button type="button" class="calc-toggle-btn" data-affret-adr="oui">Oui</button>
+                        </div>
+                        <input type="hidden" id="affret_adr" name="adr" value="non">
+                    </div>
+                    
+                    <div class="calc-form-group" id="affretAdrDetails" style="display: none;">
+                        <label class="calc-label" for="affret_adr_details">Précisez le type de matières dangereuses *</label>
+                        <textarea id="affret_adr_details" name="adr_details" class="calc-textarea" 
+                                 placeholder="Ex: Classe 3 - Liquides inflammables - UN1993" rows="2"></textarea>
+                    </div>
+                </div>
+                
+                <!-- PLANNING ET CONTACTS -->
+                <div class="calc-affret-section">
+                    <h3 class="calc-affret-section-title">📅 Planning & Contacts</h3>
+                    <div class="calc-affret-grid">
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_date_souhaite">Date souhaitée *</label>
+                            <input type="date" id="affret_date_souhaite" name="date_souhaite" class="calc-input" required>
+                        </div>
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_flexibilite">Flexibilité</label>
+                            <select id="affret_flexibilite" name="flexibilite" class="calc-input">
+                                <option value="aucune">Date impérative</option>
+                                <option value="1-2j">+/- 1-2 jours</option>
+                                <option value="1sem">+/- 1 semaine</option>
+                                <option value="flexible">Flexible</option>
+                            </select>
+                        </div>
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_contact_depart">Contact départ *</label>
+                            <input type="text" id="affret_contact_depart" name="contact_depart" class="calc-input" 
+                                   placeholder="Nom + téléphone" required>
+                        </div>
+                        <div class="calc-form-group">
+                            <label class="calc-label" for="affret_contact_arrivee">Contact arrivée *</label>
+                            <input type="text" id="affret_contact_arrivee" name="contact_arrivee" class="calc-input" 
+                                   placeholder="Nom + téléphone" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CONTRAINTES -->
+                <div class="calc-affret-section">
+                    <h3 class="calc-affret-section-title">⚙️ Contraintes</h3>
+                    
+                    <div class="calc-form-group">
+                        <label class="calc-label">Hayon obligatoire *</label>
+                        <div class="calc-toggle-group">
+                            <button type="button" class="calc-toggle-btn active" data-affret-hayon="non">Non</button>
+                            <button type="button" class="calc-toggle-btn" data-affret-hayon="oui">Oui</button>
+                        </div>
+                        <input type="hidden" id="affret_hayon" name="hayon_obligatoire" value="non">
+                    </div>
+                    
+                    <div class="calc-form-group">
+                        <label class="calc-label" for="affret_contraintes">Contraintes spécifiques</label>
+                        <textarea id="affret_contraintes" name="contraintes_specifiques" class="calc-textarea" 
+                                 placeholder="Ex: Restrictions horaires, accès difficile, produit fragile..." rows="3"></textarea>
+                    </div>
+                    
+                    <div class="calc-form-group">
+                        <label class="calc-label" for="affret_commentaires">Commentaires</label>
+                        <textarea id="affret_commentaires" name="commentaires" class="calc-textarea" 
+                                 placeholder="Informations complémentaires..." rows="3"></textarea>
+                    </div>
+                </div>
+                
+                <!-- ACTIONS -->
+                <div class="calc-affret-actions">
+                    <button type="submit" class="calc-btn-primary calc-btn-large">
+                        📧 Envoyer demande
+                    </button>
+                    <button type="button" class="calc-btn-secondary" onclick="closeAffretement()">
+                        🔄 Retour
+                    </button>
+                    <button type="button" class="calc-btn-contact" onclick="mailLibre()">
+                        ✉️ Email libre
+                    </button>
+                </div>
+            </form>
+        </section><?php
 /**
  * Titre: Calculateur de frais de port - Interface complète avec logique palette corrigée
  * Chemin: /public/port/index.php
