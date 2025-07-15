@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Header du portail - GESTION RÔLES MISE À JOUR
+ * Titre: Header du portail - AUTHENTIFICATION OBLIGATOIRE + GESTION RÔLES COMPLÈTE
  * Chemin: /templates/header.php
  * Version: 0.5 beta + build auto
  */
@@ -9,6 +9,32 @@
 if (!defined('ROOT_PATH')) {
     http_response_code(403);
     exit('Accès direct interdit');
+}
+
+// ========================================
+// 🔐 AUTHENTIFICATION OBLIGATOIRE CENTRALISÉE
+// ========================================
+
+// Pages exemptées d'authentification (peuvent être consultées sans connexion)
+$exempt_paths = [
+    '/public/auth/login.php',
+    '/public/auth/logout.php', 
+    '/public/auth/mfa.php',
+    '/public/errors/',
+    '/assets/',
+    '/favicon.ico'
+];
+
+// Vérifier si on doit bypasser l'auth pour cette page
+$current_script = $_SERVER['SCRIPT_NAME'] ?? '';
+$current_uri = $_SERVER['REQUEST_URI'] ?? '';
+$bypass_auth = false;
+
+foreach ($exempt_paths as $exempt_path) {
+    if (strpos($current_script, $exempt_path) === 0 || strpos($current_uri, $exempt_path) === 0) {
+        $bypass_auth = true;
+        break;
+    }
 }
 
 // === CHARGEMENT CONFIGURATION ET MODULES ===
@@ -28,7 +54,10 @@ if (empty($all_modules)) {
         'port' => ['name' => 'Frais de port', 'icon' => '📦', 'status' => 'beta', 'color' => '#3498db', 'routes' => ['port']],
         'adr' => ['name' => 'Gestion ADR', 'icon' => '⚠️', 'status' => 'development', 'color' => '#e74c3c', 'routes' => ['adr']],
         'qualite' => ['name' => 'Contrôle Qualité', 'icon' => '✅', 'status' => 'development', 'color' => '#2ecc71', 'routes' => ['qualite']],
-        'admin' => ['name' => 'Administration', 'icon' => '⚙️', 'status' => 'active', 'color' => '#9b59b6', 'routes' => ['admin']]
+        'epi' => ['name' => 'Équipements EPI', 'icon' => '🦺', 'status' => 'development', 'color' => '#f39c12', 'routes' => ['epi']],
+        'outillages' => ['name' => 'Outillages', 'icon' => '🔧', 'status' => 'development', 'color' => '#95a5a6', 'routes' => ['outillages']],
+        'user' => ['name' => 'Mon Espace', 'icon' => '👤', 'status' => 'active', 'color' => '#9b59b6', 'routes' => ['user']],
+        'admin' => ['name' => 'Administration', 'icon' => '⚙️', 'status' => 'active', 'color' => '#34495e', 'routes' => ['admin']]
     ];
 }
 
@@ -36,26 +65,76 @@ if (empty($all_modules)) {
 $user_authenticated = false;
 $current_user = null;
 
-try {
-    // Tentative AuthManager
-    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-        require_once ROOT_PATH . '/core/auth/AuthManager.php';
-        $auth = new AuthManager();
-        
-        if ($auth->isAuthenticated()) {
-            $user_authenticated = true;
-            $current_user = $auth->getCurrentUser();
-        }
-    } else {
-        // Fallback session simple
-        if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-            $user_authenticated = true;
-            $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
-        }
+// Si pas de bypass, vérifier l'authentification OBLIGATOIRE
+if (!$bypass_auth) {
+    // Démarrer session si pas déjà fait
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
-} catch (Exception $e) {
-    error_log("Erreur auth header: " . $e->getMessage());
-    // Continue sans auth si erreur
+
+    try {
+        // Méthode 1 : AuthManager (prioritaire)
+        if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
+            require_once ROOT_PATH . '/core/auth/AuthManager.php';
+            $auth = new AuthManager();
+            
+            if ($auth->isAuthenticated()) {
+                $user_authenticated = true;
+                $current_user = $auth->getCurrentUser();
+                
+                // Synchroniser avec session PHP
+                $_SESSION['authenticated'] = true;
+                $_SESSION['user'] = $current_user;
+                $_SESSION['last_activity'] = time();
+            }
+        }
+        
+        // Méthode 2 : Session PHP simple (fallback)
+        if (!$user_authenticated) {
+            if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true && isset($_SESSION['user'])) {
+                // Vérifier expiration de session
+                $last_activity = $_SESSION['last_activity'] ?? 0;
+                $session_timeout = defined('SESSION_TIMEOUT') ? SESSION_TIMEOUT : 1800; // 30 minutes
+                
+                if ((time() - $last_activity) <= $session_timeout) {
+                    $user_authenticated = true;
+                    $current_user = $_SESSION['user'];
+                    $_SESSION['last_activity'] = time();
+                } else {
+                    // Session expirée - nettoyer
+                    session_destroy();
+                    session_start();
+                }
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Erreur auth header: " . $e->getMessage());
+        $user_authenticated = false;
+    }
+    
+    // ========================================
+    // 🚫 REDIRECTION OBLIGATOIRE SI PAS AUTHENTIFIÉ
+    // ========================================
+    if (!$user_authenticated) {
+        $redirect_param = ($current_uri !== '/' && $current_uri !== '/index.php') ? '?redirect=' . urlencode($current_uri) : '';
+        
+        // Headers de sécurité
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Location: /auth/login.php' . $redirect_param);
+        exit;
+    }
+    
+    // Log d'accès pour utilisateurs authentifiés
+    $access_log = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'user' => $current_user['username'] ?? 'unknown',
+        'role' => $current_user['role'] ?? 'user',
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        'page' => $current_script,
+        'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 200)
+    ];
+    error_log("ACCESS: " . json_encode($access_log));
 }
 
 // === VARIABLES AVEC FALLBACKS SÉCURISÉS ===
@@ -81,6 +160,19 @@ if ($current_module === 'home') {
     }
 }
 
+// ========================================
+// 🔒 VÉRIFICATION PERMISSIONS MODULE (si utilisateur authentifié)
+// ========================================
+if ($user_authenticated && $current_module !== 'home' && !$bypass_auth) {
+    $user_role = $current_user['role'] ?? 'user';
+    
+    if (!canAccessModule($current_module, $all_modules[$current_module] ?? [], $user_role)) {
+        // Utilisateur connecté mais pas les droits pour ce module
+        header('Location: /errors/403.php?module=' . urlencode($current_module));
+        exit;
+    }
+}
+
 // === FIL D'ARIANE PAR DÉFAUT ===
 $breadcrumbs = $breadcrumbs ?? [
     ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => true]
@@ -99,6 +191,8 @@ $module_icon = $all_modules[$current_module]['icon'] ?? match($current_module) {
     'adr' => '⚠️',
     'admin' => '⚙️',
     'qualite' => '✅',
+    'epi' => '🦺',
+    'outillages' => '🔧',
     'maintenance' => '🔧',
     'stats' => '📊',
     'user', 'profile' => '👤',
@@ -107,7 +201,7 @@ $module_icon = $all_modules[$current_module]['icon'] ?? match($current_module) {
 $module_color = $all_modules[$current_module]['color'] ?? '#3182ce';
 $module_status = $all_modules[$current_module]['status'] ?? 'active';
 
-// === FONCTION D'ACCÈS AUX MODULES SELON RÔLE ===
+// === FONCTION D'ACCÈS AUX MODULES SELON RÔLE (PRÉSERVÉE) ===
 function canAccessModule($module_key, $module_data, $user_role) {
     if (!$user_role || $user_role === 'guest') {
         return false; // Non connecté = pas d'accès
@@ -119,12 +213,12 @@ function canAccessModule($module_key, $module_data, $user_role) {
             
         case 'admin':
             // Accès à tous modules sauf /dev, statuts 'active' et 'beta'
-            return ($module_key !== 'dev' && in_array($module_data['status'], ['active', 'beta']));
+            return ($module_key !== 'dev' && in_array($module_data['status'] ?? 'active', ['active', 'beta']));
             
         case 'logistique':
             // Accès à port (beta), adr et qualité mais seulement si pas en développement
             if (in_array($module_key, ['port', 'adr', 'qualite'])) {
-                if ($module_key === 'port' && $module_data['status'] === 'beta') {
+                if ($module_key === 'port' && ($module_data['status'] ?? 'active') === 'beta') {
                     return true; // Port en beta = accès
                 }
                 // ADR et Qualité en développement = pas d'accès pour l'instant
@@ -134,7 +228,7 @@ function canAccessModule($module_key, $module_data, $user_role) {
             
         case 'user':
             // Accès uniquement aux modules actifs
-            return ($module_data['status'] === 'active');
+            return (($module_data['status'] ?? 'active') === 'active');
             
         default:
             return false;
@@ -152,21 +246,21 @@ function shouldShowModule($module_key, $module_data, $user_role) {
             
         case 'admin':
             // Voir tous modules active/beta + admin (exclu dev)
-            return ($module_key === 'admin' || in_array($module_data['status'], ['active', 'beta']));
+            return ($module_key === 'admin' || in_array($module_data['status'] ?? 'active', ['active', 'beta']));
             
         case 'logistique':
             // Voir port + adr + epi + outillages + qualité (même si pas d'accès pour certains)
             return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite']);
             
         case 'user':
-            return ($module_data['status'] === 'active');
+            return (($module_data['status'] ?? 'active') === 'active');
             
         default:
             return false;
     }
 }
 
-// === GESTION ROLE BADGE CSS ===
+// === GESTION ROLE BADGE CSS (PRÉSERVÉE) ===
 function getRoleBadgeClass($role) {
     return match($role) {
         'dev' => 'role-dev',
@@ -188,26 +282,65 @@ function getRoleBadgeClass($role) {
     <meta name="version" content="<?= $app_version ?>">
     <meta name="build" content="<?= $build_number ?>">
     
+    <!-- Headers de sécurité -->
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
     
-    <!-- CSS principal -->
+    <!-- CSS principal OBLIGATOIRE - chemins critiques à préserver -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/footer.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
     
-    <!-- CSS modulaire -->
+    <!-- CSS modulaire avec fallback intelligent -->
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
-        $module_css_path = "/{$current_module}/assets/css/{$current_module}.css";
-        if (file_exists(ROOT_PATH . $module_css_path)): ?>
-            <link rel="stylesheet" href="<?= $module_css_path ?>?v=<?= $build_number ?>">
+        // 1. Priorité : nouveau système dans /public/module/assets/
+        $new_css_path = "/public/{$current_module}/assets/css/{$current_module}.css";
+        $module_css_loaded = false;
+        
+        if (file_exists(ROOT_PATH . $new_css_path)): ?>
+            <link rel="stylesheet" href="<?= $new_css_path ?>?v=<?= $build_number ?>">
+            <?php $module_css_loaded = true; ?>
+        <?php endif; ?>
+        
+        <?php if (!$module_css_loaded): ?>
+            <?php 
+            // 2. Fallback : ancien système
+            $legacy_paths = [
+                "/{$current_module}/assets/css/{$current_module}.css",
+                "/assets/css/modules/{$current_module}.css"
+            ];
+            
+            foreach ($legacy_paths as $css_path):
+                if (file_exists(ROOT_PATH . "/public" . $css_path)): ?>
+                    <link rel="stylesheet" href="<?= $css_path ?>?v=<?= $build_number ?>">
+                    <?php break; ?>
+                <?php endif;
+            endforeach; ?>
         <?php endif; ?>
     <?php endif; ?>
     
-    <!-- CSS pour roles badges -->
+    <!-- CSS pour roles badges (PRÉSERVÉ + AMÉLIORÉ) -->
     <style>
         .role-badge.role-logistique {
             background: #059669;
+            color: white;
+        }
+        .role-badge.role-dev {
+            background: #7c3aed;
+            color: white;
+        }
+        .role-badge.role-admin {
+            background: #d97706;
+            color: white;
+        }
+        .role-badge.role-user {
+            background: #2563eb;
             color: white;
         }
         .module-nav-item.disabled {
@@ -220,9 +353,35 @@ function getRoleBadgeClass($role) {
             font-size: 0.75rem;
             opacity: 0.7;
         }
+        .security-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #059669;
+            color: white;
+            text-align: center;
+            padding: 0.25rem;
+            font-size: 0.8rem;
+            z-index: 1000;
+            font-weight: bold;
+        }
+        body {
+            margin-top: 2rem; /* Compenser la bannière de sécurité */
+        }
     </style>
 </head>
-<body data-module="<?= $current_module ?>" data-module-status="<?= $module_status ?>">
+<body data-module="<?= $current_module ?>" data-module-status="<?= $module_status ?>" class="<?= $bypass_auth ? 'auth-page' : 'authenticated' ?>">
+
+    <?php if (!$bypass_auth): ?>
+    <!-- Bannière de sécurité -->
+    <div class="security-indicator">
+        🔒 SESSION SÉCURISÉE - <?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?> 
+        (<?= htmlspecialchars(ucfirst($current_user['role'] ?? 'user')) ?>) 
+        | <?= date('H:i') ?> | IP: <?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'N/A') ?>
+    </div>
+    <?php endif; ?>
+
     <!-- Header principal -->
     <header class="portal-header">
         <div class="header-container">
@@ -265,7 +424,11 @@ function getRoleBadgeClass($role) {
                     </div>
                     <div class="user-details">
                         <div class="user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></div>
-                        <div class="user-role"><?= ucfirst($current_user['role'] ?? 'user') ?></div>
+                        <div class="user-role">
+                            <span class="role-badge <?= getRoleBadgeClass($current_user['role'] ?? 'user') ?>">
+                                <?= ucfirst($current_user['role'] ?? 'user') ?>
+                            </span>
+                        </div>
                     </div>
                     <div class="dropdown-icon">▼</div>
                 </a>
@@ -274,6 +437,11 @@ function getRoleBadgeClass($role) {
                     <div class="dropdown-header">
                         <div class="dropdown-user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></div>
                         <div class="dropdown-user-email"><?= htmlspecialchars($current_user['email'] ?? '') ?></div>
+                        <div class="dropdown-user-role">
+                            Rôle : <span class="role-badge <?= getRoleBadgeClass($current_user['role'] ?? 'user') ?>">
+                                <?= ucfirst($current_user['role'] ?? 'user') ?>
+                            </span>
+                        </div>
                     </div>
                     
                     <div class="dropdown-divider"></div>
@@ -330,7 +498,7 @@ function getRoleBadgeClass($role) {
         </div>
     </header>
 
-    <!-- Menu modules horizontal - LOGIQUE MISE À JOUR -->
+    <!-- Menu modules horizontal - LOGIQUE PRÉSERVÉE + SÉCURISÉE -->
     <?php if ($user_authenticated): ?>
     <nav class="modules-nav">
         <div class="modules-container">
@@ -401,7 +569,7 @@ function getRoleBadgeClass($role) {
     <!-- Contenu principal -->
     <main class="portal-main">
 
-    <!-- JavaScript pour interactions header -->
+    <!-- JavaScript pour interactions header (PRÉSERVÉ + AMÉLIORÉ) -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Gestion menu utilisateur
@@ -435,6 +603,10 @@ function getRoleBadgeClass($role) {
                 });
             });
             
-            console.log('🔗 Header initialisé - Rôle utilisateur:', '<?= $current_user['role'] ?? 'guest' ?>');
+            // Log sécurisé
+            console.log('🔗 Header initialisé avec authentification obligatoire');
+            console.log('👤 Utilisateur:', '<?= htmlspecialchars($current_user['username'] ?? 'guest') ?>');
+            console.log('🎭 Rôle:', '<?= htmlspecialchars($current_user['role'] ?? 'guest') ?>');
+            console.log('🔒 Auth method:', '<?= htmlspecialchars($_SESSION['auth_method'] ?? 'Session PHP') ?>');
         });
     </script>
