@@ -15,7 +15,8 @@ $page_title = 'Accueil du portail';
 $page_subtitle = 'Solutions professionnelles';
 $page_description = 'Portail Guldagil - Solutions pour le traitement de l\'eau et la logistique';
 $current_module = 'home';
-$module_css = false;
+$module_css = true; // Activer le CSS du module home
+$module_js = true;  // Activer le JS du module home
 
 // Breadcrumbs
 $breadcrumbs = [
@@ -75,7 +76,7 @@ $all_modules = [
         'status' => 'development',
         'color' => '#e74c3c',
         'category' => 'Sécurité & Réglementation',
-        'roles' => ['admin', 'dev'], // Accès restreint
+        'roles' => ['admin', 'dev'],
         'features' => [
             'Base de données produits dangereux',
             'Génération déclarations ADR automatiques',
@@ -169,7 +170,7 @@ $all_modules = [
         'status' => 'active',
         'color' => '#34495e',
         'category' => 'Système & Configuration',
-        'roles' => ['admin', 'dev'], // Accès très restreint
+        'roles' => ['admin', 'dev'],
         'features' => [
             'Gestion complète des utilisateurs',
             'Configuration modules et permissions',
@@ -186,7 +187,6 @@ $all_modules = [
 // 🎯 FONCTIONS UTILITAIRES
 // ========================================
 
-// Utiliser les mêmes fonctions que dans le header pour cohérence
 function canAccessModule($module_key, $module_data, $user_role) {
     if (!$user_role || $user_role === 'guest') {
         return false;
@@ -312,377 +312,6 @@ if (!empty($restricted_modules)) {
 }
 ?>
 
-<!-- CSS spécifique dashboard -->
-<style>
-:root {
-    --color-primary: #2563eb;
-    --color-secondary: #1e40af;
-    --color-success: #059669;
-    --color-warning: #d97706;
-    --color-danger: #dc2626;
-    --color-info: #0284c7;
-    --color-gray-100: #f3f4f6;
-    --color-gray-200: #e5e7eb;
-    --color-gray-500: #6b7280;
-    --color-gray-600: #4b5563;
-    --color-gray-700: #374151;
-    --color-gray-800: #1f2937;
-    --spacing-xs: 0.25rem;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 2rem;
-    --spacing-xl: 3rem;
-    --border-radius: 8px;
-    --border-radius-lg: 12px;
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --transition: all 0.3s ease;
-}
-
-.dashboard-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: var(--spacing-lg);
-    min-height: calc(100vh - 300px);
-}
-
-.welcome-section {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-    color: white;
-    padding: var(--spacing-xl);
-    border-radius: var(--border-radius-lg);
-    margin-bottom: var(--spacing-lg);
-    box-shadow: var(--shadow-lg);
-    position: relative;
-    overflow: hidden;
-}
-
-.welcome-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 200px;
-    height: 200px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    transform: translate(50px, -50px);
-}
-
-.welcome-content {
-    position: relative;
-    z-index: 1;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
-}
-
-.stat-card {
-    background: white;
-    padding: var(--spacing-lg);
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow);
-    text-align: center;
-    border-left: 4px solid var(--color-primary);
-    transition: var(--transition);
-}
-
-.stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-}
-
-.stat-number {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: var(--color-primary);
-    line-height: 1;
-    margin-bottom: var(--spacing-sm);
-}
-
-.stat-label {
-    font-size: 1rem;
-    color: var(--color-gray-600);
-    font-weight: 500;
-}
-
-.stat-sublabel {
-    font-size: 0.8rem;
-    color: var(--color-gray-500);
-    margin-top: var(--spacing-xs);
-}
-
-.section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--spacing-lg);
-    padding-bottom: var(--spacing-md);
-    border-bottom: 2px solid var(--color-gray-200);
-}
-
-.section-title {
-    font-size: 1.75rem;
-    color: var(--color-gray-800);
-    font-weight: bold;
-}
-
-.role-info {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-    background: #f8fafc;
-    border-radius: var(--border-radius);
-    border-left: 4px solid var(--color-primary);
-    margin-bottom: var(--spacing-lg);
-}
-
-.role-badge {
-    padding: var(--spacing-xs) var(--spacing-md);
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.role-user { background: #dbeafe; color: #1e40af; }
-.role-admin { background: #fef3c7; color: #92400e; }
-.role-dev { background: #f3e8ff; color: #7c3aed; }
-.role-logistique { background: #dcfce7; color: #166534; }
-
-.category-section {
-    margin-bottom: var(--spacing-xl);
-}
-
-.category-title {
-    font-size: 1.2rem;
-    color: var(--color-gray-700);
-    margin-bottom: var(--spacing-md);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
-
-.category-stats {
-    font-size: 0.85rem;
-    color: var(--color-gray-500);
-    background: var(--color-gray-100);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: 12px;
-}
-
-.modules-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: var(--spacing-lg);
-}
-
-.module-card {
-    background: white;
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow);
-    padding: var(--spacing-lg);
-    transition: var(--transition);
-    text-decoration: none;
-    color: inherit;
-    border: 2px solid transparent;
-    position: relative;
-    overflow: hidden;
-}
-
-.module-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--module-color, var(--color-primary));
-}
-
-.module-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--color-primary);
-}
-
-.module-card.no-access {
-    opacity: 0.7;
-    border: 2px dashed #d1d5db;
-}
-
-.module-card.no-access:hover {
-    opacity: 1;
-    border-color: var(--color-warning);
-    cursor: not-allowed;
-}
-
-.module-header {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: var(--spacing-md);
-    gap: var(--spacing-md);
-}
-
-.module-icon {
-    font-size: 2rem;
-    flex-shrink: 0;
-}
-
-.module-info {
-    flex: 1;
-}
-
-.module-name {
-    font-weight: bold;
-    color: var(--color-gray-800);
-    font-size: 1.1rem;
-    margin-bottom: var(--spacing-xs);
-}
-
-.module-status-badge {
-    padding: 0.2rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: bold;
-    display: inline-block;
-}
-
-.status-active { background: #dcfce7; color: #166534; }
-.status-beta { background: #fef3c7; color: #92400e; }
-.status-development { background: #fee2e2; color: #991b1b; }
-
-.module-description {
-    color: var(--color-gray-600);
-    font-size: 0.9rem;
-    line-height: 1.5;
-    margin-bottom: var(--spacing-md);
-}
-
-.module-features {
-    margin: var(--spacing-md) 0;
-}
-
-.module-features h4 {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--color-gray-700);
-    margin-bottom: var(--spacing-sm);
-}
-
-.features-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.features-list li {
-    padding: 0.2rem 0;
-    font-size: 0.8rem;
-    color: var(--color-gray-600);
-    position: relative;
-    padding-left: 1rem;
-}
-
-.features-list li:before {
-    content: "▸";
-    position: absolute;
-    left: 0;
-    color: var(--color-primary);
-    font-weight: bold;
-}
-
-.module-footer {
-    margin-top: var(--spacing-md);
-    padding-top: var(--spacing-md);
-    border-top: 1px solid var(--color-gray-200);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.access-status {
-    font-size: 0.8rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-}
-
-.status-available { color: var(--color-success); }
-.status-restricted { color: var(--color-danger); }
-.status-coming-soon { color: var(--color-warning); }
-
-.quick-actions {
-    margin-top: var(--spacing-xl);
-}
-
-.actions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-md);
-}
-
-.action-card {
-    background: white;
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    text-decoration: none;
-    color: inherit;
-    border-left: 4px solid var(--action-color, var(--color-primary));
-    transition: var(--transition);
-}
-
-.action-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-.system-info {
-    background: var(--color-gray-100);
-    padding: var(--spacing-lg);
-    border-radius: var(--border-radius);
-    border-left: 4px solid var(--color-success);
-    margin-top: var(--spacing-xl);
-}
-
-.alert {
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius);
-    margin-bottom: var(--spacing-md);
-    display: flex;
-    align-items: flex-start;
-    gap: var(--spacing-md);
-}
-
-.alert-info { background: #eff6ff; border-left: 4px solid var(--color-info); }
-
-@media (max-width: 768px) {
-    .dashboard-container {
-        padding: var(--spacing-md);
-    }
-    
-    .stats-grid,
-    .modules-grid,
-    .actions-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .section-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-md);
-    }
-}
-</style>
-
 <!-- Container principal du dashboard -->
 <div class="dashboard-container">
     
@@ -690,10 +319,10 @@ if (!empty($restricted_modules)) {
     <section class="welcome-section">
         <div class="welcome-content">
             <h1>👋 Bienvenue, <?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?> !</h1>
-            <p style="font-size: 1.1rem; margin: var(--spacing-md) 0; opacity: 0.9;">
+            <p class="welcome-subtitle">
                 Accès au portail Guldagil - Solutions professionnelles pour le traitement de l'eau et la logistique
             </p>
-            <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-md); font-size: 0.9rem; opacity: 0.9;">
+            <div class="welcome-meta">
                 <span>🔐 Session sécurisée</span>
                 <span>👤 Rôle : <strong><?= htmlspecialchars(ucfirst($current_user['role'] ?? 'user')) ?></strong></span>
                 <span>⏰ Connecté à : <?= date('H:i') ?></span>
@@ -708,8 +337,6 @@ if (!empty($restricted_modules)) {
             <div class="stat-number"><?= $portal_stats['modules_accessibles'] ?></div>
             <div class="stat-label">Modules accessibles</div>
             <div class="stat-sublabel">Selon votre rôle : <?= ucfirst($user_role) ?></div>
-        </div>
-        <div class="stat-sublabel">
         </div>
         <div class="stat-card">
             <div class="stat-number"><?= $portal_stats['modules_actifs'] ?></div>
@@ -740,7 +367,7 @@ if (!empty($restricted_modules)) {
                 <strong>Votre rôle :</strong>
                 <span class="role-badge role-<?= $user_role ?>"><?= ucfirst($user_role) ?></span>
             </div>
-            <div style="font-size: 0.9rem; color: var(--color-gray-600);">
+            <div class="role-description">
                 <?php
                 $role_descriptions = [
                     'user' => 'Accès aux modules actifs et consultation des données',
@@ -755,7 +382,7 @@ if (!empty($restricted_modules)) {
         
         <?php if (empty($user_modules)): ?>
         <div class="alert alert-info">
-            <span style="font-size: 1.5rem;">ℹ️</span>
+            <span class="alert-icon">ℹ️</span>
             <div>
                 <strong>Aucun module accessible</strong><br>
                 <small>Votre rôle actuel ne permet l'accès à aucun module. Contactez un administrateur.</small>
@@ -788,10 +415,11 @@ if (!empty($restricted_modules)) {
             <div class="modules-grid">
                 <?php foreach ($modules as $module_id => $module): ?>
                 <div class="module-card <?= !$module['can_access'] ? 'no-access' : '' ?>"
-                     style="--module-color: <?= $module['color'] ?>">
+                     style="--module-color: <?= $module['color'] ?>"
+                     data-module="<?= $module_id ?>">
                     
                     <?php if ($module['can_access'] && $module['status'] === 'active'): ?>
-                    <a href="<?= htmlspecialchars($module['url']) ?>" style="text-decoration: none; color: inherit; display: block; height: 100%;">
+                    <a href="<?= htmlspecialchars($module['url']) ?>" class="module-link">
                     <?php endif; ?>
                     
                         <div class="module-header">
@@ -827,7 +455,7 @@ if (!empty($restricted_modules)) {
                             <div class="access-status">
                                 <?php if ($module['can_access']): ?>
                                     <span class="status-available">✅ Accès autorisé</span>
-                                else: ?>
+                                <?php else: ?>
                                     <span class="status-restricted">🔒 Accès restreint</span>
                                 <?php endif; ?>
                             </div>
@@ -844,7 +472,7 @@ if (!empty($restricted_modules)) {
         
         <?php if (!empty($system_alerts)): ?>
         <div class="alert alert-info">
-            <span style="font-size: 1.5rem;">ℹ️</span>
+            <span class="alert-icon">ℹ️</span>
             <div>
                 <strong><?= htmlspecialchars($system_alerts[0]['message']) ?></strong><br>
                 <small><?= htmlspecialchars($system_alerts[0]['action']) ?></small>
@@ -852,23 +480,15 @@ if (!empty($restricted_modules)) {
         </div>
         <?php endif; ?>
         
-        </section>
-    </div>
+        <?php endif; ?>
+    </section>
 </div>
 
-<!-- Footer -->
-<footer class="system-info">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-6">
-                <p>© <?= date('Y') ?> <?= htmlspecialchars($app_name) ?> - Version <?= htmlspecialchars($app_version) ?></p>
-            </div>
-            <div class="col-md-6 text-md-right">
-                <p>Conçu par <?= htmlspecialchars($app_author) ?></p>
-            </div>
-        </div>
-    </div>
-</footer>
-
-</body>
-</html>
+<?php
+// Inclure footer
+if (file_exists(ROOT_PATH . '/templates/footer.php')) {
+    include ROOT_PATH . '/templates/footer.php';
+} else {
+    echo '</body></html>';
+}
+?>
