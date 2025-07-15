@@ -161,7 +161,7 @@ const CalculateurModule = {
                 this.dom.paletteEur.value = '0';
             }
         }
-    },
+    }
 
     /**
      * Navigation séquentielle
