@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Calculateur XPO - Logique par tranches
+ * Titre: Calculateur XPO - Optimisation des fourchettes de poids
  * Chemin: /public/port/Services/Calculators/XPOCalculator.php
  * Version: 0.5 beta + build auto
  */
@@ -12,23 +12,155 @@ class XPOCalculator {
     private array $cache = [];
     private const CACHE_TTL = 3600; // 1 heure
     
+    // Fourchettes de poids XPO pour optimisation
+    private const WEIGHT_BRACKETS = [
+        ['min' => 1, 'max' => 99, 'field' => 'tarif_0_99', 'label' => '0-99kg'],
+        ['min' => 100, 'max' => 499, 'field' => 'tarif_100_499', 'label' => '100-499kg'],
+        ['min' => 500, 'max' => 999, 'field' => 'tarif_500_999', 'label' => '500-999kg'],
+        ['min' => 1000, 'max' => 1999, 'field' => 'tarif_1000_1999', 'label' => '1000-1999kg'],
+        ['min' => 2000, 'max' => 2999, 'field' => 'tarif_2000_2999', 'label' => '2000-2999kg']
+    ];
+    
     public function __construct(PDO $db) {
         $this->db = $db;
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
 
-    public function calculate(array $params): ?float {
+    /**
+     * Calcul optimisé avec comparaison des fourchettes
+     * Retourne un array avec prix et informations d'optimisation
+     */
+    public function calculateWithOptimization(array $params): ?array {
         if (!$this->validateConstraints($params)) {
             return null;
         }
 
-        $basePrice = $this->getBasePriceWithOptimization($params);
+        $rateCacheKey = 'rates_' . $params['departement'];
+        
+        if (!isset($this->cache[$rateCacheKey])) {
+            $stmt = $this->db->prepare("
+                SELECT * FROM gul_xpo_rates 
+                WHERE num_departement = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$params['departement']]);
+            $this->cache[$rateCacheKey] = $stmt->fetch() ?: null;
+        }
+
+        $row = $this->cache[$rateCacheKey];
+        if (!$row) {
+            return null;
+        }
+
+        // Calculer le prix pour le poids réel
+        $realPrice = $this->calculateFinalPriceForWeight($params, $row);
+        if ($realPrice === null) {
+            return null;
+        }
+
+        // Comparer avec toutes les fourchettes applicables
+        $optimization = $this->findBestWeightBracket($params, $row);
+        
+        return [
+            'price' => $optimization['price'],
+            'original_price' => $realPrice,
+            'weight_declared' => $params['poids'],
+            'weight_optimal' => $optimization['optimal_weight'],
+            'savings' => $realPrice - $optimization['price'],
+            'optimization_message' => $optimization['message'],
+            'bracket_info' => $optimization['bracket_info']
+        ];
+    }
+
+    /**
+     * Méthode compatible avec l'ancienne signature
+     */
+    public function calculate(array $params): ?float {
+        $result = $this->calculateWithOptimization($params);
+        return $result ? $result['price'] : null;
+    }
+
+    /**
+     * Trouve la meilleure fourchette de poids (prix final le plus bas)
+     */
+    private function findBestWeightBracket(array $params, array $row): array {
+        $realWeight = $params['poids'];
+        $bestPrice = PHP_FLOAT_MAX;
+        $bestWeight = $realWeight;
+        $bestBracket = null;
+        $optimizationMessage = '';
+
+        foreach (self::WEIGHT_BRACKETS as $bracket) {
+            // Vérifier si cette fourchette est applicable
+            if ($realWeight > $bracket['max']) {
+                continue; // On ne peut pas déclarer un poids inférieur au poids réel
+            }
+
+            $testWeight = $realWeight <= $bracket['min'] ? $bracket['min'] : $realWeight;
+            
+            // Si le poids réel est dans cette fourchette, tester le minimum de la fourchette
+            if ($realWeight >= $bracket['min'] && $realWeight <= $bracket['max']) {
+                $testWeight = $bracket['min'];
+            }
+            
+            // Calculer le prix final pour ce poids de test
+            $testParams = array_merge($params, ['poids' => $testWeight]);
+            $testPrice = $this->calculateFinalPriceForWeight($testParams, $row);
+            
+            if ($testPrice !== null && $testPrice < $bestPrice) {
+                $bestPrice = $testPrice;
+                $bestWeight = $testWeight;
+                $bestBracket = $bracket;
+            }
+        }
+
+        // Générer le message d'optimisation
+        if ($bestWeight !== $realWeight && $bestBracket) {
+            $savings = $this->calculateFinalPriceForWeight($params, $row) - $bestPrice;
+            if ($savings > 0.01) { // Économie significative
+                $optimizationMessage = sprintf(
+                    "💡 Optimisation: Déclarer %dkg (fourchette %s) - Économie: %.2f€",
+                    $bestWeight,
+                    $bestBracket['label'],
+                    $savings
+                );
+            }
+        }
+
+        return [
+            'price' => $bestPrice,
+            'optimal_weight' => $bestWeight,
+            'message' => $optimizationMessage,
+            'bracket_info' => $bestBracket
+        ];
+    }
+
+    /**
+     * Calcule le prix final pour un poids donné (base + taxes + options)
+     */
+    private function calculateFinalPriceForWeight(array $params, array $row): ?float {
+        $basePrice = $this->getBasePriceFromRow($params['poids'], $row);
         if ($basePrice === null) {
             return null;
         }
 
-        $finalPrice = $this->calculateWeightBasedPrice($basePrice, $params);
-        return $this->applyAllOptions($finalPrice, $params);
+        $weightBasedPrice = $this->calculateWeightBasedPrice($basePrice, $params);
+        return $this->applyAllOptions($weightBasedPrice, $params);
+    }
+
+    /**
+     * Récupère le prix de base depuis la ligne de tarifs
+     */
+    private function getBasePriceFromRow(float $weight, array $row): ?float {
+        $priceField = match(true) {
+            $weight <= 99 => 'tarif_0_99',
+            $weight <= 499 => 'tarif_100_499',
+            $weight <= 999 => 'tarif_500_999',
+            $weight <= 1999 => 'tarif_1000_1999',
+            default => 'tarif_2000_2999'
+        };
+
+        return $this->convertToFloat($row[$priceField]);
     }
 
     private function validateConstraints(array $params): bool {
@@ -60,50 +192,6 @@ class XPOCalculator {
         $maxPoids = $constraints['poids_maximum'] ?? 32000;
 
         return $params['poids'] >= $minPoids && $params['poids'] <= $maxPoids;
-    }
-
-    private function getBasePriceWithOptimization(array $params): ?float {
-        $rateCacheKey = 'rates_' . $params['departement'];
-        
-        if (!isset($this->cache[$rateCacheKey])) {
-            $stmt = $this->db->prepare("
-                SELECT * FROM gul_xpo_rates 
-                WHERE num_departement = ?
-                LIMIT 1
-            ");
-            $stmt->execute([$params['departement']]);
-            $this->cache[$rateCacheKey] = $stmt->fetch() ?: null;
-        }
-
-        $row = $this->cache[$rateCacheKey];
-        if (!$row) {
-            return null;
-        }
-
-        $weight = $params['poids'];
-        $priceField = match(true) {
-            $weight <= 99 => 'tarif_0_99',
-            $weight <= 499 => 'tarif_100_499',
-            $weight <= 999 => 'tarif_500_999',
-            $weight <= 1999 => 'tarif_1000_1999',
-            default => 'tarif_2000_2999'
-        };
-
-        // FIX: Conversion explicite en float avec validation
-        $basePrice = $this->convertToFloat($row[$priceField]);
-        if ($basePrice === null) {
-            return null;
-        }
-
-        // Optimisation pour ≤ 100kg
-        if ($weight <= 100) {
-            $price100kg = $this->convertToFloat($row['tarif_100_499'] ?? null);
-            if ($price100kg !== null && $price100kg < $basePrice) {
-                $basePrice = $price100kg;
-            }
-        }
-
-        return $basePrice;
     }
 
     /**
@@ -154,7 +242,7 @@ class XPOCalculator {
         if (
             isset($taxes['majoration_idf_valeur']) 
             && $taxes['majoration_idf_valeur'] > 0 
-            && $this->isRegionParisienne($params['departement'], $taxes)
+            && $this->isRegionParisienne($params['departement'])
         ) {
             $idfValue = (float) $taxes['majoration_idf_valeur'];
             $finalPrice = $taxes['majoration_idf_type'] === 'Pourcentage'
@@ -162,15 +250,13 @@ class XPOCalculator {
                 : $finalPrice + $idfValue;
         }
 
-        // NOUVEAU : Gestion palette EUR
+        // Gestion palette EUR
         if ($params['type'] === 'palette' && isset($params['palette_eur'])) {
             $paletteEurCount = (int) $params['palette_eur'];
             if ($paletteEurCount > 0) {
-                // Recherche tarif consigne XPO en BDD
                 $consigneTarif = $this->getPaletteEurTarif();
                 $finalPrice += $paletteEurCount * $consigneTarif;
             }
-            // Si palette_eur = 0 : palette perdue, pas de consigne
         }
 
         // ADR si applicable
@@ -204,7 +290,7 @@ class XPOCalculator {
                 
                 $tarifConsigne = $result && isset($result['consigne_palette_eur']) 
                     ? (float) $result['consigne_palette_eur'] 
-                    : 0.00; // 0 par défaut si pas en BDD
+                    : 0.00;
                     
             } catch (PDOException $e) {
                 $tarifConsigne = 0.00;
@@ -220,7 +306,6 @@ class XPOCalculator {
     private function isRegionParisienne(string $departement): bool {
         $taxesCacheKey = 'taxes_XPO';
         
-        // Utilise le cache déjà chargé dans applyAllOptions
         if (!isset($this->cache[$taxesCacheKey])) {
             $stmt = $this->db->prepare("SELECT * FROM gul_taxes_transporteurs WHERE transporteur = 'XPO'");
             $stmt->execute();
