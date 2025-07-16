@@ -452,15 +452,46 @@ tr:hover {
         </div>
 
         <div class="admin-grid">
-            <div class="admin-card">
-                <h3>🚀 Actions rapides</h3>
-                <p>Raccourcis vers les fonctionnalités principales :</p>
-                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="showTab('database')">Voir BDD</button>
-                    <button class="btn btn-success" onclick="showTab('modules')">Gérer modules</button>
-                    <button class="btn btn-warning" onclick="showTab('users')">Utilisateurs</button>
-                </div>
-            </div>
+           <div class="admin-card">
+    <h3>📁 Structure du dossier admin</h3>
+    <div class="file-list">
+        <!-- Dossiers -->
+        <div class="folder-section">
+            <h4>📁 Dossiers</h4>
+            <ul>
+                <li>
+                    <a href="assets" class="folder-link">
+                        <span class="icon">📁</span> assets
+                        <ul>
+                            <li>
+                                <a href="assets/css" class="folder-link">
+                                    <span class="icon">📁</span> css
+                                </a>
+                            </li>
+                        </ul>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Fichiers -->
+        <div class="file-section">
+            <h4>📄 Fichiers</h4>
+            <ul>
+                <li><a href="about.md" class="file-link"><span class="icon">📄</span> about.md</a></li>
+                <li><a href="audit.php" class="file-link"><span class="icon">📄</span> audit.php</a></li>
+                <li><a href="config.php" class="file-link"><span class="icon">📄</span> config.php</a></li>
+                <li><a href="index.php" class="file-link"><span class="icon">📄</span> index.php</a></li>
+                <li><a href="logs-old.php" class="file-link"><span class="icon">📄</span> logs-old.php</a></li>
+                <li><a href="logs.php" class="file-link"><span class="icon">📄</span> logs.php</a></li>
+                <li><a href="scanner-about.md" class="file-link"><span class="icon">📄</span> scanner-about.md</a></li>
+                <li><a href="scanner.php" class="file-link"><span class="icon">📄</span> scanner.php</a></li>
+                <li><a href="users.php" class="file-link"><span class="icon">📄</span> users.php</a></li>
+                <li><a href="verify-data.php" class="file-link"><span class="icon">📄</span> verify-data.php</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
             
             <div class="admin-card">
                 <h3>📈 État du système</h3>
