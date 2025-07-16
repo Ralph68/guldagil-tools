@@ -92,7 +92,7 @@ try {
 }
 
 // Configuration des erreurs
-define('DEBUG', true);
+define('DEBUG', false);
 //echo "✅ DEBUG activé\n";
 
 // Démarrage session
