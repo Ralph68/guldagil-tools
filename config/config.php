@@ -190,6 +190,7 @@ if (file_exists(__DIR__ . '/version.php')) {
 } else {
     //echo "⚠️ version.php manquant\n";
 }
+ require_once __DIR__ . '/debug.php';
 
 //echo "=== FIN DEBUG CONFIG.PHP ===\n";
 //echo "Configuration terminée avec succès!\n";
