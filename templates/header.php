@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Header du portail Guldagil - VERSION COMPLÈTE CORRIGÉE
+ * Titre: Header du portail Guldagil - VERSION AVEC SYSTÈME DE RÔLES CENTRALISÉ
  * Chemin: /templates/header.php
  * Version: 0.5 beta + build auto
  */
@@ -10,6 +10,9 @@ if (!defined('ROOT_PATH')) {
     http_response_code(403);
     exit('Accès direct interdit');
 }
+
+// Chargement système de rôles centralisé
+require_once ROOT_PATH . '/config/roles.php';
 
 // Chargement config debug si disponible
 if (file_exists(ROOT_PATH . '/config/debug.php')) {
@@ -46,7 +49,6 @@ try {
     if (defined('DEBUG') && DEBUG) {
         error_log("Erreur auth header: " . $e->getMessage());
     }
-    // Continue sans auth si erreur
 }
 
 // Variables avec fallbacks sécurisés
@@ -64,14 +66,14 @@ $app_author = defined('APP_AUTHOR') ? APP_AUTHOR : 'Jean-Thomas RUNSER';
 // Configuration modules avec routes et permissions
 $all_modules = [
     'home' => ['icon' => '🏠', 'color' => '#3182ce', 'status' => 'active', 'name' => 'Accueil', 'routes' => ['', 'home']],
-    'calculateur' => ['icon' => '🚛', 'color' => '#059669', 'status' => 'active', 'name' => 'Calculateur', 'routes' => ['calculateur', 'calc']],
+    'port' => ['icon' => '📦', 'color' => '#059669', 'status' => 'active', 'name' => 'Frais de port', 'routes' => ['port', 'calculateur']],
     'adr' => ['icon' => '⚠️', 'color' => '#dc2626', 'status' => 'active', 'name' => 'ADR', 'routes' => ['adr']],
-    'admin' => ['icon' => '⚙️', 'color' => '#7c3aed', 'status' => 'active', 'name' => 'Admin', 'routes' => ['admin']],
+    'epi' => ['icon' => '🦺', 'color' => '#7c3aed', 'status' => 'active', 'name' => 'EPI', 'routes' => ['epi']],
     'qualite' => ['icon' => '✅', 'color' => '#059669', 'status' => 'active', 'name' => 'Qualité', 'routes' => ['qualite']],
-    'maintenance' => ['icon' => '🔧', 'color' => '#ea580c', 'status' => 'beta', 'name' => 'Maintenance', 'routes' => ['maintenance']],
-    'stats' => ['icon' => '📊', 'color' => '#0891b2', 'status' => 'active', 'name' => 'Stats', 'routes' => ['stats']],
-    'user' => ['icon' => '👤', 'color' => '#7c2d12', 'status' => 'active', 'name' => 'Utilisateur', 'routes' => ['user', 'profile']],
-    'debug' => ['icon' => '🔧', 'color' => '#dc2626', 'status' => 'development', 'name' => 'Debug', 'routes' => ['debug']]
+    'outillage' => ['icon' => '🔧', 'color' => '#ea580c', 'status' => 'active', 'name' => 'Outillage', 'routes' => ['outillage']],
+    'user' => ['icon' => '👤', 'color' => '#7c2d12', 'status' => 'active', 'name' => 'Mon compte', 'routes' => ['user', 'profile']],
+    'admin' => ['icon' => '⚙️', 'color' => '#1f2937', 'status' => 'active', 'name' => 'Administration', 'routes' => ['admin']],
+    'dev' => ['icon' => '💻', 'color' => '#dc2626', 'status' => 'development', 'name' => 'Développement', 'routes' => ['dev', 'debug']]
 ];
 
 // Détection automatique du module actuel depuis l'URL
@@ -105,56 +107,13 @@ $module_icon = $all_modules[$current_module]['icon'] ?? '🏠';
 $module_color = $all_modules[$current_module]['color'] ?? '#3182ce';
 $module_status = $all_modules[$current_module]['status'] ?? 'active';
 
-// Fonction pour obtenir la classe CSS du badge de rôle
-function getRoleBadgeClass($role) {
-    switch(strtolower($role)) {
-        case 'admin': return 'role-admin';
-        case 'manager': return 'role-manager';
-        case 'moderator': return 'role-moderator';
-        default: return 'role-user';
-    }
-}
-
-// Navigation modules disponibles avec permissions
+// Navigation modules avec système de rôles centralisé
 $navigation_modules = [];
 if ($user_authenticated) {
     $user_role = $current_user['role'] ?? 'user';
-    foreach ($all_modules as $key => $module) {
-        // Filtrage selon rôles et statut
-        $has_access = false;
-        
-        switch ($user_role) {
-            case 'admin':
-            case 'dev':
-                // Admin et dev : accès à tout sauf modules explicitement interdits
-                $has_access = true;
-                break;
-            case 'manager':
-                // Manager : accès aux modules actifs et beta, pas aux dev
-                $has_access = in_array($module['status'], ['active', 'beta']);
-                break;
-            case 'user':
-            default:
-                // Utilisateur standard : seulement modules actifs
-                $has_access = ($module['status'] === 'active');
-                break;
-        }
-        
-        // Vérification permissions spécifiques du module
-        if ($has_access && isset($module['roles']) && !in_array($user_role, $module['roles'])) {
-            $has_access = false;
-        }
-        
-        // Exclusion modules admin-only pour non-admins
-        if ($has_access && isset($module['admin_only']) && $module['admin_only'] && !in_array($user_role, ['admin', 'dev'])) {
-            $has_access = false;
-        }
-        
-        if ($has_access && $key !== 'home') {
-            $navigation_modules[$key] = $module;
-        }
-    }
+    $navigation_modules = getNavigationModules($user_role, $all_modules);
 }
+?>
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -307,7 +266,7 @@ if ($user_authenticated) {
                         </a>
                     </div>
                     
-                    <?php if (in_array($current_user['role'] ?? 'user', ['admin', 'manager', 'dev'])): ?>
+                    <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'view_admin')): ?>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-section">
                         <a href="/admin/" class="dropdown-item">
@@ -318,7 +277,7 @@ if ($user_authenticated) {
                             </div>
                         </a>
                         
-                        <?php if (($current_user['role'] ?? 'user') === 'admin'): ?>
+                        <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'manage_users')): ?>
                         <a href="/admin/users.php" class="dropdown-item">
                             <div class="dropdown-item-icon">👥</div>
                             <div class="dropdown-item-text">
@@ -326,11 +285,24 @@ if ($user_authenticated) {
                                 <div class="dropdown-subtitle">Gestion des comptes</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        
+                        <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'manage_system')): ?>
                         <a href="/admin/system.php" class="dropdown-item">
                             <div class="dropdown-item-icon">🛠️</div>
                             <div class="dropdown-item-text">
                                 <div class="dropdown-title">Système</div>
                                 <div class="dropdown-subtitle">Configuration avancée</div>
+                            </div>
+                        </a>
+                        <?php endif; ?>
+                        
+                        <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'access_dev')): ?>
+                        <a href="/dev/" class="dropdown-item">
+                            <div class="dropdown-item-icon">💻</div>
+                            <div class="dropdown-item-text">
+                                <div class="dropdown-title">Développement</div>
+                                <div class="dropdown-subtitle">Outils développeur</div>
                             </div>
                         </a>
                         <?php endif; ?>
@@ -372,21 +344,17 @@ if ($user_authenticated) {
     <?php if ($user_authenticated && !empty($navigation_modules)): ?>
     <nav class="modules-nav">
         <div class="modules-nav-container">
-            <div class="modules-nav-items">
+            <div class="modules-nav-items" style="justify-content: center;">
                 <?php foreach ($navigation_modules as $module_key => $module_data): 
-                    $can_access = !($module_data['status'] === 'development' && !in_array($user_role, ['admin', 'dev']));
                     $is_active = $current_module === $module_key;
                     $css_classes = ['module-nav-item'];
                     if ($is_active) $css_classes[] = 'active';
-                    if (!$can_access) $css_classes[] = 'disabled';
                     
-                    if ($can_access || ($module_data['status'] === 'development' && in_array($user_role, ['admin', 'dev']))):
-                        $href = $can_access ? "/{$module_key}/" : "#";
+                    $href = "/{$module_key}/";
                 ?>
                     <a href="<?= $href ?>" 
                        class="<?= implode(' ', $css_classes) ?>"
-                       style="--module-color: <?= $module_data['color'] ?? '#3182ce' ?>"
-                       <?= !$can_access ? 'title="Module en développement - Accès restreint"' : '' ?>>
+                       style="--module-color: <?= $module_data['color'] ?? '#3182ce' ?>">
                         <span class="module-nav-icon"><?= $module_data['icon'] ?? '📁' ?></span>
                         <span class="module-nav-name"><?= htmlspecialchars($module_data['name']) ?></span>
                         <?php if ($module_data['status'] === 'beta'): ?>
@@ -395,10 +363,7 @@ if ($user_authenticated) {
                             <span class="status-badge dev">DEV</span>
                         <?php endif; ?>
                     </a>
-                <?php 
-                    endif;
-                endforeach; 
-                ?>
+                <?php endforeach; ?>
             </div>
             
             <!-- Menu burger mobile -->
