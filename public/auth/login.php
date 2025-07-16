@@ -224,12 +224,12 @@ $page_metadata = [
     
     <!-- Préchargement des ressources critiques -->
     <link rel="preload" href="/assets/css/portal.css?v=<?= $build_number ?>" as="style">
-    <link rel="preload" href="/public/auth/assets/css/login.css?v=<?= $build_number ?>" as="style">
+    <link rel="preload" href="auth/assets/css/login.css?v=<?= $build_number ?>" as="style">
     
     <!-- Styles avec gestion d'erreur -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>" 
           onerror="this.href='/assets/css/fallback.css'">
-    <link rel="stylesheet" href="/public/auth/assets/css/login.css?v=<?= $build_number ?>"
+    <link rel="stylesheet" href="assets/css/login.css?v=<?= $build_number ?>"
           onerror="console.warn('CSS login non chargé')">
     
     <!-- Headers de sécurité additionnels -->
