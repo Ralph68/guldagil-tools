@@ -104,14 +104,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (method_exists($auth, 'authenticate')) {
                             if ($auth->authenticate($username, $password)) {
                                 $auth_success = true;
-                                $_SESSION['user'] = $auth->getCurrentUser();
+                                $_SESSION['user'] = method_exists($auth, 'getCurrentUser') ? 
+                                    $auth->getCurrentUser() : 
+                                    ['username' => $username, 'role' => 'user'];
                             }
                         }
                         // Sinon, utiliser une méthode alternative si elle existe
                         elseif (method_exists($auth, 'login')) {
                             if ($auth->login($username, $password)) {
                                 $auth_success = true;
-                                $_SESSION['user'] = $auth->getUser();
+                                $_SESSION['user'] = method_exists($auth, 'getCurrentUser') ? 
+                                    $auth->getCurrentUser() : 
+                                    (method_exists($auth, 'getUser') ? 
+                                        $auth->getUser() : 
+                                        ['username' => $username, 'role' => 'user']);
                             }
                         }
                     }
@@ -121,13 +127,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$auth_success) {
                     if (($username === 'admin' && $password === 'admin') ||
                         ($username === 'dev' && $password === 'dev') ||
-                        ($username === 'user' && $password === 'user')) {
+                        ($username === 'user' && $password === 'user') ||
+                        ($username === 'logistique' && $password === 'logistique')) {
                         
                         $auth_success = true;
+                        $role = match($username) {
+                            'admin' => 'admin',
+                            'dev' => 'dev', 
+                            'logistique' => 'logistique',
+                            default => 'user'
+                        };
+                        
                         $_SESSION['user'] = [
                             'id' => 1,
                             'username' => $username,
-                            'role' => $username === 'admin' ? 'admin' : 'user',
+                            'role' => $role,
                             'authenticated_at' => time()
                         ];
                     }
@@ -177,10 +191,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Connexion - <?= htmlspecialchars($app_name) ?></title>
     <meta name="robots" content="noindex, nofollow">
     <meta name="author" content="<?= htmlspecialchars($app_author) ?>">
-    
-    <!-- Préchargement CSS -->
-    <link rel="preload" href="/assets/css/portal.css?v=<?= $build_number ?>" as="style">
-    <link rel="preload" href="assets/css/login.css?v=<?= $build_number ?>" as="style">
     
     <!-- CSS -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
