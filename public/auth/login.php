@@ -180,11 +180,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     <!-- Préchargement CSS -->
     <link rel="preload" href="/assets/css/portal.css?v=<?= $build_number ?>" as="style">
-    <link rel="preload" href="assets/css/login.css?v=<?= $build_number ?>" as="style">
+    <link rel="preload" href="auth/assets/css/login.css?v=<?= $build_number ?>" as="style">
     
     <!-- CSS -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="assets/css/login.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="auth/assets/css/login.css?v=<?= $build_number ?>">
     
     <!-- Headers de sécurité -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
@@ -283,6 +283,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <span class="btn-icon">🚀</span>
                     Se connecter
                 </button>
+                
+                <!-- Conditions d'utilisation -->
+                <div class="form-footer">
+                    <small class="form-note">
+                        En vous connectant, vous acceptez nos 
+                        <a href="../legal/terms.php" target="_blank" class="terms-link">conditions d'utilisation</a>.
+                    </small>
+                </div>
                 
             </form>
             
