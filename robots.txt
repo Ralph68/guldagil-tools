@@ -1,0 +1,41 @@
+# robots.txt - Portail Guldagil Calc Frais de Port
+# Version: 0.5 beta + build auto
+# Chemin: /robots.txt (racine du projet)
+# 
+# PORTAIL TOTALEMENT PRIVÉ - ACCÈS INTERDIT AUX MOTEURS DE RECHERCHE
+
+User-agent: *
+Disallow: /
+
+# Interdiction explicite pour les principaux crawlers
+User-agent: Googlebot
+Disallow: /
+
+User-agent: Bingbot
+Disallow: /
+
+User-agent: Slurp
+Disallow: /
+
+User-agent: DuckDuckBot
+Disallow: /
+
+User-agent: facebookexternalhit
+Disallow: /
+
+User-agent: LinkedInBot
+Disallow: /
+
+User-agent: WhatsApp
+Disallow: /
+
+# Pas de sitemap car portail privé
+# Sitemap: [AUCUN]
+
+# Délai de crawl (même si interdit)
+Crawl-delay: 86400
+
+# Commentaire d'information
+# Ce portail est exclusivement réservé à l'usage interne de l'entreprise.
+# Aucun contenu ne doit être indexé ou accessible publiquement.
+# Pour toute question : admin@guldagil.com
