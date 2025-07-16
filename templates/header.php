@@ -316,6 +316,7 @@ function getRoleBadgeClass($role) {
 <body data-module="<?= $current_module ?>" data-module-status="<?= $module_status ?>" class="<?= $bypass_auth ? 'auth-page' : 'authenticated' ?>">
 
     <?php if (!$bypass_auth): ?>
+    <?php endif; ?>
     <!-- Bannière de sécurité -->
     <?php if (defined('DEBUG') && DEBUG === true): ?>
 <div class="session-debug" style="background: #dc2626; color: white; padding: 0.5rem; text-align: center; font-size: 0.875rem;">
@@ -554,3 +555,4 @@ function getRoleBadgeClass($role) {
             console.log('🔒 Auth method:', '<?= htmlspecialchars($_SESSION['auth_method'] ?? 'Session PHP') ?>');
         });
     </script>
+<?php endif; ?>
