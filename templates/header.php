@@ -555,4 +555,3 @@ function getRoleBadgeClass($role) {
             console.log('🔒 Auth method:', '<?= htmlspecialchars($_SESSION['auth_method'] ?? 'Session PHP') ?>');
         });
     </script>
-<?php endif; ?>
