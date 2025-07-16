@@ -223,12 +223,15 @@ uasort($user_modules, function($a, $b) {
 // Statistiques par catégorie
 $categories_stats = [];
 foreach ($user_modules as $module) {
-    $cat = $module['category'];
+    $cat = $module['category'] ?? 'Général';
     if (!isset($categories_stats[$cat])) {
         $categories_stats[$cat] = ['total' => 0, 'active' => 0, 'development' => 0];
     }
     $categories_stats[$cat]['total']++;
-    $categories_stats[$cat][$module['status']]++;
+    $status = $module['status'] ?? 'active';
+    if (isset($categories_stats[$cat][$status])) {
+        $categories_stats[$cat][$status]++;
+    }
 }
 
 // Statistiques globales du portail
