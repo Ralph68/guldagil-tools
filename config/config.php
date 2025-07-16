@@ -7,9 +7,9 @@
 $is_development = (getenv('APP_ENV') === 'development');
 define('DEBUG', $is_development);
 // ACTIVATION DEBUG FORCÉ
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+//error_reporting(E_ALL);
+//ini_set('display_errors', 1);
+//ini_set('display_startup_errors', 1);
 
 //echo "=== DEBUG CONFIG.PHP ===\n";
 
