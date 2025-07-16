@@ -9,6 +9,11 @@
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 require_once ROOT_PATH . '/config/config.php';
 
+// Configuration de sécurité
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
+
 // Variables pour templates
 $page_title = 'Administration';
 $page_subtitle = 'Gestion du portail et modules';
@@ -26,13 +31,29 @@ $breadcrumbs = [
 // Gestion session existante
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+    session_regenerate_id(true);
 }
 
-// Vérification auth simplifiée - à remplacer par AuthManager
-if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['admin', 'dev'])) {
-    // Pour le debug temporaire
-    $_SESSION['user_role'] = 'admin';
-    $_SESSION['username'] = 'admin_temp';
+// Vérification auth sécurisée
+try {
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
+        throw new Exception('Session invalide');
+    }
+    
+    if (!in_array($_SESSION['user_role'], ['admin', 'dev'])) {
+        throw new Exception('Accès non autorisé');
+    }
+    
+    // Vérification du User-Agent pour prévenir le vol de session
+    if (!isset($_SESSION['user_agent'])) {
+        $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+    } elseif ($_SESSION['user_agent'] !== $_SERVER['HTTP_USER_AGENT']) {
+        throw new Exception('Possible vol de session détecté');
+    }
+} catch (Exception $e) {
+    error_log("Erreur d'authentification: " . $e->getMessage());
+    header('Location: login.php');
+    exit;
 }
 
 // Variables globales
@@ -45,30 +66,35 @@ if (isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
     
     try {
-        $action = $_POST['action'] ?? '';
+        $action = filter_input(INPUT_POST, 'action', FILTER_SANITIZE_STRING);
         
         switch ($action) {
             case 'list_tables':
                 $tables = [];
-                $stmt = $db->query("SHOW TABLES");
+                $stmt = $db->prepare("SHOW TABLES");
+                $stmt->execute();
                 while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
                     $table = $row[0];
-                    $count_stmt = $db->query("SELECT COUNT(*) FROM `$table`");
+                    $count_stmt = $db->prepare("SELECT COUNT(*) FROM `$table`");
+                    $count_stmt->execute();
                     $count = $count_stmt->fetchColumn();
                     $tables[] = ['name' => $table, 'count' => $count];
                 }
                 echo json_encode(['success' => true, 'tables' => $tables]);
                 break;
-                
+
             case 'table_data':
-                $table = $_POST['table'] ?? '';
+                $table = filter_input(INPUT_POST, 'table', FILTER_SANITIZE_STRING);
+                $limit = filter_input(INPUT_POST, 'limit', FILTER_VALIDATE_INT) ?: 50;
+                
                 if ($table && preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
-                    $limit = intval($_POST['limit'] ?? 50);
-                    $stmt = $db->query("SELECT * FROM `$table` LIMIT $limit");
+                    $stmt = $db->prepare("SELECT * FROM `$table` LIMIT :limit");
+                    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                    $stmt->execute();
                     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     
-                    // Structure de la table
-                    $struct_stmt = $db->query("DESCRIBE `$table`");
+                    $struct_stmt = $db->prepare("DESCRIBE `$table`");
+                    $struct_stmt->execute();
                     $structure = $struct_stmt->fetchAll(PDO::FETCH_ASSOC);
                     
                     echo json_encode(['success' => true, 'data' => $data, 'structure' => $structure]);
@@ -76,22 +102,26 @@ if (isset($_POST['ajax_action'])) {
                     echo json_encode(['success' => false, 'error' => 'Table invalide']);
                 }
                 break;
-                
+
             case 'update_record':
-                $table = $_POST['table'] ?? '';
-                $id = $_POST['id'] ?? '';
-                $field = $_POST['field'] ?? '';
-                $value = $_POST['value'] ?? '';
+                $table = filter_input(INPUT_POST, 'table', FILTER_SANITIZE_STRING);
+                $id = filter_input(INPUT_POST, 'id', FILTER_SANITIZE_STRING);
+                $field = filter_input(INPUT_POST, 'field', FILTER_SANITIZE_STRING);
+                $value = filter_input(INPUT_POST, 'value', FILTER_SANITIZE_STRING);
                 
-                if ($table && $id && $field && preg_match('/^[a-zA-Z0-9_]+$/', $table) && preg_match('/^[a-zA-Z0-9_]+$/', $field)) {
-                    $stmt = $db->prepare("UPDATE `$table` SET `$field` = ? WHERE id = ?");
-                    $result = $stmt->execute([$value, $id]);
+                if ($table && $id && $field && 
+                    preg_match('/^[a-zA-Z0-9_]+$/', $table) && 
+                    preg_match('/^[a-zA-Z0-9_]+$/', $field)) {
+                    $stmt = $db->prepare("UPDATE `$table` SET `$field` = :value WHERE id = :id");
+                    $stmt->bindValue(':value', $value);
+                    $stmt->bindValue(':id', $id);
+                    $result = $stmt->execute();
                     echo json_encode(['success' => $result]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Paramètres invalides']);
                 }
                 break;
-                
+
             case 'modules_status':
                 $modules = [
                     'port' => ['name' => 'Calculateur Port', 'status' => 'production', 'progress' => 95, 'tables' => ['gul_xpo_rates', 'gul_heppner_rates', 'gul_kn_rates'], 'icon' => '🚛'],
@@ -101,23 +131,22 @@ if (isset($_POST['ajax_action'])) {
                     'qualite' => ['name' => 'Contrôle Qualité', 'status' => 'development', 'progress' => 25, 'tables' => ['gul_qualite_checks'], 'icon' => '✅'],
                     'epi' => ['name' => 'Équipements EPI', 'status' => 'development', 'progress' => 40, 'tables' => ['gul_epi_equipment'], 'icon' => '🛡️']
                 ];
-                
-                // Compter les enregistrements et calculer progression automatique
+
                 foreach ($modules as $key => &$module) {
                     $module['total_records'] = 0;
                     $table_count = 0;
                     foreach ($module['tables'] as $table) {
                         try {
-                            $stmt = $db->query("SELECT COUNT(*) FROM `$table`");
+                            $stmt = $db->prepare("SELECT COUNT(*) FROM `$table`");
+                            $stmt->execute();
                             $count = $stmt->fetchColumn();
                             $module['total_records'] += $count;
                             if ($count > 0) $table_count++;
                         } catch (Exception $e) {
-                            // Table n'existe pas
+                            error_log("Erreur comptage table {$table}: " . $e->getMessage());
                         }
                     }
                     
-                    // Ajustement automatique progression basé sur données
                     if ($module['total_records'] > 100) {
                         $module['progress'] = min(95, $module['progress'] + 10);
                     } elseif ($module['total_records'] > 10) {
@@ -127,46 +156,53 @@ if (isset($_POST['ajax_action'])) {
                 
                 echo json_encode(['success' => true, 'modules' => $modules]);
                 break;
-                
+
             case 'toggle_module_status':
-                $module_id = $_POST['module_id'] ?? '';
-                $new_status = $_POST['new_status'] ?? '';
+                $module_id = filter_input(INPUT_POST, 'module_id', FILTER_SANITIZE_STRING);
+                $new_status = filter_input(INPUT_POST, 'new_status', FILTER_SANITIZE_STRING);
                 
                 if ($module_id && in_array($new_status, ['development', 'production', 'maintenance'])) {
-                    // Ici on sauvegarderait en BDD - pour l'instant simulation
                     echo json_encode(['success' => true, 'message' => "Module $module_id passé en $new_status"]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Paramètres invalides']);
                 }
                 break;
-                
+
             case 'user_management':
-                $action_type = $_POST['action_type'] ?? '';
+                $action_type = filter_input(INPUT_POST, 'action_type', FILTER_SANITIZE_STRING);
+                
                 switch ($action_type) {
                     case 'list':
-                        $stmt = $db->query("SELECT id, username, role, created_at, last_login, is_active FROM auth_users ORDER BY created_at DESC");
+                        $stmt = $db->prepare("SELECT id, username, role, created_at, last_login, is_active FROM auth_users ORDER BY created_at DESC");
+                        $stmt->execute();
                         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         echo json_encode(['success' => true, 'users' => $users]);
                         break;
-                        
+
                     case 'toggle_active':
-                        $user_id = intval($_POST['user_id'] ?? 0);
-                        $new_status = intval($_POST['new_status'] ?? 0);
+                        $user_id = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT);
+                        $new_status = filter_input(INPUT_POST, 'new_status', FILTER_VALIDATE_INT);
+                        
                         if ($user_id > 0) {
-                            $stmt = $db->prepare("UPDATE auth_users SET is_active = ? WHERE id = ?");
-                            $result = $stmt->execute([$new_status, $user_id]);
+                            $stmt = $db->prepare("UPDATE auth_users SET is_active = :status WHERE id = :id");
+                            $stmt->bindValue(':status', $new_status, PDO::PARAM_INT);
+                            $stmt->bindValue(':id', $user_id, PDO::PARAM_INT);
+                            $result = $stmt->execute();
                             echo json_encode(['success' => $result]);
                         } else {
                             echo json_encode(['success' => false, 'error' => 'ID utilisateur invalide']);
                         }
                         break;
-                        
+
                     case 'update_role':
-                        $user_id = intval($_POST['user_id'] ?? 0);
-                        $new_role = $_POST['new_role'] ?? '';
+                        $user_id = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT);
+                        $new_role = filter_input(INPUT_POST, 'new_role', FILTER_SANITIZE_STRING);
+                        
                         if ($user_id > 0 && in_array($new_role, ['user', 'admin', 'dev'])) {
-                            $stmt = $db->prepare("UPDATE auth_users SET role = ? WHERE id = ?");
-                            $result = $stmt->execute([$new_role, $user_id]);
+                            $stmt = $db->prepare("UPDATE auth_users SET role = :role WHERE id = :id");
+                            $stmt->bindValue(':role', $new_role);
+                            $stmt->bindValue(':id', $user_id, PDO::PARAM_INT);
+                            $result = $stmt->execute();
                             echo json_encode(['success' => $result]);
                         } else {
                             echo json_encode(['success' => false, 'error' => 'Paramètres invalides']);
@@ -174,7 +210,7 @@ if (isset($_POST['ajax_action'])) {
                         break;
                 }
                 break;
-                
+
             case 'system_info':
                 $info = [
                     'php_version' => PHP_VERSION,
@@ -188,12 +224,13 @@ if (isset($_POST['ajax_action'])) {
                 ];
                 echo json_encode(['success' => true, 'info' => $info]);
                 break;
-                
+
             default:
                 echo json_encode(['success' => false, 'error' => 'Action inconnue']);
         }
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        error_log("Erreur AJAX: " . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Erreur serveur']);
     }
     exit;
 }
