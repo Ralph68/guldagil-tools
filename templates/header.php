@@ -317,12 +317,14 @@ function getRoleBadgeClass($role) {
 
     <?php if (!$bypass_auth): ?>
     <!-- Bannière de sécurité -->
-    <div class="security-indicator">
-        🔒 SESSION SÉCURISÉE - <?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?> 
-        (<?= htmlspecialchars(ucfirst($current_user['role'] ?? 'user')) ?>) 
-        | <?= date('H:i') ?> | IP: <?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'N/A') ?>
-    </div>
-    <?php endif; ?>
+    <?php if (defined('DEBUG') && DEBUG === true): ?>
+<div class="session-debug" style="background: #dc2626; color: white; padding: 0.5rem; text-align: center; font-size: 0.875rem;">
+    🔒 SESSION SÉCURISÉE - <?= htmlspecialchars($current_user['username'] ?? 'user') ?> 
+    (<?= htmlspecialchars($current_user['role'] ?? 'User') ?>) | 
+    <?= date('H:i') ?> | 
+    IP: <?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'unknown') ?>
+</div>
+<?php endif; ?>
 
     <!-- Header principal -->
     <header class="portal-header">
