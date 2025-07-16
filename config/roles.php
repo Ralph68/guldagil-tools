@@ -17,30 +17,31 @@ class RoleManager
 {
     // Définition complète des rôles
     private static $roles = [
-        'admin' => [
-            'name' => 'Administrateur',
-            'description' => 'Accès complet au système',
-            'level' => 100,
-            'color' => '#dc2626',
-            'icon' => '👑',
-            'capabilities' => [
-                'manage_users', 'manage_system', 'view_admin', 
-                'edit_config', 'view_logs', 'access_dev'
-            ],
-            'modules' => ['port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin']
+    'dev' => [
+        'name' => 'Développeur',
+        'description' => 'Accès absolu total',
+        'level' => 100,
+        'color' => '#7c3aed',
+        'icon' => '💻',
+        'capabilities' => [
+            'access_dev', 'view_debug', 'manage_system',
+            'view_logs', 'edit_modules', 'manage_users',
+            'edit_config', 'view_admin'
         ],
-        'dev' => [
-            'name' => 'Développeur',
-            'description' => 'Accès technique complet',
-            'level' => 95,
-            'color' => '#7c3aed',
-            'icon' => '💻',
-            'capabilities' => [
-                'access_dev', 'view_debug', 'manage_system',
-                'view_logs', 'edit_modules'
-            ],
-            'modules' => ['port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin', 'dev']
+        'modules' => ['port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin', 'dev']
+    ],
+    'admin' => [
+        'name' => 'Administrateur',
+        'description' => 'Accès complet sauf développement',
+        'level' => 95,
+        'color' => '#dc2626',
+        'icon' => '👑',
+        'capabilities' => [
+            'manage_users', 'manage_system', 'view_admin',
+            'edit_config', 'view_logs'
         ],
+        'modules' => ['port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin']
+    ],
         'logistique' => [
             'name' => 'Logistique',
             'description' => 'Gestion transport et qualité',
