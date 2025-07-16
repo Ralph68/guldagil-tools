@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Configuration du mode debug
+ * Titre: Configuration du mode debug - CORRIGÉE
  * Chemin: /config/debug.php
  * Version: 0.5 beta + build auto
  */
@@ -10,37 +10,31 @@ if (!defined('ROOT_PATH')) {
     exit('Accès direct interdit');
 }
 
-// =====================================
-// 🔧 CONFIGURATION MODE DEBUG
-// =====================================
+// ⚠️ VÉRIFICATION AVANT DÉFINITION
+if (defined('DEBUG')) {
+    return; // DEBUG déjà défini, ne pas redéfinir
+}
 
 // Détection automatique de l'environnement
 $environment = getenv('APP_ENV') ?: 'production';
 $is_development = ($environment === 'development' || $environment === 'dev');
 
-// IPs autorisées pour le debug (développeurs)
+// IPs autorisées pour le debug
 $debug_allowed_ips = [
-    '127.0.0.1',        // Localhost IPv4
-    '::1',              // Localhost IPv6
-    '192.168.1.100',    // IP locale développeur (à adapter)
-    // Ajoutez vos IPs de développement ici
+    '127.0.0.1',
+    '::1',
+    '192.168.1.100'
 ];
 
-// IP actuelle du visiteur
-$current_ip = $_SERVER['REMOTE_ADDR'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? 'unknown';
+// IP actuelle
+$current_ip = $_SERVER['REMOTE_ADDR'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? 'unknown';
 
-// Détection si on est en développement local
+// Détection locale
 $is_local = in_array($current_ip, ['127.0.0.1', '::1']) || 
             strpos($current_ip, '192.168.') === 0 || 
             strpos($current_ip, '10.') === 0;
 
-// =====================================
-// 🎯 DÉFINITION DU MODE DEBUG
-// =====================================
-
-// Mode debug activé UNIQUEMENT si :
-// 1. Variable d'environnement le permet ET
-// 2. IP autorisée OU environnement de développement
+// Mode debug activé si conditions OK
 $debug_enabled = (
     $is_development && 
     (in_array($current_ip, $debug_allowed_ips) || $is_local)
@@ -51,34 +45,23 @@ if ($environment === 'production') {
     $debug_enabled = false;
 }
 
-// Définir la constante DEBUG
+// ✅ DÉFINITION SÉCURISÉE DE DEBUG
 define('DEBUG', $debug_enabled);
 
-// =====================================
-// 📝 CONFIGURATION ERREURS PHP
-// =====================================
-
+// Configuration erreurs
 if (DEBUG) {
-    // Mode développement : afficher toutes les erreurs
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
     ini_set('display_startup_errors', '1');
     ini_set('log_errors', '1');
 } else {
-    // Mode production : masquer les erreurs, les logger
     error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED);
     ini_set('display_errors', '0');
     ini_set('display_startup_errors', '0');
     ini_set('log_errors', '1');
 }
 
-// =====================================
-// 🔐 FONCTIONS DEBUG SÉCURISÉES
-// =====================================
-
-/**
- * Fonction pour afficher des informations de debug de manière sécurisée
- */
+// Fonctions debug
 function debugInfo($data, $label = 'DEBUG') {
     if (!DEBUG) return;
     
@@ -88,9 +71,6 @@ function debugInfo($data, $label = 'DEBUG') {
     echo '</div>';
 }
 
-/**
- * Fonction pour logger en mode debug
- */
 function debugLog($message, $context = []) {
     if (!DEBUG) return;
     
@@ -98,8 +78,7 @@ function debugLog($message, $context = []) {
         'timestamp' => date('Y-m-d H:i:s'),
         'message' => $message,
         'context' => $context,
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-        'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 100)
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
     ];
     
     $log_file = ROOT_PATH . '/storage/logs/debug.log';
@@ -112,9 +91,6 @@ function debugLog($message, $context = []) {
     file_put_contents($log_file, json_encode($log_data) . "\n", FILE_APPEND | LOCK_EX);
 }
 
-/**
- * Afficher la barre de debug seulement si autorisé
- */
 function showDebugBar($user_data = null) {
     if (!DEBUG) return '';
     
@@ -129,12 +105,12 @@ function showDebugBar($user_data = null) {
            '</div>';
 }
 
-// =====================================
-// 📊 INFORMATIONS DEBUG
-// =====================================
+// Variables globales
+$GLOBALS['DEBUG_MODE'] = DEBUG;
+$GLOBALS['ENVIRONMENT'] = $environment;
 
+// Logger activation si debug
 if (DEBUG) {
-    // Logger l'activation du mode debug
     debugLog('Mode debug activé', [
         'environment' => $environment,
         'ip' => $current_ip,
@@ -143,47 +119,8 @@ if (DEBUG) {
     ]);
 }
 
-// =====================================
-// 🚨 SÉCURITÉ ET AVERTISSEMENTS
-// =====================================
-
-// Avertissement si debug activé en production (ne devrait jamais arriver)
+// Avertissement sécurité
 if (DEBUG && $environment === 'production') {
-    error_log('SECURITY WARNING: DEBUG mode enabled in production environment!');
-    
-    // Optionnel : envoyer une alerte email en cas de debug en production
-    if (defined('ADMIN_EMAIL')) {
-        $subject = 'ALERTE SÉCURITÉ: Debug activé en production';
-        $message = 'Le mode debug est activé sur le serveur de production. Désactivez-le immédiatement.';
-        mail(ADMIN_EMAIL, $subject, $message);
-    }
-}
-
-// Variables globales pour templates
-$GLOBALS['DEBUG_MODE'] = DEBUG;
-$GLOBALS['ENVIRONMENT'] = $environment;
-
-/**
- * UTILISATION DANS LES TEMPLATES :
- * 
- * Dans header.php, remplacer la barre de debug par :
- * <?= showDebugBar($current_user) ?>
- * 
- * Pour afficher des infos debug :
- * debugInfo($_SESSION, 'Session Data');
- * debugInfo($current_user, 'User Info');
- * 
- * Pour logger des événements :
- * debugLog('Utilisateur connecté', ['user' => $username]);
- */
-
-// Message de confirmation
-if (DEBUG) {
-    // En mode debug, confirmer le chargement
-    debugLog('Configuration debug chargée', [
-        'file' => __FILE__,
-        'debug_enabled' => DEBUG,
-        'environment' => $environment
-    ]);
+    error_log('SECURITY WARNING: DEBUG mode enabled in production!');
 }
 ?>
