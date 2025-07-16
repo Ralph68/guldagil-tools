@@ -5,10 +5,9 @@
  * Version: 0.5 beta + build auto
  */
 
-// Configuration initiale
+// Configuration initiale - Mode debug
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-ini_set('log_errors', 1);
 
 // Déterminer ROOT_PATH
 if (!defined('ROOT_PATH')) {
@@ -19,23 +18,13 @@ if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', $root_path);
 }
 
-// Charger configuration si possible
-$config_loaded = false;
-try {
-    require_once ROOT_PATH . '/config/config.php';
-    $config_loaded = true;
-} catch (Exception $e) {
-    $config_error = $e->getMessage();
-}
-
 // Variables template
 $page_title = 'Scanner d\'erreurs';
-$page_subtitle = 'Diagnostic complet du portail';
 $current_module = 'admin';
 $user_authenticated = true;
 
 // Actions
-$action = $_POST['action'] ?? $_GET['action'] ?? 'scan';
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
 $scan_deep = isset($_POST['deep_scan']) || isset($_GET['deep']);
 
 // Breadcrumbs
@@ -49,19 +38,22 @@ $breadcrumbs = [
  * Fonction principale de scan
  */
 function scanPortal($deep_scan = false) {
-    $results = [
-        'structure' => scanStructure(),
-        'files' => scanCriticalFiles(),
-        'syntax' => scanSyntaxErrors(),
-        'permissions' => scanPermissions(),
-        'config' => scanConfiguration(),
-        'css_js' => scanAssets(),
-        'database' => scanDatabase()
-    ];
+    $results = [];
     
-    if ($deep_scan) {
-        $results['modules'] = scanModules();
-        $results['logs'] = scanLogs();
+    try {
+        $results['structure'] = scanStructure();
+        $results['files'] = scanCriticalFiles();
+        $results['config'] = scanConfiguration();
+        $results['assets'] = scanAssets();
+        $results['permissions'] = scanPermissions();
+        
+        if ($deep_scan) {
+            $results['syntax'] = scanSyntaxErrors();
+            $results['modules'] = scanModules();
+            $results['database'] = scanDatabase();
+        }
+    } catch (Exception $e) {
+        $results['error'] = 'Erreur scan: ' . $e->getMessage();
     }
     
     return $results;
@@ -76,14 +68,9 @@ function scanStructure() {
         'core' => 'Classes système',
         'public' => 'Document root',
         'public/assets' => 'Assets globaux',
-        'public/assets/css' => 'CSS globaux',
-        'public/assets/js' => 'JS globaux',
-        'templates' => 'Templates communs',
-        'storage' => 'Stockage données',
-        'storage/logs' => 'Logs système',
         'public/admin' => 'Module admin',
-        'public/auth' => 'Module auth',
-        'public/user' => 'Module user'
+        'templates' => 'Templates communs',
+        'storage' => 'Stockage données'
     ];
     
     $results = [];
@@ -91,15 +78,20 @@ function scanStructure() {
         $path = ROOT_PATH . '/' . $dir;
         $exists = is_dir($path);
         $writable = $exists ? is_writable($path) : false;
-        $perms = $exists ? substr(sprintf('%o', fileperms($path)), -4) : null;
+        
+        $status = 'error';
+        if ($exists && $writable) {
+            $status = 'ok';
+        } elseif ($exists) {
+            $status = 'warning';
+        }
         
         $results[$dir] = [
             'path' => $path,
             'description' => $desc,
             'exists' => $exists,
             'writable' => $writable,
-            'permissions' => $perms,
-            'status' => $exists ? 'ok' : 'error'
+            'status' => $status
         ];
     }
     
@@ -112,16 +104,11 @@ function scanStructure() {
 function scanCriticalFiles() {
     $critical_files = [
         'config/config.php' => 'Configuration principale',
-        'config/version.php' => 'Gestion version',
-        'config/modules.php' => 'Configuration modules',
-        'core/auth/AuthManager.php' => 'Gestionnaire auth',
         'templates/header.php' => 'Header global',
         'templates/footer.php' => 'Footer global',
-        'public/index.php' => 'Point entrée principal',
+        'public/index.php' => 'Point entrée',
         'public/.htaccess' => 'Réécriture URLs',
-        'public/assets/css/portal.css' => 'CSS principal',
-        'public/admin/index.php' => 'Dashboard admin',
-        'public/auth/login.php' => 'Page connexion'
+        'public/admin/index.php' => 'Dashboard admin'
     ];
     
     $results = [];
@@ -130,7 +117,6 @@ function scanCriticalFiles() {
         $exists = file_exists($path);
         $readable = $exists ? is_readable($path) : false;
         $size = $exists ? filesize($path) : 0;
-        $perms = $exists ? substr(sprintf('%o', fileperms($path)), -4) : null;
         
         $status = 'error';
         if ($exists && $readable && $size > 0) {
@@ -145,90 +131,8 @@ function scanCriticalFiles() {
             'exists' => $exists,
             'readable' => $readable,
             'size' => $size,
-            'permissions' => $perms,
             'status' => $status
         ];
-    }
-    
-    return $results;
-}
-
-/**
- * Scan erreurs syntaxe
- */
-function scanSyntaxErrors() {
-    $php_files = [];
-    $results = [];
-    
-    // Scan récursif fichiers PHP
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator(ROOT_PATH . '/public'),
-        RecursiveIteratorIterator::LEAVES_ONLY
-    );
-    
-    foreach ($iterator as $file) {
-        if ($file->getExtension() === 'php') {
-            $php_files[] = $file->getPathname();
-        }
-    }
-    
-    // Vérifier syntaxe
-    foreach (array_slice($php_files, 0, 20) as $file) { // Limite pour performance
-        $relative_path = str_replace(ROOT_PATH . '/', '', $file);
-        
-        $output = shell_exec("php -l " . escapeshellarg($file) . " 2>&1");
-        $has_error = strpos($output, 'Parse error') !== false || strpos($output, 'Fatal error') !== false;
-        
-        if ($has_error || strpos($output, 'No syntax errors') === false) {
-            $results[$relative_path] = [
-                'file' => $relative_path,
-                'error' => trim($output),
-                'status' => 'error'
-            ];
-        } else {
-            $results[$relative_path] = [
-                'file' => $relative_path,
-                'status' => 'ok'
-            ];
-        }
-    }
-    
-    return $results;
-}
-
-/**
- * Scan permissions
- */
-function scanPermissions() {
-    $check_paths = [
-        'public/assets',
-        'storage',
-        'storage/logs',
-        'config'
-    ];
-    
-    $results = [];
-    foreach ($check_paths as $path) {
-        $full_path = ROOT_PATH . '/' . $path;
-        if (file_exists($full_path)) {
-            $perms = substr(sprintf('%o', fileperms($full_path)), -4);
-            $owner_writable = is_writable($full_path);
-            
-            $status = 'ok';
-            if (!$owner_writable) {
-                $status = 'warning';
-            }
-            if ($perms === '0777' && strpos($path, 'config') !== false) {
-                $status = 'error'; // Config trop permissif
-            }
-            
-            $results[$path] = [
-                'path' => $full_path,
-                'permissions' => $perms,
-                'writable' => $owner_writable,
-                'status' => $status
-            ];
-        }
     }
     
     return $results;
@@ -240,41 +144,26 @@ function scanPermissions() {
 function scanConfiguration() {
     $results = [];
     
-    // Test connexion BDD
+    // Test chargement config
     try {
-        $db_config = [
-            'host' => DB_HOST ?? 'localhost',
-            'name' => DB_NAME ?? '',
-            'user' => DB_USER ?? '',
-            'charset' => DB_CHARSET ?? 'utf8mb4'
-        ];
-        
-        $pdo = new PDO(
-            "mysql:host={$db_config['host']};dbname={$db_config['name']};charset={$db_config['charset']}",
-            $db_config['user'],
-            DB_PASS ?? '',
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-        );
-        
-        $results['database'] = [
+        require_once ROOT_PATH . '/config/config.php';
+        $results['config_loaded'] = [
             'status' => 'ok',
-            'message' => 'Connexion BDD réussie',
-            'config' => $db_config
+            'message' => 'Configuration chargée'
         ];
-        
     } catch (Exception $e) {
-        $results['database'] = [
+        $results['config_loaded'] = [
             'status' => 'error',
-            'message' => 'Erreur BDD: ' . $e->getMessage()
+            'message' => 'Erreur config: ' . $e->getMessage()
         ];
+        return $results;
     }
     
-    // Vérifier constantes
-    $required_constants = ['ROOT_PATH', 'BASE_URL', 'DB_HOST', 'DB_NAME'];
+    // Test constantes
+    $required_constants = ['ROOT_PATH', 'DB_HOST', 'DB_NAME', 'DB_USER'];
     foreach ($required_constants as $const) {
         $results['constants'][$const] = [
             'defined' => defined($const),
-            'value' => defined($const) ? constant($const) : null,
             'status' => defined($const) ? 'ok' : 'error'
         ];
     }
@@ -288,9 +177,7 @@ function scanConfiguration() {
 function scanAssets() {
     $assets = [
         'public/assets/css/portal.css' => 'CSS principal',
-        'public/assets/css/components.css' => 'Composants CSS',
         'templates/assets/css/header.css' => 'CSS header',
-        'templates/assets/css/footer.css' => 'CSS footer',
         'public/admin/assets/css/admin.css' => 'CSS admin'
     ];
     
@@ -300,15 +187,8 @@ function scanAssets() {
         $exists = file_exists($path);
         $size = $exists ? filesize($path) : 0;
         
-        // Test basique de validité CSS
-        $valid_css = true;
-        if ($exists && $size > 0) {
-            $content = file_get_contents($path);
-            $valid_css = (substr_count($content, '{') === substr_count($content, '}'));
-        }
-        
         $status = 'error';
-        if ($exists && $size > 0 && $valid_css) {
+        if ($exists && $size > 0) {
             $status = 'ok';
         } elseif ($exists) {
             $status = 'warning';
@@ -318,7 +198,6 @@ function scanAssets() {
             'description' => $desc,
             'exists' => $exists,
             'size' => $size,
-            'valid' => $valid_css,
             'status' => $status
         ];
     }
@@ -327,39 +206,121 @@ function scanAssets() {
 }
 
 /**
- * Scan BDD
+ * Scan permissions
+ */
+function scanPermissions() {
+    $check_paths = [
+        'public/assets',
+        'storage',
+        'config'
+    ];
+    
+    $results = [];
+    foreach ($check_paths as $path) {
+        $full_path = ROOT_PATH . '/' . $path;
+        if (file_exists($full_path)) {
+            $writable = is_writable($full_path);
+            
+            $results[$path] = [
+                'path' => $full_path,
+                'writable' => $writable,
+                'status' => $writable ? 'ok' : 'warning'
+            ];
+        }
+    }
+    
+    return $results;
+}
+
+/**
+ * Scan erreurs syntaxe (mode deep)
+ */
+function scanSyntaxErrors() {
+    $results = [];
+    
+    // Test quelques fichiers PHP critiques
+    $test_files = [
+        ROOT_PATH . '/public/index.php',
+        ROOT_PATH . '/public/admin/index.php',
+        ROOT_PATH . '/config/config.php'
+    ];
+    
+    foreach ($test_files as $file) {
+        if (file_exists($file)) {
+            $relative = str_replace(ROOT_PATH . '/', '', $file);
+            
+            // Test syntaxe basique
+            $output = '';
+            $return_var = 0;
+            exec("php -l " . escapeshellarg($file) . " 2>&1", $output, $return_var);
+            
+            $results[$relative] = [
+                'file' => $relative,
+                'status' => $return_var === 0 ? 'ok' : 'error',
+                'error' => $return_var !== 0 ? implode(' ', $output) : null
+            ];
+        }
+    }
+    
+    return $results;
+}
+
+/**
+ * Scan modules (mode deep)
+ */
+function scanModules() {
+    $modules = ['admin', 'auth', 'user'];
+    $results = [];
+    
+    foreach ($modules as $module) {
+        $module_path = ROOT_PATH . "/public/$module";
+        $index_file = "$module_path/index.php";
+        
+        $results[$module] = [
+            'exists' => is_dir($module_path),
+            'index_exists' => file_exists($index_file),
+            'status' => (is_dir($module_path) && file_exists($index_file)) ? 'ok' : 'warning'
+        ];
+    }
+    
+    return $results;
+}
+
+/**
+ * Scan BDD (mode deep)
  */
 function scanDatabase() {
     $results = [];
     
     try {
+        if (!defined('DB_HOST')) {
+            $results['connection'] = [
+                'status' => 'error',
+                'error' => 'Configuration BDD manquante'
+            ];
+            return $results;
+        }
+        
         $pdo = new PDO(
-            "mysql:host=" . (DB_HOST ?? 'localhost') . ";dbname=" . (DB_NAME ?? ''),
-            DB_USER ?? '',
-            DB_PASS ?? ''
+            "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME,
+            DB_USER,
+            DB_PASS ?? '',
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
         );
         
-        // Vérifier tables existantes
-        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        $results['connection'] = ['status' => 'ok'];
         
+        // Test tables
+        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
         $required_tables = ['auth_users', 'auth_sessions'];
+        
         foreach ($required_tables as $table) {
             $exists = in_array($table, $tables);
-            $count = 0;
-            
-            if ($exists) {
-                $stmt = $pdo->query("SELECT COUNT(*) FROM `$table`");
-                $count = $stmt->fetchColumn();
-            }
-            
             $results['tables'][$table] = [
                 'exists' => $exists,
-                'count' => $count,
                 'status' => $exists ? 'ok' : 'error'
             ];
         }
-        
-        $results['connection'] = ['status' => 'ok'];
         
     } catch (Exception $e) {
         $results['connection'] = [
@@ -371,81 +332,82 @@ function scanDatabase() {
     return $results;
 }
 
-/**
- * Scan modules (mode deep)
- */
-function scanModules() {
-    $modules = ['admin', 'auth', 'user', 'port'];
-    $results = [];
-    
-    foreach ($modules as $module) {
-        $module_path = ROOT_PATH . "/public/$module";
-        $index_file = "$module_path/index.php";
-        
-        $results[$module] = [
-            'path' => $module_path,
-            'exists' => is_dir($module_path),
-            'index_exists' => file_exists($index_file),
-            'has_assets' => is_dir("$module_path/assets"),
-            'status' => (is_dir($module_path) && file_exists($index_file)) ? 'ok' : 'warning'
-        ];
-    }
-    
-    return $results;
-}
-
-/**
- * Scan logs récents
- */
-function scanLogs() {
-    $log_files = [
-        ROOT_PATH . '/storage/logs/error.log',
-        '/var/log/apache2/error.log',
-        '/var/log/php_errors.log'
-    ];
-    
-    $results = [];
-    foreach ($log_files as $log_file) {
-        if (file_exists($log_file) && is_readable($log_file)) {
-            $size = filesize($log_file);
-            $recent_errors = 0;
-            
-            if ($size > 0) {
-                $lines = file($log_file);
-                $recent_lines = array_slice($lines, -50); // 50 dernières lignes
-                
-                foreach ($recent_lines as $line) {
-                    if (stripos($line, 'error') !== false || stripos($line, 'fatal') !== false) {
-                        $recent_errors++;
-                    }
-                }
-            }
-            
-            $results[basename($log_file)] = [
-                'path' => $log_file,
-                'size' => $size,
-                'recent_errors' => $recent_errors,
-                'status' => $recent_errors > 5 ? 'warning' : 'ok'
-            ];
-        }
-    }
-    
-    return $results;
-}
-
 // Exécuter le scan
 $scan_results = [];
+$scan_duration = 0;
 if ($action === 'scan') {
     $start_time = microtime(true);
     $scan_results = scanPortal($scan_deep);
     $scan_duration = round((microtime(true) - $start_time) * 1000, 2);
 }
 
-// Charger header/footer
-include ROOT_PATH . '/templates/header.php';
+// Calculer statistiques
+$total_checks = 0;
+$total_errors = 0;
+$total_warnings = 0;
+$total_ok = 0;
+
+if (!empty($scan_results)) {
+    foreach ($scan_results as $section => $results) {
+        if (is_array($results)) {
+            foreach ($results as $item) {
+                if (isset($item['status'])) {
+                    $total_checks++;
+                    switch ($item['status']) {
+                        case 'error': $total_errors++; break;
+                        case 'warning': $total_warnings++; break;
+                        case 'ok': $total_ok++; break;
+                    }
+                } elseif (is_array($item)) {
+                    // Pour les sous-sections comme 'constants' ou 'tables'
+                    foreach ($item as $subitem) {
+                        if (isset($subitem['status'])) {
+                            $total_checks++;
+                            switch ($subitem['status']) {
+                                case 'error': $total_errors++; break;
+                                case 'warning': $total_warnings++; break;
+                                case 'ok': $total_ok++; break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Charger header si possible
+$header_loaded = false;
+try {
+    if (file_exists(ROOT_PATH . '/templates/header.php')) {
+        include ROOT_PATH . '/templates/header.php';
+        $header_loaded = true;
+    }
+} catch (Exception $e) {
+    // Header minimal de secours
+    echo '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">';
+    echo '<title>Scanner d\'erreurs - Admin</title>';
+    echo '<meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body>';
+    echo '<header style="background:#2c3e50;color:white;padding:1rem;margin-bottom:2rem;">';
+    echo '<h1>🔍 Scanner d\'erreurs</h1></header>';
+}
 ?>
 
 <style>
+.scanner-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.scan-controls {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
 .scan-header {
     display: flex;
     justify-content: space-between;
@@ -466,78 +428,10 @@ include ROOT_PATH . '/templates/header.php';
     border-radius: 5px;
     cursor: pointer;
     font-size: 0.9rem;
-    transition: background-color 0.3s;
 }
 
 .btn-help:hover {
     background: #7f8c8d;
-}
-
-.scan-info {
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: #f8f9fa;
-    border-radius: 5px;
-    border-left: 4px solid #3498db;
-}
-
-.scan-info small {
-    color: #555;
-    line-height: 1.4;
-}
-
-.help-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.8);
-    z-index: 10000;
-    overflow-y: auto;
-}
-
-.help-content {
-    background: white;
-    max-width: 800px;
-    margin: 2rem auto;
-    padding: 2rem;
-    border-radius: 8px;
-    position: relative;
-}
-
-.help-close {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: #e74c3c;
-    color: white;
-    border: none;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.2rem;
-}
-
-.scanner-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem;
-}
-
-.scan-controls {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    margin-bottom: 2rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.scan-controls h2 {
-    margin: 0 0 1rem 0;
-    color: #2c3e50;
 }
 
 .scan-form {
@@ -545,6 +439,12 @@ include ROOT_PATH . '/templates/header.php';
     gap: 1rem;
     align-items: center;
     flex-wrap: wrap;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .btn-scan {
@@ -555,7 +455,6 @@ include ROOT_PATH . '/templates/header.php';
     border-radius: 5px;
     cursor: pointer;
     font-weight: 500;
-    transition: background-color 0.3s;
 }
 
 .btn-scan:hover {
@@ -570,10 +469,38 @@ include ROOT_PATH . '/templates/header.php';
     background: #c0392b;
 }
 
-.checkbox-group {
+.scan-info {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #3498db;
+}
+
+.scan-summary {
+    background: #34495e;
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.summary-stats {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    display: block;
 }
 
 .results-container {
@@ -653,30 +580,10 @@ include ROOT_PATH . '/templates/header.php';
     color: white;
 }
 
-.scan-summary {
-    background: #34495e;
-    color: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    margin-bottom: 2rem;
-    text-align: center;
-}
-
-.summary-stats {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin-top: 1rem;
-}
-
-.stat-item {
-    text-align: center;
-}
-
-.stat-number {
-    font-size: 2rem;
-    font-weight: bold;
-    display: block;
+.file-path {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #7f8c8d;
 }
 
 .error-details {
@@ -686,13 +593,22 @@ include ROOT_PATH . '/templates/header.php';
     font-family: monospace;
     font-size: 0.8rem;
     margin-top: 0.5rem;
-    white-space: pre-wrap;
 }
 
-.file-path {
-    font-family: monospace;
-    font-size: 0.85rem;
-    color: #7f8c8d;
+.quick-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.quick-actions .btn-scan {
+    background: #95a5a6;
+    font-size: 0.9rem;
+    padding: 0.6rem 1.2rem;
+}
+
+.quick-actions .btn-scan:hover {
+    background: #7f8c8d;
 }
 
 @media (max-width: 768px) {
@@ -704,14 +620,9 @@ include ROOT_PATH . '/templates/header.php';
         grid-template-columns: 1fr;
     }
     
-    .scan-form {
+    .scan-form, .summary-stats, .quick-actions {
         flex-direction: column;
         align-items: stretch;
-    }
-    
-    .summary-stats {
-        flex-direction: column;
-        gap: 1rem;
     }
 }
 </style>
@@ -721,7 +632,7 @@ include ROOT_PATH . '/templates/header.php';
         <div class="scan-header">
             <h2>🔍 Scanner d'erreurs du portail</h2>
             <button type="button" class="btn-help" onclick="showHelp()">
-                📖 Guide d'utilisation
+                📖 Guide
             </button>
         </div>
         
@@ -730,7 +641,7 @@ include ROOT_PATH . '/templates/header.php';
             
             <div class="checkbox-group">
                 <input type="checkbox" id="deep_scan" name="deep_scan" <?= $scan_deep ? 'checked' : '' ?>>
-                <label for="deep_scan">Scan approfondi (modules + logs)</label>
+                <label for="deep_scan">Scan approfondi</label>
             </div>
             
             <button type="submit" class="btn-scan <?= $scan_deep ? 'deep' : '' ?>">
@@ -741,35 +652,12 @@ include ROOT_PATH . '/templates/header.php';
         <div class="scan-info">
             <small>
                 <strong>⚡ Rapide :</strong> Structure, fichiers, config (~2-5s) • 
-                <strong>🔬 Approfondi :</strong> + Modules, logs, syntaxe (~10-30s)
+                <strong>🔬 Approfondi :</strong> + Syntaxe, modules, BDD (~10-30s)
             </small>
         </div>
     </div>
 
     <?php if (!empty($scan_results)): ?>
-        <?php
-        // Calculer statistiques globales
-        $total_checks = 0;
-        $total_errors = 0;
-        $total_warnings = 0;
-        $total_ok = 0;
-        
-        foreach ($scan_results as $section => $results) {
-            if (is_array($results)) {
-                foreach ($results as $item) {
-                    if (isset($item['status'])) {
-                        $total_checks++;
-                        switch ($item['status']) {
-                            case 'error': $total_errors++; break;
-                            case 'warning': $total_warnings++; break;
-                            case 'ok': $total_ok++; break;
-                        }
-                    }
-                }
-            }
-        }
-        ?>
-        
         <div class="scan-summary">
             <h2>📊 Résultats du scan</h2>
             <p>Scan terminé en <?= $scan_duration ?>ms</p>
@@ -788,13 +676,14 @@ include ROOT_PATH . '/templates/header.php';
                 </div>
                 <div class="stat-item">
                     <span class="stat-number"><?= $total_checks ?></span>
-                    <span>Total vérifications</span>
+                    <span>Total</span>
                 </div>
             </div>
         </div>
 
         <div class="results-container">
             <!-- Structure -->
+            <?php if (isset($scan_results['structure'])): ?>
             <div class="result-section">
                 <div class="result-header">
                     <h3>📁 Structure des dossiers</h3>
@@ -805,9 +694,6 @@ include ROOT_PATH . '/templates/header.php';
                             <div>
                                 <strong><?= htmlspecialchars($dir) ?></strong>
                                 <div class="file-path"><?= htmlspecialchars($info['description']) ?></div>
-                                <?php if ($info['permissions']): ?>
-                                    <small>Permissions: <?= $info['permissions'] ?></small>
-                                <?php endif; ?>
                             </div>
                             <span class="status-badge <?= $info['status'] ?>">
                                 <?= $info['exists'] ? '✅' : '❌' ?>
@@ -816,8 +702,10 @@ include ROOT_PATH . '/templates/header.php';
                     <?php endforeach; ?>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- Fichiers critiques -->
+            <?php if (isset($scan_results['files'])): ?>
             <div class="result-section">
                 <div class="result-header">
                     <h3>📄 Fichiers critiques</h3>
@@ -829,7 +717,7 @@ include ROOT_PATH . '/templates/header.php';
                                 <strong><?= basename($file) ?></strong>
                                 <div class="file-path"><?= htmlspecialchars($info['description']) ?></div>
                                 <?php if ($info['exists']): ?>
-                                    <small><?= number_format($info['size']) ?> bytes | <?= $info['permissions'] ?></small>
+                                    <small><?= number_format($info['size']) ?> bytes</small>
                                 <?php endif; ?>
                             </div>
                             <span class="status-badge <?= $info['status'] ?>">
@@ -839,111 +727,309 @@ include ROOT_PATH . '/templates/header.php';
                     <?php endforeach; ?>
                 </div>
             </div>
-
-            <!-- Erreurs syntaxe -->
-            <div class="result-section">
-                <div class="result-header">
-                    <h3>🐛 Erreurs de syntaxe</h3>
-                </div>
-                <div class="result-content">
-                    <?php 
-                    $syntax_errors = array_filter($scan_results['syntax'], function($item) {
-                        return $item['status'] === 'error';
-                    });
-                    ?>
-                    
-                    <?php if (empty($syntax_errors)): ?>
-                        <div class="status-item ok">
-                            <div><strong>Aucune erreur de syntaxe détectée</strong></div>
-                            <span class="status-badge ok">✅</span>
-                        </div>
-                    <?php else: ?>
-                        <?php foreach ($syntax_errors as $file => $info): ?>
-                            <div class="status-item error">
-                                <div>
-                                    <strong><?= htmlspecialchars($file) ?></strong>
-                                    <div class="error-details"><?= htmlspecialchars($info['error']) ?></div>
-                                </div>
-                                <span class="status-badge error">❌</span>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-            </div>
+            <?php endif; ?>
 
             <!-- Configuration -->
+            <?php if (isset($scan_results['config'])): ?>
             <div class="result-section">
                 <div class="result-header">
                     <h3>⚙️ Configuration</h3>
                 </div>
                 <div class="result-content">
-                    <!-- Connexion BDD -->
-                    <div class="status-item <?= $scan_results['config']['database']['status'] ?>">
-                        <div>
-                            <strong>Base de données</strong>
-                            <div class="file-path"><?= htmlspecialchars($scan_results['config']['database']['message']) ?></div>
-                        </div>
-                        <span class="status-badge <?= $scan_results['config']['database']['status'] ?>">
-                            <?= $scan_results['config']['database']['status'] === 'ok' ? '✅' : '❌' ?>
-                        </span>
-                    </div>
-                    
-                    <!-- Constantes -->
-                    <?php foreach ($scan_results['config']['constants'] as $const => $info): ?>
-                        <div class="status-item <?= $info['status'] ?>">
+                    <!-- Config loaded -->
+                    <?php if (isset($scan_results['config']['config_loaded'])): ?>
+                        <div class="status-item <?= $scan_results['config']['config_loaded']['status'] ?>">
                             <div>
-                                <strong><?= $const ?></strong>
-                                <?php if ($info['defined']): ?>
-                                    <div class="file-path"><?= htmlspecialchars($info['value']) ?></div>
-                                <?php endif; ?>
+                                <strong>Configuration</strong>
+                                <div class="file-path"><?= htmlspecialchars($scan_results['config']['config_loaded']['message']) ?></div>
                             </div>
-                            <span class="status-badge <?= $info['status'] ?>">
-                                <?= $info['defined'] ? '✅' : '❌' ?>
+                            <span class="status-badge <?= $scan_results['config']['config_loaded']['status'] ?>">
+                                <?= $scan_results['config']['config_loaded']['status'] === 'ok' ? '✅' : '❌' ?>
                             </span>
                         </div>
-                    <?php endforeach; ?>
+                    <?php endif; ?>
+                    
+                    <!-- Constantes -->
+                    <?php if (isset($scan_results['config']['constants'])): ?>
+                        <?php foreach ($scan_results['config']['constants'] as $const => $info): ?>
+                            <div class="status-item <?= $info['status'] ?>">
+                                <div>
+                                    <strong><?= $const ?></strong>
+                                </div>
+                                <span class="status-badge <?= $info['status'] ?>">
+                                    <?= $info['defined'] ? '✅' : '❌' ?>
+                                </span>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
+            <?php endif; ?>
 
-            <!-- Assets CSS/JS -->
+            <!-- Assets -->
+            <?php if (isset($scan_results['assets'])): ?>
             <div class="result-section">
                 <div class="result-header">
                     <h3>🎨 Assets CSS/JS</h3>
                 </div>
                 <div class="result-content">
-                    <?php foreach ($scan_results['css_js'] as $file => $info): ?>
+                    <?php foreach ($scan_results['assets'] as $file => $info): ?>
                         <div class="status-item <?= $info['status'] ?>">
                             <div>
                                 <strong><?= basename($file) ?></strong>
                                 <div class="file-path"><?= htmlspecialchars($info['description']) ?></div>
                                 <?php if ($info['exists']): ?>
-                                    <small><?= number_format($info['size']) ?> bytes | <?= $info['valid'] ? 'Valide' : 'Erreurs détectées' ?></small>
+                                    <small><?= number_format($info['size']) ?> bytes</small>
                                 <?php endif; ?>
                             </div>
                             <span class="status-badge <?= $info['status'] ?>">
-                                <?= $info['exists'] ? ($info['valid'] ? '✅' : '⚠️') : '❌' ?>
+                                <?= $info['exists'] ? '✅' : '❌' ?>
                             </span>
                         </div>
                     <?php endforeach; ?>
                 </div>
             </div>
+            <?php endif; ?>
 
-            <!-- Base de données -->
+            <!-- Syntaxe (deep scan) -->
+            <?php if (isset($scan_results['syntax'])): ?>
+            <div class="result-section">
+                <div class="result-header">
+                    <h3>🐛 Erreurs de syntaxe</h3>
+                </div>
+                <div class="result-content">
+                    <?php foreach ($scan_results['syntax'] as $file => $info): ?>
+                        <div class="status-item <?= $info['status'] ?>">
+                            <div>
+                                <strong><?= htmlspecialchars($file) ?></strong>
+                                <?php if ($info['error']): ?>
+                                    <div class="error-details"><?= htmlspecialchars($info['error']) ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <span class="status-badge <?= $info['status'] ?>">
+                                <?= $info['status'] === 'ok' ? '✅' : '❌' ?>
+                            </span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Modules (deep scan) -->
+            <?php if (isset($scan_results['modules'])): ?>
+            <div class="result-section">
+                <div class="result-header">
+                    <h3>🔧 Modules</h3>
+                </div>
+                <div class="result-content">
+                    <?php foreach ($scan_results['modules'] as $module => $info): ?>
+                        <div class="status-item <?= $info['status'] ?>">
+                            <div>
+                                <strong><?= $module ?></strong>
+                                <div class="file-path">
+                                    Dossier: <?= $info['exists'] ? 'Oui' : 'Non' ?> |
+                                    Index: <?= $info['index_exists'] ? 'Oui' : 'Non' ?>
+                                </div>
+                            </div>
+                            <span class="status-badge <?= $info['status'] ?>">
+                                <?= $info['status'] === 'ok' ? '✅' : '⚠️' ?>
+                            </span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Base de données (deep scan) -->
+            <?php if (isset($scan_results['database'])): ?>
             <div class="result-section">
                 <div class="result-header">
                     <h3>🗄️ Base de données</h3>
                 </div>
                 <div class="result-content">
+                    <!-- Connexion -->
+                    <div class="status-item <?= $scan_results['database']['connection']['status'] ?>">
+                        <div>
+                            <strong>Connexion</strong>
+                            <?php if (isset($scan_results['database']['connection']['error'])): ?>
+                                <div class="error-details"><?= htmlspecialchars($scan_results['database']['connection']['error']) ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <span class="status-badge <?= $scan_results['database']['connection']['status'] ?>">
+                            <?= $scan_results['database']['connection']['status'] === 'ok' ? '✅' : '❌' ?>
+                        </span>
+                    </div>
+                    
+                    <!-- Tables -->
                     <?php if (isset($scan_results['database']['tables'])): ?>
                         <?php foreach ($scan_results['database']['tables'] as $table => $info): ?>
                             <div class="status-item <?= $info['status'] ?>">
                                 <div>
                                     <strong><?= $table ?></strong>
-                                    <?php if ($info['exists']): ?>
-                                        <div class="file-path"><?= $info['count'] ?> enregistrements</div>
-                                    <?php endif; ?>
                                 </div>
                                 <span class="status-badge <?= $info['status'] ?>">
                                     <?= $info['exists'] ? '✅' : '❌' ?>
                                 </span>
                             </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Actions rapides -->
+        <div class="result-section" style="grid-column: 1 / -1; margin-top: 2rem;">
+            <div class="result-header">
+                <h3>⚡ Actions rapides</h3>
+            </div>
+            <div class="result-content">
+                <div class="quick-actions">
+                    <button type="button" class="btn-scan" onclick="window.location.reload()">
+                        🔄 Relancer le scan
+                    </button>
+                    
+                    <button type="button" class="btn-scan" onclick="downloadReport()">
+                        📥 Télécharger rapport
+                    </button>
+                    
+                    <button type="button" class="btn-scan" onclick="window.open('/admin/logs.php', '_blank')">
+                        📊 Voir les logs
+                    </button>
+                    
+                    <button type="button" class="btn-scan" onclick="clearCache()">
+                        🗑️ Vider le cache
+                    </button>
+                </div>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="result-section">
+            <div class="result-header">
+                <h3>ℹ️ Information</h3>
+            </div>
+            <div class="result-content">
+                <p>Cliquez sur "Scanner" pour démarrer l'analyse du portail.</p>
+                <p><strong>Scanner rapide :</strong> Vérifie les éléments essentiels (structure, fichiers critiques, configuration)</p>
+                <p><strong>Scanner approfondi :</strong> Inclut l'analyse de la syntaxe, modules et base de données</p>
+            </div>
+        </div>
+    <?php endif; ?>
+</div>
+
+<script>
+function showHelp() {
+    const helpContent = `
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; overflow-y: auto;" onclick="closeHelp()">
+            <div style="background: white; max-width: 800px; margin: 2rem auto; padding: 2rem; border-radius: 8px; position: relative;" onclick="event.stopPropagation()">
+                <button onclick="closeHelp()" style="position: absolute; top: 1rem; right: 1rem; background: #e74c3c; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 1.2rem;">×</button>
+                
+                <h2>🔍 Guide du Scanner d'erreurs</h2>
+                
+                <h3>🎯 Types de scan</h3>
+                <ul>
+                    <li><strong>⚡ Rapide (2-5s)</strong> : Structure, fichiers critiques, configuration</li>
+                    <li><strong>🔬 Approfondi (10-30s)</strong> : + Syntaxe PHP, modules, base de données</li>
+                </ul>
+                
+                <h3>📊 Sections analysées</h3>
+                <ul>
+                    <li><strong>📁 Structure</strong> : Dossiers requis et permissions</li>
+                    <li><strong>📄 Fichiers critiques</strong> : config.php, header.php, .htaccess...</li>
+                    <li><strong>⚙️ Configuration</strong> : Constantes et chargement config</li>
+                    <li><strong>🎨 Assets CSS/JS</strong> : Existence et taille des fichiers</li>
+                    <li><strong>🐛 Syntaxe PHP</strong> : Erreurs de parsing (mode approfondi)</li>
+                    <li><strong>🔧 Modules</strong> : État des modules installés (mode approfondi)</li>
+                    <li><strong>🗄️ Base de données</strong> : Connexion et tables (mode approfondi)</li>
+                </ul>
+                
+                <h3>🎨 Codes couleur</h3>
+                <ul>
+                    <li><span style="color: #27ae60;">🟢 Vert</span> : Tout fonctionne correctement</li>
+                    <li><span style="color: #f39c12;">🟡 Orange</span> : Avertissement, à surveiller</li>
+                    <li><span style="color: #e74c3c;">🔴 Rouge</span> : Erreur, action requise</li>
+                </ul>
+                
+                <h3>🛠️ Actions rapides</h3>
+                <ul>
+                    <li><strong>📥 Télécharger rapport</strong> : Export JSON complet</li>
+                    <li><strong>📊 Voir logs</strong> : Accès aux logs système</li>
+                    <li><strong>🗑️ Vider cache</strong> : Nettoyage cache modules</li>
+                </ul>
+                
+                <h3>🚨 Problèmes courants</h3>
+                <ul>
+                    <li><strong>Config manquant</strong> : Vérifier ROOT_PATH et /config/config.php</li>
+                    <li><strong>Fichiers manquants</strong> : Créer les fichiers critiques indiqués</li>
+                    <li><strong>Permissions</strong> : chmod 755 (dossiers), 644 (fichiers)</li>
+                    <li><strong>BDD inaccessible</strong> : Contrôler DB_HOST, DB_USER, DB_PASS</li>
+                </ul>
+                
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 5px; margin-top: 1rem;">
+                    <strong>💡 Astuce :</strong> Lancez toujours un scan rapide après une modification,
+                    et un scan approfondi avant mise en production !
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', helpContent);
+    
+    // Fermer avec Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeHelp();
+    });
+}
+
+function closeHelp() {
+    const modal = document.querySelector('[onclick="closeHelp()"]').closest('div');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function downloadReport() {
+    const report = {
+        timestamp: new Date().toISOString(),
+        scan_type: <?= json_encode($scan_deep ? 'deep' : 'quick') ?>,
+        duration: <?= json_encode($scan_duration) ?>,
+        summary: {
+            total_checks: <?= json_encode($total_checks) ?>,
+            errors: <?= json_encode($total_errors) ?>,
+            warnings: <?= json_encode($total_warnings) ?>,
+            ok: <?= json_encode($total_ok) ?>
+        },
+        results: <?= json_encode($scan_results) ?>
+    };
+    
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `portail-scan-report-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function clearCache() {
+    if (confirm('Êtes-vous sûr de vouloir vider le cache ?')) {
+        // Simulation - à adapter selon votre système de cache
+        alert('Fonction de cache à implémenter selon votre système');
+    }
+}
+</script>
+
+<?php
+// Charger footer si possible
+try {
+    if ($header_loaded && file_exists(ROOT_PATH . '/templates/footer.php')) {
+        include ROOT_PATH . '/templates/footer.php';
+    } else {
+        echo '</body></html>';
+    }
+} catch (Exception $e) {
+    echo '</body></html>';
+}
+?>
