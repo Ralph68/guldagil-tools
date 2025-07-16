@@ -115,16 +115,42 @@ function getRoleBadgeClass($role) {
     }
 }
 
-// Navigation modules disponibles
+// Navigation modules disponibles avec permissions
 $navigation_modules = [];
 if ($user_authenticated) {
     $user_role = $current_user['role'] ?? 'user';
     foreach ($all_modules as $key => $module) {
-        // Filtrer selon permissions
-        if ($module['status'] === 'development' && !in_array($user_role, ['admin', 'dev'])) {
-            continue;
+        // Filtrage selon rôles et statut
+        $has_access = false;
+        
+        switch ($user_role) {
+            case 'admin':
+            case 'dev':
+                // Admin et dev : accès à tout sauf modules explicitement interdits
+                $has_access = true;
+                break;
+            case 'manager':
+                // Manager : accès aux modules actifs et beta, pas aux dev
+                $has_access = in_array($module['status'], ['active', 'beta']);
+                break;
+            case 'user':
+            default:
+                // Utilisateur standard : seulement modules actifs
+                $has_access = ($module['status'] === 'active');
+                break;
         }
-        if ($key !== 'home') {
+        
+        // Vérification permissions spécifiques du module
+        if ($has_access && isset($module['roles']) && !in_array($user_role, $module['roles'])) {
+            $has_access = false;
+        }
+        
+        // Exclusion modules admin-only pour non-admins
+        if ($has_access && isset($module['admin_only']) && $module['admin_only'] && !in_array($user_role, ['admin', 'dev'])) {
+            $has_access = false;
+        }
+        
+        if ($has_access && $key !== 'home') {
             $navigation_modules[$key] = $module;
         }
     }
@@ -281,7 +307,7 @@ if ($user_authenticated) {
                         </a>
                     </div>
                     
-                    <?php if (($current_user['role'] ?? 'user') === 'admin'): ?>
+                    <?php if (in_array($current_user['role'] ?? 'user', ['admin', 'manager', 'dev'])): ?>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-section">
                         <a href="/admin/" class="dropdown-item">
@@ -291,6 +317,23 @@ if ($user_authenticated) {
                                 <div class="dropdown-subtitle">Gestion du portail</div>
                             </div>
                         </a>
+                        
+                        <?php if (($current_user['role'] ?? 'user') === 'admin'): ?>
+                        <a href="/admin/users.php" class="dropdown-item">
+                            <div class="dropdown-item-icon">👥</div>
+                            <div class="dropdown-item-text">
+                                <div class="dropdown-title">Utilisateurs</div>
+                                <div class="dropdown-subtitle">Gestion des comptes</div>
+                            </div>
+                        </a>
+                        <a href="/admin/system.php" class="dropdown-item">
+                            <div class="dropdown-item-icon">🛠️</div>
+                            <div class="dropdown-item-text">
+                                <div class="dropdown-title">Système</div>
+                                <div class="dropdown-subtitle">Configuration avancée</div>
+                            </div>
+                        </a>
+                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     
