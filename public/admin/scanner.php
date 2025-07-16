@@ -446,6 +446,81 @@ include ROOT_PATH . '/templates/header.php';
 ?>
 
 <style>
+.scan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.scan-header h2 {
+    margin: 0;
+    color: #2c3e50;
+}
+
+.btn-help {
+    background: #95a5a6;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
+}
+
+.btn-help:hover {
+    background: #7f8c8d;
+}
+
+.scan-info {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #3498db;
+}
+
+.scan-info small {
+    color: #555;
+    line-height: 1.4;
+}
+
+.help-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 10000;
+    overflow-y: auto;
+}
+
+.help-content {
+    background: white;
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    border-radius: 8px;
+    position: relative;
+}
+
+.help-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
 .scanner-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -643,7 +718,13 @@ include ROOT_PATH . '/templates/header.php';
 
 <div class="scanner-container">
     <div class="scan-controls">
-        <h2>🔍 Scanner d'erreurs du portail</h2>
+        <div class="scan-header">
+            <h2>🔍 Scanner d'erreurs du portail</h2>
+            <button type="button" class="btn-help" onclick="showHelp()">
+                📖 Guide d'utilisation
+            </button>
+        </div>
+        
         <form method="post" class="scan-form">
             <input type="hidden" name="action" value="scan">
             
@@ -656,6 +737,13 @@ include ROOT_PATH . '/templates/header.php';
                 <?= $scan_deep ? '🔬 Scanner en profondeur' : '⚡ Scanner rapide' ?>
             </button>
         </form>
+        
+        <div class="scan-info">
+            <small>
+                <strong>⚡ Rapide :</strong> Structure, fichiers, config (~2-5s) • 
+                <strong>🔬 Approfondi :</strong> + Modules, logs, syntaxe (~10-30s)
+            </small>
+        </div>
     </div>
 
     <?php if (!empty($scan_results)): ?>
