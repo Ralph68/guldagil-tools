@@ -1,0 +1,736 @@
+/**
+ * Titre: CSS Bannière Cookie RGPD - Portail Guldagil
+ * Chemin: /assets/css/cookie_banner.css
+ * Version: 0.5 beta + build auto
+ * Intégration: À inclure dans header.php
+ */
+
+/* ===============================================
+   🍪 BANNIÈRE COOKIE PRINCIPALE
+=============================================== */
+.cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: white;
+    z-index: 9999;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    border-top: 3px solid #60a5fa;
+}
+
+.cookie-banner-visible {
+    transform: translateY(0);
+}
+
+.cookie-banner-hidden {
+    transform: translateY(100%);
+}
+
+.cookie-banner-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.cookie-banner-text {
+    flex: 1;
+    min-width: 300px;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.cookie-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-5px); }
+    60% { transform: translateY(-3px); }
+}
+
+.cookie-message h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #e0f2fe;
+}
+
+.cookie-message p {
+    margin: 0 0 0.75rem 0;
+    line-height: 1.5;
+    color: #e0f2fe;
+}
+
+.cookie-legal-link a {
+    color: #7dd3fc;
+    text-decoration: underline;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.cookie-legal-link a:hover {
+    color: #0ea5e9;
+}
+
+.cookie-banner-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ===============================================
+   🔲 BOUTONS COOKIE
+=============================================== */
+.cookie-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-width: 120px;
+    position: relative;
+    overflow: hidden;
+}
+
+.cookie-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.cookie-btn:hover::before {
+    left: 100%;
+}
+
+.cookie-btn-accept {
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white;
+    border: 2px solid #10b981;
+}
+
+.cookie-btn-accept:hover {
+    background: linear-gradient(135deg, #047857, #059669);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.cookie-btn-minimal {
+    background: linear-gradient(135deg, #0369a1, #0284c7);
+    color: white;
+    border: 2px solid #0284c7;
+}
+
+.cookie-btn-minimal:hover {
+    background: linear-gradient(135deg, #0c4a6e, #0369a1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+}
+
+.cookie-btn-details {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.cookie-btn-details:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+.cookie-btn-delete {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    color: white;
+    border: 2px solid #ef4444;
+}
+
+.cookie-btn-delete:hover {
+    background: linear-gradient(135deg, #b91c1c, #dc2626);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* ===============================================
+   🍪 BOUTON GESTIONNAIRE FIXE
+=============================================== */
+.cookie-manage-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 9998;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.cookie-manage-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(59, 130, 246, 0.6);
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+}
+
+.cookie-manage-btn:active {
+    transform: scale(0.95);
+}
+
+/* ===============================================
+   📋 MODALES COOKIE
+=============================================== */
+.cookie-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 1rem;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.cookie-modal-content {
+    background: white;
+    border-radius: 16px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(50px) scale(0.9);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.cookie-modal-header {
+    padding: 2rem 2rem 1rem 2rem;
+    border-bottom: 2px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    border-radius: 16px 16px 0 0;
+}
+
+.cookie-modal-header h2 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.cookie-modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #64748b;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.cookie-modal-close:hover {
+    background: #f1f5f9;
+    color: #334155;
+    transform: rotate(90deg);
+}
+
+.cookie-modal-body {
+    padding: 2rem;
+    color: #334155;
+    line-height: 1.6;
+}
+
+.cookie-category {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border-left: 4px solid #3b82f6;
+}
+
+.cookie-category h3 {
+    margin: 0 0 1rem 0;
+    color: #1e293b;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.cookie-category ul {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+}
+
+.cookie-category li {
+    margin-bottom: 0.5rem;
+}
+
+.cookie-category code {
+    background: #e2e8f0;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.current-status {
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 2px solid #7dd3fc;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    margin: 0.5rem 0;
+}
+
+.status-badge.accepted {
+    background: #dcfce7;
+    color: #15803d;
+    border: 2px solid #22c55e;
+}
+
+.status-badge.minimal {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border: 2px solid #3b82f6;
+}
+
+.cookie-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.cookie-action-card {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.cookie-action-card:hover {
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.cookie-action-card h4 {
+    margin: 0 0 0.5rem 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+}
+
+.cookie-action-card p {
+    margin: 0 0 1rem 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.cookie-modal-actions {
+    padding: 1rem 2rem 2rem 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    background: #f8fafc;
+    border-radius: 0 0 16px 16px;
+}
+
+.cookie-info {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e2e8f0;
+}
+
+.cookie-info a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.cookie-info a:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+/* ===============================================
+   🔔 NOTIFICATIONS
+=============================================== */
+.cookie-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(5, 150, 105, 0.4);
+    z-index: 10001;
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+    max-width: 300px;
+    font-weight: 500;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.cookie-notification-visible {
+    transform: translateX(0);
+}
+
+/* ===============================================
+   📱 RESPONSIVE DESIGN
+=============================================== */
+@media (max-width: 768px) {
+    .cookie-banner-content {
+        flex-direction: column;
+        gap: 1.5rem;
+        padding: 1rem;
+    }
+    
+    .cookie-banner-text {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .cookie-banner-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .cookie-btn {
+        flex: 1;
+        min-width: 100px;
+    }
+    
+    .cookie-modal-content {
+        margin: 1rem;
+        max-height: 95vh;
+    }
+    
+    .cookie-modal-header {
+        padding: 1.5rem 1.5rem 1rem 1.5rem;
+    }
+    
+    .cookie-modal-body {
+        padding: 1.5rem;
+    }
+    
+    .cookie-actions-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .cookie-manage-btn {
+        width: 50px;
+        height: 50px;
+        bottom: 15px;
+        right: 15px;
+        font-size: 1.2rem;
+    }
+    
+    .cookie-notification {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .cookie-banner-actions {
+        flex-direction: column;
+    }
+    
+    .cookie-btn {
+        width: 100%;
+    }
+    
+    .cookie-modal-header h2 {
+        font-size: 1.2rem;
+    }
+    
+    .cookie-message h3 {
+        font-size: 1.1rem;
+    }
+    
+    .cookie-message p {
+        font-size: 0.9rem;
+    }
+}
+
+/* ===============================================
+   🎨 THÈME SOMBRE (optionnel)
+=============================================== */
+@media (prefers-color-scheme: dark) {
+    .cookie-modal-content {
+        background: #1e293b;
+        color: #e2e8f0;
+    }
+    
+    .cookie-modal-header {
+        background: linear-gradient(135deg, #334155, #475569);
+        border-bottom: 2px solid #475569;
+    }
+    
+    .cookie-modal-header h2 {
+        color: #f1f5f9;
+    }
+    
+    .cookie-category {
+        background: #334155;
+        border-left-color: #60a5fa;
+    }
+    
+    .cookie-category h3 {
+        color: #f1f5f9;
+    }
+    
+    .cookie-category code {
+        background: #475569;
+        color: #fca5a5;
+    }
+    
+    .current-status {
+        background: linear-gradient(135deg, #1e293b, #334155);
+        border-color: #60a5fa;
+    }
+    
+    .cookie-action-card {
+        background: #334155;
+        border-color: #475569;
+        color: #e2e8f0;
+    }
+    
+    .cookie-action-card:hover {
+        border-color: #60a5fa;
+    }
+    
+    .cookie-action-card h4 {
+        color: #f1f5f9;
+    }
+    
+    .cookie-action-card p {
+        color: #cbd5e1;
+    }
+    
+    .cookie-modal-actions {
+        background: #334155;
+    }
+    
+    .cookie-info {
+        border-top-color: #475569;
+    }
+    
+    .cookie-info a {
+        color: #60a5fa;
+    }
+    
+    .cookie-info a:hover {
+        color: #93c5fd;
+    }
+}
+
+/* ===============================================
+   ⚡ ANIMATIONS AVANCÉES
+=============================================== */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.cookie-banner.loading {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.cookie-btn.error {
+    animation: shake 0.5s ease-in-out;
+    background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+}
+
+/* ===============================================
+   🔧 INTÉGRATION PORTAIL GULDAGIL
+=============================================== */
+.portal-header + .cookie-banner {
+    /* S'assurer que la bannière ne chevauche pas le header fixe */
+    bottom: 0;
+}
+
+.portal-footer {
+    /* Ajuster le footer si bannière visible */
+    transition: margin-bottom 0.3s ease;
+}
+
+body.cookie-banner-active .portal-footer {
+    margin-bottom: 120px; /* Hauteur approximative de la bannière */
+}
+
+/* Respect du thème bleu du portail */
+.cookie-banner {
+    background: linear-gradient(135deg, var(--primary-blue, #1e3a8a) 0%, var(--secondary-blue, #3b82f6) 100%);
+}
+
+.cookie-btn-accept {
+    background: linear-gradient(135deg, var(--success-color, #059669), var(--success-light, #10b981));
+}
+
+.cookie-manage-btn {
+    background: linear-gradient(135deg, var(--primary-blue, #3b82f6), var(--primary-dark, #1d4ed8));
+}
+
+/* ===============================================
+   🎯 FOCUS ET ACCESSIBILITÉ
+=============================================== */
+.cookie-btn:focus,
+.cookie-manage-btn:focus,
+.cookie-modal-close:focus {
+    outline: 3px solid #fbbf24;
+    outline-offset: 2px;
+}
+
+.cookie-modal {
+    /* Support lecteurs d'écran */
+    -webkit-overflow-scrolling: touch;
+}
+
+.cookie-banner[aria-hidden="true"] {
+    display: none;
+}
+
+/* Support des animations réduites */
+@media (prefers-reduced-motion: reduce) {
+    .cookie-banner,
+    .cookie-btn,
+    .cookie-manage-btn,
+    .cookie-modal-content,
+    .cookie-notification {
+        transition: none;
+        animation: none;
+    }
+    
+    .cookie-icon {
+        animation: none;
+    }
+}
+
+/* ===============================================
+   📊 ÉTATS DE CHARGEMENT
+=============================================== */
+.cookie-btn.loading {
+    position: relative;
+    color: transparent;
+}
+
+.cookie-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===============================================
+   🔍 DEBUG ET DÉVELOPPEMENT
+=============================================== */
+.cookie-debug {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #00ff00;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    z-index: 10002;
+    max-width: 300px;
+    word-break: break-all;
+}
+
+/* Masquer en production */
+body:not(.debug-mode) .cookie-debug {
+    display: none;
+}
