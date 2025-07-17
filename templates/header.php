@@ -23,31 +23,113 @@ if (file_exists(ROOT_PATH . '/config/debug.php')) {
 $user_authenticated = false;
 $current_user = null;
 
-// Vérification authentification selon système disponible
-try {
-    // Tentative AuthManager
+// === AUTHENTIFICATION OBLIGATOIRE ===
+
+// Démarrer session si pas déjà fait
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? 1 : 0);
+    ini_set('session.use_strict_mode', 1);
+    session_start();
+}
+
+// Pages qui n'ont PAS besoin d'authentification
+$public_pages = [
+    '/auth/login.php',
+    '/auth/logout.php', 
+    '/error.php',
+    '/maintenance.php'
+];
+
+// Vérifier si on est sur une page publique
+$current_script = $_SERVER['SCRIPT_NAME'] ?? '';
+$is_public_page = false;
+foreach ($public_pages as $page) {
+    if (strpos($current_script, $page) !== false) {
+        $is_public_page = true;
+        break;
+    }
+}
+
+// Initialisation des variables
+$user_authenticated = false;
+$current_user = null;
+
+// === VÉRIFICATION AUTHENTIFICATION ===
+if (!$is_public_page) {
+    // Page protégée : authentification OBLIGATOIRE
+    
+    $auth_success = false;
+    
+    // Méthode 1: Essayer AuthManager
     if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-        require_once ROOT_PATH . '/core/auth/AuthManager.php';
-        $auth = new AuthManager();
-        
-        if ($auth->isAuthenticated()) {
-            $user_authenticated = true;
-            $current_user = $auth->getCurrentUser();
+        try {
+            require_once ROOT_PATH . '/core/auth/AuthManager.php';
+            $auth = new AuthManager();
+            
+            if ($auth->isAuthenticated()) {
+                $current_user = $auth->getCurrentUser();
+                $auth_success = true;
+                
+                // Synchroniser avec sessions pour compatibilité
+                $_SESSION['authenticated'] = true;
+                $_SESSION['user'] = $current_user;
+                $_SESSION['user_id'] = $current_user['id'] ?? 1;
+                $_SESSION['user_role'] = $current_user['role'] ?? 'user';
+                $_SESSION['username'] = $current_user['username'] ?? 'Utilisateur';
+            }
+        } catch (Exception $e) {
+            error_log("Erreur AuthManager: " . $e->getMessage());
+            // Continuer vers fallback
         }
-    } else {
-        // Fallback session simple
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+    }
+    
+    // Méthode 2: Fallback session simple
+    if (!$auth_success) {
+        if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
+            $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
+            $auth_success = true;
+            
+            // Synchroniser pour admin
+            $_SESSION['user_id'] = $current_user['id'] ?? 1;
+            $_SESSION['user_role'] = $current_user['role'] ?? 'user';
         }
-        
+    }
+    
+    // Si aucune authentification trouvée : REDIRECTION FORCÉE
+    if (!$auth_success) {
+        $redirect_url = $_SERVER['REQUEST_URI'] ?? '/';
+        $login_url = '/auth/login.php?redirect=' . urlencode($redirect_url);
+        header('Location: ' . $login_url);
+        exit;
+    }
+    
+    $user_authenticated = true;
+    
+} else {
+    // Page publique : juste vérifier le statut sans forcer
+    
+    // Méthode 1: AuthManager
+    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
+        try {
+            require_once ROOT_PATH . '/core/auth/AuthManager.php';
+            $auth = new AuthManager();
+            
+            if ($auth->isAuthenticated()) {
+                $user_authenticated = true;
+                $current_user = $auth->getCurrentUser();
+            }
+        } catch (Exception $e) {
+            error_log("Erreur AuthManager: " . $e->getMessage());
+        }
+    }
+    
+    // Méthode 2: Fallback session
+    if (!$user_authenticated) {
         if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
             $user_authenticated = true;
             $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
         }
-    }
-} catch (Exception $e) {
-    if (defined('DEBUG') && DEBUG) {
-        error_log("Erreur auth header: " . $e->getMessage());
     }
 }
 
