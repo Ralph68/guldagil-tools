@@ -114,8 +114,10 @@ define('APP_IS_PRODUCTION', APP_ENV === 'production');
 define('APP_IS_DEVELOPMENT', APP_ENV === 'development');
 define('APP_IS_STAGING', APP_ENV === 'staging');
 
-// Compatibilité legacy
-define('DEBUG', APP_DEBUG);
+// Compatibilité legacy - ÉVITER REDÉFINITION
+if (!defined('DEBUG')) {
+    define('DEBUG', APP_DEBUG);
+}
 
 // =====================================
 // CONTACT
