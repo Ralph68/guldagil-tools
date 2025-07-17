@@ -550,7 +550,7 @@ if ($user_authenticated) {
     <?php if ($module_js && $current_module !== 'home'): ?>
         <?php 
         // JS depuis /public/nomdumodule/assets/js/nomdumodule.js
-        $module_js_path = "{$current_module}/assets/js/{$current_module}.js";
+        $module_js_path = "/{$current_module}/assets/js/{$current_module}.js";
         
         if (file_exists(ROOT_PATH . $module_js_path)): ?>
             <script src="<?= $module_js_path ?>?v=<?= $build_number ?>"></script>
