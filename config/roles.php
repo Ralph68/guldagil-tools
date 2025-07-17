@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Système de gestion des rôles centralisé
+ * Titre: Système de gestion des rôles et permissions - VERSION COMPLÈTE CORRIGÉE
  * Chemin: /config/roles.php
  * Version: 0.5 beta + build auto
  */
@@ -10,38 +10,44 @@ if (!defined('ROOT_PATH')) {
 }
 
 /**
- * DÉFINITION DES RÔLES ET PERMISSIONS
- * Système centralisé pour la gestion des accès
+ * Gestionnaire centralisé des rôles et permissions
+ * Architecture robuste pour la gestion des accès modulaires
  */
 class RoleManager 
 {
-    // Définition complète des rôles
+    /**
+     * Définition complète des rôles système
+     */
     private static $roles = [
-    'dev' => [
-        'name' => 'Développeur',
-        'description' => 'Accès absolu total',
-        'level' => 100,
-        'color' => '#7c3aed',
-        'icon' => '💻',
-        'capabilities' => [
-            'access_dev', 'view_debug', 'manage_system',
-            'view_logs', 'edit_modules', 'manage_users',
-            'edit_config', 'view_admin'
+        'dev' => [
+            'name' => 'Développeur',
+            'description' => 'Accès complet développement',
+            'level' => 100,
+            'color' => '#7c3aed',
+            'icon' => '💻',
+            'capabilities' => [
+                'access_dev', 'view_debug', 'manage_system',
+                'view_logs', 'edit_modules', 'manage_users',
+                'edit_config', 'view_admin', 'manage_shipping',
+                'view_quality', 'manage_adr', 'view_outillage',
+                'manage_epi', 'quality_control', 'quality_analysis'
+            ],
+            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin']
         ],
-        'modules' => ['port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin', 'dev']
-    ],
-    'admin' => [
-        'name' => 'Administrateur',
-        'description' => 'Accès complet sauf développement',
-        'level' => 95,
-        'color' => '#dc2626',
-        'icon' => '👑',
-        'capabilities' => [
-            'manage_users', 'manage_system', 'view_admin',
-            'edit_config', 'view_logs'
+        'admin' => [
+            'name' => 'Administrateur',
+            'description' => 'Administration complète',
+            'level' => 95,
+            'color' => '#dc2626',
+            'icon' => '👑',
+            'capabilities' => [
+                'manage_users', 'manage_system', 'view_admin',
+                'edit_config', 'view_logs', 'manage_shipping',
+                'view_quality', 'manage_adr', 'view_outillage',
+                'manage_epi', 'quality_control'
+            ],
+            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin']
         ],
-        'modules' => ['port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin']
-    ],
         'logistique' => [
             'name' => 'Logistique',
             'description' => 'Gestion transport et qualité',
@@ -50,9 +56,9 @@ class RoleManager
             'icon' => '🚛',
             'capabilities' => [
                 'manage_shipping', 'view_quality', 'manage_adr',
-                'view_outillage'
+                'view_outillage', 'view_shipping'
             ],
-            'modules' => ['port', 'qualite', 'adr', 'outillage', 'user']
+            'modules' => ['home', 'port', 'qualite', 'adr', 'outillage']
         ],
         'qhse' => [
             'name' => 'QHSE',
@@ -62,9 +68,9 @@ class RoleManager
             'icon' => '🦺',
             'capabilities' => [
                 'manage_adr', 'manage_epi', 'view_outillage',
-                'quality_control'
+                'quality_control', 'quality_analysis'
             ],
-            'modules' => ['adr', 'epi', 'outillage', 'user']
+            'modules' => ['home', 'adr', 'epi', 'outillage']
         ],
         'labo' => [
             'name' => 'Laboratoire',
@@ -73,36 +79,35 @@ class RoleManager
             'color' => '#3b82f6',
             'icon' => '🧪',
             'capabilities' => [
-                'view_shipping', 'manage_adr', 'manage_epi',
-                'quality_analysis'
+                'view_quality', 'quality_control', 'quality_analysis',
+                'view_outillage'
             ],
-            'modules' => ['port', 'adr', 'epi', 'user']
+            'modules' => ['home', 'qualite', 'outillage']
         ],
         'user' => [
             'name' => 'Utilisateur',
-            'description' => 'Accès utilisateur standard',
+            'description' => 'Accès standard calculateur',
             'level' => 10,
-            'color' => '#6b7280',
+            'color' => '#374151',
             'icon' => '👤',
-            'capabilities' => [
-                'view_shipping', 'view_epi'
-            ],
-            'modules' => ['port', 'epi', 'user']
+            'capabilities' => ['view_shipping'],
+            'modules' => ['home', 'port']
         ]
     ];
 
-    // Hiérarchie des rôles (rôle supérieur hérite des permissions inférieures)
+    /**
+     * Hiérarchie des rôles (héritage des permissions)
+     */
     private static $hierarchy = [
         'dev' => ['admin', 'logistique', 'qhse', 'labo', 'user'],
         'admin' => ['logistique', 'qhse', 'labo', 'user'],
         'logistique' => ['user'],
         'qhse' => ['user'],
-        'labo' => ['user'],
-        'user' => []
+        'labo' => ['user']
     ];
 
     /**
-     * Obtenir tous les rôles disponibles
+     * Obtenir tous les rôles définis
      */
     public static function getAllRoles(): array 
     {
@@ -110,7 +115,7 @@ class RoleManager
     }
 
     /**
-     * Obtenir les informations d'un rôle
+     * Obtenir les informations d'un rôle spécifique
      */
     public static function getRole(string $role): ?array 
     {
@@ -123,18 +128,22 @@ class RoleManager
     public static function canAccessModule(string $role, string $module): bool 
     {
         $roleData = self::getRole($role);
-        if (!$roleData) return false;
+        if (!$roleData) {
+            return false;
+        }
 
         return in_array($module, $roleData['modules']);
     }
 
     /**
-     * Vérifier si un rôle a une capacité spécifique
+     * Vérifier si un rôle possède une capacité spécifique
      */
     public static function hasCapability(string $role, string $capability): bool 
     {
         $roleData = self::getRole($role);
-        if (!$roleData) return false;
+        if (!$roleData) {
+            return false;
+        }
 
         // Vérifier les capacités directes
         if (in_array($capability, $roleData['capabilities'])) {
@@ -154,12 +163,14 @@ class RoleManager
     }
 
     /**
-     * Obtenir les modules accessibles pour un rôle
+     * Obtenir tous les modules accessibles pour un rôle
      */
     public static function getAccessibleModules(string $role): array 
     {
         $roleData = self::getRole($role);
-        if (!$roleData) return [];
+        if (!$roleData) {
+            return [];
+        }
 
         $modules = $roleData['modules'];
 
@@ -175,7 +186,7 @@ class RoleManager
     }
 
     /**
-     * Vérifier si un rôle est supérieur à un autre
+     * Comparer le niveau hiérarchique de deux rôles
      */
     public static function isRoleHigher(string $role1, string $role2): bool 
     {
@@ -203,7 +214,7 @@ class RoleManager
     }
 
     /**
-     * Valider si un rôle existe
+     * Valider l'existence d'un rôle
      */
     public static function isValidRole(string $role): bool 
     {
@@ -211,23 +222,25 @@ class RoleManager
     }
 
     /**
-     * Obtenir le badge HTML pour un rôle
+     * Générer un badge HTML pour un rôle
      */
     public static function getRoleBadge(string $role): string 
     {
         $roleData = self::getRole($role);
-        if (!$roleData) return '';
+        if (!$roleData) {
+            return '<span class="role-badge role-unknown">Inconnu</span>';
+        }
 
         return sprintf(
-            '<span class="role-badge" style="background-color: %s; color: white;">%s %s</span>',
+            '<span class="role-badge" style="background-color: %s; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px;">%s %s</span>',
             $roleData['color'],
             $roleData['icon'],
-            $roleData['name']
+            htmlspecialchars($roleData['name'])
         );
     }
 
     /**
-     * Configuration pour l'interface admin
+     * Configuration complète pour l'interface d'administration
      */
     public static function getAdminConfig(): array 
     {
@@ -253,14 +266,41 @@ class RoleManager
             ]
         ];
     }
+
+    /**
+     * Obtenir les statistiques des rôles
+     */
+    public static function getRoleStats(): array 
+    {
+        $stats = [
+            'total_roles' => count(self::$roles),
+            'total_modules' => 0,
+            'total_capabilities' => 0,
+            'roles_by_level' => []
+        ];
+
+        $all_modules = [];
+        $all_capabilities = [];
+
+        foreach (self::$roles as $role => $data) {
+            $all_modules = array_merge($all_modules, $data['modules']);
+            $all_capabilities = array_merge($all_capabilities, $data['capabilities']);
+            $stats['roles_by_level'][$data['level']] = $role;
+        }
+
+        $stats['total_modules'] = count(array_unique($all_modules));
+        $stats['total_capabilities'] = count(array_unique($all_capabilities));
+
+        return $stats;
+    }
 }
 
 /**
- * FONCTIONS UTILITAIRES GLOBALES
+ * FONCTIONS UTILITAIRES GLOBALES POUR COMPATIBILITÉ
  */
 
 /**
- * Vérifier l'accès à un module (compatible avec le code existant)
+ * Vérifier l'accès à un module (wrapper pour compatibilité)
  */
 if (!function_exists('canAccessModule')) {
     function canAccessModule(string $module_key, array $module_data, string $user_role): bool 
@@ -270,43 +310,98 @@ if (!function_exists('canAccessModule')) {
 }
 
 /**
- * Vérifier si un module doit être affiché
+ * Note: shouldShowModule() est définie dans /config/functions.php
+ * pour éviter les conflits de redéclaration
  */
-function shouldShowModule(string $module_key, array $module_data, string $user_role): bool 
-{
-    return RoleManager::canAccessModule($user_role, $module_key);
-}
 
 /**
  * Obtenir les modules pour la navigation
  */
-function getNavigationModules(string $user_role, array $all_modules): array 
-{
-    $accessibleModules = RoleManager::getAccessibleModules($user_role);
-    $navigation = [];
+if (!function_exists('getNavigationModules')) {
+    function getNavigationModules(string $user_role, array $all_modules): array 
+    {
+        $accessibleModules = RoleManager::getAccessibleModules($user_role);
+        $navigation = [];
 
-    foreach ($all_modules as $key => $module) {
-        if ($key !== 'home' && in_array($key, $accessibleModules)) {
-            $navigation[$key] = $module;
+        foreach ($all_modules as $key => $module) {
+            if ($key !== 'home' && in_array($key, $accessibleModules)) {
+                $navigation[$key] = $module;
+            }
         }
+
+        return $navigation;
     }
-
-    return $navigation;
 }
 
 /**
- * Vérifier une permission admin
+ * Vérifier une permission d'administration
  */
-function hasAdminPermission(string $user_role, string $permission): bool 
-{
-    return RoleManager::hasCapability($user_role, $permission);
+if (!function_exists('hasAdminPermission')) {
+    function hasAdminPermission(string $user_role, string $permission): bool 
+    {
+        return RoleManager::hasCapability($user_role, $permission);
+    }
 }
 
 /**
- * Classe CSS pour badge de rôle (compatibilité header existant)
+ * Obtenir la classe CSS pour un badge de rôle
  */
-function getRoleBadgeClass(string $role): string 
-{
-    $roleData = RoleManager::getRole($role);
-    return $roleData ? 'role-' . $role : 'role-user';
+if (!function_exists('getRoleBadgeClass')) {
+    function getRoleBadgeClass(string $role): string 
+    {
+        $roleData = RoleManager::getRole($role);
+        return $roleData ? 'role-' . $role : 'role-user';
+    }
 }
+
+/**
+ * Vérifier si l'utilisateur actuel peut gérer un autre utilisateur
+ */
+if (!function_exists('canManageUser')) {
+    function canManageUser(string $currentUserRole, string $targetUserRole): bool 
+    {
+        return RoleManager::isRoleHigher($currentUserRole, $targetUserRole);
+    }
+}
+
+/**
+ * Obtenir la couleur d'un rôle
+ */
+if (!function_exists('getRoleColor')) {
+    function getRoleColor(string $role): string 
+    {
+        $roleData = RoleManager::getRole($role);
+        return $roleData ? $roleData['color'] : '#374151';
+    }
+}
+
+/**
+ * Obtenir l'icône d'un rôle
+ */
+if (!function_exists('getRoleIcon')) {
+    function getRoleIcon(string $role): string 
+    {
+        $roleData = RoleManager::getRole($role);
+        return $roleData ? $roleData['icon'] : '👤';
+    }
+}
+
+/**
+ * Validation finale du fichier
+ */
+if (!class_exists('RoleManager')) {
+    throw new Error('Erreur critique: La classe RoleManager n\'a pas été définie correctement');
+}
+
+// Test de base pour vérifier que tout fonctionne
+try {
+    $testRoles = RoleManager::getAllRoles();
+    if (empty($testRoles)) {
+        throw new Error('Aucun rôle défini');
+    }
+} catch (Error $e) {
+    error_log('Erreur dans roles.php: ' . $e->getMessage());
+    throw $e;
+}
+
+?>
