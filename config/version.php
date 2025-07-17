@@ -1,131 +1,26 @@
 <?php
 /**
- * Titre: Configuration version et constantes - BONNES PRATIQUES PHP
+ * Titre: Configuration version et constantes - CORRECTION URGENTE
  * Chemin: /config/version.php
  * Version: 0.5 beta + build auto
  */
 
 // =====================================
-// BONNES PRATIQUES CONSTANTES PHP
-// =====================================
-
-/**
- * Bonnes pratiques pour les constantes PHP :
- * 1. MAJUSCULES avec underscores
- * 2. Préfixe cohérent pour l'application
- * 3. Types primitifs uniquement (string, int, bool, float)
- * 4. Pas d'arrays ou objects dans les constantes
- * 5. Documentation claire
- * 6. Validation des valeurs
- */
-
-// =====================================
-// VERSION ET BUILD - Gestion automatique
-// =====================================
-
-// Version manuelle (MAJOR.MINOR.PATCH-STATUS)
-define('APP_VERSION', '0.5.0-beta');
-define('APP_VERSION_MAJOR', 0);
-define('APP_VERSION_MINOR', 5);
-define('APP_VERSION_PATCH', 0);
-define('APP_VERSION_STATUS', 'beta');
-
-// Build auto-généré
-$build_info = generateBuildNumber();
-define('APP_BUILD_NUMBER', $build_info['number']);
-define('APP_BUILD_DATE', $build_info['date']);
-define('APP_BUILD_TIMESTAMP', $build_info['timestamp']);
-define('APP_BUILD_SOURCE_FILE', $build_info['source_file']);
-
-// =====================================
-// IDENTITÉ APPLICATION - Bonnes pratiques
-// =====================================
-
-// Nom technique (slug) - minuscules, tirets, pas d'espaces
-define('APP_SLUG', 'portail-guldagil');
-
-// Nom complet affiché - Clair et professionnel
-define('APP_NAME', 'Portail Interne Guldagil');
-
-// Nom court pour espaces restreints (mobile, notifications)
-define('APP_NAME_SHORT', 'Guldagil');
-
-// Baseline/tagline - Description courte et percutante
-define('APP_TAGLINE', 'Solutions Intégrées Achats & Logistique');
-
-// Description détaillée - SEO et documentation
-define('APP_DESCRIPTION', 'Plateforme interne de gestion des achats, transport, ADR, EPI et contrôle qualité pour Guldagil');
-
-// Mots-clés pour SEO et recherche
-define('APP_KEYWORDS', 'frais de port, transport, ADR, EPI, outillages, contrôle qualité, achats, logistique');
-
-// =====================================
-// INFORMATIONS LÉGALES
-// =====================================
-
-define('APP_AUTHOR', 'Jean-Thomas RUNSER');
-define('APP_COMPANY', 'Guldagil');
-define('APP_COMPANY_LEGAL', 'Guldagil SARL');
-define('APP_COPYRIGHT_YEAR', (int)date('Y'));
-define('APP_COPYRIGHT_START_YEAR', 2024);
-
-// =====================================
-// ENVIRONNEMENT ET DEBUG
-// =====================================
-
-// Environnement avec validation
-$app_env = $_ENV['APP_ENV'] ?? 'development';
-$valid_environments = ['development', 'staging', 'production'];
-if (!in_array($app_env, $valid_environments, true)) {
-    $app_env = 'development';
-    error_log("WARN: APP_ENV invalide, utilisation de 'development' par défaut");
-}
-define('APP_ENV', $app_env);
-
-// Debug basé sur l'environnement
-define('APP_DEBUG', APP_ENV === 'development');
-define('APP_IS_PRODUCTION', APP_ENV === 'production');
-define('APP_IS_DEVELOPMENT', APP_ENV === 'development');
-define('APP_IS_STAGING', APP_ENV === 'staging');
-
-// =====================================
-// URLS ET CHEMINS
-// =====================================
-
-// URL de base (sera définie dans config.php selon contexte)
-if (!defined('APP_BASE_URL')) {
-    define('APP_BASE_URL', ''); // Sera surchargé par config.php
-}
-
-// Domaine principal
-define('APP_DOMAIN', 'guldagil.local'); // À adapter selon environnement
-
-// =====================================
-// CONTACT ET SUPPORT
-// =====================================
-
-define('APP_SUPPORT_EMAIL', 'support@guldagil.com');
-define('APP_CONTACT_EMAIL', 'contact@guldagil.com');
-define('APP_ADMIN_EMAIL', 'admin@guldagil.com');
-
-// =====================================
-// FONCTIONS UTILITAIRES - Bonnes pratiques
+// FONCTIONS BUILD - DOIVENT ÊTRE DÉFINIES EN PREMIER
 // =====================================
 
 /**
  * Génère automatiquement le numéro de build
- * Bonnes pratiques : Format standardisé, fichiers clés surveillés
- * 
- * @return array Informations de build
+ * CRITIQUE : Cette fonction doit être définie AVANT les define()
  */
 function generateBuildNumber(): array {
-    // Fichiers clés à surveiller (ordre d'importance)
+    // Fichiers clés à surveiller
     $key_files = [
-        __FILE__,                                    // Ce fichier (version)
+        __FILE__,                                    // Ce fichier
         __DIR__ . '/../config/config.php',           // Config principale
         __DIR__ . '/../public/index.php',            // Point d'entrée
-        __DIR__ . '/../public/auth/login.php',       // Authentification
-        __DIR__ . '/../public/port/index.php',       // Module principal
+        __DIR__ . '/../public/port/index.php',       // Module port
+        __DIR__ . '/../public/admin/index.php',      // Module admin
         __DIR__ . '/../templates/header.php',        // Template global
         __DIR__ . '/../templates/footer.php'         // Template global
     ];
@@ -157,11 +52,103 @@ function generateBuildNumber(): array {
     ];
 }
 
+// =====================================
+// VERSION ET BUILD - AUTO-GÉNÉRATION
+// =====================================
+
+// Version manuelle (changée uniquement par responsable projet)
+define('APP_VERSION', '0.5.0-beta');
+define('APP_VERSION_MAJOR', 0);
+define('APP_VERSION_MINOR', 5);
+define('APP_VERSION_PATCH', 0);
+define('APP_VERSION_STATUS', 'beta');
+
+// Build automatique
+$build_info = generateBuildNumber();
+define('APP_BUILD_NUMBER', $build_info['number']);
+define('APP_BUILD_DATE', $build_info['date']);
+define('APP_BUILD_TIMESTAMP', $build_info['timestamp']);
+define('APP_BUILD_SOURCE_FILE', $build_info['source_file']);
+
+// COMPATIBILITÉ AVEC L'ANCIEN SYSTÈME (legacy)
+define('BUILD_NUMBER', APP_BUILD_NUMBER);
+define('BUILD_DATE', APP_BUILD_DATE);
+define('BUILD_TIMESTAMP', APP_BUILD_TIMESTAMP);
+
+// =====================================
+// IDENTITÉ APPLICATION
+// =====================================
+
+define('APP_SLUG', 'portail-guldagil');
+define('APP_NAME', 'Portail Interne Guldagil');
+define('APP_NAME_SHORT', 'Guldagil');
+define('APP_TAGLINE', 'Solutions Intégrées Achats & Logistique');
+define('APP_DESCRIPTION', 'Plateforme interne de gestion des achats, transport, ADR, EPI et contrôle qualité pour Guldagil');
+define('APP_KEYWORDS', 'frais de port, transport, ADR, EPI, outillages, contrôle qualité, achats, logistique');
+
+// =====================================
+// INFORMATIONS LÉGALES
+// =====================================
+
+define('APP_AUTHOR', 'Jean-Thomas RUNSER');
+define('APP_COMPANY', 'Guldagil');
+define('APP_COMPANY_LEGAL', 'Guldagil SARL');
+define('APP_COPYRIGHT_YEAR', (int)date('Y'));
+define('APP_COPYRIGHT_START_YEAR', 2024);
+define('COPYRIGHT_YEAR', APP_COPYRIGHT_YEAR); // Compatibilité legacy
+
+// =====================================
+// ENVIRONNEMENT ET DEBUG
+// =====================================
+
+$app_env = $_ENV['APP_ENV'] ?? 'development';
+$valid_environments = ['development', 'staging', 'production'];
+if (!in_array($app_env, $valid_environments, true)) {
+    $app_env = 'development';
+}
+define('APP_ENV', $app_env);
+
+// Debug et environnement
+define('APP_DEBUG', APP_ENV === 'development');
+define('APP_IS_PRODUCTION', APP_ENV === 'production');
+define('APP_IS_DEVELOPMENT', APP_ENV === 'development');
+define('APP_IS_STAGING', APP_ENV === 'staging');
+
+// Compatibilité legacy
+define('DEBUG', APP_DEBUG);
+
+// =====================================
+// CONTACT
+// =====================================
+
+define('APP_SUPPORT_EMAIL', 'support@guldagil.com');
+define('APP_CONTACT_EMAIL', 'contact@guldagil.com');
+define('APP_ADMIN_EMAIL', 'admin@guldagil.com');
+
+// =====================================
+// FONCTIONS UTILITAIRES - CRITIQUES
+// =====================================
+
 /**
- * Retourne informations complètes de l'application
- * Bonnes pratiques : Structure normalisée, validation
- * 
- * @return array
+ * FONCTION CRITIQUE : getVersionInfo()
+ * Cette fonction est appelée par /public/port/index.php ligne 267
+ * ELLE DOIT ABSOLUMENT ÊTRE DÉFINIE
+ */
+function getVersionInfo(): array {
+    return [
+        'version' => APP_VERSION,
+        'build' => APP_BUILD_NUMBER,
+        'date' => APP_BUILD_DATE,
+        'timestamp' => APP_BUILD_TIMESTAMP,
+        'environment' => APP_ENV,
+        'debug' => APP_DEBUG,
+        'formatted_date' => date('d/m/Y H:i', APP_BUILD_TIMESTAMP),
+        'short_build' => substr(APP_BUILD_NUMBER, -8)
+    ];
+}
+
+/**
+ * Informations complètes de l'application
  */
 function getAppInfo(): array {
     return [
@@ -196,8 +183,6 @@ function getAppInfo(): array {
         // Technique
         'environment' => APP_ENV,
         'debug' => APP_DEBUG,
-        'domain' => APP_DOMAIN,
-        'base_url' => APP_BASE_URL,
         
         // Contact
         'support_email' => APP_SUPPORT_EMAIL,
@@ -206,12 +191,7 @@ function getAppInfo(): array {
 }
 
 /**
- * Génère titre complet pour les pages HTML
- * Bonnes pratiques : SEO, hiérarchie, cohérence
- * 
- * @param string $page_title Titre de la page
- * @param bool $include_tagline Inclure la tagline
- * @return string
+ * Génère titre complet pour pages HTML
  */
 function getPageTitle(string $page_title = '', bool $include_tagline = false): string {
     $parts = [];
@@ -230,11 +210,7 @@ function getPageTitle(string $page_title = '', bool $include_tagline = false): s
 }
 
 /**
- * Retourne métadonnées pour HTML head
- * Bonnes pratiques : SEO, Open Graph, structure
- * 
- * @param array $page_data Données spécifiques à la page
- * @return array
+ * Métadonnées pour HTML head
  */
 function getPageMetadata(array $page_data = []): array {
     $defaults = [
@@ -252,20 +228,95 @@ function getPageMetadata(array $page_data = []): array {
 }
 
 /**
+ * FONCTIONS LEGACY - COMPATIBILITÉ ANCIENS FICHIERS
+ */
+
+/**
+ * Version footer (legacy)
+ */
+function renderVersionFooter(): string {
+    $info = getVersionInfo();
+    return sprintf(
+        '<div class="version-footer">
+            <span class="version">v%s</span>
+            <span class="build">Build #%s</span>
+            <span class="date">%s</span>
+            <span class="copyright">© %s %s</span>
+        </div>',
+        $info['version'],
+        $info['short_build'],
+        $info['formatted_date'],
+        APP_COPYRIGHT_YEAR,
+        APP_AUTHOR
+    );
+}
+
+/**
+ * Version compacte (legacy)
+ */
+function renderVersionCompact(): string {
+    return sprintf('v%s', APP_VERSION);
+}
+
+/**
+ * Version JSON pour JavaScript (legacy)
+ */
+function getVersionJson(): string {
+    return json_encode(getVersionInfo(), JSON_PRETTY_PRINT);
+}
+
+/**
+ * Check nouveau build (legacy)
+ */
+function isNewBuild(): bool {
+    $cache_file = __DIR__ . '/.last_build';
+    $current_build = APP_BUILD_NUMBER;
+    
+    if (!file_exists($cache_file)) {
+        @file_put_contents($cache_file, $current_build);
+        return true;
+    }
+    
+    $last_build = trim(@file_get_contents($cache_file));
+    if ($last_build !== $current_build) {
+        @file_put_contents($cache_file, $current_build);
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Version pour assets (cache busting)
+ */
+function getAssetVersion(): string {
+    return substr(APP_BUILD_NUMBER, -6);
+}
+
+/**
+ * URL versionnée (cache busting)
+ */
+function versionedUrl(string $url): string {
+    $separator = strpos($url, '?') !== false ? '&' : '?';
+    return $url . $separator . 'v=' . getAssetVersion();
+}
+
+// =====================================
+// VALIDATION ET DEBUG
+// =====================================
+
+/**
  * Validation des constantes critiques
- * Bonnes pratiques : Validation au démarrage
- * 
- * @return array Erreurs trouvées
  */
 function validateAppConstants(): array {
     $errors = [];
     
-    // Vérifications obligatoires
     $required_constants = [
         'APP_NAME' => 'string',
         'APP_VERSION' => 'string', 
         'APP_AUTHOR' => 'string',
-        'APP_ENV' => 'string'
+        'APP_ENV' => 'string',
+        'APP_BUILD_NUMBER' => 'string'
     ];
     
     foreach ($required_constants as $const => $type) {
@@ -286,40 +337,31 @@ function validateAppConstants(): array {
         }
     }
     
-    // Validations spécifiques
-    if (defined('APP_VERSION') && !preg_match('/^\d+\.\d+\.\d+(-\w+)?$/', APP_VERSION)) {
-        $errors[] = "Format de version invalide: " . APP_VERSION;
-    }
-    
-    if (defined('APP_ENV') && !in_array(APP_ENV, ['development', 'staging', 'production'], true)) {
-        $errors[] = "Environnement invalide: " . APP_ENV;
-    }
-    
     return $errors;
-}
-
-// =====================================
-// VALIDATION AU CHARGEMENT
-// =====================================
-
-// Validation automatique en mode développement
-if (APP_IS_DEVELOPMENT) {
-    $validation_errors = validateAppConstants();
-    if (!empty($validation_errors)) {
-        error_log("ERREURS CONFIGURATION APP:");
-        foreach ($validation_errors as $error) {
-            error_log("  - {$error}");
-        }
-    }
 }
 
 // Log de chargement en développement
 if (APP_IS_DEVELOPMENT && function_exists('error_log')) {
     error_log(sprintf(
-        '[CONFIG] %s v%s (Build %s) - Environnement: %s', 
+        '[VERSION.PHP] %s v%s (Build %s) - Env: %s - CHARGÉ AVEC SUCCÈS', 
         APP_NAME, 
         APP_VERSION, 
         APP_BUILD_NUMBER, 
         APP_ENV
     ));
 }
+
+// Validation automatique
+if (APP_IS_DEVELOPMENT) {
+    $validation_errors = validateAppConstants();
+    if (!empty($validation_errors)) {
+        error_log("ERREURS VERSION.PHP:");
+        foreach ($validation_errors as $error) {
+            error_log("  - {$error}");
+        }
+    }
+}
+
+// =====================================
+// FIN DU FICHIER
+// =====================================
