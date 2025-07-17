@@ -114,7 +114,6 @@ if ($user_authenticated) {
     $navigation_modules = getNavigationModules($user_role, $all_modules);
 }
 ?>
-?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
