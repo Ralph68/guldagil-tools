@@ -206,68 +206,83 @@ class IpGeolocationSecurity {
     }
     
     /**
-     * Bloque l'accès avec message d'erreur
+     * Bloque l'accès de manière discrète
      */
-    public function blockAccess($ip = null, $reason = 'Accès non autorisé') {
+    public function blockAccess($ip = null, $method = 'maintenance') {
         if (!$ip) {
             $ip = $this->getUserIp();
         }
         
-        $this->logSecurityEvent('access_blocked', $ip, $reason);
+        $this->logSecurityEvent('access_blocked', $ip, 'Blocage discret: ' . $method);
         
-        // Headers de sécurité
-        http_response_code(403);
-        header('Content-Type: text/html; charset=utf-8');
-        header('X-Frame-Options: DENY');
-        header('X-Content-Type-Options: nosniff');
+        switch ($method) {
+            case 'blank':
+                $this->showBlankPage();
+                break;
+            case 'timeout':
+                $this->simulateTimeout();
+                break;
+            case 'maintenance':
+            default:
+                $this->showMaintenancePage();
+                break;
+        }
         
-        // Page de blocage
-        echo $this->getBlockedPage($ip, $reason);
         exit;
     }
     
     /**
-     * Génère la page de blocage
+     * Page blanche (méthode discrète)
      */
-    private function getBlockedPage($ip, $reason) {
-        return '<!DOCTYPE html>
+    private function showBlankPage() {
+        http_response_code(200);
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title></title></head><body></body></html>';
+    }
+    
+    /**
+     * Simulation timeout (très discret)
+     */
+    private function simulateTimeout() {
+        // Délai aléatoire pour simuler lenteur réseau
+        sleep(rand(3, 8));
+        
+        // Puis timeout HTTP
+        http_response_code(408);
+        header('Connection: close');
+        echo '';
+    }
+    
+    /**
+     * Page maintenance générique (recommandé)
+     */
+    private function showMaintenancePage() {
+        http_response_code(503);
+        header('Content-Type: text/html; charset=utf-8');
+        header('Retry-After: 3600'); // 1 heure
+        
+        echo '<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Accès non autorisé</title>
+    <title>Maintenance en cours</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 10% auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
-        .icon { font-size: 4rem; color: #e74c3c; margin-bottom: 1rem; }
-        h1 { color: #2c3e50; margin-bottom: 1rem; }
-        p { color: #7f8c8d; line-height: 1.6; margin-bottom: 1rem; }
-        .ip { background: #ecf0f1; padding: 0.5rem; border-radius: 4px; font-family: monospace; margin: 1rem 0; }
-        .contact { background: #3498db; color: white; padding: 1rem; border-radius: 4px; margin-top: 2rem; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: rgba(255,255,255,0.95); padding: 3rem; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+        .icon { font-size: 4rem; margin-bottom: 1.5rem; }
+        h1 { color: #2c3e50; margin-bottom: 1rem; font-weight: 600; }
+        p { color: #7f8c8d; line-height: 1.6; margin-bottom: 1.5rem; }
+        .time { background: #3498db; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem; display: inline-block; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="icon">🚫</div>
-        <h1>Accès non autorisé</h1>
-        <p>Désolé, l\'accès au portail Guldagil est restreint aux connexions depuis la France uniquement.</p>
-        
-        <div class="ip">
-            <strong>Votre IP :</strong> ' . htmlspecialchars($ip) . '<br>
-            <strong>Raison :</strong> ' . htmlspecialchars($reason) . '
-        </div>
-        
-        <p>Si vous êtes un utilisateur autorisé et que vous rencontrez cette erreur :</p>
-        <ul style="text-align: left; display: inline-block;">
-            <li>Vérifiez que vous n\'utilisez pas de VPN ou proxy</li>
-            <li>Connectez-vous depuis la France</li>
-            <li>Contactez l\'administrateur système</li>
-        </ul>
-        
-        <div class="contact">
-            <strong>Support technique</strong><br>
-            En cas de problème persistant, contactez votre administrateur en précisant votre adresse IP.
-        </div>
+        <div class="icon">🔧</div>
+        <h1>Maintenance en cours</h1>
+        <p>Nous effectuons actuellement une maintenance programmée pour améliorer nos services.</p>
+        <p>Le portail sera de nouveau accessible sous peu.</p>
+        <div class="time">⏱️ Retour prévu dans quelques heures</div>
     </div>
 </body>
 </html>';
