@@ -262,9 +262,11 @@ class RoleManager
 /**
  * Vérifier l'accès à un module (compatible avec le code existant)
  */
-function canAccessModule(string $module_key, array $module_data, string $user_role): bool 
-{
-    return RoleManager::canAccessModule($user_role, $module_key);
+if (!function_exists('canAccessModule')) {
+    function canAccessModule(string $module_key, array $module_data, string $user_role): bool 
+    {
+        return RoleManager::canAccessModule($user_role, $module_key);
+    }
 }
 
 /**
