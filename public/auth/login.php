@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Page de connexion - ERREURS CORRIGÉES
+ * Titre: Page de connexion - SESSIONS SYNCHRONISÉES
  * Chemin: /public/auth/login.php
  * Version: 0.5 beta + build auto
  */
@@ -61,6 +61,53 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
 }
 
+/**
+ * Fonction d'authentification unifiée
+ */
+function authenticateUser($username, $password) {
+    // 1. Essayer AuthManager en priorité
+    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
+        try {
+            require_once ROOT_PATH . '/core/auth/AuthManager.php';
+            $auth = new AuthManager();
+            $result = $auth->login($username, $password);
+            
+            if ($result['success']) {
+                return [
+                    'success' => true,
+                    'user' => $auth->getCurrentUser(),
+                    'method' => 'AuthManager'
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("Erreur AuthManager login: " . $e->getMessage());
+        }
+    }
+    
+    // 2. Fallback : utilisateurs par défaut
+    $valid_users = [
+        'admin' => ['password' => 'admin', 'role' => 'admin'],
+        'dev' => ['password' => 'dev', 'role' => 'dev'], 
+        'user' => ['password' => 'user', 'role' => 'user'],
+        'logistique' => ['password' => 'logistique', 'role' => 'logistique']
+    ];
+    
+    if (isset($valid_users[$username]) && $valid_users[$username]['password'] === $password) {
+        return [
+            'success' => true,
+            'user' => [
+                'id' => 1,
+                'username' => $username,
+                'role' => $valid_users[$username]['role'],
+                'authenticated_at' => time()
+            ],
+            'method' => 'fallback'
+        ];
+    }
+    
+    return ['success' => false, 'error' => 'Identifiants incorrects'];
+}
+
 // Traitement formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
@@ -73,7 +120,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = sprintf('Trop de tentatives. Réessayez dans %d minutes.', ceil($remaining_time / 60));
     }
     else {
-        // CORRECTION: Utilisation de FILTER_SANITIZE_FULL_SPECIAL_CHARS au lieu de FILTER_SANITIZE_STRING
         $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         $password = $_POST['password'] ?? '';
         
@@ -85,85 +131,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         elseif (strlen($username) < 3 || strlen($username) > 50) {
             $error_message = 'Nom d\'utilisateur invalide.';
         }
-        elseif (strlen($password) < 4) {
+        elseif (strlen($password) < 3) {
             $error_message = 'Mot de passe trop court.';
         }
         else {
-            $auth_success = false;
-            
+            // Authentification
             try {
-                // CORRECTION: Vérification de l'existence de la méthode avant appel
-                $auth_manager_path = ROOT_PATH . '/core/auth/AuthManager.php';
-                if (file_exists($auth_manager_path)) {
-                    require_once $auth_manager_path;
+                $auth_result = authenticateUser($username, $password);
+
+                if ($auth_result['success']) {
+                    $current_user = $auth_result['user'];
+                    $role = $current_user['role'];
                     
-                    if (class_exists('AuthManager')) {
-                        $auth = new AuthManager();
-                        
-                        // Vérifier si la méthode authenticate existe
-                        if (method_exists($auth, 'authenticate')) {
-                            if ($auth->authenticate($username, $password)) {
-                                $auth_success = true;
-                                $_SESSION['user'] = method_exists($auth, 'getCurrentUser') ? 
-                                    $auth->getCurrentUser() : 
-                                    ['username' => $username, 'role' => 'user'];
-                            }
-                        }
-                        // Sinon, utiliser une méthode alternative si elle existe
-                        elseif (method_exists($auth, 'login')) {
-                            if ($auth->login($username, $password)) {
-                                $auth_success = true;
-                                $_SESSION['user'] = method_exists($auth, 'getCurrentUser') ? 
-                                    $auth->getCurrentUser() : 
-                                    (method_exists($auth, 'getUser') ? 
-                                        $auth->getUser() : 
-                                        ['username' => $username, 'role' => 'user']);
-                            }
-                        }
-                    }
-                }
-                
-                // Fallback simple pour développement
-                if (!$auth_success) {
-                    if (($username === 'admin' && $password === 'admin') ||
-                        ($username === 'dev' && $password === 'dev') ||
-                        ($username === 'user' && $password === 'user') ||
-                        ($username === 'logistique' && $password === 'logistique')) {
-                        
-                        $auth_success = true;
-                        $role = match($username) {
-                            'admin' => 'admin',
-                            'dev' => 'dev', 
-                            'logistique' => 'logistique',
-                            default => 'user'
-                        };
-                        
-                        $_SESSION['user'] = [
-                            'id' => 1,
-                            'username' => $username,
-                            'role' => $role,
-                            'authenticated_at' => time()
-                        ];
-                    }
-                }
-                
-                if ($auth_success) {
+                    // === SYNCHRONISATION COMPLÈTE DES SESSIONS ===
+                    
+                    // Variables standard pour tous les modules
                     $_SESSION['authenticated'] = true;
                     $_SESSION['login_attempts'] = 0;
                     unset($_SESSION['last_login_attempt']);
                     
+                    // Variables AuthManager et modules généraux
+                    $_SESSION['user'] = $current_user;
+                    
+                    // Variables spécifiques pour le module ADMIN (obligatoires)
+                    $_SESSION['user_id'] = $current_user['id'] ?? 1;
+                    $_SESSION['user_role'] = $current_user['role'] ?? $role;
+                    $_SESSION['username'] = $current_user['username'] ?? $username;
+                    
+                    // Variables de sécurité
+                    $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                    $_SESSION['login_time'] = time();
+                    $_SESSION['last_activity'] = time();
+                    
+                    // Régénération sécurisée de l'ID de session
                     session_regenerate_id(true);
                     
-                    if (function_exists('error_log')) {
-                        error_log(sprintf('[LOGIN] Connexion réussie: %s depuis %s', 
-                            $username, $_SERVER['REMOTE_ADDR'] ?? 'unknown'));
-                    }
+                    // Log de connexion
+                    error_log(sprintf('[LOGIN SUCCESS] User: %s | Role: %s | Method: %s | IP: %s | Session: %s', 
+                        $username, 
+                        $role,
+                        $auth_result['method'],
+                        $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                        session_id()
+                    ));
                     
+                    // Redirection
                     header('Location: ' . $redirect_to);
                     exit;
-                }
-                else {
-                    $error_message = 'Identifiants incorrects.';
+                } else {
+                    $error_message = $auth_result['error'];
                 }
                 
             } catch (Exception $e) {
@@ -171,10 +187,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log('[LOGIN ERROR] ' . $e->getMessage());
             }
             
-            if (!$auth_success) {
-                $_SESSION['login_attempts'] = $login_attempts + 1;
-                $_SESSION['last_login_attempt'] = time();
-            }
+            // Incrémenter tentatives ratées
+            $_SESSION['login_attempts'] = $login_attempts + 1;
+            $_SESSION['last_login_attempt'] = time();
         }
     }
     
@@ -230,294 +245,129 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($login_attempts >= 3 && !$is_rate_limited): ?>
                 <div class="warning-message">
                     <span class="warning-icon">⚠️</span>
-                    Attention : <?= $login_attempts ?>/<?= $max_attempts ?> tentatives
+                    Attention : <?= $login_attempts ?> tentatives échouées. Après <?= $max_attempts ?> tentatives, l'accès sera temporairement bloqué.
                 </div>
             <?php endif; ?>
             
-            <!-- Formulaire -->
-            <form method="POST" class="login-form" id="login-form">
-                
-                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <!-- Formulaire de connexion -->
+            <form method="POST" class="login-form" autocomplete="on">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                 
                 <div class="form-group">
                     <label for="username" class="form-label">
                         <span class="label-icon">👤</span>
-                        Nom d'utilisateur
-                        <span class="required">*</span>
+                        <span class="label-text">Nom d'utilisateur</span>
                     </label>
-                    <input type="text" 
-                           id="username" 
-                           name="username" 
-                           class="form-input"
-                           required
-                           autofocus
-                           maxlength="50"
-                           pattern="[a-zA-Z0-9._-]{3,50}"
-                           placeholder="Votre identifiant"
-                           value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
-                           <?= $is_rate_limited ? 'disabled' : '' ?>
-                           aria-describedby="username-help">
-                    <small id="username-help" class="form-help">
-                        3-50 caractères, lettres, chiffres, points, tirets
-                    </small>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-input" 
+                        value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
+                        required 
+                        autocomplete="username"
+                        maxlength="50"
+                        <?= $is_rate_limited ? 'disabled' : '' ?>
+                    >
                 </div>
                 
                 <div class="form-group">
                     <label for="password" class="form-label">
-                        <span class="label-icon">🔐</span>
-                        Mot de passe
-                        <span class="required">*</span>
+                        <span class="label-icon">🔑</span>
+                        <span class="label-text">Mot de passe</span>
                     </label>
-                    <div class="password-field">
-                        <input type="password" 
-                               id="password" 
-                               name="password" 
-                               class="form-input"
-                               required
-                               minlength="4"
-                               placeholder="Votre mot de passe"
-                               <?= $is_rate_limited ? 'disabled' : '' ?>>
-                        <button type="button" 
-                                class="password-toggle" 
-                                onclick="togglePassword()"
-                                aria-label="Afficher/masquer le mot de passe">
-                            <span id="password-toggle-icon">👁️</span>
-                        </button>
-                    </div>
-                    <small class="form-help">Minimum 4 caractères</small>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-input" 
+                        required 
+                        autocomplete="current-password"
+                        <?= $is_rate_limited ? 'disabled' : '' ?>
+                    >
                 </div>
                 
-                <button type="submit" 
-                        class="login-btn"
-                        <?= $is_rate_limited ? 'disabled' : '' ?>>
-                    <span class="btn-icon">🚀</span>
-                    Se connecter
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="remember_me" class="checkbox-input">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">Se souvenir de moi</span>
+                    </label>
+                </div>
+                
+                <button 
+                    type="submit" 
+                    class="login-button"
+                    <?= $is_rate_limited ? 'disabled' : '' ?>
+                >
+                    <?php if ($is_rate_limited): ?>
+                        <span class="button-icon">⏳</span>
+                        <span class="button-text">Bloqué temporairement</span>
+                    <?php else: ?>
+                        <span class="button-icon">🚀</span>
+                        <span class="button-text">Se connecter</span>
+                    <?php endif; ?>
                 </button>
-                
-                <!-- Conditions d'utilisation -->
-                <div class="form-footer">
-                    <small class="form-note">
-                        En vous connectant, vous acceptez nos 
-                        <a href="../legal/terms.php" target="_blank" class="terms-link">conditions d'utilisation</a>.
-                    </small>
-                </div>
-                
             </form>
             
-            <!-- Sécurité -->
-            <div class="security-info">
-                <div class="security-item">
-                    <span class="status-indicator status-secure"></span>
-                    <span>Connexion sécurisée</span>
-                </div>
-                <div class="security-item">
-                    <span class="status-indicator status-secure"></span>
-                    <span>Données protégées</span>
+            <!-- Informations de développement -->
+            <?php if (defined('DEBUG') && DEBUG): ?>
+            <div class="dev-info">
+                <h3>🔧 Informations de développement</h3>
+                <div class="dev-details">
+                    <p><strong>Comptes de test :</strong></p>
+                    <ul>
+                        <li><code>admin/admin</code> - Accès administrateur</li>
+                        <li><code>dev/dev</code> - Accès développeur</li>
+                        <li><code>user/user</code> - Accès utilisateur</li>
+                        <li><code>logistique/logistique</code> - Accès logistique</li>
+                    </ul>
+                    <p><strong>Session ID :</strong> <code><?= session_id() ?></code></p>
+                    <p><strong>AuthManager :</strong> <?= file_exists(ROOT_PATH . '/core/auth/AuthManager.php') ? '✅ Disponible' : '❌ Indisponible' ?></p>
                 </div>
             </div>
+            <?php endif; ?>
             
         </div>
+        
+        <!-- Footer -->
+        <footer class="login-footer">
+            <div class="footer-info">
+                <p class="footer-version">
+                    <?= htmlspecialchars($app_name) ?> v<?= htmlspecialchars($app_version) ?> 
+                    <span class="build-number">(build <?= htmlspecialchars($build_number) ?>)</span>
+                </p>
+                <?php if (!empty($app_author)): ?>
+                <p class="footer-author">
+                    © <?= date('Y') ?> <?= htmlspecialchars($app_author) ?>
+                </p>
+                <?php endif; ?>
+            </div>
+        </footer>
     </div>
-
-    <!-- Footer -->
-    <footer class="login-footer-fixed">
-        <div class="footer-content">
-            <div class="footer-left">
-                <span class="copyright">
-                    © <?= date('Y') ?> <?= htmlspecialchars($app_author) ?> - Tous droits réservés
-                </span>
-            </div>
-            <div class="footer-right">
-                <span class="build-info">
-                    <?= date('d/m/Y H:i') ?> • Build <?= substr($build_number, -6) ?>
-                </span>
-            </div>
-        </div>
-    </footer>
-
-    <!-- JavaScript -->
+    
     <script>
-        'use strict';
+    // Auto-focus sur le premier champ vide
+    document.addEventListener('DOMContentLoaded', function() {
+        const username = document.getElementById('username');
+        const password = document.getElementById('password');
         
-        // Performance monitoring
-        if (window.performance && window.performance.mark) {
-            window.performance.mark('login-page-loaded');
+        if (!username.value) {
+            username.focus();
+        } else {
+            password.focus();
         }
         
-        // Toggle mot de passe
-        function togglePassword() {
-            const passwordField = document.getElementById('password');
-            const icon = document.getElementById('password-toggle-icon');
-            
-            if (passwordField.type === 'password') {
-                passwordField.type = 'text';
-                icon.textContent = '🙈';
-            } else {
-                passwordField.type = 'password';
-                icon.textContent = '👁️';
-            }
+        // Retirer les messages d'erreur après 10 secondes
+        const errorMessage = document.querySelector('.error-message');
+        if (errorMessage) {
+            setTimeout(() => {
+                errorMessage.style.transition = 'opacity 0.5s ease';
+                errorMessage.style.opacity = '0';
+                setTimeout(() => errorMessage.remove(), 500);
+            }, 10000);
         }
-        
-        // Gestion d'erreurs JavaScript avancée
-        window.addEventListener('error', function(e) {
-            console.error('Erreur JS sur page login:', e.error);
-            // En production, envoyer à un service de monitoring
-        });
-        
-        window.addEventListener('unhandledrejection', function(e) {
-            console.error('Promise rejetée:', e.reason);
-        });
-        
-        // Prévention attaques timing
-        function addRandomDelay(callback, baseDelay = 100) {
-            const delay = baseDelay + Math.random() * 200;
-            setTimeout(callback, delay);
-        }
-        
-        // Fonction pour afficher les erreurs avec délai aléatoire
-        function showError(message) {
-            addRandomDelay(() => {
-                const existingError = document.querySelector('.error-message.js-error');
-                if (existingError) {
-                    existingError.remove();
-                }
-                
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error-message js-error';
-                errorDiv.innerHTML = `<span class="error-icon">⚠️</span>${escapeHtml(message)}`;
-                
-                const form = document.querySelector('.login-form');
-                form.parentNode.insertBefore(errorDiv, form);
-                
-                setTimeout(() => {
-                    if (errorDiv.parentNode) {
-                        errorDiv.remove();
-                    }
-                }, 5000);
-            });
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.querySelector('.login-form');
-            const submitBtn = document.querySelector('.login-btn');
-            const username = document.getElementById('username');
-            const password = document.getElementById('password');
-            
-            // Gestion soumission avec validation avancée
-            form?.addEventListener('submit', function(e) {
-                const usernameVal = username.value.trim();
-                const passwordVal = password.value;
-                
-                if (!usernameVal || !passwordVal) {
-                    e.preventDefault();
-                    showError('Veuillez remplir tous les champs');
-                    return;
-                }
-                
-                if (usernameVal.length < 3) {
-                    e.preventDefault();
-                    showError('Nom d\'utilisateur trop court (minimum 3 caractères)');
-                    username.focus();
-                    return;
-                }
-                
-                if (passwordVal.length < 4) {
-                    e.preventDefault();
-                    showError('Mot de passe trop court (minimum 4 caractères)');
-                    password.focus();
-                    return;
-                }
-                
-                // Validation pattern username
-                if (!/^[a-zA-Z0-9._-]{3,50}$/.test(usernameVal)) {
-                    e.preventDefault();
-                    showError('Nom d\'utilisateur invalide (lettres, chiffres, points et tirets uniquement)');
-                    username.focus();
-                    return;
-                }
-                
-                // Interface de chargement avec délai aléatoire
-                addRandomDelay(() => {
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<span class="btn-icon">⏳</span>Connexion...';
-                });
-                
-                // Timeout de sécurité
-                setTimeout(() => {
-                    if (submitBtn.disabled) {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = '<span class="btn-icon">🚀</span>Se connecter';
-                        showError('Timeout de connexion. Veuillez réessayer.');
-                    }
-                }, 30000);
-            });
-            
-            // Focus intelligent
-            if (username && !username.value) {
-                username.focus();
-            } else if (password) {
-                password.focus();
-            }
-            
-            // Validation en temps réel avec messages d'aide et pattern
-            username?.addEventListener('input', function() {
-                const value = this.value.trim();
-                const helpElement = document.getElementById('username-help');
-                
-                if (value.length === 0) {
-                    helpElement.textContent = '3-50 caractères, lettres, chiffres, points, tirets';
-                    helpElement.style.color = '#6b7280';
-                    this.setCustomValidity('');
-                } else if (value.length < 3) {
-                    helpElement.textContent = `Trop court (${value.length}/3 minimum)`;
-                    helpElement.style.color = '#ef4444';
-                    this.setCustomValidity('Nom d\'utilisateur trop court');
-                } else if (!/^[a-zA-Z0-9._-]+$/.test(value)) {
-                    helpElement.textContent = 'Caractères invalides détectés';
-                    helpElement.style.color = '#ef4444';
-                    this.setCustomValidity('Seuls les lettres, chiffres, points et tirets sont autorisés');
-                } else if (value.length > 50) {
-                    helpElement.textContent = 'Trop long (maximum 50 caractères)';
-                    helpElement.style.color = '#ef4444';
-                    this.setCustomValidity('Nom d\'utilisateur trop long');
-                } else {
-                    helpElement.textContent = 'Format valide ✓';
-                    helpElement.style.color = '#10b981';
-                    this.setCustomValidity('');
-                }
-            });
-            
-            password?.addEventListener('input', function() {
-                const value = this.value;
-                const helpElement = this.parentNode.nextElementSibling;
-                
-                if (value.length === 0) {
-                    helpElement.textContent = 'Minimum 4 caractères';
-                    helpElement.style.color = '#6b7280';
-                    this.setCustomValidity('');
-                } else if (value.length < 4) {
-                    helpElement.textContent = `Trop court (${value.length}/4 minimum)`;
-                    helpElement.style.color = '#ef4444';
-                    this.setCustomValidity('Mot de passe trop court');
-                } else {
-                    helpElement.textContent = 'Longueur valide ✓';
-                    helpElement.style.color = '#10b981';
-                    this.setCustomValidity('');
-                }
-            });
-            
-            // Performance : marquer la fin du chargement
-            if (window.performance && window.performance.mark) {
-                window.performance.mark('login-page-ready');
-                window.performance.measure('login-load-time', 'login-page-loaded', 'login-page-ready');
-            }
-        });
+    });
     </script>
     
 </body>
