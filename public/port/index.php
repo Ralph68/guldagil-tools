@@ -661,9 +661,6 @@ require_once ROOT_PATH . '/templates/header.php';
         </section>
     </main>
 </div>
-
-<script src="/assets/js/port.js?v=<?= $version_info['build'] ?>"></script>
-
 <?php
 require_once ROOT_PATH . '/templates/footer.php';
 ?>
