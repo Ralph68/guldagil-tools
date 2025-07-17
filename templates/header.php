@@ -217,6 +217,8 @@ if ($user_authenticated) {
     <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/footer.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
+    <!-- CSS bannière cookie RGPD -->
+    <link rel="stylesheet" href="/assets/css/cookie_banner.css?v=<?= $build_number ?>">
 
     <!-- CSS modulaire avec fallback intelligent -->
     <?php if ($module_css && $current_module !== 'home'): ?>
@@ -255,6 +257,8 @@ if ($user_authenticated) {
             --current-module-color-dark: <?= $module_color ?>dd;
         }
     </style>
+    <!-- JavaScript bannière cookie RGPD -->
+<script src="/assets/js/cookie_banner.js?v=<?= $build_number ?>"></script>
 </head>
 <body data-module="<?= $current_module ?>" data-module-status="<?= $module_status ?>" 
       class="<?= $user_authenticated ? 'authenticated' : 'auth-page' ?>">
