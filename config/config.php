@@ -194,4 +194,167 @@ if (file_exists(__DIR__ . '/version.php')) {
 
 //echo "=== FIN DEBUG CONFIG.PHP ===\n";
 //echo "Configuration terminée avec succès!\n";
+
+// =====================================
+// SÉCURITÉ GÉOLOCALISATION IP FRANÇAISE
+// =====================================
+
+// Configuration de la sécurité IP
+define('IP_GEOLOCATION_ENABLED', true);
+define('IP_GEOLOCATION_BLOCK_MODE', true); // true = bloquer, false = logger seulement
+define('IP_GEOLOCATION_ALLOWED_COUNTRIES', ['FR']);
+define('IP_GEOLOCATION_BLOCK_METHOD', 'maintenance'); // 'maintenance', 'blank', 'timeout'
+
+// IPs en whitelist (développement, serveurs spécifiques)
+define('IP_GEOLOCATION_WHITELIST', [
+    '127.0.0.1',        // Localhost
+    '::1',              // Localhost IPv6
+    // Ajoutez vos IPs de développement ici
+    // '192.168.1.100',  // IP locale exemple
+]);
+
+// Chargement de la classe de sécurité
+if (IP_GEOLOCATION_ENABLED) {
+    require_once ROOT_PATH . '/core/security/ip_geolocation.php';
+    
+    // Initialisation automatique de la vérification
+    // ATTENTION: Cette vérification sera exécutée sur TOUTES les pages
+    
+    try {
+        $ip_security = initIpGeolocationSecurity();
+        
+        // Configuration selon les constantes
+        $ip_security->setAllowedCountries(IP_GEOLOCATION_ALLOWED_COUNTRIES);
+        
+        foreach (IP_GEOLOCATION_WHITELIST as $whitelisted_ip) {
+            $ip_security->addWhitelistIp($whitelisted_ip);
+        }
+        
+        // Vérification avec méthode de blocage discrète
+        if (IP_GEOLOCATION_BLOCK_MODE) {
+            if (!checkIpGeolocation(false)) { // Vérifier sans bloquer automatiquement
+                $ip_security->blockAccess(null, IP_GEOLOCATION_BLOCK_METHOD);
+            }
+        } else {
+            checkIpGeolocation(false); // Log seulement
+        }
+        
+    } catch (Exception $e) {
+        // En cas d'erreur de la sécurité IP, log l'erreur mais continue
+        error_log('Erreur sécurité IP: ' . $e->getMessage());
+        
+        // En production, vous pourriez vouloir bloquer par sécurité
+        if (!DEBUG) {
+            // Bloquer par précaution en production
+            http_response_code(503);
+            die('Service temporairement indisponible');
+        }
+    }
+}
+
+// =====================================
+// CONFIGURATION PAGES D'EXCEPTION
+// =====================================
+
+// Pages qui ne nécessitent pas la vérification IP (optionnel)
+function isPageExemptFromIpCheck() {
+    $exempt_pages = [
+        '/legal/security.php',
+        '/public/diagnostic_500.php',
+        // Ajoutez d'autres pages si nécessaire
+    ];
+    
+    $current_page = $_SERVER['REQUEST_URI'] ?? '';
+    
+    foreach ($exempt_pages as $exempt_page) {
+        if (strpos($current_page, $exempt_page) !== false) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// =====================================
+// FONCTIONS HELPER
+// =====================================
+
+/**
+ * Vérifie si l'utilisateur actuel est autorisé géographiquement
+ * @return bool
+ */
+function isCurrentUserGeoAllowed() {
+    if (!IP_GEOLOCATION_ENABLED) {
+        return true;
+    }
+    
+    $ip_security = initIpGeolocationSecurity();
+    return $ip_security->isIpAllowed();
+}
+
+/**
+ * Obtient les statistiques de sécurité IP
+ * @param int $days Nombre de jours à analyser
+ * @return array
+ */
+function getIpSecurityStats($days = 7) {
+    if (!IP_GEOLOCATION_ENABLED) {
+        return ['total' => 0, 'blocked' => 0, 'allowed' => 0];
+    }
+    
+    $ip_security = initIpGeolocationSecurity();
+    return $ip_security->getSecurityStats($days);
+}
+
+/**
+ * Log un événement de sécurité personnalisé
+ * @param string $type Type d'événement
+ * @param string $message Message descriptif
+ */
+function logCustomSecurityEvent($type, $message) {
+    if (!IP_GEOLOCATION_ENABLED) {
+        return;
+    }
+    
+    $log_data = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'type' => $type,
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        'message' => $message,
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+        'request_uri' => $_SERVER['REQUEST_URI'] ?? 'unknown'
+    ];
+    
+    $log_file = ROOT_PATH . '/storage/logs/security.log';
+    $log_dir = dirname($log_file);
+    
+    if (!is_dir($log_dir)) {
+        mkdir($log_dir, 0755, true);
+    }
+    
+    $log_line = json_encode($log_data) . "\n";
+    file_put_contents($log_file, $log_line, FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * Affiche une alerte de sécurité dans l'admin
+ * @return string HTML de l'alerte
+ */
+function getIpSecurityAlert() {
+    if (!IP_GEOLOCATION_ENABLED) {
+        return '';
+    }
+    
+    $stats = getIpSecurityStats(7);
+    
+    if ($stats['blocked'] > 0) {
+        return '<div class="alert alert-warning">
+            🛡️ <strong>Sécurité IP active</strong> - ' . $stats['blocked'] . ' tentatives bloquées (7 derniers jours)
+        </div>';
+    }
+    
+    return '<div class="alert alert-info">
+        🛡️ <strong>Sécurité IP active</strong> - Accès limité à la France
+    </div>';
+}
 ?>
