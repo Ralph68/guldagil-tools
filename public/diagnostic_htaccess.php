@@ -147,10 +147,10 @@ echo '</div>';
 echo '<div class="section">
 <h2>⚔️ 2. Détection de conflits entre .htaccess</h2>';
 
+$conflicts = [];
+
 if (count($htaccess_contents) >= 2) {
     echo "<div class='info'>🔍 Analyse des conflits entre les deux fichiers .htaccess...</div>";
-    
-    $conflicts = [];
     
     // Extraire les règles RewriteRule de chaque fichier
     foreach ($htaccess_contents as $file_name => $content) {
