@@ -152,8 +152,8 @@ if ($user_authenticated) {
             <?php 
             // 2. Fallback : ancien système
             $legacy_paths = [
-                "{$current_module}/assets/css/{$current_module}.css",
-                "/assets/css/modules/{$current_module}.css"
+                "/{$current_module}/assets/css/{$current_module}.css",
+                "assets/css/modules/{$current_module}.css"
             ];
             
             foreach ($legacy_paths as $css_path):
