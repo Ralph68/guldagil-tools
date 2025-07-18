@@ -1,20 +1,28 @@
 /**
- * Titre: Module JavaScript calculateur de frais de port - Version corrigée
- * Chemin: /public/port/assets/js/port.js  
+ * Titre: Module JavaScript calculateur de frais de port - Version modernisée
+ * Chemin: /public/port/assets/js/port.js
  * Version: 0.5 beta + build auto
  */
 
 const CalculateurModule = {
+    // Configuration
+    config: {
+        apiUrl: '?ajax=calculate',
+        debounceDelay: 300,
+        maxRetries: 3
+    },
+
     // État du module
     state: {
         isCalculating: false,
-        currentStep: 1,
-        adrSelected: false,
+        currentData: null,
         history: [],
-        lastResults: null
+        validationErrors: {},
+        currentStep: 1,
+        adrSelected: false
     },
 
-    // Cache DOM
+    // Cache DOM avec nouvelles classes CSS
     dom: {},
 
     /**
@@ -23,12 +31,14 @@ const CalculateurModule = {
     init() {
         this.cacheDOMElements();
         this.setupEventListeners();
-        this.activateStep(1);
-        console.log('🧮 Calculateur Port initialisé');
+        this.loadHistory();
+        this.setupValidation();
+        this.setupSteps();
+        console.log('🧮 Calculateur module initialisé');
     },
 
     /**
-     * Cache des éléments DOM
+     * Cache des éléments DOM avec classes CSS modernisées
      */
     cacheDOMElements() {
         this.dom = {
@@ -38,174 +48,150 @@ const CalculateurModule = {
             type: document.getElementById('type'),
             palettes: document.getElementById('palettes'),
             paletteEur: document.getElementById('palette_eur'),
-            palettesGroup: document.getElementById('palettesGroup'),
-            paletteEurGroup: document.getElementById('paletteEurGroup'),
             adr: document.getElementById('adr'),
             enlevement: document.getElementById('enlevement'),
-            calcStatus: document.getElementById('calcStatus'),
+            optionSup: document.getElementById('option_sup'),
+            calculateBtn: document.getElementById('calculateBtn'),
             resultsContent: document.getElementById('resultsContent'),
-            debugContainer: document.getElementById('debugContainer')
+            calcStatus: document.getElementById('calcStatus'),
+            palettesGroup: document.getElementById('palettesGroup'),
+            paletteEurGroup: document.getElementById('paletteEurGroup'),
+            
+            // Nouveaux éléments pour les étapes
+            stepBtns: document.querySelectorAll('.calc-step-btn'),
+            stepContents: document.querySelectorAll('.calc-step-content'),
+            toggleBtns: document.querySelectorAll('.calc-toggle-btn')
         };
+    },
+
+    /**
+     * Configuration des étapes
+     */
+    setupSteps() {
+        // Gestion des boutons d'étapes
+        this.dom.stepBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const step = parseInt(e.target.dataset.step);
+                this.activateStep(step);
+            });
+        });
+
+        // Gestion des toggles (ADR, enlèvement)
+        this.dom.toggleBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.handleToggle(e.target);
+            });
+        });
+
+        // Gestion type palette/colis
+        this.dom.type.addEventListener('change', () => {
+            this.handleTypeChange();
+        });
+    },
+
+    /**
+     * Activer une étape
+     */
+    activateStep(stepNumber) {
+        this.state.currentStep = stepNumber;
+        
+        // Mettre à jour les boutons
+        this.dom.stepBtns.forEach(btn => {
+            btn.classList.remove('active');
+            if (parseInt(btn.dataset.step) === stepNumber) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Mettre à jour le contenu
+        this.dom.stepContents.forEach(content => {
+            content.classList.remove('active');
+            if (parseInt(content.dataset.step) === stepNumber) {
+                content.classList.add('active');
+            }
+        });
+    },
+
+    /**
+     * Gestion des toggles
+     */
+    handleToggle(button) {
+        const group = button.parentElement;
+        const hiddenInput = group.nextElementSibling;
+        
+        // Désactiver tous les boutons du groupe
+        group.querySelectorAll('.calc-toggle-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Activer le bouton cliqué
+        button.classList.add('active');
+        
+        // Mettre à jour le champ caché
+        const value = button.dataset.adr || button.dataset.enlevement;
+        if (hiddenInput && hiddenInput.type === 'hidden') {
+            hiddenInput.value = value;
+        }
+
+        // Gestion spéciale ADR
+        if (button.dataset.adr) {
+            this.state.adrSelected = value === 'oui';
+        }
+    },
+
+    /**
+     * Gestion du changement de type
+     */
+    handleTypeChange() {
+        const isLot = this.dom.type.value === 'palette';
+        
+        if (this.dom.palettesGroup) {
+            this.dom.palettesGroup.style.display = isLot ? 'block' : 'none';
+        }
+        
+        if (this.dom.paletteEurGroup) {
+            this.dom.paletteEurGroup.style.display = isLot ? 'block' : 'none';
+        }
     },
 
     /**
      * Configuration des événements
      */
     setupEventListeners() {
-        // Navigation département
-        this.dom.departement.addEventListener('input', () => {
-            clearTimeout(this.deptTimeout);
-            this.dom.departement.classList.remove('valid');
-            
-            this.deptTimeout = setTimeout(() => {
-                if (this.validateDepartement()) {
-                    this.dom.departement.classList.add('valid');
-                    setTimeout(() => {
-                        this.activateStep(2);
-                        if (this.dom.poids.offsetParent !== null) {
-                            this.dom.poids.focus();
-                        }
-                    }, 300);
-                }
-            }, 300);
-        });
-
-        // NOUVELLE LOGIQUE POIDS : Si > 60kg = forcément palette + Limites
-        this.dom.poids.addEventListener('input', () => {
-            this.dom.poids.classList.remove('valid');
-            const poids = parseFloat(this.dom.poids.value) || 0;
-            
-            // Gestion limite 3000kg
-            const limitWarning = document.getElementById('limitWarning');
-            if (poids > 3000) {
-                limitWarning.classList.add('show');
-                this.dom.form.classList.add('disabled');
-                return;
-            } else {
-                limitWarning.classList.remove('show');
-                this.dom.form.classList.remove('disabled');
-            }
-            
-            if (poids > 0) {
-                this.dom.poids.classList.add('valid');
-                
-                // LOGIQUE AUTOMATIQUE : > 60kg = palette
-                if (poids > 60) {
-                    this.dom.type.value = 'palette';
-                    this.dom.type.classList.add('valid');
-                    this.dom.type.disabled = true;
-                    
-                    // Calcul automatique nombre de palettes (1 palette = ~300kg max)
-                    const nbPalettes = Math.min(6, Math.ceil(poids / 300));
-                    this.dom.palettes.value = nbPalettes;
-                    
-                    // Vérification limite 6 palettes
-                    this.checkPalettesLimit(nbPalettes);
-                    
-                } else {
-                    // ≤ 60kg : réactiver le choix type
-                    this.dom.type.disabled = false;
-                    if (this.dom.type.value === 'palette') {
-                        this.dom.type.value = '';
-                        this.dom.type.classList.remove('valid');
-                    }
-                    
-                    // Masquer limite palettes
-                    const limitPalettesWarning = document.getElementById('limitPalettesWarning');
-                    if (limitPalettesWarning) {
-                        limitPalettesWarning.classList.remove('show');
-                    }
-                }
-                
-                this.updatePaletteVisibility();
-            }
-        });
-
-        // Gestion type + vérification palettes
-        this.dom.type.addEventListener('change', () => {
-            if (this.dom.type.value) {
-                this.dom.type.classList.add('valid');
-                this.updatePaletteVisibility();
-                
-                // Vérification palettes si type palette
-                if (this.dom.type.value === 'palette') {
-                    const nbPalettes = parseInt(this.dom.palettes.value) || 1;
-                    this.checkPalettesLimit(nbPalettes);
-                }
-            }
-        });
-
-        // Gestion nombre de palettes avec limite
-        this.dom.palettes.addEventListener('input', () => {
-            const nbPalettes = parseInt(this.dom.palettes.value) || 1;
-            this.checkPalettesLimit(nbPalettes);
-        });
-
-        // Gestion toggles ADR
-        document.querySelectorAll('[data-adr]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('[data-adr]').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.dom.adr.value = e.target.dataset.adr;
-                this.state.adrSelected = true;
-                
-                // Passage automatique aux options si tout est rempli
-                const poidsOk = parseFloat(this.dom.poids.value) > 0;
-                const typeOk = this.dom.type.value !== '';
-                
-                if (poidsOk && typeOk) {
-                    setTimeout(() => {
-                        this.activateStep(3);
-                        this.autoCalculateStandard();
-                    }, 300);
-                }
-            });
-        });
-
-        // Gestion enlèvement
-        document.querySelectorAll('[data-enlevement]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('[data-enlevement]').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.dom.enlevement.value = e.target.dataset.enlevement;
-            });
-        });
-
-        // Navigation par étapes
-        document.querySelectorAll('.calc-step-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('disabled')) {
-                    const step = parseInt(e.target.dataset.step);
-                    this.activateStep(step);
-                }
-            });
-        });
-
         // Soumission formulaire
         this.dom.form.addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleCalculate();
         });
-    },
 
-    /**
-     * NOUVELLE : Vérification limite palettes
-     */
-    checkPalettesLimit(nbPalettes) {
-        const limitPalettesWarning = document.getElementById('limitPalettesWarning');
-        
-        if (nbPalettes > 6) {
-            this.dom.palettes.value = 6; // Forcer max 6
-            if (limitPalettesWarning) {
-                limitPalettesWarning.classList.add('show');
+        // Validation temps réel avec debounce
+        this.dom.departement.addEventListener('input', 
+            this.debounce(() => this.validateDepartement(), this.config.debounceDelay)
+        );
+
+        this.dom.poids.addEventListener('input', 
+            this.debounce(() => this.validatePoids(), this.config.debounceDelay)
+        );
+
+        // Auto-calcul si champs valides
+        ['departement', 'poids'].forEach(field => {
+            this.dom[field].addEventListener('input', 
+                this.debounce(() => this.autoCalculateIfValid(), this.config.debounceDelay)
+            );
+        });
+
+        // Navigation étapes avec flèches
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey) {
+                if (e.key === 'ArrowLeft' && this.state.currentStep > 1) {
+                    this.activateStep(this.state.currentStep - 1);
+                    e.preventDefault();
+                } else if (e.key === 'ArrowRight' && this.state.currentStep < 3) {
+                    this.activateStep(this.state.currentStep + 1);
+                    e.preventDefault();
+                }
             }
-            this.dom.form.classList.add('disabled');
-        } else {
-            if (limitPalettesWarning) {
-                limitPalettesWarning.classList.remove('show');
-            }
-            this.dom.form.classList.remove('disabled');
-        }
+        });
     },
 
     /**
@@ -213,106 +199,200 @@ const CalculateurModule = {
      */
     validateDepartement() {
         const value = this.dom.departement.value.trim();
-        return value.length >= 2 && /^[0-9]+$/.test(value);
+        const isValid = /^[0-9]{2,3}$/.test(value);
+        
+        this.updateFieldValidation('departement', isValid, 
+            isValid ? '' : 'Format invalide (ex: 75, 69, 13)');
+        
+        return isValid;
     },
 
     /**
-     * NOUVELLE GESTION palette EUR avec consigne
+     * Validation poids
      */
-    updatePaletteVisibility() {
-        const type = this.dom.type.value;
-        const poids = parseFloat(this.dom.poids.value) || 0;
+    validatePoids() {
+        const value = parseFloat(this.dom.poids.value);
+        const isValid = value > 0 && value <= 32000;
         
-        const isPalette = type === 'palette';
+        this.updateFieldValidation('poids', isValid, 
+            isValid ? '' : 'Poids entre 0.1 et 32000 kg');
         
-        // Affichage groupe palettes
-        this.dom.palettesGroup.style.display = isPalette ? 'block' : 'none';
+        return isValid;
+    },
+
+    /**
+     * Mise à jour validation champ
+     */
+    updateFieldValidation(fieldName, isValid, errorMessage) {
+        const field = this.dom[fieldName];
+        const errorElement = document.getElementById(fieldName + 'Error');
         
-        // Affichage groupe palette EUR (consigne) seulement si palette
-        if (this.dom.paletteEurGroup) {
-            this.dom.paletteEurGroup.style.display = isPalette ? 'block' : 'none';
-            
-            if (!isPalette && this.dom.paletteEur) {
-                this.dom.paletteEur.value = '0';
-            }
+        if (isValid) {
+            field.classList.remove('error');
+            field.classList.add('valid');
+            if (errorElement) errorElement.textContent = '';
+        } else {
+            field.classList.add('error');
+            field.classList.remove('valid');
+            if (errorElement) errorElement.textContent = errorMessage;
+        }
+        
+        this.state.validationErrors[fieldName] = !isValid;
+    },
+
+    /**
+     * Auto-calcul si formulaire valide
+     */
+    autoCalculateIfValid() {
+        if (this.validateDepartement() && this.validatePoids() && !this.state.isCalculating) {
+            this.handleCalculate();
         }
     },
 
     /**
-     * Navigation séquentielle
+     * Configuration validation
      */
-    activateStep(step) {
-        document.querySelectorAll('.calc-form-step').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.calc-step-btn').forEach(el => {
-            el.classList.remove('active');
-            el.classList.add('disabled');
+    setupValidation() {
+        // Validation en temps réel avec indicateurs visuels
+        const requiredFields = ['departement', 'poids'];
+        
+        requiredFields.forEach(fieldName => {
+            const field = this.dom[fieldName];
+            if (field) {
+                field.addEventListener('blur', () => {
+                    this[`validate${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`]();
+                });
+            }
         });
-
-        for (let i = 1; i <= step; i++) {
-            const stepEl = document.querySelector(`.calc-form-step[data-step="${i}"]`);
-            const btnEl = document.querySelector(`.calc-step-btn[data-step="${i}"]`);
-            if (!btnEl || !stepEl) continue;
-
-            const indicator = btnEl.querySelector('.calc-step-indicator');
-            if (!indicator) continue;
-
-            if (i < step) {
-                btnEl.classList.remove('disabled');
-                btnEl.classList.add('completed');
-                indicator.textContent = '✓';
-            } else if (i === step) {
-                stepEl.classList.add('active');
-                btnEl.classList.add('active');
-                btnEl.classList.remove('disabled');
-                indicator.textContent = i;
-            }
-        }
-        this.state.currentStep = step;
     },
 
     /**
-     * Calcul automatique standard
+     * Chargement historique
      */
-    async autoCalculateStandard() {
-        const formData = this.getFormData();
-        this.dom.calcStatus.textContent = '⏳ Calcul automatique...';
+    loadHistory() {
+        try {
+            const saved = localStorage.getItem('calc_history');
+            this.state.history = saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.warn('Erreur chargement historique:', e);
+            this.state.history = [];
+        }
+    },
+
+    /**
+     * Sauvegarde dans l'historique
+     */
+    saveToHistory(params, results) {
+        const entry = {
+            timestamp: Date.now(),
+            params: { ...params },
+            results: { ...results },
+            id: 'calc_' + Date.now()
+        };
+        
+        this.state.history.unshift(entry);
+        this.state.history = this.state.history.slice(0, 10); // Garder 10 max
         
         try {
-            const data = await this.callAPI(formData);
-            this.displayResults(data);
-        } catch (error) {
-            console.error('Erreur:', error);
-            this.dom.calcStatus.textContent = '❌ Erreur de calcul';
+            localStorage.setItem('calc_history', JSON.stringify(this.state.history));
+        } catch (e) {
+            console.warn('Erreur sauvegarde historique:', e);
+        }
+        
+        this.updateHistoryDisplay();
+    },
+
+    /**
+     * Mise à jour affichage historique
+     */
+    updateHistoryDisplay() {
+        const historySection = document.getElementById('historySection');
+        const historyContent = document.getElementById('historyContent');
+        
+        if (!historySection || !historyContent) return;
+        
+        if (this.state.history.length > 0) {
+            historySection.style.display = 'block';
+            
+            let html = '<div class="calc-history-list">';
+            this.state.history.forEach(entry => {
+                const date = new Date(entry.timestamp).toLocaleString();
+                html += `
+                    <div class="calc-history-item" onclick="CalculateurModule.replayCalculation('${entry.id}')">
+                        <div class="calc-history-header">
+                            <span class="calc-history-date">${date}</span>
+                            <span class="calc-history-dept">${entry.params.departement}</span>
+                        </div>
+                        <div class="calc-history-details">
+                            ${entry.params.poids}kg - ${entry.params.type}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            historyContent.innerHTML = html;
         }
     },
 
     /**
-     * Calcul principal
+     * Rejouer un calcul
+     */
+    replayCalculation(entryId) {
+        const entry = this.state.history.find(h => h.id === entryId);
+        if (!entry) return;
+        
+        // Remplir le formulaire
+        Object.entries(entry.params).forEach(([key, value]) => {
+            const field = this.dom[key];
+            if (field) {
+                if (field.type === 'checkbox') {
+                    field.checked = value;
+                } else {
+                    field.value = value;
+                }
+            }
+        });
+        
+        // Mettre à jour l'affichage
+        this.handleTypeChange();
+        this.displayResults(entry.results);
+    },
+
+    /**
+     * Gestion du calcul
      */
     async handleCalculate() {
         if (this.state.isCalculating) return;
         
-        const formData = this.getFormData();
+        // Validation finale
+        if (!this.validateDepartement() || !this.validatePoids()) {
+            this.showError('Veuillez corriger les erreurs dans le formulaire');
+            return;
+        }
         
         this.state.isCalculating = true;
         this.dom.form.classList.add('loading');
         this.dom.calcStatus.textContent = '⏳ Calcul en cours...';
+        this.dom.calculateBtn.disabled = true;
         
         try {
+            const formData = this.getFormData();
             const data = await this.callAPI(formData);
             this.displayResults(data);
             this.saveToHistory(formData, data);
         } catch (error) {
-            console.error('Erreur:', error);
-            this.dom.calcStatus.textContent = '❌ Erreur de calcul';
+            console.error('Erreur calcul:', error);
+            this.showError('Erreur de calcul: ' + error.message);
         } finally {
             this.state.isCalculating = false;
             this.dom.form.classList.remove('loading');
+            this.dom.calculateBtn.disabled = false;
         }
     },
 
     /**
-     * Récupération données formulaire avec palette EUR
+     * Récupération données formulaire
      */
     getFormData() {
         const formData = new FormData(this.dom.form);
@@ -330,271 +410,154 @@ const CalculateurModule = {
      * Appel API
      */
     async callAPI(params) {
-        const response = await fetch('?ajax=calculate', {
+        const response = await fetch(this.config.apiUrl, {
             method: 'POST',
-            body: new URLSearchParams(params)
+            body: new URLSearchParams(params),
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        return await response.json();
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Erreur inconnue');
+        }
+        
+        return data;
     },
 
     /**
-     * NOUVEAU : Affichage des résultats avec classement et pliage
+     * Affichage des résultats avec nouvelles classes CSS
      */
     displayResults(data) {
-        const status = this.dom.calcStatus;
-        const content = this.dom.resultsContent;
+        this.state.currentData = data;
+        this.dom.calcStatus.textContent = `✅ Calculé en ${data.time_ms || 0}ms`;
         
-        this.state.lastResults = data;
-        
-        if (!data.success) {
-            status.textContent = '❌ ' + (data.error || 'Erreur de calcul');
-            content.innerHTML = `
-                <div class="calc-error-state">
-                    <div class="calc-error-icon">❌</div>
-                    <p><strong>Erreur de calcul</strong></p>
-                    <p>${data.error || 'Erreur inconnue'}</p>
-                </div>
-            `;
-            return;
-        }
-        
-        status.textContent = `✅ Calculé en ${data.time_ms}ms`;
-        
-        // Tri des transporteurs par prix (croissant)
-        const carriers = Object.entries(data.carriers)
-            .filter(([_, info]) => info.available)
-            .sort((a, b) => (a[1].price || 0) - (b[1].price || 0));
+        // Tri des transporteurs par prix
+        const carriers = Object.entries(data.carriers || {})
+            .filter(([name, result]) => result && result.prix_ttc)
+            .sort((a, b) => a[1].prix_ttc - b[1].prix_ttc);
         
         if (carriers.length === 0) {
-            content.innerHTML = `
-                <div class="calc-warning-state">
-                    <div class="calc-warning-icon">⚠️</div>
-                    <p><strong>Aucun tarif disponible</strong></p>
-                    <p>Vérifiez le département ou consultez le debug</p>
-                </div>
-            `;
+            this.showError('Aucun transporteur disponible pour cette destination');
             return;
         }
         
-        const carrierIcons = {
-            'xpo': '🚛',
-            'heppner': '🚚', 
-            'kn': '📦'
-        };
+        let html = '<div class="calc-carrier-list">';
         
-        let html = '<div class="calc-results-grid">';
-        
-        // Premier résultat (moins cher) : toujours visible
-        const [bestCarrier, bestInfo] = carriers[0];
-        const bestIcon = carrierIcons[bestCarrier] || '🚛';
-        
-        html += `
-            <div class="carrier-card winner">
-                <div class="carrier-badge">💰 Meilleur prix</div>
-                <div class="carrier-name">
-                    ${bestIcon} ${bestInfo.name}
+        carriers.forEach(([carrierName, result], index) => {
+            const isBest = index === 0;
+            const cardClass = isBest ? 'calc-carrier-card calc-carrier-best' : 'calc-carrier-card';
+            
+            html += `
+                <div class="${cardClass}">
+                    ${isBest ? '<div class="calc-best-badge">🏆 Meilleur tarif</div>' : ''}
+                    <div class="calc-carrier-header">
+                        <div class="calc-carrier-name">${this.formatCarrierName(carrierName)}</div>
+                        <div class="calc-carrier-price">${this.formatPrice(result.prix_ttc)} €</div>
+                    </div>
+                    <div class="calc-carrier-details">
+                        <div class="calc-detail-item">
+                            <span class="calc-detail-label">Prix HT</span>
+                            <span class="calc-detail-value">${this.formatPrice(result.prix_ht)} €</span>
+                        </div>
+                        <div class="calc-detail-item">
+                            <span class="calc-detail-label">Délai</span>
+                            <span class="calc-detail-value">${result.delai || 'N/A'}</span>
+                        </div>
+                        ${result.service ? `
+                        <div class="calc-detail-item">
+                            <span class="calc-detail-label">Service</span>
+                            <span class="calc-detail-value">${result.service}</span>
+                        </div>
+                        ` : ''}
+                    </div>
                 </div>
-                <div class="carrier-price">${bestInfo.formatted}</div>
-                <div class="carrier-delay" id="delay-${bestCarrier}">
-                    ⏱️ Calcul délai...
+            `;
+        });
+        
+        html += '</div>';
+        this.dom.resultsContent.innerHTML = html;
+        
+        // Afficher debug si disponible
+        if (data.debug && data.debug.length > 0) {
+            this.showDebugInfo(data.debug);
+        }
+    },
+
+    /**
+     * Formatage nom transporteur
+     */
+    formatCarrierName(name) {
+        const names = {
+            'xpo': 'XPO Logistics',
+            'heppner': 'Heppner',
+            'kn': 'Kuehne+Nagel',
+            'geodis': 'Geodis'
+        };
+        return names[name.toLowerCase()] || name.toUpperCase();
+    },
+
+    /**
+     * Formatage prix
+     */
+    formatPrice(price) {
+        return parseFloat(price).toFixed(2);
+    },
+
+    /**
+     * Affichage erreur
+     */
+    showError(message) {
+        this.dom.calcStatus.textContent = '❌ Erreur';
+        this.dom.resultsContent.innerHTML = `
+            <div class="calc-error">
+                <div class="calc-error-icon">❌</div>
+                <div class="calc-error-content">
+                    <h3>Erreur de calcul</h3>
+                    <p>${message}</p>
                 </div>
             </div>
         `;
+    },
+
+    /**
+     * Affichage debug
+     */
+    showDebugInfo(debugData) {
+        const debugContainer = document.getElementById('debugContainer');
+        const debugContent = document.getElementById('debugContent');
         
-        // Autres résultats : masqués par défaut si > 1 résultat
-        if (carriers.length > 1) {
-            html += `
-                <div class="other-carriers">
-                    <button class="show-others-btn" onclick="toggleOtherCarriers()">
-                        <span id="othersToggleText">Voir ${carriers.length - 1} autre(s) transporteur(s)</span>
-                        <span class="toggle-icon" id="othersToggleIcon">▼</span>
-                    </button>
-                    <div class="other-carriers-content" id="otherCarriersContent" style="display: none;">
+        if (debugContainer && debugContent) {
+            debugContainer.style.display = 'block';
+            debugContent.innerHTML = `
+                <pre class="calc-debug-pre">${JSON.stringify(debugData, null, 2)}</pre>
             `;
-            
-            for (let i = 1; i < carriers.length; i++) {
-                const [carrier, info] = carriers[i];
-                const icon = carrierIcons[carrier] || '🚛';
-                
-                html += `
-                    <div class="carrier-card secondary">
-                        <div class="carrier-name">
-                            ${icon} ${info.name}
-                        </div>
-                        <div class="carrier-price">${info.formatted}</div>
-                        <div class="carrier-delay" id="delay-${carrier}">
-                            ⏱️ Calcul délai...
-                        </div>
-                    </div>
-                `;
-            }
-            
-            html += `</div></div>`;
-        }
-        
-        html += '</div>';
-        
-        content.innerHTML = html;
-        
-        // Récupération des délais pour tous les transporteurs
-        carriers.forEach(([carrier, _]) => {
-            this.fetchDelay(carrier);
-        });
-        
-        // Affichage historique et debug
-        document.getElementById('historySection').style.display = 'block';
-        
-        // Affichage du debug avec détails de calcul
-        if (data.debug) {
-            this.displayDebugInfo(data.debug);
         }
     },
 
     /**
-     * NOUVEAU : Affichage debug détaillé
+     * Debounce utility
      */
-    displayDebugInfo(debugData) {
-        if (!this.dom.debugContainer) return;
-        
-        this.dom.debugContainer.style.display = 'block';
-        
-        let debugHtml = '<div class="debug-steps">';
-        
-        // Étapes de calcul par transporteur
-        Object.entries(debugData).forEach(([carrier, steps]) => {
-            if (typeof steps === 'object' && steps.steps) {
-                debugHtml += `
-                    <div class="debug-carrier">
-                        <h4>🔍 ${carrier.toUpperCase()} - Étapes de calcul</h4>
-                        <div class="debug-steps-list">
-                `;
-                
-                steps.steps.forEach((step, index) => {
-                    debugHtml += `
-                        <div class="debug-step">
-                            <strong>Étape ${index + 1}:</strong> ${step}
-                        </div>
-                    `;
-                });
-                
-                if (steps.finalPrice) {
-                    debugHtml += `
-                        <div class="debug-final">
-                            <strong>Prix final:</strong> ${steps.finalPrice}€
-                        </div>
-                    `;
-                }
-                
-                debugHtml += '</div></div>';
-            }
-        });
-        
-        debugHtml += '</div>';
-        
-        document.getElementById('debugContent').innerHTML = debugHtml;
-    },
-
-    /**
-     * Récupération délai transporteur
-     */
-    async fetchDelay(carrier) {
-        try {
-            const dept = this.dom.departement.value;
-            const option = document.querySelector('input[name="option_sup"]:checked')?.value || 'standard';
-            
-            const response = await fetch(`?ajax=delay&carrier=${carrier}&dept=${dept}&option=${option}`);
-            const data = await response.json();
-            
-            const delayEl = document.getElementById(`delay-${carrier}`);
-            if (delayEl && data.success) {
-                delayEl.innerHTML = `⏱️ ${data.delay}`;
-            }
-        } catch (error) {
-            console.error('Erreur délai:', error);
-        }
-    },
-
-    /**
-     * Sauvegarde historique
-     */
-    saveToHistory(formData, results) {
-        const historyItem = {
-            timestamp: new Date().toISOString(),
-            params: formData,
-            results: results,
-            id: Date.now()
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
         };
-        
-        this.state.history.unshift(historyItem);
-        if (this.state.history.length > 10) {
-            this.state.history = this.state.history.slice(0, 10);
-        }
-        
-        try {
-            localStorage.setItem('calculateur_history', JSON.stringify(this.state.history));
-        } catch (error) {
-            console.warn('Impossible de sauvegarder l\'historique');
-        }
     }
 };
 
-// NOUVELLES Fonctions globales pour l'interface
-window.resetForm = function() {
-    // Reset formulaire
-    document.getElementById('calculatorForm').reset();
-    document.getElementById('adr').value = 'non';
-    document.getElementById('enlevement').value = 'non';
-    
-    // Reset groupes palette
-    document.getElementById('palettesGroup').style.display = 'none';
-    if (document.getElementById('paletteEurGroup')) {
-        document.getElementById('paletteEurGroup').style.display = 'none';
-    }
-    
-    // Réactiver type
-    document.getElementById('type').disabled = false;
-    
-    // Masquer warnings limites
-    document.getElementById('limitWarning').classList.remove('show');
-    const limitPalettesWarning = document.getElementById('limitPalettesWarning');
-    if (limitPalettesWarning) {
-        limitPalettesWarning.classList.remove('show');
-    }
-    document.getElementById('calculatorForm').classList.remove('disabled');
-    
-    // Reset toggles
-    document.querySelectorAll('[data-adr]').forEach(btn => btn.classList.remove('active'));
-    document.querySelector('[data-adr="non"]').classList.add('active');
-    
-    document.querySelectorAll('[data-enlevement]').forEach(btn => btn.classList.remove('active'));
-    document.querySelector('[data-enlevement="non"]').classList.add('active');
-    
-    // Reset validation
-    document.querySelectorAll('.calc-input').forEach(input => input.classList.remove('valid'));
-    
-    // Reset résultats
-    document.getElementById('resultsContent').innerHTML = `
-        <div class="calc-empty-state">
-            <div class="calc-empty-icon">🧮</div>
-            <p class="calc-empty-text">Complétez le formulaire pour voir les tarifs</p>
-        </div>
-    `;
-    
-    document.getElementById('calcStatus').textContent = '⏳ En attente...';
-    document.getElementById('historySection').style.display = 'none';
-    document.getElementById('debugContainer').style.display = 'none';
-    
-    // Reset navigation
-    CalculateurModule.state.adrSelected = false;
-    CalculateurModule.activateStep(1);
-    document.getElementById('departement').focus();
-};
-
+// Fonctions globales pour les boutons onclick
 window.contactExpress = function() {
     const subject = 'Demande Express Dédié - Livraison 12h';
     const body = `Bonjour,
@@ -610,130 +573,40 @@ Je souhaite obtenir un devis pour un transport express dédié :
 Merci de me communiquer le tarif et les modalités.
 
 Cordialement`;
-    
-    window.location.href = `mailto:achats@guldaigl.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    const mailtoLink = `mailto:contact@guldagil.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
 };
 
-// NOUVELLES FONCTIONS AFFRÈTEMENT
-window.showAffretement = function() {
-    document.querySelector('.calc-form-panel').style.display = 'none';
-    document.getElementById('resultsPanel').style.display = 'none';
-    document.getElementById('affretementPanel').style.display = 'block';
-    
-    // Pré-remplir avec les données du calculateur si disponibles
-    const poids = document.getElementById('poids')?.value;
-    const palettes = document.getElementById('palettes')?.value;
-    
-    if (poids) {
-        document.getElementById('affret_poids').value = poids;
-    }
-    if (palettes) {
-        document.getElementById('affret_palettes').value = palettes;
-    }
-    
-    // Définir date minimum à aujourd'hui
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('affret_date_souhaite').min = today;
-};
-
-window.closeAffretement = function() {
-    document.getElementById('affretementPanel').style.display = 'none';
-    document.querySelector('.calc-form-panel').style.display = 'block';
-    document.getElementById('resultsPanel').style.display = 'block';
-};
-
-window.mailLibre = function() {
-    const subject = 'Demande de transport - Contact libre';
-    const body = `Bonjour,
-
-Je souhaite obtenir des informations pour un transport :
-
-[Décrivez votre besoin ici]
-
-Cordialement`;
-    
-    window.location.href = `mailto:achats@guldaigl.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-};
-
-// GESTION FORMULAIRE AFFRÈTEMENT
-document.addEventListener('DOMContentLoaded', function() {
-    // Gestion toggles ADR affrètement
-    document.querySelectorAll('[data-affret-adr]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('[data-affret-adr]').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            document.getElementById('affret_adr').value = e.target.dataset.affretAdr;
-            
-            // Afficher/masquer détails ADR
-            const adrDetails = document.getElementById('affretAdrDetails');
-            if (e.target.dataset.affretAdr === 'oui') {
-                adrDetails.style.display = 'block';
-                document.getElementById('affret_adr_details').required = true;
-            } else {
-                adrDetails.style.display = 'none';
-                document.getElementById('affret_adr_details').required = false;
-            }
+window.resetForm = function() {
+    const form = document.getElementById('calculatorForm');
+    if (form) {
+        form.reset();
+        
+        // Reset état
+        CalculateurModule.state.currentStep = 1;
+        CalculateurModule.state.adrSelected = false;
+        CalculateurModule.activateStep(1);
+        
+        // Reset affichage
+        CalculateurModule.handleTypeChange();
+        
+        // Reset résultats
+        document.getElementById('resultsContent').innerHTML = `
+            <div class="calc-empty-state">
+                <div class="calc-empty-icon">🧮</div>
+                <p class="calc-empty-text">Complétez le formulaire pour voir les tarifs</p>
+            </div>
+        `;
+        document.getElementById('calcStatus').textContent = '⏳ En attente...';
+        
+        // Reset validation
+        document.querySelectorAll('.calc-form-input').forEach(input => {
+            input.classList.remove('error', 'valid');
         });
-    });
-
-    // Gestion toggle hayon affrètement
-    document.querySelectorAll('[data-affret-hayon]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('[data-affret-hayon]').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            document.getElementById('affret_hayon').value = e.target.dataset.affretHayon;
+        document.querySelectorAll('.calc-error-message').forEach(error => {
+            error.textContent = '';
         });
-    });
-
-    // Soumission formulaire affrètement
-    document.getElementById('affretementForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const formData = new FormData(e.target);
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        
-        submitBtn.innerHTML = '⏳ Envoi en cours...';
-        submitBtn.disabled = true;
-        
-        try {
-            const response = await fetch('?ajax=affretement', {
-                method: 'POST',
-                body: new URLSearchParams(Object.fromEntries(formData.entries()))
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                alert('✅ Demande d\'affrètement envoyée avec succès !');
-                document.getElementById('affretementForm').reset();
-                closeAffretement();
-            } else {
-                alert('❌ Erreur : ' + (data.error || 'Impossible d\'envoyer la demande'));
-            }
-            
-        } catch (error) {
-            alert('❌ Erreur de connexion : ' + error.message);
-        } finally {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }
-    });
-});
-
-window.toggleOtherCarriers = function() {
-    const content = document.getElementById('otherCarriersContent');
-    const text = document.getElementById('othersToggleText');
-    const icon = document.getElementById('othersToggleIcon');
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        text.textContent = 'Masquer les autres transporteurs';
-        icon.textContent = '▲';
-    } else {
-        content.style.display = 'none';
-        text.textContent = text.textContent.replace('Masquer', 'Voir').replace('autres transporteurs', 'autre(s) transporteur(s)');
-        icon.textContent = '▼';
     }
 };
 
@@ -741,12 +614,14 @@ window.toggleHistory = function() {
     const content = document.getElementById('historyContent');
     const toggle = document.getElementById('historyToggle');
     
-    if (content.style.display === 'block') {
-        content.style.display = 'none';
-        toggle.textContent = '▼';
-    } else {
-        content.style.display = 'block';
-        toggle.textContent = '▲';
+    if (content && toggle) {
+        if (content.style.display === 'block') {
+            content.style.display = 'none';
+            toggle.textContent = '▼';
+        } else {
+            content.style.display = 'block';
+            toggle.textContent = '▲';
+        }
     }
 };
 
@@ -754,12 +629,14 @@ window.toggleDebug = function() {
     const content = document.getElementById('debugContent');
     const toggle = document.getElementById('debugToggle');
     
-    if (content.style.display === 'block') {
-        content.style.display = 'none';
-        toggle.textContent = '▼';
-    } else {
-        content.style.display = 'block';
-        toggle.textContent = '▲';
+    if (content && toggle) {
+        if (content.style.display === 'block') {
+            content.style.display = 'none';
+            toggle.textContent = '▼';
+        } else {
+            content.style.display = 'block';
+            toggle.textContent = '▲';
+        }
     }
 };
 
