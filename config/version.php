@@ -1,90 +1,105 @@
 <?php
 /**
- * Titre: Configuration version et constantes - CORRECTION URGENTE
+ * Titre: Configuration version - PRODUCTION READY
  * Chemin: /config/version.php
  * Version: 0.5 beta + build auto
  */
 
+// Protection contre l'accès direct
+if (!defined('ROOT_PATH')) {
+    exit('Accès direct interdit');
+}
+
 // =====================================
-// FONCTIONS BUILD - DOIVENT ÊTRE DÉFINIES EN PREMIER
+// VERSION MANUELLE - Contrôlée par responsable projet
 // =====================================
 
-/**
- * Génère automatiquement le numéro de build
- * CRITIQUE : Cette fonction doit être définie AVANT les define()
- */
+define('APP_VERSION', '0.5 beta');
+
+// Parsing version
+$version_parts = explode('.', str_replace(' beta', '', APP_VERSION));
+define('APP_VERSION_MAJOR', (int)($version_parts[0] ?? 0));
+define('APP_VERSION_MINOR', (int)($version_parts[1] ?? 0));
+define('APP_VERSION_PATCH', (int)($version_parts[2] ?? 0));
+define('APP_VERSION_STATUS', strpos(APP_VERSION, 'beta') !== false ? 'beta' : 'stable');
+
+// =====================================
+// BUILD AUTO-GÉNÉRÉ
+// =====================================
+
 function generateBuildNumber(): array {
-    // Fichiers clés à surveiller
     $key_files = [
-        __FILE__,                                    // Ce fichier
-        __DIR__ . '/../config/config.php',           // Config principale
-        __DIR__ . '/../public/index.php',            // Point d'entrée
-        __DIR__ . '/../public/port/index.php',       // Module port
-        __DIR__ . '/../public/admin/index.php',      // Module admin
-        __DIR__ . '/../templates/header.php',        // Template global
-        __DIR__ . '/../templates/footer.php'         // Template global
+        __DIR__ . '/../public/index.php',
+        __DIR__ . '/../public/calculateur/index.php',
+        __DIR__ . '/../public/admin/index.php',
+        __DIR__ . '/../templates/header.php',
+        __DIR__ . '/../templates/footer.php',
+        __DIR__ . '/config.php',
+        __FILE__
     ];
     
-    $latest_time = 0;
-    $latest_file = '';
-    
+    $latest_timestamp = 0;
     foreach ($key_files as $file) {
         if (file_exists($file)) {
-            $mtime = filemtime($file);
-            if ($mtime > $latest_time) {
-                $latest_time = $mtime;
-                $latest_file = basename($file);
+            $timestamp = filemtime($file);
+            if ($timestamp > $latest_timestamp) {
+                $latest_timestamp = $timestamp;
             }
         }
     }
     
-    // Fallback si aucun fichier trouvé
-    if ($latest_time === 0) {
-        $latest_time = time();
-        $latest_file = 'fallback';
+    if ($latest_timestamp === 0) {
+        $latest_timestamp = time();
     }
     
     return [
-        'number' => date('YmdHis', $latest_time),
-        'date' => date('d/m/Y H:i:s', $latest_time),
-        'timestamp' => $latest_time,
-        'source_file' => $latest_file
+        'number' => date('YmdHis', $latest_timestamp),
+        'date' => date('Y-m-d H:i:s', $latest_timestamp),
+        'timestamp' => $latest_timestamp
     ];
 }
 
-// =====================================
-// VERSION ET BUILD - AUTO-GÉNÉRATION
-// =====================================
-
-// Version manuelle (changée uniquement par responsable projet)
-define('APP_VERSION', '0.5.0-beta');
-define('APP_VERSION_MAJOR', 0);
-define('APP_VERSION_MINOR', 5);
-define('APP_VERSION_PATCH', 0);
-define('APP_VERSION_STATUS', 'beta');
-
-// Build automatique
 $build_info = generateBuildNumber();
 define('APP_BUILD_NUMBER', $build_info['number']);
 define('APP_BUILD_DATE', $build_info['date']);
 define('APP_BUILD_TIMESTAMP', $build_info['timestamp']);
-define('APP_BUILD_SOURCE_FILE', $build_info['source_file']);
 
-// COMPATIBILITÉ AVEC L'ANCIEN SYSTÈME (legacy)
+// Compatibilité legacy
 define('BUILD_NUMBER', APP_BUILD_NUMBER);
 define('BUILD_DATE', APP_BUILD_DATE);
 define('BUILD_TIMESTAMP', APP_BUILD_TIMESTAMP);
 
 // =====================================
-// IDENTITÉ APPLICATION
+// ENVIRONNEMENT SÉCURISÉ
 // =====================================
 
-define('APP_SLUG', 'portail-guldagil');
-define('APP_NAME', 'Portail Interne Guldagil');
-define('APP_NAME_SHORT', 'Guldagil');
-define('APP_TAGLINE', 'Solutions Intégrées Achats & Logistique');
-define('APP_DESCRIPTION', 'Plateforme interne de gestion des achats, transport, ADR, EPI et contrôle qualité pour Guldagil');
-define('APP_KEYWORDS', 'frais de port, transport, ADR, EPI, outillages, contrôle qualité, achats, logistique');
+$app_env = getenv('APP_ENV') ?: 'production';
+$valid_environments = ['development', 'staging', 'production'];
+if (!in_array($app_env, $valid_environments, true)) {
+    $app_env = 'production';
+}
+define('APP_ENV', $app_env);
+
+define('APP_DEBUG', APP_ENV === 'development');
+define('APP_IS_PRODUCTION', APP_ENV === 'production');
+define('APP_IS_DEVELOPMENT', APP_ENV === 'development');
+define('APP_IS_STAGING', APP_ENV === 'staging');
+
+// Compatibilité legacy
+if (!defined('DEBUG')) {
+    define('DEBUG', APP_DEBUG);
+}
+
+// =====================================
+// INFORMATIONS APPLICATION
+// =====================================
+
+define('APP_NAME', 'Portail Guldagil - Achats et Logistique');
+define('APP_NAME_SHORT', 'Guldagil Portal');
+define('APP_SLUG', 'guldagil-portal');
+define('APP_TAGLINE', 'Solutions logistiques et achats intelligents');
+define('APP_DESCRIPTION', 'Calc frais port, ADR, contrôle qualité...');
+define('APP_KEYWORDS', 'transport, logistique, frais de port, ADR, achats, Guldagil');
 
 // =====================================
 // INFORMATIONS LÉGALES
@@ -92,32 +107,8 @@ define('APP_KEYWORDS', 'frais de port, transport, ADR, EPI, outillages, contrôl
 
 define('APP_AUTHOR', 'Jean-Thomas RUNSER');
 define('APP_COMPANY', 'Guldagil');
-define('APP_COMPANY_LEGAL', 'Guldagil SARL');
-define('APP_COPYRIGHT_YEAR', (int)date('Y'));
 define('APP_COPYRIGHT_START_YEAR', 2024);
-define('COPYRIGHT_YEAR', APP_COPYRIGHT_YEAR); // Compatibilité legacy
-
-// =====================================
-// ENVIRONNEMENT ET DEBUG
-// =====================================
-
-$app_env = $_ENV['APP_ENV'] ?? 'development';
-$valid_environments = ['development', 'staging', 'production'];
-if (!in_array($app_env, $valid_environments, true)) {
-    $app_env = 'development';
-}
-define('APP_ENV', $app_env);
-
-// Debug et environnement
-define('APP_DEBUG', APP_ENV === 'development');
-define('APP_IS_PRODUCTION', APP_ENV === 'production');
-define('APP_IS_DEVELOPMENT', APP_ENV === 'development');
-define('APP_IS_STAGING', APP_ENV === 'staging');
-
-// Compatibilité legacy - ÉVITER REDÉFINITION
-if (!defined('DEBUG')) {
-    define('DEBUG', APP_DEBUG);
-}
+define('APP_COPYRIGHT_YEAR', date('Y'));
 
 // =====================================
 // CONTACT
@@ -128,13 +119,13 @@ define('APP_CONTACT_EMAIL', 'contact@guldagil.com');
 define('APP_ADMIN_EMAIL', 'admin@guldagil.com');
 
 // =====================================
-// FONCTIONS UTILITAIRES - CRITIQUES
+// FONCTIONS CRITIQUES - PRÉSERVÉES
 // =====================================
 
 /**
  * FONCTION CRITIQUE : getVersionInfo()
- * Cette fonction est appelée par /public/port/index.php ligne 267
- * ELLE DOIT ABSOLUMENT ÊTRE DÉFINIE
+ * Appelée par /public/port/index.php ligne 267
+ * DOIT ABSOLUMENT ÊTRE DÉFINIE
  */
 function getVersionInfo(): array {
     return [
@@ -149,20 +140,14 @@ function getVersionInfo(): array {
     ];
 }
 
-/**
- * Informations complètes de l'application
- */
 function getAppInfo(): array {
     return [
-        // Identité
         'name' => APP_NAME,
         'name_short' => APP_NAME_SHORT,
         'slug' => APP_SLUG,
         'tagline' => APP_TAGLINE,
         'description' => APP_DESCRIPTION,
         'keywords' => explode(', ', APP_KEYWORDS),
-        
-        // Version
         'version' => APP_VERSION,
         'version_parts' => [
             'major' => APP_VERSION_MAJOR,
@@ -172,8 +157,6 @@ function getAppInfo(): array {
         ],
         'build' => APP_BUILD_NUMBER,
         'build_date' => APP_BUILD_DATE,
-        
-        // Légal
         'author' => APP_AUTHOR,
         'company' => APP_COMPANY,
         'copyright' => sprintf('© %d-%d %s', 
@@ -181,39 +164,25 @@ function getAppInfo(): array {
             APP_COPYRIGHT_YEAR, 
             APP_COMPANY
         ),
-        
-        // Technique
         'environment' => APP_ENV,
         'debug' => APP_DEBUG,
-        
-        // Contact
         'support_email' => APP_SUPPORT_EMAIL,
         'contact_email' => APP_CONTACT_EMAIL
     ];
 }
 
-/**
- * Génère titre complet pour pages HTML
- */
 function getPageTitle(string $page_title = '', bool $include_tagline = false): string {
     $parts = [];
-    
     if (!empty($page_title)) {
         $parts[] = $page_title;
     }
-    
     $parts[] = APP_NAME;
-    
     if ($include_tagline) {
         $parts[] = APP_TAGLINE;
     }
-    
     return implode(' - ', $parts);
 }
 
-/**
- * Métadonnées pour HTML head
- */
 function getPageMetadata(array $page_data = []): array {
     $defaults = [
         'title' => APP_NAME,
@@ -225,17 +194,13 @@ function getPageMetadata(array $page_data = []): array {
         'application-name' => APP_NAME,
         'build' => APP_BUILD_NUMBER
     ];
-    
     return array_merge($defaults, $page_data);
 }
 
-/**
- * FONCTIONS LEGACY - COMPATIBILITÉ ANCIENS FICHIERS
- */
+// =====================================
+// FONCTIONS LEGACY - COMPATIBILITÉ
+// =====================================
 
-/**
- * Version footer (legacy)
- */
 function renderVersionFooter(): string {
     $info = getVersionInfo();
     return sprintf(
@@ -253,23 +218,14 @@ function renderVersionFooter(): string {
     );
 }
 
-/**
- * Version compacte (legacy)
- */
 function renderVersionCompact(): string {
     return sprintf('v%s', APP_VERSION);
 }
 
-/**
- * Version JSON pour JavaScript (legacy)
- */
 function getVersionJson(): string {
     return json_encode(getVersionInfo(), JSON_PRETTY_PRINT);
 }
 
-/**
- * Check nouveau build (legacy)
- */
 function isNewBuild(): bool {
     $cache_file = __DIR__ . '/.last_build';
     $current_build = APP_BUILD_NUMBER;
@@ -288,82 +244,78 @@ function isNewBuild(): bool {
     return false;
 }
 
-/**
- * Version pour assets (cache busting)
- */
 function getAssetVersion(): string {
     return substr(APP_BUILD_NUMBER, -6);
 }
 
-/**
- * URL versionnée (cache busting)
- */
 function versionedUrl(string $url): string {
     $separator = strpos($url, '?') !== false ? '&' : '?';
     return $url . $separator . 'v=' . getAssetVersion();
 }
 
-// =====================================
-// VALIDATION ET DEBUG
-// =====================================
-
-/**
- * Validation des constantes critiques
- */
-function validateAppConstants(): array {
-    $errors = [];
-    
-    $required_constants = [
-        'APP_NAME' => 'string',
-        'APP_VERSION' => 'string', 
-        'APP_AUTHOR' => 'string',
-        'APP_ENV' => 'string',
-        'APP_BUILD_NUMBER' => 'string'
-    ];
-    
-    foreach ($required_constants as $const => $type) {
-        if (!defined($const)) {
-            $errors[] = "Constante manquante: {$const}";
-            continue;
-        }
-        
-        $value = constant($const);
-        $actual_type = gettype($value);
-        
-        if ($actual_type !== $type) {
-            $errors[] = "Type incorrect pour {$const}: attendu {$type}, reçu {$actual_type}";
-        }
-        
-        if ($type === 'string' && empty(trim($value))) {
-            $errors[] = "Valeur vide pour {$const}";
-        }
-    }
-    
-    return $errors;
+function isMaintenanceMode(): bool {
+    $maintenance_file = ROOT_PATH . '/storage/maintenance.flag';
+    return file_exists($maintenance_file);
 }
 
-// Log de chargement en développement
-if (APP_IS_DEVELOPMENT && function_exists('error_log')) {
+function setMaintenanceMode(bool $enabled, string $message = ''): bool {
+    if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+        return false;
+    }
+    
+    $maintenance_file = ROOT_PATH . '/storage/maintenance.flag';
+    
+    if ($enabled) {
+        $data = [
+            'enabled_at' => time(),
+            'enabled_by' => $_SESSION['username'] ?? 'admin',
+            'message' => $message ?: 'Maintenance en cours',
+            'expected_duration' => '30 minutes'
+        ];
+        return file_put_contents($maintenance_file, json_encode($data)) !== false;
+    } else {
+        return @unlink($maintenance_file);
+    }
+}
+
+function getMaintenanceInfo(): ?array {
+    $maintenance_file = ROOT_PATH . '/storage/maintenance.flag';
+    
+    if (!file_exists($maintenance_file)) {
+        return null;
+    }
+    
+    $content = file_get_contents($maintenance_file);
+    $data = json_decode($content, true);
+    
+    if (!$data) {
+        return null;
+    }
+    
+    return [
+        'enabled' => true,
+        'message' => $data['message'] ?? 'Maintenance en cours',
+        'enabled_at' => $data['enabled_at'] ?? time(),
+        'enabled_by' => $data['enabled_by'] ?? 'admin',
+        'duration' => time() - ($data['enabled_at'] ?? time())
+    ];
+}
+
+// =====================================
+// VALIDATION SÉCURITÉ
+// =====================================
+
+if (APP_IS_PRODUCTION && APP_DEBUG) {
+    error_log('SECURITY WARNING: DEBUG is enabled in PRODUCTION environment!');
+}
+
+if (APP_DEBUG) {
     error_log(sprintf(
-        '[VERSION.PHP] %s v%s (Build %s) - Env: %s - CHARGÉ AVEC SUCCÈS', 
-        APP_NAME, 
-        APP_VERSION, 
-        APP_BUILD_NUMBER, 
+        'Application started - Version: %s, Build: %s, Environment: %s',
+        APP_VERSION,
+        APP_BUILD_NUMBER,
         APP_ENV
     ));
 }
 
-// Validation automatique
-if (APP_IS_DEVELOPMENT) {
-    $validation_errors = validateAppConstants();
-    if (!empty($validation_errors)) {
-        error_log("ERREURS VERSION.PHP:");
-        foreach ($validation_errors as $error) {
-            error_log("  - {$error}");
-        }
-    }
-}
-
-// =====================================
-// FIN DU FICHIER
-// =====================================
+?>
