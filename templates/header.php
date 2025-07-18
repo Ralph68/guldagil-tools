@@ -260,6 +260,8 @@ if ($user_authenticated) {
     <!-- JavaScript bannière cookie RGPD -->
 <script src="/assets/js/cookie_banner.js?v=<?= $build_number ?>"></script>
     <script src="/assets/js/cookie_config.js?v=<?= $build_number ?>"></script>
+<!-- Analytics -->
+    <script src="/assets/js/analytics.js?v=<?= $build_number ?>"></script>
 </head>
 <body data-module="<?= $current_module ?>" data-module-status="<?= $module_status ?>" 
       class="<?= $user_authenticated ? 'authenticated' : 'auth-page' ?>">
