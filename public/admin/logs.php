@@ -1,13 +1,13 @@
 <?php
 /**
- * Titre: Visualiseur de logs - Administration
+ * Titre: Visualiseur de logs - Administration O2switch
  * Chemin: /public/admin/logs.php
  * Version: 0.5 beta + build auto
  */
 
 // Sécurité et configuration
 session_start();
-define('ROOT_PATH', dirname(__DIR__, 3));
+define('ROOT_PATH', dirname(__DIR__, 2));
 
 // Authentification admin obligatoire
 if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
@@ -21,63 +21,64 @@ if (!in_array($current_user['role'], ['admin', 'dev'])) {
     die('<h1>❌ Accès refusé</h1><p>Droits administrateur requis</p>');
 }
 
-// Configuration des logs
+// Configuration spécifique O2switch
 $log_configs = [
-    'apache_error' => [
-        'name' => 'Apache Error Log',
-        'icon' => '🔴',
-        'paths' => [
-            '/var/log/apache2/error.log',
-            '/var/log/httpd/error_log',
-            '/usr/local/apache/logs/error_log'
-        ],
-        'color' => '#dc2626',
-        'sensitive' => true  // Nouveau paramètre pour marquer les logs sensibles
-    ],
-    'apache_access' => [
-        'name' => 'Apache Access Log',
-        'icon' => '📝',
-        'paths' => [
-            '/var/log/apache2/access.log',
-            '/var/log/httpd/access_log',
-            '/usr/local/apache/logs/access_log'
-        ],
-        'color' => '#059669',
-        'sensitive' => true
-    ],
     'php_error' => [
         'name' => 'PHP Error Log',
         'icon' => '🐘',
         'paths' => [
+            // Ordre de priorité pour O2switch
+            ROOT_PATH . '/storage/logs/php_errors.log',
+            ROOT_PATH . '/logs/php_errors.log',
             ini_get('error_log'),
-            '/var/log/php_errors.log',
-            ROOT_PATH . '/storage/logs/php_errors.log'
+            '/tmp/php_errors.log'
         ],
-        'color' => '#7c3aed',
-        'sensitive' => true
+        'color' => '#dc2626',
+        'priority' => 1
     ],
     'app_error' => [
         'name' => 'App Error Log',
         'icon' => '🚨',
         'paths' => [
             ROOT_PATH . '/storage/logs/error.log',
-            ROOT_PATH . '/storage/logs/app.log'
+            ROOT_PATH . '/storage/logs/app.log',
+            ROOT_PATH . '/logs/error.log'
         ],
         'color' => '#ea580c',
-        'sensitive' => true
+        'priority' => 2
+    ],
+    'access_log' => [
+        'name' => 'Access Log',
+        'icon' => '📝',
+        'paths' => [
+            ROOT_PATH . '/storage/logs/access.log',
+            ROOT_PATH . '/logs/access.log'
+        ],
+        'color' => '#059669',
+        'priority' => 3
+    ],
+    'system_log' => [
+        'name' => 'System Log',
+        'icon' => '⚙️',
+        'paths' => [
+            ROOT_PATH . '/storage/logs/system.log',
+            ROOT_PATH . '/logs/system.log'
+        ],
+        'color' => '#7c3aed',
+        'priority' => 4
     ]
 ];
 
 // Paramètres
-$selected_log = $_GET['log'] ?? 'apache_error';
+$selected_log = $_GET['log'] ?? 'php_error';
 $lines_count = (int)($_GET['lines'] ?? 100);
-$lines_count = max(10, min(1000, $lines_count)); // Limite 10-1000
+$lines_count = max(10, min(500, $lines_count)); // Limite adaptée O2switch
 $search_term = trim($_GET['search'] ?? '');
 $auto_refresh = isset($_GET['auto_refresh']);
 
 // Variables pour template
 $page_title = 'Visualiseur de Logs';
-$page_subtitle = 'Surveillance système';
+$page_subtitle = 'Surveillance système O2switch';
 $current_module = 'admin';
 $user_authenticated = true;
 
@@ -93,7 +94,7 @@ $breadcrumbs = [
  */
 function findLogFile($paths) {
     foreach ($paths as $path) {
-        if ($path && file_exists($path) && is_readable($path)) {
+        if ($path && file_exists($path) && is_readable($path) && filesize($path) > 0) {
             return $path;
         }
     }
@@ -101,7 +102,7 @@ function findLogFile($paths) {
 }
 
 /**
- * Lit les dernières lignes d'un fichier
+ * Lit les dernières lignes d'un fichier avec optimisation O2switch
  */
 function readLogLines($file_path, $lines_count, $search_term = '') {
     if (!file_exists($file_path) || !is_readable($file_path)) {
@@ -114,54 +115,58 @@ function readLogLines($file_path, $lines_count, $search_term = '') {
             return ['lines' => [], 'total_size' => 0];
         }
         
-        // Lecture efficace des dernières lignes
-        $lines = [];
-        $file = new SplFileObject($file_path);
-        $file->seek(PHP_INT_MAX);
-        $total_lines = $file->key();
+        // Lecture optimisée pour O2switch (limite de ressources)
+        $max_file_size = 10 * 1024 * 1024; // 10MB max
+        if ($file_size > $max_file_size) {
+            // Lire seulement la fin du fichier pour les gros logs
+            $handle = fopen($file_path, 'r');
+            fseek($handle, -$max_file_size, SEEK_END);
+            $content = fread($handle, $max_file_size);
+            fclose($handle);
+            $lines_array = explode("\n", $content);
+        } else {
+            $lines_array = file($file_path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        }
         
-        $start_line = max(0, $total_lines - $lines_count);
-        $file->seek($start_line);
+        if (empty($lines_array)) {
+            return ['lines' => [], 'total_size' => $file_size];
+        }
         
-        while (!$file->eof()) {
-            $line = $file->current();
-            if ($line !== null) {
-                $line = rtrim($line);
-                
-                // Filtrage par terme de recherche
-                if (empty($search_term) || stripos($line, $search_term) !== false) {
-                    $lines[] = [
-                        'number' => $file->key() + 1,
-                        'content' => $line,
-                        'timestamp' => extractTimestamp($line),
-                        'level' => extractLogLevel($line)
-                    ];
-                }
+        // Prendre les dernières lignes
+        $last_lines = array_slice($lines_array, -$lines_count);
+        $processed_lines = [];
+        
+        foreach (array_reverse($last_lines) as $index => $line) {
+            if (empty($search_term) || stripos($line, $search_term) !== false) {
+                $processed_lines[] = [
+                    'number' => count($last_lines) - $index,
+                    'content' => $line,
+                    'timestamp' => extractTimestamp($line),
+                    'level' => extractLogLevel($line)
+                ];
             }
-            $file->next();
         }
         
         return [
-            'lines' => array_reverse($lines), // Plus récent en premier
+            'lines' => $processed_lines,
             'total_size' => $file_size,
-            'total_lines' => $total_lines,
-            'file_modified' => filemtime($file_path)
+            'total_lines' => count($lines_array)
         ];
         
     } catch (Exception $e) {
-        return ['error' => $e->getMessage()];
+        return ['error' => 'Erreur lecture: ' . $e->getMessage()];
     }
 }
 
 /**
- * Extrait timestamp d'une ligne de log
+ * Extrait le timestamp d'une ligne de log
  */
 function extractTimestamp($line) {
-    // Pattern pour différents formats de date
+    // Formats communs de timestamp
     $patterns = [
-        '/\[([^\]]+)\]/',  // [date]
-        '/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/',  // YYYY-MM-DD HH:MM:SS
-        '/^(\w{3} \w{3} \d{2} \d{2}:\d{2}:\d{2} \d{4})/'  // Apache format
+        '/\[(\d{2}-\w{3}-\d{4} \d{2}:\d{2}:\d{2})/',  // [18-Jul-2025 10:30:45]
+        '/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/',   // 2025-07-18 10:30:45
+        '/\[(\d{2}\/\w{3}\/\d{4}:\d{2}:\d{2}:\d{2})/', // [18/Jul/2025:10:30:45]
     ];
     
     foreach ($patterns as $pattern) {
@@ -169,341 +174,405 @@ function extractTimestamp($line) {
             return $matches[1];
         }
     }
-    return null;
+    
+    return 'N/A';
 }
 
 /**
- * Extrait le niveau de log
+ * Détermine le niveau de log
  */
 function extractLogLevel($line) {
-    $levels = ['EMERGENCY', 'ALERT', 'CRITICAL', 'ERROR', 'WARNING', 'NOTICE', 'INFO', 'DEBUG'];
-    foreach ($levels as $level) {
-        if (stripos($line, $level) !== false) {
-            return strtolower($level);
-        }
+    $line_lower = strtolower($line);
+    
+    if (strpos($line_lower, 'fatal') !== false || strpos($line_lower, 'emergency') !== false) {
+        return 'fatal';
+    } elseif (strpos($line_lower, 'error') !== false) {
+        return 'error';
+    } elseif (strpos($line_lower, 'warning') !== false || strpos($line_lower, 'warn') !== false) {
+        return 'warning';
+    } elseif (strpos($line_lower, 'info') !== false) {
+        return 'info';
+    } elseif (strpos($line_lower, 'debug') !== false) {
+        return 'debug';
     }
-    return 'info';
+    
+    return 'unknown';
 }
 
-// Récupération des logs
-$current_log_config = $log_configs[$selected_log] ?? $log_configs['apache_error'];
-$log_file_path = findLogFile($current_log_config['paths']);
-$log_data = $log_file_path ? readLogLines($log_file_path, $lines_count, $search_term) : ['error' => 'Aucun fichier de log trouvé'];
+// Traitement des données
+$selected_config = $log_configs[$selected_log] ?? $log_configs['php_error'];
+$log_file_path = findLogFile($selected_config['paths']);
+$log_data = null;
+$available_logs = [];
 
+// Vérification des logs disponibles
+foreach ($log_configs as $key => $config) {
+    $file_path = findLogFile($config['paths']);
+    if ($file_path) {
+        $available_logs[$key] = [
+            'config' => $config,
+            'file_path' => $file_path,
+            'size' => filesize($file_path),
+            'modified' => filemtime($file_path)
+        ];
+    }
+}
+
+// Lecture du log sélectionné
+if ($log_file_path) {
+    $log_data = readLogLines($log_file_path, $lines_count, $search_term);
+}
+
+// Chargement header avec template
+if (file_exists(ROOT_PATH . '/templates/header.php')) {
+    include ROOT_PATH . '/templates/header.php';
+} else {
+    // Header minimal si template manquant
+    echo '<!DOCTYPE html><html><head><title>Logs Admin</title>';
+    echo '<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
+    echo '<style>body{font-family:Arial,sans-serif;margin:20px;background:#f5f5f5}</style></head><body>';
+}
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?> - Administration</title>
-    <link rel="icon" type="image/png" href="/assets/img/favicon.png">
-    <style>
-        :root {
-            --primary: #2563eb;
-            --success: #059669;
-            --warning: #d97706;
-            --danger: #dc2626;
-            --info: #0891b2;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-        }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: var(--gray-50);
-            color: var(--gray-900);
-            line-height: 1.6;
-        }
+<style>
+.logs-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
 
-        .header {
-            background: var(--primary);
-            color: white;
-            padding: 1rem 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+.logs-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+}
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 1rem;
-        }
+.logs-controls {
+    background: #f8f9fa;
+    padding: 15px;
+    border-bottom: 1px solid #dee2e6;
+}
 
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+.control-group {
+    display: inline-block;
+    margin-right: 20px;
+    margin-bottom: 10px;
+}
 
-        .breadcrumbs {
-            display: flex;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            margin: 1rem 0;
-        }
+.control-group label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
 
-        .breadcrumb-item {
-            color: #6b7280;
-            text-decoration: none;
-        }
+.form-control {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
 
-        .breadcrumb-item.active {
-            color: var(--primary);
-            font-weight: 500;
-        }
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+}
 
-        .controls {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 1rem;
-        }
+.btn-primary { background: #007bff; color: white; }
+.btn-success { background: #28a745; color: white; }
+.btn-warning { background: #ffc107; color: #212529; }
 
-        .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            align-items: end;
-        }
+.log-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    padding: 15px;
+    background: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+}
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+}
 
-        .form-group label {
-            font-weight: 500;
-            font-size: 0.9rem;
-            color: var(--gray-800);
-        }
+.log-viewer {
+    height: 600px;
+    overflow-y: auto;
+    background: #1e1e1e;
+    color: #f8f8f2;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
 
-        .form-control {
-            padding: 0.5rem;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
+.log-line {
+    padding: 8px 15px;
+    border-bottom: 1px solid #333;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
 
-        .btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.2s;
-        }
+.log-line:hover {
+    background: #2d2d2d;
+}
 
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-success { background: var(--success); color: white; }
-        .btn-warning { background: var(--warning); color: white; }
-        .btn-secondary { background: #6b7280; color: white; }
+.log-line.error { border-left: 4px solid #dc3545; }
+.log-line.warning { border-left: 4px solid #ffc107; }
+.log-line.info { border-left: 4px solid #17a2b8; }
+.log-line.debug { border-left: 4px solid #6c757d; }
+.log-line.fatal { border-left: 4px solid #8b0000; background: #2d1b1b; }
 
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.line-number {
+    color: #6c757d;
+    margin-right: 10px;
+    min-width: 50px;
+    display: inline-block;
+}
 
-        .log-tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-            overflow-x: auto;
-        }
+.timestamp {
+    color: #28a745;
+    margin-right: 10px;
+}
 
-        .log-tab {
-            padding: 0.75rem 1rem;
-            background: white;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            text-decoration: none;
-            color: var(--gray-800);
-            white-space: nowrap;
-            transition: all 0.2s;
-        }
+.no-logs {
+    text-align: center;
+    padding: 50px;
+    color: #666;
+}
 
-        .log-tab.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
+.available-logs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
 
-        .log-tab:hover:not(.active) {
-            background: var(--gray-100);
-        }
+.log-card {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
 
-        .log-container {
-            background: #1f2937;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+.log-card:hover {
+    border-color: #007bff;
+    transform: translateY(-2px);
+}
 
-        .log-header {
-            background: #374151;
-            padding: 1rem;
-            border-bottom: 1px solid #4b5563;
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
+.log-card.active {
+    border-color: #007bff;
+    background: #f8f9ff;
+}
 
-        .log-info {
-            color: #d1d5db;
-            font-size: 0.9rem;
-        }
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
 
-        .log-content {
-            max-height: 70vh;
-            overflow-y: auto;
-            padding: 1rem;
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 0.85rem;
-            line-height: 1.4;
-        }
+.status-available { background: #28a745; }
+.status-unavailable { background: #dc3545; }
 
-        .log-line {
-            margin-bottom: 0.5rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            word-wrap: break-word;
-            border-left: 3px solid transparent;
-        }
+@media (max-width: 768px) {
+    .logs-controls {
+        text-align: center;
+    }
+    
+    .control-group {
+        display: block;
+        margin-bottom: 15px;
+    }
+    
+    .log-info {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 
-        .log-line:hover {
-            background: rgba(255,255,255,0.05);
-        }
-
-        .log-line.error { 
-            border-left-color: var(--danger);
-            background: rgba(220, 38, 38, 0.1);
-        }
-
-        .log-line.warning { 
-            border-left-color: var(--warning);
-            background: rgba(217, 119, 6, 0.1);
-        }
-
-        .log-line.info { 
-            border-left-color: var(--info);
-        }
-
-        .log-line-number {
-            color: #6b7280;
-            margin-right: 1rem;
-            font-size: 0.8rem;
-        }
-
-        .log-line-timestamp {
-            color: #9ca3af;
-            margin-right: 1rem;
-        }
-
-        .log-line-content {
-            color: #f3f4f6;
-        }
-
-        .highlight {
-            background: yellow;
-            color: black;
-            padding: 0 2px;
-            border-radius: 2px;
-        }
-
-        .error-message {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #b91c1c;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary);
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: var(--gray-800);
-            margin-top: 0.25rem;
-        }
-
-        .auto-refresh-indicator {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--success);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            z-index: 1000;
-        }
-
-        @media (max-width: 768px) {
-            .controls-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .header-content {
-                flex-direction: column;
-                gap: 1rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Auto-refresh indicator -->
-    <?php if ($auto_refresh): ?>
-    <div class="auto-refresh-indicator">
-        🔄 Actualisation automatique (30s)
+<div class="logs-container">
+    <div class="logs-header">
+        <h1><?= $selected_config['icon'] ?> <?= htmlspecialchars($selected_config['name']) ?></h1>
+        <p>Surveillance des logs système - Hébergement O2switch</p>
     </div>
-    <?php endif; ?>
 
-    <!-- Header -->
-    <header class="header">
-        <div class="container">
-            <div class="header-content">
-                <div>
-                    <h1><?= htmlspecialchars($page_title) ?></h1>
-                    <p><?= htmlspecialchars($page_subtitle) ?></p>
+    <!-- Logs disponibles -->
+    <div style="padding: 20px;">
+        <h3>📋 Logs disponibles</h3>
+        <div class="available-logs">
+            <?php foreach ($log_configs as $key => $config): ?>
+                <?php 
+                $is_available = isset($available_logs[$key]);
+                $is_selected = ($key === $selected_log);
+                ?>
+                <div class="log-card <?= $is_selected ? 'active' : '' ?>" 
+                     onclick="window.location.href='?log=<?= $key ?>&lines=<?= $lines_count ?>&search=<?= urlencode($search_term) ?>'">
+                    <div>
+                        <span class="status-indicator <?= $is_available ? 'status-available' : 'status-unavailable' ?>"></span>
+                        <?= $config['icon'] ?> <?= htmlspecialchars($config['name']) ?>
+                    </div>
+                    <?php if ($is_available): ?>
+                        <small><?= number_format($available_logs[$key]['size'] / 1024, 1) ?> KB</small>
+                    <?php else: ?>
+                        <small style="color: #999;">Non trouvé</small>
+                    <?php endif; ?>
                 </div>
-                <div>
-                    <span>👤 <?= htmlspecialchars($current_user['username'] ?? 'Admin') ?></span>
-                    <a href="/admin/" class="btn btn-secondary" style="margin-left: 1rem;">← Retour Admin</a>
-                </div>
-            </div>
+            <?php endforeach; ?>
         </div>
-    </header>
+    </div>
 
-    <div class="container">
-        <!-- Breadcrumbs -->
-        <nav class="breadcrumbs">
-            <?php foreach ($breadcrumbs as $i => $crumb): ?>
-                <?php if ($i > 0):
+    <!-- Contrôles -->
+    <form method="GET" class="logs-controls">
+        <input type="hidden" name="log" value="<?= htmlspecialchars($selected_log) ?>">
+        
+        <div class="control-group">
+            <label>Nombre de lignes</label>
+            <select name="lines" class="form-control">
+                <option value="50" <?= $lines_count == 50 ? 'selected' : '' ?>>50 lignes</option>
+                <option value="100" <?= $lines_count == 100 ? 'selected' : '' ?>>100 lignes</option>
+                <option value="200" <?= $lines_count == 200 ? 'selected' : '' ?>>200 lignes</option>
+                <option value="500" <?= $lines_count == 500 ? 'selected' : '' ?>>500 lignes</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Rechercher</label>
+            <input type="text" name="search" value="<?= htmlspecialchars($search_term) ?>" 
+                   placeholder="Terme à rechercher..." class="form-control">
+        </div>
+
+        <div class="control-group">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn btn-primary">🔍 Filtrer</button>
+        </div>
+
+        <div class="control-group">
+            <label>&nbsp;</label>
+            <a href="?log=<?= $selected_log ?>&lines=<?= $lines_count ?>" class="btn btn-warning">🔄 Actualiser</a>
+        </div>
+    </form>
+
+    <?php if ($log_file_path && $log_data && !isset($log_data['error'])): ?>
+        <!-- Informations du fichier -->
+        <div class="log-info">
+            <div class="info-item">
+                <span>Fichier:</span>
+                <span><?= htmlspecialchars($log_file_path) ?></span>
+            </div>
+            <div class="info-item">
+                <span>Taille:</span>
+                <span><?= number_format($log_data['total_size'] / 1024, 2) ?> KB</span>
+            </div>
+            <div class="info-item">
+                <span>Lignes totales:</span>
+                <span><?= number_format($log_data['total_lines'] ?? 0) ?></span>
+            </div>
+            <div class="info-item">
+                <span>Affichées:</span>
+                <span><?= count($log_data['lines']) ?> lignes</span>
+            </div>
+            <div class="info-item">
+                <span>Modifié:</span>
+                <span><?= date('d/m/Y H:i:s', filemtime($log_file_path)) ?></span>
+            </div>
+            <?php if ($search_term): ?>
+            <div class="info-item">
+                <span>Recherche:</span>
+                <span>"<?= htmlspecialchars($search_term) ?>"</span>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Visualiseur de logs -->
+        <div class="log-viewer" id="logViewer">
+            <?php if (empty($log_data['lines'])): ?>
+                <div class="no-logs">
+                    <?php if ($search_term): ?>
+                        <p>🔍 Aucune ligne contenant "<?= htmlspecialchars($search_term) ?>" trouvée</p>
+                        <a href="?log=<?= $selected_log ?>&lines=<?= $lines_count ?>" class="btn btn-primary">Voir tous les logs</a>
+                    <?php else: ?>
+                        <p>📝 Aucune ligne de log disponible</p>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <?php foreach ($log_data['lines'] as $line): ?>
+                    <div class="log-line <?= $line['level'] ?>">
+                        <span class="line-number"><?= $line['number'] ?></span>
+                        <?php if ($line['timestamp'] !== 'N/A'): ?>
+                            <span class="timestamp">[<?= htmlspecialchars($line['timestamp']) ?>]</span>
+                        <?php endif; ?>
+                        <?= htmlspecialchars($line['content']) ?>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+    <?php elseif (isset($log_data['error'])): ?>
+        <div class="no-logs">
+            <p>❌ <?= htmlspecialchars($log_data['error']) ?></p>
+            <p><strong>Fichier recherché :</strong> <?= htmlspecialchars($log_file_path ?? 'Aucun') ?></p>
+        </div>
+
+    <?php else: ?>
+        <div class="no-logs">
+            <p>📂 Aucun fichier de log trouvé pour "<?= htmlspecialchars($selected_config['name']) ?>"</p>
+            <p><strong>Chemins recherchés :</strong></p>
+            <ul style="text-align: left; display: inline-block;">
+                <?php foreach ($selected_config['paths'] as $path): ?>
+                    <li><code><?= htmlspecialchars($path) ?></code></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+</div>
+
+<?php if ($auto_refresh): ?>
+<script>
+setTimeout(function() {
+    window.location.reload();
+}, 30000); // Actualisation toutes les 30 secondes
+</script>
+<?php endif; ?>
+
+<script>
+// Auto-scroll vers le bas
+document.addEventListener('DOMContentLoaded', function() {
+    const logViewer = document.getElementById('logViewer');
+    if (logViewer) {
+        logViewer.scrollTop = logViewer.scrollHeight;
+    }
+});
+
+// Raccourcis clavier
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'r') {
+        e.preventDefault();
+        window.location.reload();
+    }
+    if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        document.querySelector('input[name="search"]').focus();
+    }
+});
+</script>
+
+<?php
+// Chargement footer
+if (file_exists(ROOT_PATH . '/templates/footer.php')) {
+    include ROOT_PATH . '/templates/footer.php';
+} else {
+    echo '</body></html>';
+}
+?>
