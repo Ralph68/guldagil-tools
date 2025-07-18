@@ -421,4 +421,303 @@ include ROOT_PATH . '/templates/header.php';
             </form>
             
             <a href="logs.php" class="btn btn-secondary">📋 Voir les Logs</a>
-            <a href="config.php" class="btn btn-secondary">⚙
+            <a href="config.php" class="btn btn-secondary">⚙️ Configuration</a>
+            <a href="scanner.php" class="btn btn-info">🔍 Scanner Diagnostic</a>
+        </div>
+    </div>
+
+    <!-- Recommandations sécurité -->
+    <div class="security-section">
+        <h2>💡 Recommandations Sécurité</h2>
+        <div class="recommendations">
+            <div class="recommendation-item">
+                <h4>🔐 Authentification</h4>
+                <ul>
+                    <li>Utiliser des mots de passe complexes (12+ caractères)</li>
+                    <li>Activer l'authentification à deux facteurs</li>
+                    <li>Limiter les tentatives de connexion</li>
+                    <li>Expirer les sessions inactives</li>
+                </ul>
+            </div>
+            
+            <div class="recommendation-item">
+                <h4>🛡️ Configuration Serveur</h4>
+                <ul>
+                    <li>Désactiver display_errors en production</li>
+                    <li>Configurer HTTPS avec certificats valides</li>
+                    <li>Définir des headers de sécurité (CSP, HSTS)</li>
+                    <li>Masquer les informations serveur</li>
+                </ul>
+            </div>
+            
+            <div class="recommendation-item">
+                <h4>📁 Fichiers et Permissions</h4>
+                <ul>
+                    <li>Fichiers: 644, Dossiers: 755</li>
+                    <li>Protéger les fichiers config (.htaccess)</li>
+                    <li>Supprimer les fichiers inutiles (.git, .env)</li>
+                    <li>Chiffrer les données sensibles</li>
+                </ul>
+            </div>
+            
+            <div class="recommendation-item">
+                <h4>📊 Monitoring</h4>
+                <ul>
+                    <li>Surveiller les logs d'erreur régulièrement</li>
+                    <li>Alertes sur tentatives d'intrusion</li>
+                    <li>Sauvegardes automatiques</li>
+                    <li>Tests de sécurité périodiques</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</main>
+
+<style>
+.admin-security-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.security-section {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.debug-active {
+    background: #fef2f2;
+    border: 2px solid #dc2626;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.debug-info {
+    background: white;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+    font-family: monospace;
+}
+
+.debug-controls-form {
+    background: #fffbeb;
+    border: 2px solid #f59e0b;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.warning-text {
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+.audit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.audit-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.audit-item.status-ok {
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+
+.audit-item.status-warning {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.audit-item.status-error {
+    border-color: #dc2626;
+    background: #fef2f2;
+}
+
+.audit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.status-badge {
+    font-size: 1.2rem;
+}
+
+.audit-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.audit-table th,
+.audit-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.audit-table th {
+    background: #f9fafb;
+    font-weight: 600;
+}
+
+.audit-table tr.status-ok {
+    background: #f0fdf4;
+}
+
+.audit-table tr.status-warning {
+    background: #fffbeb;
+}
+
+.logs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.log-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.btn-info {
+    background: #06b6d4;
+    color: white;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: white;
+}
+
+.btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.recommendations {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.recommendation-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.recommendation-item h4 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+}
+
+.recommendation-item ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.recommendation-item li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.text-success {
+    color: #10b981;
+}
+
+.text-warning {
+    color: #f59e0b;
+}
+
+.text-danger {
+    color: #dc2626;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 2rem;
+}
+
+.alert-success {
+    background: #f0fdf4;
+    border: 1px solid #10b981;
+    color: #065f46;
+}
+
+.alert-error {
+    background: #fef2f2;
+    border: 1px solid #dc2626;
+    color: #991b1b;
+}
+</style>
+
+<?php include ROOT_PATH . '/templates/footer.php'; ?>
