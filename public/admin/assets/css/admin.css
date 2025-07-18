@@ -1,0 +1,289 @@
+/**
+ * Titre: CSS Module Admin - Version complète mise à jour
+ * Chemin: /public/admin/assets/css/admin.css
+ * Version: 0.5 beta + build auto
+ */
+
+/* =====================================
+ * VARIABLES CSS
+ * ===================================== */
+:root {
+    /* Couleurs principales */
+    --admin-primary: #2c3e50;
+    --admin-secondary: #34495e;
+    --admin-accent: #3498db;
+    --admin-success: #27ae60;
+    --admin-warning: #f39c12;
+    --admin-error: #e74c3c;
+    --admin-info: #2980b9;
+    
+    /* Couleurs d'état */
+    --status-ok: #27ae60;
+    --status-warning: #f39c12;
+    --status-error: #e74c3c;
+    --status-info: #3498db;
+    
+    /* Couleurs de modules */
+    --module-port: #e67e22;
+    --module-auth: #8e44ad;
+    --module-user: #2980b9;
+    --module-admin: #2c3e50;
+    
+    /* Interface */
+    --admin-bg: #ecf0f1;
+    --admin-card-bg: #ffffff;
+    --admin-border: #bdc3c7;
+    --admin-text: #2c3e50;
+    --admin-text-muted: #7f8c8d;
+    --admin-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    --admin-radius: 8px;
+    
+    /* Espacements */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    /* Transitions */
+    --transition: all 0.3s ease;
+    --transition-fast: all 0.2s ease;
+}
+
+/* =====================================
+ * BASE ET LAYOUT
+ * ===================================== */
+.admin-container {
+    background: var(--admin-bg);
+    min-height: 100vh;
+    padding: var(--spacing-lg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* En-tête admin */
+.admin-header {
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-secondary));
+    border-radius: var(--admin-radius);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
+    color: white;
+    box-shadow: var(--admin-shadow);
+}
+
+.admin-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-lg);
+}
+
+.admin-title h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.admin-subtitle {
+    margin: var(--spacing-sm) 0 0 0;
+    opacity: 0.9;
+    font-size: 1.1rem;
+}
+
+.admin-stats {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.stat-badge {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border-radius: var(--admin-radius);
+    padding: var(--spacing-sm) var(--spacing-md);
+    text-align: center;
+    min-width: 80px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.8rem;
+    opacity: 0.8;
+    margin-top: var(--spacing-xs);
+}
+
+/* =====================================
+ * ACTIONS RAPIDES
+ * ===================================== */
+.quick-actions {
+    margin-bottom: var(--spacing-xl);
+}
+
+.quick-actions h2 {
+    color: var(--admin-text);
+    margin-bottom: var(--spacing-md);
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.quick-action {
+    background: var(--admin-card-bg);
+    border-radius: var(--admin-radius);
+    padding: var(--spacing-lg);
+    text-decoration: none;
+    color: var(--admin-text);
+    box-shadow: var(--admin-shadow);
+    transition: var(--transition);
+    border: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    position: relative;
+    overflow: hidden;
+}
+
+.quick-action::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.8), transparent);
+    transition: var(--transition);
+}
+
+.quick-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-color: var(--admin-accent);
+}
+
+.quick-action:hover::before {
+    left: 100%;
+}
+
+.action-icon {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--admin-accent), var(--admin-info));
+    border-radius: 50%;
+    color: white;
+    flex-shrink: 0;
+}
+
+.action-content {
+    flex: 1;
+}
+
+.action-content h3 {
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.action-content p {
+    margin: 0;
+    color: var(--admin-text-muted);
+    font-size: 0.9rem;
+}
+
+.action-status {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-status.ok {
+    background: var(--status-ok);
+    color: white;
+}
+
+.action-status.warning {
+    background: var(--status-warning);
+    color: white;
+}
+
+.action-status.info {
+    background: var(--status-info);
+    color: white;
+}
+
+/* Styles spécifiques par action */
+.quick-action.scanner:hover .action-icon {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.quick-action.audit:hover .action-icon {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.quick-action.logs:hover .action-icon {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.quick-action.config:hover .action-icon {
+    background: linear-gradient(135deg, #34495e, #2c3e50);
+}
+
+/* =====================================
+ * OUTILS D'ADMINISTRATION
+ * ===================================== */
+.admin-tools {
+    margin-bottom: var(--spacing-xl);
+}
+
+.admin-tools h2 {
+    color: var(--admin-text);
+    margin-bottom: var(--spacing-lg);
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.tools-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.tools-section h3 {
+    color: var(--admin-secondary);
+    margin-bottom: var(--spacing-md);
+    font-size: 1.3rem;
+    font-weight: 600;
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid var(--admin-border);
+}
+
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.tool-card {
+    background: var(--admin-card-bg);
+    border-radius: var(--admin-radius);
+    padding: var(--spacing-lg);
