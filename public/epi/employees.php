@@ -248,7 +248,7 @@ try {
 
         <!-- Retour -->
         <div class="text-center mt-3">
-            <a href="epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
+            <a href="./index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
         </div>
     </main>
 
