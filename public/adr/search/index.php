@@ -50,7 +50,7 @@ $transport_type = $_GET['transport'] ?? '';
 
 // Configuration de recherche
 $search_config = [
-    'min_chars' => 1,
+    'min_chars' => 3,
     'max_results' => 50,
     'api_endpoint' => '/adr/search/search.php'
 ];
@@ -99,6 +99,11 @@ if (file_exists($header_path)) {
 
             <!-- Suggestions en temps réel -->
             <div id="search-suggestions" class="search-suggestions" style="display: none;"></div>
+            
+            <!-- Message d'aide pour 3 caractères -->
+            <div id="search-hint" class="search-hint">
+                💡 Saisissez au moins 3 caractères pour lancer la recherche
+            </div>
 
             <!-- Filtres avancés -->
             <div class="search-filters">
@@ -106,30 +111,37 @@ if (file_exists($header_path)) {
                     <summary>Filtres avancés</summary>
                     <div class="filters-content">
                         <div class="filter-row">
-                            <label for="category-filter">Catégorie de transport :</label>
-                            <select id="category-filter" name="category">
-                                <option value="">Toutes les catégories</option>
-                                <option value="1" <?= $category === '1' ? 'selected' : '' ?>>Catégorie 1</option>
-                                <option value="2" <?= $category === '2' ? 'selected' : '' ?>>Catégorie 2</option>
-                                <option value="3" <?= $category === '3' ? 'selected' : '' ?>>Catégorie 3</option>
+                            <label for="classe-filter">Classe ADR :</label>
+                            <select id="classe-filter" name="classe">
+                                <option value="">Toutes les classes</option>
+                                <option value="1">Classe 1 - Explosifs</option>
+                                <option value="2">Classe 2 - Gaz</option>
+                                <option value="3">Classe 3 - Liquides inflammables</option>
+                                <option value="4">Classe 4 - Solides inflammables</option>
+                                <option value="5">Classe 5 - Oxydants</option>
+                                <option value="6">Classe 6 - Toxiques</option>
+                                <option value="8">Classe 8 - Corrosifs</option>
+                                <option value="9">Classe 9 - Divers</option>
                             </select>
                         </div>
                         
                         <div class="filter-row">
-                            <label for="transport-filter">Type de transport :</label>
-                            <select id="transport-filter" name="transport">
-                                <option value="">Tous les transports</option>
-                                <option value="heppner" <?= $transport_type === 'heppner' ? 'selected' : '' ?>>Heppner</option>
-                                <option value="xpo" <?= $transport_type === 'xpo' ? 'selected' : '' ?>>XPO</option>
-                                <option value="kn" <?= $transport_type === 'kn' ? 'selected' : '' ?>>Kuehne + Nagel</option>
+                            <label for="groupe-filter">Groupe d'emballage :</label>
+                            <select id="groupe-filter" name="groupe">
+                                <option value="">Tous les groupes</option>
+                                <option value="I">Groupe I - Très dangereux</option>
+                                <option value="II">Groupe II - Moyennement dangereux</option>
+                                <option value="III">Groupe III - Faiblement dangereux</option>
                             </select>
                         </div>
 
                         <div class="filter-row">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="adr-only" name="adr_only">
-                                Produits ADR uniquement
-                            </label>
+                            <label for="adr-filter">Statut ADR :</label>
+                            <select id="adr-filter" name="adr_status">
+                                <option value="">Tous les produits</option>
+                                <option value="adr_only">Uniquement ADR</option>
+                                <option value="non_adr_only">Uniquement non-ADR</option>
+                            </select>
                         </div>
 
                         <div class="filter-row">
@@ -178,18 +190,18 @@ if (file_exists($header_path)) {
             <div class="help-content">
                 <h3>Comment rechercher efficacement :</h3>
                 <ul>
-                    <li><strong>Code produit :</strong> Tapez le code exact (ex: GUL-001)</li>
-                    <li><strong>Nom produit :</strong> Recherche partielle possible (ex: "chlore")</li>
-                    <li><strong>Numéro UN :</strong> Format UN suivi de 4 chiffres (ex: UN1005)</li>
+                    <li><strong>Code produit :</strong> Tapez le code exact (ex: G18) - affiche codes liés (SOL11 + SOL111)</li>
+                    <li><strong>Nom produit :</strong> Recherche partielle possible (ex: "Corg 315")</li>
+                    <li><strong>Numéro UN :</strong> Format UN suivi de 4 chiffres (ex: UN1719) → tous les produits avec cet UN</li>
                     <li><strong>Mots-clés :</strong> Plusieurs mots séparés par des espaces</li>
                 </ul>
                 
                 <h3>Filtres disponibles :</h3>
                 <ul>
-                    <li><strong>Catégorie :</strong> Filtre par catégorie de transport ADR</li>
-                    <li><strong>Transport :</strong> Filtre par transporteur disponible</li>
-                    <li><strong>ADR uniquement :</strong> Masque les produits non-ADR</li>
-                    <li><strong>Environnement :</strong> Produits dangereux pour l'environnement</li>
+                    <li><strong>Classe ADR :</strong> Filtre par classe de danger</li>
+                    <li><strong>Groupe emballage :</strong> I, II, III</li>
+                    <li><strong>Produits ADR :</strong> Uniquement ADR / Uniquement non-ADR / Tous</li>
+                    <li><strong>Environnement :</strong> Dangereux pour l'environnement</li>
                 </ul>
             </div>
         </details>
@@ -226,9 +238,9 @@ function clearSearch() {
     document.getElementById('popular-products').style.display = 'block';
     
     // Réinitialiser les filtres
-    document.getElementById('category-filter').value = '';
-    document.getElementById('transport-filter').value = '';
-    document.getElementById('adr-only').checked = false;
+    document.getElementById('classe-filter').value = '';
+    document.getElementById('groupe-filter').value = '';
+    document.getElementById('adr-filter').value = '';
     document.getElementById('env-danger').checked = false;
 }
 
@@ -260,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Gestionnaires pour les filtres
-    ['category-filter', 'transport-filter', 'adr-only', 'env-danger'].forEach(id => {
+    ['classe-filter', 'groupe-filter', 'adr-filter', 'env-danger'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.addEventListener('change', function() {
