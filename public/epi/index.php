@@ -25,7 +25,6 @@ try {
 } catch (Exception $e) {
     die('<h1>❌ Erreur de chargement</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>');
 }
-require_once ROOT_PATH . '/config/error_handler_simple.php';
 
 // Démarrage de session
 session_start();
