@@ -50,7 +50,7 @@ try {
     <main class="dashboard-container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-            <a href="epi/index.php">🛡️ EPI</a>
+            <a href="./index.php">🛡️ EPI</a>
             <span>›</span>
             <span>Employés</span>
         </nav>
