@@ -105,8 +105,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
 }
 ?>
 
-<!-- CSS spécifique module port -->
-<link rel="stylesheet" href="/public/port/assets/css/port.css?v=<?= $build_number ?>">
+<!-- CSS spécifique module port via header.php automatique -->
 
 <!-- Container principal avec classes CSS modernisées -->
 <div class="calc-container">
@@ -130,7 +129,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             <div class="calc-form-content">
                 <form id="calculatorForm" class="calc-form">
                     <!-- Étape 1: Destination -->
-                    <div class="calc-step-content active" data-step="1">
+                    <div class="calc-step-content active" data-step="1" style="display: block;">
                         <div class="calc-form-group">
                             <label for="departement" class="calc-form-label">
                                 📍 Département de destination *
@@ -147,7 +146,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
                     </div>
                     
                     <!-- Étape 2: Colis -->
-                    <div class="calc-step-content" data-step="2">
+                    <div class="calc-step-content" data-step="2" style="display: none;">
                         <div class="calc-form-group">
                             <label for="poids" class="calc-form-label">
                                 ⚖️ Poids total (kg) *
@@ -201,7 +200,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
                     </div>
                     
                     <!-- Étape 3: Options -->
-                    <div class="calc-step-content" data-step="3">
+                    <div class="calc-step-content" data-step="3" style="display: none;">
                         <div class="calc-form-group">
                             <label class="calc-form-label">⚠️ Matières dangereuses (ADR)</label>
                             <div class="calc-toggle-group">
@@ -308,8 +307,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
     </main>
 </div>
 
-<!-- JavaScript du module port -->
-<script src="/public/port/assets/js/port.js?v=<?= $build_number ?>"></script>
+<!-- JavaScript du module port via header.php automatique -->
 
 <script>
 // Fonction contactExpress dans la portée globale pour corriger l'erreur
