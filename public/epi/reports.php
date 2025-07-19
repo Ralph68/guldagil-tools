@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: Rapports et analyses EPI
- * Chemin: /features/epi/reports.php
+ * Chemin: /public/epi/reports.php
  * Version: 0.5 beta + build auto
  */
 
@@ -284,7 +284,7 @@ function getActivityReport($dateFilter) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Portail Guldagil</title>
-    <link rel="stylesheet" href="/features/epi/assets/css/epi.css">
+    <link rel="stylesheet" href="assets/css/epi.css">
     <style>
         .chart-container {
             background: white;
@@ -340,7 +340,7 @@ function getActivityReport($dateFilter) {
     <main class="dashboard-container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-            <a href="/features/epi/index.php">🛡️ EPI</a>
+            <a href="epi/index.php">🛡️ EPI</a>
             <span>›</span>
             <span>Rapports</span>
         </nav>
@@ -559,17 +559,17 @@ function getActivityReport($dateFilter) {
                 <a href="assignments.php" class="action-btn">🔄 Gestion attributions</a>
                 <a href="inventory.php" class="action-btn">📦 Gestion inventaire</a>
                 <a href="employees.php" class="action-btn">👥 Gestion employés</a>
-                <a href="/features/epi/index.php" class="action-btn">🏠 Tableau de bord</a>
+                <a href="epi/index.php" class="action-btn">🏠 Tableau de bord</a>
             </div>
         </div>
 
         <!-- Retour -->
         <div class="text-center mt-3">
-            <a href="/features/epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
+            <a href="epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
         </div>
     </main>
 
-    <script src="/features/epi/assets/js/epi.js"></script>
+    <script src="assets/js/epi.js"></script>
     <script>
         function updatePeriod(period) {
             const url = new URL(window.location);
