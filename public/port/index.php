@@ -142,6 +142,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
                                    maxlength="3"
                                    required>
                             <div class="calc-error-message" id="departementError"></div>
+                            <div class="calc-field-hint">💡 Numéro de département (ex: 75, 69, 13)</div>
                         </div>
                     </div>
                     
@@ -155,12 +156,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
                                    id="poids" 
                                    name="poids" 
                                    class="calc-form-input"
-                                   placeholder="Ex: 25.5"
-                                   step="0.1" 
-                                   min="0.1" 
-                                   max="32000"
+                                   placeholder="Ex: 25"
+                                   step="1" 
+                                   min="1" 
+                                   max="3000"
                                    required>
                             <div class="calc-error-message" id="poidsError"></div>
+                            <div class="calc-field-hint">💡 Saisissez un poids entier de 1 à 3000 kg</div>
                         </div>
                         
                         <div class="calc-form-group">
