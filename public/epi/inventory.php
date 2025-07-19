@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: Gestion de l'inventaire EPI
- * Chemin: /features/epi/inventory.php
+ * Chemin: public/epi/inventory.php
  * Version: 0.5 beta + build auto
  */
 
@@ -44,7 +44,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Portail Guldagil</title>
-    <link rel="stylesheet" href="/features/epi/assets/css/epi.css">
+    <link rel="stylesheet" href="assets/css/epi.css">
 </head>
 <body>
     <header class="epi-header">
@@ -57,7 +57,7 @@ try {
     <main class="dashboard-container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-            <a href="/features/epi/index.php">🛡️ EPI</a>
+            <a href="epi/index.php">🛡️ EPI</a>
             <span>›</span>
             <span>Inventaire</span>
         </nav>
@@ -322,11 +322,11 @@ try {
 
         <!-- Retour -->
         <div class="text-center mt-3">
-            <a href="/features/epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
+            <a href="epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
         </div>
     </main>
 
-    <script src="/features/epi/assets/js/epi.js"></script>
+    <script src="epi/assets/js/epi.js"></script>
     <script>
         // Script spécifique à l'inventaire
         document.addEventListener('DOMContentLoaded', function() {
