@@ -77,7 +77,7 @@ try {
  * Gestion des suggestions avec recherche codes liés
  */
 function handleSuggestions($db, $query, $limit) {
-    if (strlen($query) < SEARCH_CONFIG['min_chars']) {
+    if (strlen($query) < 3) {
         echo json_encode(['success' => true, 'suggestions' => []]);
         return;
     }
