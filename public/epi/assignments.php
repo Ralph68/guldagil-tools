@@ -374,7 +374,7 @@ function getAssignments($employeeId = null, $search = '') {
         </div>
     </main>
 
-    <script src="epi/assets/js/epi.js"></script>
+    <script src="assets/js/epi.js"></script>
     <script>
         // Script spécifique aux attributions
         function toggleExpiryDate() {
