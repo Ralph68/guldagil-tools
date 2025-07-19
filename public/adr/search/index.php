@@ -323,6 +323,215 @@ function selectProduct(code) {
     document.getElementById('product-search').value = code;
     performSearch();
 }
+</script> 'selected' : '' ?>>Catégorie 3</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-row">
+                            <label for="transport-filter">Type de transport :</label>
+                            <select id="transport-filter" name="transport">
+                                <option value="">Tous les transports</option>
+                                <option value="heppner" <?= $transport_type === 'heppner' ? 'selected' : '' ?>>Heppner</option>
+                                <option value="xpo" <?= $transport_type === 'xpo' ? 'selected' : '' ?>>XPO</option>
+                                <option value="kn" <?= $transport_type === 'kn' ? 'selected' : '' ?>>Kuehne + Nagel</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-row">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="adr-only" name="adr_only">
+                                Produits ADR uniquement
+                            </label>
+                        </div>
+
+                        <div class="filter-row">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="env-danger" name="env_danger">
+                                Dangereux pour l'environnement
+                            </label>
+                        </div>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- Zone de résultats -->
+    <section id="search-results" class="results-section" style="display: none;">
+        <div class="results-header">
+            <h2 id="results-title">Résultats de recherche</h2>
+            <div class="results-actions">
+                <button class="btn-export" onclick="exportResults()">📋 Exporter</button>
+                <button class="btn-clear" onclick="clearSearch()">🗑️ Effacer</button>
+            </div>
+        </div>
+        
+        <div id="results-content" class="results-content">
+            <!-- Les résultats seront chargés ici -->
+        </div>
+        
+        <div id="results-pagination" class="results-pagination" style="display: none;">
+            <!-- Pagination sera générée ici -->
+        </div>
+    </section>
+
+    <!-- Zone de produits populaires -->
+    <section id="popular-products" class="popular-section">
+        <h2>🔥 Produits populaires</h2>
+        <div id="popular-content" class="popular-content">
+            <div class="loading-spinner">Chargement des produits populaires...</div>
+        </div>
+    </section>
+
+    <!-- Instructions -->
+    <section class="help-section">
+        <details>
+            <summary>💡 Aide à la recherche</summary>
+            <div class="help-content">
+                <h3>Comment rechercher efficacement :</h3>
+                <ul>
+                    <li><strong>Code produit :</strong> Tapez le code exact (ex: GUL-001)</li>
+                    <li><strong>Nom produit :</strong> Recherche partielle possible (ex: "chlore")</li>
+                    <li><strong>Numéro UN :</strong> Format UN suivi de 4 chiffres (ex: UN1005)</li>
+                    <li><strong>Mots-clés :</strong> Plusieurs mots séparés par des espaces</li>
+                </ul>
+                
+                <h3>Filtres disponibles :</h3>
+                <ul>
+                    <li><strong>Catégorie :</strong> Filtre par catégorie de transport ADR</li>
+                    <li><strong>Transport :</strong> Filtre par transporteur disponible</li>
+                    <li><strong>ADR uniquement :</strong> Masque les produits non-ADR</li>
+                    <li><strong>Environnement :</strong> Produits dangereux pour l'environnement</li>
+                </ul>
+            </div>
+        </details>
+    </section>
+
+</main>
+
+<!-- Configuration JavaScript -->
+<script>
+// Configuration pour le module de recherche
+window.ADR_SEARCH_CONFIG = {
+    apiEndpoint: '<?= $search_config['api_endpoint'] ?>',
+    minChars: <?= $search_config['min_chars'] ?>,
+    maxResults: <?= $search_config['max_results'] ?>,
+    initialQuery: '<?= addslashes($query) ?>',
+    debug: <?= defined('DEBUG') && DEBUG ? 'true' : 'false' ?> 'true' : 'false' ?>
+};
+
+// Fonctions globales
+function performSearch() {
+    const query = document.getElementById('product-search').value.trim();
+    if (query.length >= window.ADR_SEARCH_CONFIG.minChars) {
+        if (window.ADR && window.ADR.Search) {
+            window.ADR.Search.performFullSearch(query);
+        } else {
+            console.error('Module de recherche ADR non disponible');
+        }
+    }
+}
+
+function clearSearch() {
+    document.getElementById('product-search').value = '';
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('popular-products').style.display = 'block';
+    
+    // Réinitialiser les filtres
+    document.getElementById('category-filter').value = '';
+    document.getElementById('transport-filter').value = '';
+    document.getElementById('adr-only').checked = false;
+    document.getElementById('env-danger').checked = false;
+}
+
+function exportResults() {
+    if (window.ADR && window.ADR.Search) {
+        window.ADR.Search.exportResults();
+    } else {
+        alert('Fonction d\'export non disponible');
+    }
+}
+
+// Initialisation au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 Page de recherche ADR chargée');
+    
+    // Charger les produits populaires
+    loadPopularProducts();
+    
+    // Si une recherche est définie dans l'URL, l'exécuter
+    if (window.ADR_SEARCH_CONFIG.initialQuery) {
+        setTimeout(() => performSearch(), 500);
+    }
+    
+    // Gestionnaire de touches pour la recherche
+    document.getElementById('product-search').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+    
+    // Gestionnaires pour les filtres
+    ['category-filter', 'transport-filter', 'adr-only', 'env-danger'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', function() {
+                if (document.getElementById('product-search').value) {
+                    performSearch();
+                }
+            });
+        }
+    });
+});
+
+function loadPopularProducts() {
+    const popularContent = document.getElementById('popular-content');
+    
+    fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=popular&limit=10')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.products) {
+                displayPopularProducts(data.products);
+            } else {
+                popularContent.innerHTML = '<p class="no-results">Aucun produit populaire disponible</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Erreur chargement produits populaires:', error);
+            popularContent.innerHTML = '<p class="error-message">Erreur de chargement</p>';
+        });
+}
+
+function displayPopularProducts(products) {
+    const popularContent = document.getElementById('popular-content');
+    
+    if (!products || products.length === 0) {
+        popularContent.innerHTML = '<p class="no-results">Aucun produit populaire</p>';
+        return;
+    }
+    
+    const html = products.map(product => `
+        <div class="popular-item" onclick="selectProduct('${product.code_produit}')">
+            <div class="product-header">
+                <span class="product-code">${product.code_produit}</span>
+                ${product.numero_un ? `<span class="badge badge-adr">UN${product.numero_un}</span>` : ''}
+                ${product.danger_environnement === 'oui' ? '<span class="badge badge-env">ENV</span>' : ''}
+            </div>
+            <div class="product-name">${product.nom_produit || 'Produit sans nom'}</div>
+            <div class="product-details">
+                ${product.categorie_transport ? `Cat. ${product.categorie_transport}` : ''} 
+                ${product.type_contenant ? ` • ${product.type_contenant}` : ''}
+            </div>
+        </div>
+    `).join('');
+    
+    popularContent.innerHTML = html;
+}
+
+function selectProduct(code) {
+    document.getElementById('product-search').value = code;
+    performSearch();
+}
 </script>
 
 <?php
