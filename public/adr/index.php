@@ -12,7 +12,6 @@ if (!defined('ROOT_PATH')) {
 }
 
 // Gestion des erreurs
-require_once ROOT_PATH . '/config/error_handler_simple.php';
 
 // Démarrage session si pas déjà active
 if (session_status() === PHP_SESSION_NONE) {

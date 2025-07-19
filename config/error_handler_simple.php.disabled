@@ -1,7 +1,6 @@
 <?php
 /**
  * Titre: Gestionnaire d'erreurs PHP simplifié anti-boucle
- * Chemin: /config/error_handler_simple.php
  * Version: 0.5 beta + build auto
  */
 

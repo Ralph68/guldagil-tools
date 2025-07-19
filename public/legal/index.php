@@ -7,7 +7,6 @@
 
 // Configuration et includes
 require_once __DIR__ . '/../../config/version.php';
-require_once ROOT_PATH . '/config/error_handler_simple.php';
 
 // Meta données de la page
 $page_title = "Documents légaux et politiques";

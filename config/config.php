@@ -22,7 +22,6 @@ if (!defined('ROOT_PATH')) {
     //echo "ℹ️ ROOT_PATH déjà défini: " . ROOT_PATH . "\n";
 }
 
-//require_once __DIR__ . '/error_handler_simple.php';
 
 // Timezone
 date_default_timezone_set('Europe/Paris');
