@@ -50,7 +50,7 @@ try {
     <main class="dashboard-container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-            <a href="/index.php">🛡️ EPI</a>
+            <a href="epi/index.php">🛡️ EPI</a>
             <span>›</span>
             <span>Employés</span>
         </nav>
@@ -248,7 +248,7 @@ try {
 
         <!-- Retour -->
         <div class="text-center mt-3">
-            <a href="/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
+            <a href="epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
         </div>
     </main>
 
