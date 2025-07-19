@@ -90,9 +90,10 @@ const CalculateurModule = {
     },
 
     /**
-     * Activer une étape
+     * Activer une étape avec debug
      */
     activateStep(stepNumber) {
+        console.log(`Activation étape ${stepNumber}`);
         this.state.currentStep = stepNumber;
         
         // Mettre à jour les boutons
@@ -106,10 +107,22 @@ const CalculateurModule = {
         // Mettre à jour le contenu
         this.dom.stepContents.forEach(content => {
             content.classList.remove('active');
+            content.style.display = 'none';
             if (parseInt(content.dataset.step) === stepNumber) {
                 content.classList.add('active');
+                content.style.display = 'block';
             }
         });
+        
+        // Focus automatique sur le premier champ de l'étape
+        setTimeout(() => {
+            if (stepNumber === 2) {
+                this.dom.poids.focus();
+            } else if (stepNumber === 3) {
+                const firstToggle = document.querySelector('[data-adr="non"]');
+                if (firstToggle) firstToggle.focus();
+            }
+        }, 100);
     },
 
     /**
@@ -164,31 +177,39 @@ const CalculateurModule = {
             this.handleCalculate();
         });
 
-        // Validation temps réel avec debounce
+        // Validation temps réel avec debounce et progression
         this.dom.departement.addEventListener('input', 
-            this.debounce(() => this.validateDepartement(), this.config.debounceDelay)
+            this.debounce(() => {
+                console.log('Input département:', this.dom.departement.value);
+                this.validateDepartement();
+                this.autoCalculateIfValid();
+            }, this.config.debounceDelay)
         );
 
         this.dom.poids.addEventListener('input', 
-            this.debounce(() => this.validatePoids(), this.config.debounceDelay)
+            this.debounce(() => {
+                console.log('Input poids:', this.dom.poids.value);
+                this.validatePoids();
+                this.autoCalculateIfValid();
+            }, this.config.debounceDelay)
         );
 
-        // Auto-progression et calcul intelligent
+        // Auto-progression et calcul intelligent avec debug
         ['departement', 'poids'].forEach(field => {
-            this.dom[field].addEventListener('input', 
-                this.debounce(() => this.autoCalculateIfValid(), this.config.debounceDelay)
-            );
+            this.dom[field].addEventListener('change', () => {
+                console.log(`Change event sur ${field}:`, this.dom[field].value);
+                this.autoCalculateIfValid();
+            });
             
             // Progression manuelle avec Enter
             this.dom[field].addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
+                    console.log(`Enter pressé sur ${field}`);
                     if (field === 'departement' && this.validateDepartement()) {
                         this.activateStep(2);
-                        this.dom.poids.focus();
                     } else if (field === 'poids' && this.validatePoids()) {
                         this.activateStep(3);
-                        document.querySelector('[data-adr="non"]').focus();
                     }
                 }
             });
@@ -222,11 +243,13 @@ const CalculateurModule = {
     },
 
     /**
-     * Validation poids
+     * Validation poids avec debug
      */
     validatePoids() {
         const value = parseFloat(this.dom.poids.value);
         const isValid = value >= 1 && value <= 3000 && Number.isInteger(value);
+        
+        console.log(`Validation poids: ${value}, isValid: ${isValid}, currentStep: ${this.state.currentStep}`);
         
         this.updateFieldValidation('poids', isValid, 
             isValid ? '' : 'Poids entre 1 et 3000 kg (entier)');
@@ -255,21 +278,23 @@ const CalculateurModule = {
     },
 
     /**
-     * Auto-calcul si formulaire valide
+     * Auto-calcul si formulaire valide avec debug
      */
     autoCalculateIfValid() {
         const deptValid = this.validateDepartement();
         const poidsValid = this.validatePoids();
         
+        console.log(`AutoCalculate: dept=${deptValid}, poids=${poidsValid}, step=${this.state.currentStep}`);
+        
         // Progression automatique des étapes
         if (deptValid && this.state.currentStep === 1) {
-            // Passer automatiquement à l'étape 2
+            console.log('Progression étape 1 → 2');
             setTimeout(() => this.activateStep(2), 500);
         } else if (deptValid && poidsValid && this.state.currentStep === 2) {
-            // Passer automatiquement à l'étape 3
+            console.log('Progression étape 2 → 3');
             setTimeout(() => this.activateStep(3), 500);
         } else if (deptValid && poidsValid && this.state.currentStep >= 3 && !this.state.isCalculating) {
-            // Lancer le calcul automatiquement
+            console.log('Lancement calcul automatique');
             setTimeout(() => this.handleCalculate(), 800);
         }
     },
