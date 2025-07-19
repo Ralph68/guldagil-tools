@@ -173,11 +173,25 @@ const CalculateurModule = {
             this.debounce(() => this.validatePoids(), this.config.debounceDelay)
         );
 
-        // Auto-calcul si champs valides
+        // Auto-progression et calcul intelligent
         ['departement', 'poids'].forEach(field => {
             this.dom[field].addEventListener('input', 
                 this.debounce(() => this.autoCalculateIfValid(), this.config.debounceDelay)
             );
+            
+            // Progression manuelle avec Enter
+            this.dom[field].addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (field === 'departement' && this.validateDepartement()) {
+                        this.activateStep(2);
+                        this.dom.poids.focus();
+                    } else if (field === 'poids' && this.validatePoids()) {
+                        this.activateStep(3);
+                        document.querySelector('[data-adr="non"]').focus();
+                    }
+                }
+            });
         });
 
         // Navigation étapes avec flèches
@@ -212,10 +226,10 @@ const CalculateurModule = {
      */
     validatePoids() {
         const value = parseFloat(this.dom.poids.value);
-        const isValid = value > 0 && value <= 32000;
+        const isValid = value >= 1 && value <= 3000 && Number.isInteger(value);
         
         this.updateFieldValidation('poids', isValid, 
-            isValid ? '' : 'Poids entre 0.1 et 32000 kg');
+            isValid ? '' : 'Poids entre 1 et 3000 kg (entier)');
         
         return isValid;
     },
@@ -244,8 +258,19 @@ const CalculateurModule = {
      * Auto-calcul si formulaire valide
      */
     autoCalculateIfValid() {
-        if (this.validateDepartement() && this.validatePoids() && !this.state.isCalculating) {
-            this.handleCalculate();
+        const deptValid = this.validateDepartement();
+        const poidsValid = this.validatePoids();
+        
+        // Progression automatique des étapes
+        if (deptValid && this.state.currentStep === 1) {
+            // Passer automatiquement à l'étape 2
+            setTimeout(() => this.activateStep(2), 500);
+        } else if (deptValid && poidsValid && this.state.currentStep === 2) {
+            // Passer automatiquement à l'étape 3
+            setTimeout(() => this.activateStep(3), 500);
+        } else if (deptValid && poidsValid && this.state.currentStep >= 3 && !this.state.isCalculating) {
+            // Lancer le calcul automatiquement
+            setTimeout(() => this.handleCalculate(), 800);
         }
     },
 
