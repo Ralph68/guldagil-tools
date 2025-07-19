@@ -35,6 +35,7 @@ $selected_date = $_GET['date'] ?? date('Y-m-d');
 // Connexion BDD
 $db_connected = false;
 $recap_data = [];
+$daily_limit = 1000; // Limite réglementaire quotidienne (ADR 1.1.3.6)
 try {
     $db = $db ?? new PDO(
         "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
@@ -48,6 +49,9 @@ try {
 }
 
 if ($db_connected) {
+    // Initialisation des compteurs
+    $total_expeditions = 0;
+    $total_points = 0;
     try {
         $stmt = $db->prepare(
             "SELECT transporteur, COUNT(*) AS expeditions, SUM(total_points_adr) AS total_points
@@ -58,6 +62,15 @@ if ($db_connected) {
         );
         $stmt->execute([$selected_date]);
         $recap_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Calcul des totaux journaliers
+        foreach ($recap_data as &$line) {
+            $line['remaining'] = max(0, $daily_limit - (int)$line['total_points']);
+            $line['compliant'] = ((int)$line['total_points'] <= $daily_limit);
+            $total_expeditions += (int)$line['expeditions'];
+            $total_points += (int)$line['total_points'];
+        }
+        unset($line);
     } catch (Exception $e) {
         error_log('ADR recap query error: ' . $e->getMessage());
     }
@@ -71,6 +84,7 @@ include ROOT_PATH . '/templates/header.php';
 .recap-table { width: 100%; border-collapse: collapse; }
 .recap-table th, .recap-table td { padding: 0.5rem; border: 1px solid #e5e7eb; text-align: left; }
 .recap-table th { background: #f3f4f6; }
+.adr-note { margin-top: 0.5rem; font-size: 0.9rem; color: #4b5563; }
 </style>
 <div class="recap-container">
     <h2>Récapitulatif du <?= htmlspecialchars(date('d/m/Y', strtotime($selected_date))) ?></h2>
@@ -86,6 +100,8 @@ include ROOT_PATH . '/templates/header.php';
                     <th>Transporteur</th>
                     <th>Expéditions</th>
                     <th>Total points ADR</th>
+                    <th>Reste sur 1000 pts</th>
+                    <th>Statut</th>
                 </tr>
             </thead>
             <tbody>
@@ -94,10 +110,19 @@ include ROOT_PATH . '/templates/header.php';
                         <td><?= htmlspecialchars(strtoupper($row['transporteur'])) ?></td>
                         <td><?= (int)$row['expeditions'] ?></td>
                         <td><?= (int)$row['total_points'] ?></td>
+                        <td><?= (int)$row['remaining'] ?></td>
+                        <td><?= $row['compliant'] ? 'OK' : '⚠️ Dépassement' ?></td>
                     </tr>
                 <?php endforeach; ?>
+                <tr>
+                    <th>Total</th>
+                    <th><?= $total_expeditions ?></th>
+                    <th><?= $total_points ?></th>
+                    <th colspan="2"></th>
+                </tr>
             </tbody>
         </table>
+        <p class="adr-note">Conformément à l'ADR 1.1.3.6, chaque transporteur ne doit pas dépasser 1000 points par jour.</p>
     <?php else: ?>
         <p>Aucune expédition enregistrée pour cette date.</p>
     <?php endif; ?>
