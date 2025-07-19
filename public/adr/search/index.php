@@ -310,20 +310,28 @@ function displayPopularProducts(products) {
         return;
     }
     
-    const html = products.map(product => `
-        <div class="popular-item" onclick="selectProduct('${product.code_produit}')">
-            <div class="product-header">
-                <span class="product-code">${product.code_produit}</span>
-                ${product.numero_un ? `<span class="badge badge-adr">UN${product.numero_un}</span>` : ''}
-                ${product.danger_environnement === 'oui' ? '<span class="badge badge-env">ENV</span>' : ''}
-            </div>
-            <div class="product-name">${product.nom_produit || 'Produit sans nom'}</div>
-            <div class="product-details">
-                ${product.categorie_transport ? `Cat. ${product.categorie_transport}` : ''} 
-                ${product.type_contenant ? ` • ${product.type_contenant}` : ''}
-            </div>
-        </div>
-    `).join('');
+    let html = '';
+    products.forEach(product => {
+        html += '<div class="popular-item" onclick="selectProduct(\'' + product.code_produit + '\')">';
+        html += '<div class="product-header">';
+        html += '<span class="product-code">' + product.code_produit + '</span>';
+        if (product.numero_un) {
+            html += '<span class="badge badge-adr">UN' + product.numero_un + '</span>';
+        }
+        if (product.danger_environnement === 'oui') {
+            html += '<span class="badge badge-env">ENV</span>';
+        }
+        html += '</div>';
+        html += '<div class="product-name">' + (product.nom_produit || 'Produit sans nom') + '</div>';
+        html += '<div class="product-details">';
+        if (product.classe_adr) {
+            html += 'Classe ' + product.classe_adr;
+        }
+        if (product.type_contenant) {
+            html += ' • ' + product.type_contenant;
+        }
+        html += '</div></div>';
+    });
     
     popularContent.innerHTML = html;
 }
