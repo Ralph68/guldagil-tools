@@ -426,16 +426,17 @@ function handlePopularProducts($db, $limit) {
                 p.code_produit,
                 p.nom_produit,
                 p.numero_un,
-                p.categorie_transport,
-                p.type_contenant,
+                p.classe_adr,
+                p.groupe_emballage,
                 p.danger_environnement,
+                p.type_contenant,
                 COUNT(d.id) as nb_declarations
             FROM gul_adr_products p
             INNER JOIN gul_adr_declarations d ON p.code_produit = d.code_produit
             WHERE p.actif = 1 
             AND d.date_expedition >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             GROUP BY p.code_produit, p.nom_produit, p.numero_un, 
-                     p.categorie_transport, p.type_contenant, p.danger_environnement
+                     p.classe_adr, p.groupe_emballage, p.danger_environnement, p.type_contenant
             ORDER BY nb_declarations DESC, p.code_produit
             LIMIT ?";
     
@@ -444,20 +445,19 @@ function handlePopularProducts($db, $limit) {
     
     $popular = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Si pas assez de produits populaires, compléter avec produits ADR récents
+    // Si pas assez, compléter avec produits ADR récents
     if (count($popular) < $limit) {
         $remaining = $limit - count($popular);
         $existingCodes = array_column($popular, 'code_produit');
-        $placeholders = str_repeat('?,', count($existingCodes));
-        $placeholders = rtrim($placeholders, ',');
         
         $fallbackSql = "SELECT 
                             code_produit,
                             nom_produit,
                             numero_un,
-                            categorie_transport,
-                            type_contenant,
+                            classe_adr,
+                            groupe_emballage,
                             danger_environnement,
+                            type_contenant,
                             0 as nb_declarations
                         FROM gul_adr_products 
                         WHERE actif = 1 
@@ -465,6 +465,8 @@ function handlePopularProducts($db, $limit) {
                         AND numero_un != ''";
         
         if (!empty($existingCodes)) {
+            $placeholders = str_repeat('?,', count($existingCodes));
+            $placeholders = rtrim($placeholders, ',');
             $fallbackSql .= " AND code_produit NOT IN ({$placeholders})";
         }
         
