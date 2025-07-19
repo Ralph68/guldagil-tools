@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: Gestion des attributions EPI
- * Chemin: /features/epi/assignments.php
+ * Chemin: /public/epi/assignments.php
  * Version: 0.5 beta + build auto
  */
 
@@ -96,7 +96,7 @@ function getAssignments($employeeId = null, $search = '') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - Portail Guldagil</title>
-    <link rel="stylesheet" href="/features/epi/assets/css/epi.css">
+    <link rel="stylesheet" href="assets/css/epi.css">
 </head>
 <body>
     <header class="epi-header">
@@ -109,7 +109,7 @@ function getAssignments($employeeId = null, $search = '') {
     <main class="dashboard-container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-            <a href="/features/epi/index.php">🛡️ EPI</a>
+            <a href="epi/index.php">🛡️ EPI</a>
             <span>›</span>
             <span>Attributions</span>
             <?php if ($employeeId): ?>
@@ -370,11 +370,11 @@ function getAssignments($employeeId = null, $search = '') {
 
         <!-- Retour -->
         <div class="text-center mt-3">
-            <a href="/features/epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
+            <a href="epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
         </div>
     </main>
 
-    <script src="/features/epi/assets/js/epi.js"></script>
+    <script src="epi/assets/js/epi.js"></script>
     <script>
         // Script spécifique aux attributions
         function toggleExpiryDate() {
