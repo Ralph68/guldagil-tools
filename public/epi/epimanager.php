@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: Gestionnaire principal du module EPI
- * Chemin: /features/epi/epimanager.php
+ * Chemin: /public/epi/epimanager.php
  * Version: 0.5 beta + build auto
  */
 
