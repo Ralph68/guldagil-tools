@@ -1,6 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 /**
  * Titre: Page de recherche ADR - CORRIGÉE
  * Chemin: /public/adr/search/index.php
@@ -200,7 +198,7 @@ if (file_exists($header_path)) {
 <script>
 // Configuration globale
 window.ADR_SEARCH_CONFIG = {
-    apiEndpoint: '/adr/search/search.php',
+    apiEndpoint: '/adr/search/api.php',
     minChars: 3,
     maxResults: 50,
     initialQuery: '<?= addslashes($query) ?>',
@@ -345,7 +343,7 @@ function fullSearch(query) {
         });
 }
 
-// Affichage résultats
+// Affichage résultats en tableau
 function displayResults(products, total, query) {
     const resultsContent = document.getElementById('results-content');
     const resultsTitle = document.getElementById('results-title');
@@ -359,35 +357,34 @@ function displayResults(products, total, query) {
     if (products.length === 0) {
         resultsContent.innerHTML = '<div class="no-results"><p>Aucun produit trouvé pour "' + escapeHtml(query) + '"</p></div>';
     } else {
-        let html = '';
+        let html = '<div class="results-table-container">';
+        html += '<table class="adr-results-table">';
+        html += '<thead><tr>';
+        html += '<th>Code Article</th>';
+        html += '<th>Nom du Produit</th>';
+        html += '<th>UN</th>';
+        html += '<th>Classe</th>';
+        html += '<th>Groupe</th>';
+        html += '<th>ENV</th>';
+        html += '<th>Contenant</th>';
+        html += '<th>Actions</th>';
+        html += '</tr></thead><tbody>';
+        
         products.forEach(product => {
-            html += '<div class="result-item">';
-            html += '<div class="result-header">';
-            html += '<span class="result-code">' + product.code_produit + '</span>';
-            html += '<div class="result-badges">';
-            if (product.numero_un) {
-                html += '<span class="badge badge-adr">UN' + product.numero_un + '</span>';
-            }
-            if (product.danger_environnement === 'oui') {
-                html += '<span class="badge badge-env">ENV</span>';
-            }
-            if (product.classe_adr) {
-                html += '<span class="badge badge-classe">Classe ' + product.classe_adr + '</span>';
-            }
-            html += '</div></div>';
-            html += '<div class="result-name">' + escapeHtml(product.nom_produit || 'Produit sans nom') + '</div>';
-            html += '<div class="result-details">';
-            if (product.nom_description_un) {
-                html += '<span class="result-label">Description UN:</span><span>' + escapeHtml(product.nom_description_un) + '</span>';
-            }
-            if (product.type_contenant) {
-                html += '<span class="result-label">Contenant:</span><span>' + escapeHtml(product.type_contenant) + '</span>';
-            }
-            html += '</div>';
-            html += '<div class="result-actions">';
-            html += '<a href="https://www.quickfds.com/fr/search/Guldagil/' + encodeURIComponent(product.code_produit) + '" target="_blank" class="fds-link">📄 Fiche de sécurité</a>';
-            html += '</div></div>';
+            html += '<tr class="result-row" onclick="showProductDetail(\'' + product.code_produit + '\')">';
+            html += '<td class="code-cell"><strong>' + product.code_produit + '</strong></td>';
+            html += '<td class="name-cell">' + escapeHtml(product.nom_produit || 'Sans nom') + '</td>';
+            html += '<td class="un-cell">' + (product.numero_un ? 'UN' + product.numero_un : '-') + '</td>';
+            html += '<td class="class-cell">' + (product.classe_adr || '-') + '</td>';
+            html += '<td class="group-cell">' + (product.groupe_emballage || '-') + '</td>';
+            html += '<td class="env-cell">' + (product.danger_environnement === 'oui' ? '⚠️' : '-') + '</td>';
+            html += '<td class="container-cell">' + escapeHtml(product.type_contenant || '-') + '</td>';
+            html += '<td class="actions-cell">';
+            html += '<a href="' + product.fds_url + '" target="_blank" class="fds-btn" onclick="event.stopPropagation()">📄 FDS</a>';
+            html += '</td></tr>';
         });
+        
+        html += '</tbody></table></div>';
         resultsContent.innerHTML = html;
     }
     
@@ -450,6 +447,62 @@ function displayPopularProducts(products) {
     });
     
     popularContent.innerHTML = html;
+}
+
+function showProductDetail(code) {
+    fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=detail&q=' + encodeURIComponent(code))
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayProductModal(data.product, data.history);
+            } else {
+                alert('Erreur: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur détail:', error);
+            alert('Erreur de connexion');
+        });
+}
+
+function displayProductModal(product, history) {
+    const modal = document.createElement('div');
+    modal.className = 'product-modal';
+    modal.innerHTML = 
+        '<div class="modal-content">' +
+        '<div class="modal-header">' +
+        '<h2>' + product.code_produit + ' - ' + escapeHtml(product.nom_produit || 'Sans nom') + '</h2>' +
+        '<button class="modal-close" onclick="this.closest(\'.product-modal\').remove()">×</button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+        '<div class="product-info">' +
+        (product.numero_un ? '<p><strong>Numéro UN:</strong> UN' + product.numero_un + '</p>' : '') +
+        (product.nom_description_un ? '<p><strong>Description UN:</strong> ' + escapeHtml(product.nom_description_un) + '</p>' : '') +
+        (product.classe_adr ? '<p><strong>Classe ADR:</strong> ' + product.classe_adr + '</p>' : '') +
+        (product.groupe_emballage ? '<p><strong>Groupe emballage:</strong> ' + product.groupe_emballage + '</p>' : '') +
+        (product.type_contenant ? '<p><strong>Contenant:</strong> ' + escapeHtml(product.type_contenant) + '</p>' : '') +
+        (product.poids_contenant ? '<p><strong>Poids:</strong> ' + escapeHtml(product.poids_contenant) + '</p>' : '') +
+        (product.danger_environnement === 'oui' ? '<p><strong>⚠️ Dangereux pour l\'environnement</strong></p>' : '') +
+        '</div>' +
+        (history.length > 0 ? 
+            '<div class="product-history">' +
+            '<h3>Déclarations récentes</h3>' +
+            '<ul>' +
+            history.slice(0, 5).map(h => 
+                '<li>' + h.date_expedition + ' - ' + h.transporteur + ' - ' + h.quantite_declaree + ' ' + h.unite_quantite +
+                (h.destinataire_nom ? ' vers ' + h.destinataire_nom : '') + '</li>'
+            ).join('') +
+            '</ul></div>' : '') +
+        '</div></div>';
+    
+    document.body.appendChild(modal);
+    
+    // Fermer au clic extérieur
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
 }
 
 function selectProduct(code) {
