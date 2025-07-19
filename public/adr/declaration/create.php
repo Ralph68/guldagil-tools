@@ -1,15 +1,17 @@
 <?php
 /**
- * Titre: Formulaire déclaration ADR simple
+ * Titre: Formulaire déclaration ADR - Version finale
  * Chemin: /public/adr/declaration/create.php
  * Version: 0.5 beta + build auto
  */
 
+// Gestion erreurs simple
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(dirname(dirname(__DIR__))));
 }
-
-require_once ROOT_PATH . '/config/error_handler_simple.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -23,96 +25,107 @@ if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
 require_once ROOT_PATH . '/config/config.php';
 require_once ROOT_PATH . '/config/version.php';
 
-// Variables template
 $page_title = 'Déclaration ADR';
 $current_module = 'adr';
 $module_css = true;
 
-// Configuration
 $transporteurs = [
     'xpo' => 'XPO Logistics',
     'heppner' => 'Heppner'
 ];
 
-// Quotas actuels (simulés - à connecter à la vraie BDD)
-$quotas = [
-    'xpo' => ['utilise' => 320, 'limite' => 1000],
-    'heppner' => ['utilise' => 750, 'limite' => 1000]
-];
+// Calcul quotas du jour
+$quotas = ['xpo' => 0, 'heppner' => 0];
+try {
+    $stmt = $db->query("
+        SELECT transporteur, 
+               SUM(CASE 
+                   WHEN p.categorie_transport = '1' THEN d.quantite_declaree * 50
+                   WHEN p.categorie_transport = '2' THEN d.quantite_declaree * 3
+                   WHEN p.categorie_transport = '3' THEN d.quantite_declaree * 1
+                   ELSE 0
+               END) as total_points
+        FROM gul_adr_declarations d
+        JOIN gul_adr_products p ON d.code_produit = p.code_produit
+        WHERE d.date_declaration = CURDATE()
+        GROUP BY transporteur
+    ");
+    
+    while ($row = $stmt->fetch()) {
+        $quotas[$row['transporteur']] = (int)$row['total_points'];
+    }
+} catch (Exception $e) {
+    error_log("Erreur calcul quotas: " . $e->getMessage());
+}
 
 // Traitement AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
     header('Content-Type: application/json');
     
-    $action = $_POST['action'] ?? '';
-    
     try {
-        switch ($action) {
-            case 'search_products':
-                $query = $_POST['query'] ?? '';
-                if (strlen($query) < 2) {
-                    echo json_encode(['success' => false, 'message' => 'Requête trop courte']);
-                    exit;
-                }
-                
-                $stmt = $db->prepare("
-                    SELECT code_produit, nom_produit, numero_un, categorie_transport
-                    FROM gul_adr_products 
-                    WHERE (code_produit LIKE ? OR nom_produit LIKE ?) 
-                    AND actif = 1 AND numero_un IS NOT NULL
-                    ORDER BY code_produit ASC
-                    LIMIT 10
-                ");
-                $pattern = '%' . $query . '%';
-                $stmt->execute([$pattern, $pattern]);
-                $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                echo json_encode(['success' => true, 'products' => $products]);
-                break;
-                
-            case 'save_declaration':
-                $transporteur = $_POST['transporteur'] ?? '';
-                $produits = json_decode($_POST['produits'] ?? '[]', true);
-                
-                if (empty($transporteur) || empty($produits)) {
-                    echo json_encode(['success' => false, 'message' => 'Données incomplètes']);
-                    exit;
-                }
-                
-                // Calcul points ADR
-                $total_points = 0;
-                foreach ($produits as $produit) {
-                    $points_cat = ['1' => 50, '2' => 3, '3' => 1, '4' => 0];
-                    $points = ($points_cat[$produit['categorie']] ?? 0) * floatval($produit['quantite']);
-                    $total_points += $points;
-                }
-                
-                // Sauvegarde BDD
-                $stmt = $db->prepare("
-                    INSERT INTO gul_adr_declarations 
-                    (transporteur, date_declaration, total_points, produits_json, cree_par, date_creation)
-                    VALUES (?, CURDATE(), ?, ?, ?, NOW())
-                ");
-                $stmt->execute([
-                    $transporteur,
-                    $total_points,
-                    json_encode($produits),
-                    $_SESSION['user']['username'] ?? 'unknown'
-                ]);
-                
-                $declaration_id = $db->lastInsertId();
-                
-                echo json_encode([
-                    'success' => true, 
-                    'declaration_id' => $declaration_id,
-                    'total_points' => $total_points,
-                    'message' => 'Déclaration sauvegardée'
-                ]);
-                break;
-                
-            default:
-                echo json_encode(['success' => false, 'message' => 'Action inconnue']);
+        $action = $_POST['action'] ?? '';
+        
+        if ($action === 'search_products') {
+            $query = $_POST['query'] ?? '';
+            if (strlen($query) < 2) {
+                echo json_encode(['success' => false, 'message' => 'Requête trop courte']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("
+                SELECT code_produit, nom_produit, numero_un, categorie_transport
+                FROM gul_adr_products 
+                WHERE (code_produit LIKE ? OR nom_produit LIKE ?) 
+                AND actif = 1 AND numero_un IS NOT NULL
+                ORDER BY code_produit ASC
+                LIMIT 10
+            ");
+            $pattern = '%' . $query . '%';
+            $stmt->execute([$pattern, $pattern]);
+            $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'products' => $products]);
+            
+        } elseif ($action === 'save_declaration') {
+            $transporteur = $_POST['transporteur'] ?? '';
+            $produits = json_decode($_POST['produits'] ?? '[]', true);
+            
+            if (empty($transporteur) || empty($produits)) {
+                echo json_encode(['success' => false, 'message' => 'Données incomplètes']);
+                exit;
+            }
+            
+            $total_points = 0;
+            foreach ($produits as $produit) {
+                $total_points += $produit['points'];
+            }
+            
+            // Sauvegarde avec nouvelles colonnes
+            $stmt = $db->prepare("
+                INSERT INTO gul_adr_declarations 
+                (transporteur, total_points, produits_json, date_declaration, 
+                 code_produit, quantite_declaree, date_expedition, cree_par)
+                VALUES (?, ?, ?, CURDATE(), 'MULTIPLE', ?, CURDATE(), ?)
+            ");
+            
+            $stmt->execute([
+                $transporteur,
+                $total_points,
+                json_encode($produits),
+                count($produits),
+                $_SESSION['user']['username'] ?? 'unknown'
+            ]);
+            
+            echo json_encode([
+                'success' => true,
+                'total_points' => $total_points,
+                'message' => "Déclaration enregistrée"
+            ]);
+            
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Action inconnue']);
         }
+        
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Erreur: ' . $e->getMessage()]);
     }
@@ -187,10 +200,6 @@ include ROOT_PATH . '/templates/header.php';
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
     margin-bottom: 1rem;
-}
-
-.form-row.full {
-    grid-template-columns: 1fr;
 }
 
 .form-group {
@@ -318,12 +327,12 @@ include ROOT_PATH . '/templates/header.php';
 <main class="main-content">
     <div class="declaration-container">
         
-        <!-- Quotas en temps réel (toujours visible) -->
+        <!-- Quotas en temps réel -->
         <div class="quotas-display">
             <h3>⚖️ Quotas ADR du jour</h3>
-            <?php foreach ($quotas as $trans => $quota): ?>
+            <?php foreach ($quotas as $trans => $points): ?>
             <?php 
-                $percentage = ($quota['utilise'] / $quota['limite']) * 100;
+                $percentage = ($points / 1000) * 100;
                 $fill_class = $percentage > 90 ? 'danger' : ($percentage > 75 ? 'warning' : '');
             ?>
             <div class="quota-item">
@@ -332,7 +341,7 @@ include ROOT_PATH . '/templates/header.php';
                     <div class="quota-fill <?= $fill_class ?>" 
                          style="width: <?= min($percentage, 100) ?>%"></div>
                 </div>
-                <span><?= $quota['utilise'] ?> / <?= $quota['limite'] ?> pts</span>
+                <span><?= $points ?> / 1000 pts</span>
             </div>
             <?php endforeach; ?>
         </div>
@@ -425,7 +434,6 @@ include ROOT_PATH . '/templates/header.php';
 let selectedProducts = [];
 let currentTransporteur = '';
 
-// Recherche produits
 document.getElementById('search-produit').addEventListener('input', function() {
     const query = this.value;
     if (query.length < 2) {
@@ -472,7 +480,6 @@ function selectProduct(code, nom, onu, categorie) {
     document.getElementById('produit-suggestions').style.display = 'none';
     document.getElementById('produit_quantite').focus();
     
-    // Stocker les infos produit
     document.getElementById('search-produit').dataset.code = code;
     document.getElementById('search-produit').dataset.nom = nom;
     document.getElementById('search-produit').dataset.onu = onu;
@@ -494,13 +501,11 @@ function addProduct() {
         return;
     }
     
-    // Vérifier si déjà ajouté
     if (selectedProducts.find(p => p.code === code)) {
         showMessage('Produit déjà ajouté', 'danger');
         return;
     }
     
-    // Calcul points ADR
     const pointsCategorie = {'1': 50, '2': 3, '3': 1, '4': 0};
     const points = (pointsCategorie[categorie] || 0) * quantite;
     
@@ -516,7 +521,6 @@ function addProduct() {
     selectedProducts.push(product);
     updateProductsTable();
     
-    // Reset form
     searchInput.value = '';
     quantiteInput.value = '';
     searchInput.removeAttribute('data-code');
@@ -553,13 +557,10 @@ function updateProductsTable() {
         </tr>
     `).join('');
     
-    // Total
     const totalPoints = selectedProducts.reduce((sum, p) => sum + p.points, 0);
     document.getElementById('total-points').textContent = totalPoints.toFixed(1);
     
     table.style.display = 'table';
-    
-    // Bouton récap
     document.getElementById('recap-btn').style.display = selectedProducts.length > 0 ? 'inline-block' : 'none';
 }
 
@@ -568,7 +569,6 @@ function removeProduct(index) {
     updateProductsTable();
 }
 
-// Soumission formulaire
 document.getElementById('declarationForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -595,20 +595,14 @@ document.getElementById('declarationForm').addEventListener('submit', function(e
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showMessage('Déclaration enregistrée (ID: ' + data.declaration_id + ')', 'success');
+            showMessage('Déclaration enregistrée (' + data.total_points + ' points)', 'success');
             currentTransporteur = transporteur;
-            updateQuotaDisplay(transporteur, data.total_points);
+            setTimeout(() => location.reload(), 2000);
         } else {
             showMessage(data.message, 'danger');
         }
     });
 });
-
-function updateQuotaDisplay(transporteur, points) {
-    // Mise à jour visuelle de la jauge (simulation)
-    // À connecter aux vraies données
-    console.log('Quota ' + transporteur + ' mis à jour: +' + points + ' points');
-}
 
 function generateRecap() {
     if (!currentTransporteur || selectedProducts.length === 0) {
@@ -616,7 +610,6 @@ function generateRecap() {
         return;
     }
     
-    // Générer récap à imprimer
     const recap = `
         <h2>RÉCAP ADR - ${currentTransporteur.toUpperCase()}</h2>
         <p><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
@@ -647,7 +640,6 @@ function showMessage(text, type) {
     }, 5000);
 }
 
-// Masquer suggestions quand on clique ailleurs
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.search-container')) {
         document.getElementById('produit-suggestions').style.display = 'none';
