@@ -109,7 +109,7 @@ function getAssignments($employeeId = null, $search = '') {
     <main class="dashboard-container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-            <a href="epi/index.php">🛡️ EPI</a>
+            <a href="./index.php">🛡️ EPI</a>
             <span>›</span>
             <span>Attributions</span>
             <?php if ($employeeId): ?>
@@ -370,7 +370,7 @@ function getAssignments($employeeId = null, $search = '') {
 
         <!-- Retour -->
         <div class="text-center mt-3">
-            <a href="epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
+            <a href="./index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
         </div>
     </main>
 
