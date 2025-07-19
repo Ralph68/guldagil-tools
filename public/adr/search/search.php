@@ -25,8 +25,8 @@ require_once ROOT_PATH . '/config/config.php';
 
 // Configuration de la recherche
 const SEARCH_CONFIG = [
-    'min_chars' => 1,
-    'max_suggestions' => 20,
+    'min_chars' => 3,
+    'max_suggestions' => 15,
     'max_results' => 100,
     'fuzzy_threshold' => 0.3
 ];
@@ -36,9 +36,9 @@ $action = $_GET['action'] ?? 'suggestions';
 $query = trim($_GET['q'] ?? '');
 $rawLimit = (int)($_GET['limit'] ?? SEARCH_CONFIG['max_suggestions']);
 $limit = max(1, min($rawLimit, SEARCH_CONFIG['max_results']));
-$category = $_GET['category'] ?? '';
-$transport = $_GET['transport'] ?? '';
-$adr_only = isset($_GET['adr_only']) && $_GET['adr_only'] === 'true';
+$classe = $_GET['classe'] ?? '';
+$groupe = $_GET['groupe'] ?? '';
+$adr_status = $_GET['adr_status'] ?? '';
 $env_danger = isset($_GET['env_danger']) && $_GET['env_danger'] === 'true';
 
 try {
@@ -48,7 +48,7 @@ try {
             break;
             
         case 'search':
-            handleFullSearch($db, $query, $limit, $category, $transport, $adr_only, $env_danger);
+            handleFullSearch($db, $query, $limit, $classe, $groupe, $adr_status, $env_danger);
             break;
             
         case 'detail':
@@ -74,7 +74,7 @@ try {
 }
 
 /**
- * Gestion des suggestions en temps réel
+ * Gestion des suggestions avec recherche codes liés
  */
 function handleSuggestions($db, $query, $limit) {
     if (strlen($query) < SEARCH_CONFIG['min_chars']) {
@@ -83,25 +83,171 @@ function handleSuggestions($db, $query, $limit) {
     }
     
     $searchQuery = "%{$query}%";
+    $exactQuery = $query . "%";
     
+    // Recherche avec codes liés (ex: SOL11 trouvera aussi SOL111)
     $sql = "SELECT DISTINCT 
                 code_produit, 
                 nom_produit,
                 numero_un,
-                categorie_transport,
-                type_contenant,
-                danger_environnement
+                classe_adr,
+                groupe_emballage,
+                danger_environnement,
+                type_contenant
             FROM gul_adr_products 
             WHERE actif = 1 
             AND (
                 code_produit LIKE ? 
+                OR code_produit LIKE ?
                 OR nom_produit LIKE ? 
                 OR numero_un LIKE ?
                 OR CONCAT('UN', numero_un) LIKE ?
+                OR nom_description_un LIKE ?
             )
             ORDER BY 
                 CASE 
-                    WHEN code_produit LIKE ? THEN 1
+                    WHEN code_produit = ? THEN 1
+                    WHEN code_produit LIKE ? THEN 2
+                    WHEN nom_produit LIKE ? THEN 3
+                    WHEN numero_un LIKE ? THEN 4
+                    ELSE 5
+                END,
+                code_produit
+            LIMIT ?";
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute([
+        $exactQuery, $searchQuery, $searchQuery, $searchQuery, $searchQuery, $searchQuery,
+        $query, $exactQuery, $exactQuery, $exactQuery,
+        $limit
+    ]);
+    
+    $suggestions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    echo json_encode([
+        'success' => true,
+        'suggestions' => $suggestions,
+        'count' => count($suggestions),
+        'query' => $query
+    ]);
+}
+
+/**
+ * Recherche complète avec nouveaux filtres
+ */
+function handleFullSearch($db, $query, $limit, $classe, $groupe, $adr_status, $env_danger) {
+    $conditions = ['actif = 1'];
+    $params = [];
+    
+    // Recherche textuelle avec codes liés
+    if (!empty($query)) {
+        $searchQuery = "%{$query}%";
+        $exactQuery = $query . "%";
+        $conditions[] = "(
+            code_produit LIKE ? 
+            OR code_produit LIKE ?
+            OR nom_produit LIKE ? 
+            OR numero_un LIKE ?
+            OR CONCAT('UN', numero_un) LIKE ?
+            OR nom_description_un LIKE ?
+            OR nom_technique LIKE ?
+        )";
+        $params = array_merge($params, [
+            $exactQuery, $searchQuery, $searchQuery, 
+            $searchQuery, $searchQuery, $searchQuery, $searchQuery
+        ]);
+    }
+    
+    // Filtre classe ADR
+    if (!empty($classe)) {
+        $conditions[] = "classe_adr = ?";
+        $params[] = $classe;
+    }
+    
+    // Filtre groupe emballage
+    if (!empty($groupe)) {
+        $conditions[] = "groupe_emballage = ?";
+        $params[] = $groupe;
+    }
+    
+    // Filtre statut ADR
+    if ($adr_status === 'adr_only') {
+        $conditions[] = "numero_un IS NOT NULL AND numero_un != ''";
+    } elseif ($adr_status === 'non_adr_only') {
+        $conditions[] = "(numero_un IS NULL OR numero_un = '')";
+    }
+    
+    // Filtre environnement
+    if ($env_danger) {
+        $conditions[] = "danger_environnement = 'oui'";
+    }
+    
+    $whereClause = implode(' AND ', $conditions);
+    
+    // Requête principale avec informations complètes
+    $sql = "SELECT 
+                p.*,
+                q.quota_max_vehicule,
+                q.quota_max_colis,
+                q.description as description_categorie,
+                CASE 
+                    WHEN p.numero_un IS NOT NULL AND p.numero_un != '' THEN 'ADR'
+                    WHEN p.corde_article_ferme = 'x' THEN 'Fermé'
+                    ELSE 'Standard'
+                END as statut_produit,
+                CASE 
+                    WHEN p.classe_adr IS NOT NULL THEN CONCAT('Classe ', p.classe_adr)
+                    ELSE NULL
+                END as classe_label
+            FROM gul_adr_products p
+            LEFT JOIN gul_adr_quotas q ON p.categorie_transport = q.categorie_transport
+            WHERE {$whereClause}
+            ORDER BY 
+                CASE 
+                    WHEN p.code_produit = ? THEN 1
+                    WHEN p.code_produit LIKE ? THEN 2
+                    WHEN p.nom_produit LIKE ? THEN 3
+                    WHEN p.numero_un LIKE ? THEN 4
+                    ELSE 5
+                END,
+                p.classe_adr,
+                p.code_produit
+            LIMIT ?";
+    
+    // Paramètres pour l'ordre + limit
+    if (!empty($query)) {
+        $orderParams = [$query, $query . '%', $query . '%', $query . '%'];
+    } else {
+        $orderParams = ['', '', '', ''];
+    }
+    
+    $allParams = array_merge($params, $orderParams, [$limit]);
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($allParams);
+    
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Ajouter URL FDS pour chaque produit
+    foreach ($products as &$product) {
+        $product['fds_url'] = "https://www.quickfds.com/fr/search/Guldagil/" . urlencode($product['code_produit']);
+    }
+    
+    // Compter le total
+    $countSql = "SELECT COUNT(*) FROM gul_adr_products p WHERE {$whereClause}";
+    $countStmt = $db->prepare($countSql);
+    $countStmt->execute($params);
+    $totalCount = $countStmt->fetchColumn();
+    
+    echo json_encode([
+        'success' => true,
+        'products' => $products,
+        'count' => count($products),
+        'total' => $totalCount,
+        'query' => $query,
+        'filters' => compact('classe', 'groupe', 'adr_status', 'env_danger')
+    ]);
+} THEN 1
                     WHEN nom_produit LIKE ? THEN 2
                     WHEN numero_un LIKE ? THEN 3
                     ELSE 4
