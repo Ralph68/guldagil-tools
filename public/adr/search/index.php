@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 /**
  * Titre: Page de recherche ADR - CORRIGÉE
  * Chemin: /public/adr/search/index.php
