@@ -886,3 +886,101 @@
     }
 
 })();
+/**
+ * Gestionnaire JavaScript pour breadcrumb sticky optimisé
+ * Maintient le fil d'ariane visible même quand le header se cache
+ */
+
+class BreadcrumbStickyManager {
+    constructor() {
+        this.breadcrumbNav = document.querySelector('.breadcrumb-nav.sticky');
+        this.lastScrollY = window.scrollY;
+        this.headerHeight = 120; // Hauteur approximative du header
+        this.isHeaderHidden = false;
+        
+        if (this.breadcrumbNav) {
+            this.init();
+        }
+    }
+
+    init() {
+        this.setupScrollListener();
+        this.updateStickyPosition();
+    }
+
+    setupScrollListener() {
+        let scrollTimeout;
+        
+        window.addEventListener('scroll', () => {
+            if (!scrollTimeout) {
+                scrollTimeout = setTimeout(() => {
+                    this.handleScroll();
+                    scrollTimeout = null;
+                }, 16); // ~60fps
+            }
+        });
+    }
+
+    handleScroll() {
+        const currentScrollY = window.scrollY;
+        const header = document.querySelector('.portal-header');
+        
+        // Détection si le header est masqué
+        if (header) {
+            const headerRect = header.getBoundingClientRect();
+            this.isHeaderHidden = headerRect.bottom <= 0;
+        }
+        
+        // Mise à jour de la position sticky du breadcrumb
+        this.updateStickyPosition();
+        
+        // Ajout de la classe 'scrolled' pour les styles
+        if (currentScrollY > 50) {
+            this.breadcrumbNav.classList.add('scrolled');
+        } else {
+            this.breadcrumbNav.classList.remove('scrolled');
+        }
+        
+        this.lastScrollY = currentScrollY;
+    }
+
+    updateStickyPosition() {
+        if (!this.breadcrumbNav) return;
+        
+        // Si le header est masqué, le breadcrumb colle en haut
+        if (this.isHeaderHidden) {
+            this.breadcrumbNav.style.top = '0px';
+        } else {
+            // Sinon, il se positionne sous le header modules (56px)
+            this.breadcrumbNav.style.top = '56px';
+        }
+    }
+}
+
+// Extension de la classe HeaderManager existante
+if (typeof HeaderManager !== 'undefined') {
+    const originalSetupScrollBehavior = HeaderManager.prototype.setupScrollBehavior;
+    
+    HeaderManager.prototype.setupScrollBehavior = function() {
+        // Appel de la méthode originale
+        if (originalSetupScrollBehavior) {
+            originalSetupScrollBehavior.call(this);
+        }
+        
+        // Ajout du gestionnaire breadcrumb
+        this.breadcrumbManager = new BreadcrumbStickyManager();
+    };
+}
+
+// Initialisation automatique
+document.addEventListener('DOMContentLoaded', () => {
+    // Si HeaderManager n'existe pas encore, initialiser directement
+    if (typeof HeaderManager === 'undefined') {
+        new BreadcrumbStickyManager();
+    }
+});
+
+// Export pour réutilisation
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { BreadcrumbStickyManager };
+}
