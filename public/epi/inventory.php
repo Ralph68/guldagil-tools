@@ -326,7 +326,7 @@ try {
         </div>
     </main>
 
-    <script src="epi/assets/js/epi.js"></script>
+    <script src="assets/js/epi.js"></script>
     <script>
         // Script spécifique à l'inventaire
         document.addEventListener('DOMContentLoaded', function() {
