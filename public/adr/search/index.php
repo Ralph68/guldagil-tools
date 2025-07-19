@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Page de recherche ADR
+ * Titre: Page de recherche ADR - CORRIGÉE
  * Chemin: /public/adr/search/index.php
  * Version: 0.5 beta + build auto
  */
@@ -45,15 +45,6 @@ $nav_info = 'Recherche de produits ADR';
 
 // Paramètres de recherche
 $query = $_GET['q'] ?? '';
-$category = $_GET['category'] ?? '';
-$transport_type = $_GET['transport'] ?? '';
-
-// Configuration de recherche
-$search_config = [
-    'min_chars' => 3,
-    'max_results' => 50,
-    'api_endpoint' => '/adr/search/search.php'
-];
 
 // Inclure header
 $header_path = ROOT_PATH . '/templates/header.php';
@@ -68,7 +59,6 @@ if (file_exists($header_path)) {
 }
 ?>
 
-<!-- Container principal -->
 <main class="adr-container search-page">
     
     <!-- Header de recherche -->
@@ -79,7 +69,7 @@ if (file_exists($header_path)) {
         </div>
     </section>
 
-    <!-- Zone de recherche avancée -->
+    <!-- Zone de recherche -->
     <section class="search-section advanced">
         <div class="search-container">
             <!-- Barre de recherche principale -->
@@ -97,7 +87,7 @@ if (file_exists($header_path)) {
                 </button>
             </div>
 
-            <!-- Suggestions en temps réel -->
+            <!-- Suggestions -->
             <div id="search-suggestions" class="search-suggestions" style="display: none;"></div>
             
             <!-- Message d'aide pour 3 caractères -->
@@ -167,15 +157,11 @@ if (file_exists($header_path)) {
         </div>
         
         <div id="results-content" class="results-content">
-            <!-- Les résultats seront chargés ici -->
-        </div>
-        
-        <div id="results-pagination" class="results-pagination" style="display: none;">
-            <!-- Pagination sera générée ici -->
+            <!-- Résultats chargés ici -->
         </div>
     </section>
 
-    <!-- Zone de produits populaires -->
+    <!-- Produits populaires -->
     <section id="popular-products" class="popular-section">
         <h2>🔥 Produits populaires</h2>
         <div id="popular-content" class="popular-content">
@@ -209,26 +195,25 @@ if (file_exists($header_path)) {
 
 </main>
 
-<!-- Configuration JavaScript -->
 <script>
-// Configuration pour le module de recherche
+// Configuration globale
 window.ADR_SEARCH_CONFIG = {
-    apiEndpoint: '<?= $search_config['api_endpoint'] ?>',
-    minChars: <?= $search_config['min_chars'] ?>,
-    maxResults: <?= $search_config['max_results'] ?>,
+    apiEndpoint: '/adr/search/search.php',
+    minChars: 3,
+    maxResults: 50,
     initialQuery: '<?= addslashes($query) ?>',
     debug: <?= defined('DEBUG') && DEBUG ? 'true' : 'false' ?>
 };
 
-// Fonctions globales
+// Variables globales
+let searchTimeout = null;
+let selectedIndex = -1;
+
+// Fonctions principales
 function performSearch() {
     const query = document.getElementById('product-search').value.trim();
     if (query.length >= window.ADR_SEARCH_CONFIG.minChars) {
-        if (window.ADR && window.ADR.Search) {
-            window.ADR.Search.performFullSearch(query);
-        } else {
-            console.error('Module de recherche ADR non disponible');
-        }
+        fullSearch(query);
     }
 }
 
@@ -237,58 +222,187 @@ function clearSearch() {
     document.getElementById('search-results').style.display = 'none';
     document.getElementById('popular-products').style.display = 'block';
     
-    // Réinitialiser les filtres
+    // Réinitialiser filtres
     document.getElementById('classe-filter').value = '';
     document.getElementById('groupe-filter').value = '';
     document.getElementById('adr-filter').value = '';
     document.getElementById('env-danger').checked = false;
+    
+    hideSearchHint();
 }
 
 function exportResults() {
-    if (window.ADR && window.ADR.Search) {
-        window.ADR.Search.exportResults();
-    } else {
-        alert('Fonction d\'export non disponible');
-    }
+    alert('Fonction export à implémenter');
 }
 
-// Initialisation au chargement
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔍 Page de recherche ADR chargée');
+// Gestion de la saisie
+function handleSearchInput(query) {
+    clearTimeout(searchTimeout);
     
-    // Charger les produits populaires
-    loadPopularProducts();
-    
-    // Si une recherche est définie dans l'URL, l'exécuter
-    if (window.ADR_SEARCH_CONFIG.initialQuery) {
-        setTimeout(() => performSearch(), 500);
+    if (query.length > 0 && query.length < window.ADR_SEARCH_CONFIG.minChars) {
+        showSearchHint();
+        hideSuggestions();
+        return;
+    } else {
+        hideSearchHint();
     }
     
-    // Gestionnaire de touches pour la recherche
-    document.getElementById('product-search').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            performSearch();
+    if (query.length < window.ADR_SEARCH_CONFIG.minChars) {
+        hideSuggestions();
+        document.getElementById('search-results').style.display = 'none';
+        document.getElementById('popular-products').style.display = 'block';
+        return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+        fetchSuggestions(query);
+    }, 300);
+}
+
+// API Suggestions
+function fetchSuggestions(query) {
+    const url = window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=suggestions&q=' + encodeURIComponent(query) + '&limit=10';
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displaySuggestions(data.suggestions);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur suggestions:', error);
+        });
+}
+
+// Affichage suggestions
+function displaySuggestions(suggestions) {
+    const container = document.getElementById('search-suggestions');
+    if (!container) return;
+    
+    if (!suggestions || suggestions.length === 0) {
+        hideSuggestions();
+        return;
+    }
+    
+    let html = '';
+    suggestions.forEach((product, index) => {
+        html += '<div class="suggestion-item" onclick="selectProduct(\'' + product.code_produit + '\')">';
+        html += '<div class="suggestion-content">';
+        html += '<div class="suggestion-name">' + escapeHtml(product.nom_produit || 'Produit sans nom') + '</div>';
+        html += '<div class="suggestion-code">Code: ' + product.code_produit + '</div>';
+        html += '<div class="suggestion-badges">';
+        if (product.numero_un) {
+            html += '<span class="badge badge-adr">UN' + product.numero_un + '</span>';
         }
+        if (product.danger_environnement === 'oui') {
+            html += '<span class="badge badge-env">ENV</span>';
+        }
+        if (product.classe_adr) {
+            html += '<span class="badge badge-classe">Classe ' + product.classe_adr + '</span>';
+        }
+        html += '</div></div></div>';
     });
     
-    // Gestionnaires pour les filtres
-    ['classe-filter', 'groupe-filter', 'adr-filter', 'env-danger'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('change', function() {
-                if (document.getElementById('product-search').value) {
-                    performSearch();
-                }
-            });
-        }
-    });
-});
+    container.innerHTML = html;
+    showSuggestions();
+}
 
+// Recherche complète
+function fullSearch(query) {
+    document.getElementById('popular-products').style.display = 'none';
+    
+    // Construire URL avec filtres
+    let url = window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=search&q=' + encodeURIComponent(query) + '&limit=' + window.ADR_SEARCH_CONFIG.maxResults;
+    
+    const classe = document.getElementById('classe-filter').value;
+    const groupe = document.getElementById('groupe-filter').value;
+    const adrStatus = document.getElementById('adr-filter').value;
+    const envDanger = document.getElementById('env-danger').checked;
+    
+    if (classe) url += '&classe=' + encodeURIComponent(classe);
+    if (groupe) url += '&groupe=' + encodeURIComponent(groupe);
+    if (adrStatus) url += '&adr_status=' + encodeURIComponent(adrStatus);
+    if (envDanger) url += '&env_danger=true';
+    
+    // Afficher loading
+    showLoading();
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayResults(data.products, data.total, query);
+            } else {
+                showError('Erreur de recherche: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur recherche:', error);
+            showError('Erreur de connexion');
+        });
+}
+
+// Affichage résultats
+function displayResults(products, total, query) {
+    const resultsContent = document.getElementById('results-content');
+    const resultsTitle = document.getElementById('results-title');
+    
+    if (resultsTitle) {
+        const count = products.length;
+        const totalText = total > count ? ' (' + total + ' au total)' : '';
+        resultsTitle.textContent = count + ' résultat' + (count > 1 ? 's' : '') + ' pour "' + query + '"' + totalText;
+    }
+    
+    if (products.length === 0) {
+        resultsContent.innerHTML = '<div class="no-results"><p>Aucun produit trouvé pour "' + escapeHtml(query) + '"</p></div>';
+    } else {
+        let html = '';
+        products.forEach(product => {
+            html += '<div class="result-item">';
+            html += '<div class="result-header">';
+            html += '<span class="result-code">' + product.code_produit + '</span>';
+            html += '<div class="result-badges">';
+            if (product.numero_un) {
+                html += '<span class="badge badge-adr">UN' + product.numero_un + '</span>';
+            }
+            if (product.danger_environnement === 'oui') {
+                html += '<span class="badge badge-env">ENV</span>';
+            }
+            if (product.classe_adr) {
+                html += '<span class="badge badge-classe">Classe ' + product.classe_adr + '</span>';
+            }
+            html += '</div></div>';
+            html += '<div class="result-name">' + escapeHtml(product.nom_produit || 'Produit sans nom') + '</div>';
+            html += '<div class="result-details">';
+            if (product.nom_description_un) {
+                html += '<span class="result-label">Description UN:</span><span>' + escapeHtml(product.nom_description_un) + '</span>';
+            }
+            if (product.type_contenant) {
+                html += '<span class="result-label">Contenant:</span><span>' + escapeHtml(product.type_contenant) + '</span>';
+            }
+            html += '</div>';
+            html += '<div class="result-actions">';
+            html += '<a href="https://www.quickfds.com/fr/search/Guldagil/' + encodeURIComponent(product.code_produit) + '" target="_blank" class="fds-link">📄 Fiche de sécurité</a>';
+            html += '</div></div>';
+        });
+        resultsContent.innerHTML = html;
+    }
+    
+    showResults();
+}
+
+// Chargement produits populaires
 function loadPopularProducts() {
     const popularContent = document.getElementById('popular-content');
     
     fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=popular&limit=10')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur HTTP: ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success && data.products) {
                 displayPopularProducts(data.products);
@@ -322,13 +436,13 @@ function displayPopularProducts(products) {
             html += '<span class="badge badge-env">ENV</span>';
         }
         html += '</div>';
-        html += '<div class="product-name">' + (product.nom_produit || 'Produit sans nom') + '</div>';
+        html += '<div class="product-name">' + escapeHtml(product.nom_produit || 'Produit sans nom') + '</div>';
         html += '<div class="product-details">';
         if (product.classe_adr) {
             html += 'Classe ' + product.classe_adr;
         }
         if (product.type_contenant) {
-            html += ' • ' + product.type_contenant;
+            html += ' • ' + escapeHtml(product.type_contenant);
         }
         html += '</div></div>';
     });
@@ -340,215 +454,99 @@ function selectProduct(code) {
     document.getElementById('product-search').value = code;
     performSearch();
 }
-</script> 'selected' : '' ?>>Catégorie 3</option>
-                            </select>
-                        </div>
-                        
-                        <div class="filter-row">
-                            <label for="transport-filter">Type de transport :</label>
-                            <select id="transport-filter" name="transport">
-                                <option value="">Tous les transports</option>
-                                <option value="heppner" <?= $transport_type === 'heppner' ? 'selected' : '' ?>>Heppner</option>
-                                <option value="xpo" <?= $transport_type === 'xpo' ? 'selected' : '' ?>>XPO</option>
-                                <option value="kn" <?= $transport_type === 'kn' ? 'selected' : '' ?>>Kuehne + Nagel</option>
-                            </select>
-                        </div>
 
-                        <div class="filter-row">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="adr-only" name="adr_only">
-                                Produits ADR uniquement
-                            </label>
-                        </div>
-
-                        <div class="filter-row">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="env-danger" name="env_danger">
-                                Dangereux pour l'environnement
-                            </label>
-                        </div>
-                    </div>
-                </details>
-            </div>
-        </div>
-    </section>
-
-    <!-- Zone de résultats -->
-    <section id="search-results" class="results-section" style="display: none;">
-        <div class="results-header">
-            <h2 id="results-title">Résultats de recherche</h2>
-            <div class="results-actions">
-                <button class="btn-export" onclick="exportResults()">📋 Exporter</button>
-                <button class="btn-clear" onclick="clearSearch()">🗑️ Effacer</button>
-            </div>
-        </div>
-        
-        <div id="results-content" class="results-content">
-            <!-- Les résultats seront chargés ici -->
-        </div>
-        
-        <div id="results-pagination" class="results-pagination" style="display: none;">
-            <!-- Pagination sera générée ici -->
-        </div>
-    </section>
-
-    <!-- Zone de produits populaires -->
-    <section id="popular-products" class="popular-section">
-        <h2>🔥 Produits populaires</h2>
-        <div id="popular-content" class="popular-content">
-            <div class="loading-spinner">Chargement des produits populaires...</div>
-        </div>
-    </section>
-
-    <!-- Instructions -->
-    <section class="help-section">
-        <details>
-            <summary>💡 Aide à la recherche</summary>
-            <div class="help-content">
-                <h3>Comment rechercher efficacement :</h3>
-                <ul>
-                    <li><strong>Code produit :</strong> Tapez le code exact (ex: GUL-001)</li>
-                    <li><strong>Nom produit :</strong> Recherche partielle possible (ex: "chlore")</li>
-                    <li><strong>Numéro UN :</strong> Format UN suivi de 4 chiffres (ex: UN1005)</li>
-                    <li><strong>Mots-clés :</strong> Plusieurs mots séparés par des espaces</li>
-                </ul>
-                
-                <h3>Filtres disponibles :</h3>
-                <ul>
-                    <li><strong>Catégorie :</strong> Filtre par catégorie de transport ADR</li>
-                    <li><strong>Transport :</strong> Filtre par transporteur disponible</li>
-                    <li><strong>ADR uniquement :</strong> Masque les produits non-ADR</li>
-                    <li><strong>Environnement :</strong> Produits dangereux pour l'environnement</li>
-                </ul>
-            </div>
-        </details>
-    </section>
-
-</main>
-
-<!-- Configuration JavaScript -->
-<script>
-// Configuration pour le module de recherche
-window.ADR_SEARCH_CONFIG = {
-    apiEndpoint: '<?= $search_config['api_endpoint'] ?>',
-    minChars: <?= $search_config['min_chars'] ?>,
-    maxResults: <?= $search_config['max_results'] ?>,
-    initialQuery: '<?= addslashes($query) ?>',
-    debug: <?= defined('DEBUG') && DEBUG ? 'true' : 'false' ?> 'true' : 'false' ?>
-};
-
-// Fonctions globales
-function performSearch() {
-    const query = document.getElementById('product-search').value.trim();
-    if (query.length >= window.ADR_SEARCH_CONFIG.minChars) {
-        if (window.ADR && window.ADR.Search) {
-            window.ADR.Search.performFullSearch(query);
-        } else {
-            console.error('Module de recherche ADR non disponible');
-        }
-    }
+// Utilitaires affichage
+function showSuggestions() {
+    document.getElementById('search-suggestions').style.display = 'block';
 }
 
-function clearSearch() {
-    document.getElementById('product-search').value = '';
-    document.getElementById('search-results').style.display = 'none';
-    document.getElementById('popular-products').style.display = 'block';
-    
-    // Réinitialiser les filtres
-    document.getElementById('category-filter').value = '';
-    document.getElementById('transport-filter').value = '';
-    document.getElementById('adr-only').checked = false;
-    document.getElementById('env-danger').checked = false;
+function hideSuggestions() {
+    document.getElementById('search-suggestions').style.display = 'none';
 }
 
-function exportResults() {
-    if (window.ADR && window.ADR.Search) {
-        window.ADR.Search.exportResults();
-    } else {
-        alert('Fonction d\'export non disponible');
-    }
+function showResults() {
+    document.getElementById('search-results').style.display = 'block';
 }
 
-// Initialisation au chargement
+function showSearchHint() {
+    document.getElementById('search-hint').classList.add('show');
+}
+
+function hideSearchHint() {
+    document.getElementById('search-hint').classList.remove('show');
+}
+
+function showLoading() {
+    const resultsContent = document.getElementById('results-content');
+    resultsContent.innerHTML = '<div class="loading-spinner"><p>🔍 Recherche en cours...</p></div>';
+    showResults();
+}
+
+function showError(message) {
+    const resultsContent = document.getElementById('results-content');
+    resultsContent.innerHTML = '<div class="error-message"><p>❌ ' + escapeHtml(message) + '</p></div>';
+    showResults();
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initialisation
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔍 Page de recherche ADR chargée');
     
-    // Charger les produits populaires
+    // Charger produits populaires
     loadPopularProducts();
     
-    // Si une recherche est définie dans l'URL, l'exécuter
-    if (window.ADR_SEARCH_CONFIG.initialQuery) {
-        setTimeout(() => performSearch(), 500);
+    // Gestionnaire recherche
+    const searchInput = document.getElementById('product-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            handleSearchInput(e.target.value);
+        });
+        
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+        
+        searchInput.addEventListener('focus', function() {
+            if (this.value.length >= window.ADR_SEARCH_CONFIG.minChars) {
+                showSuggestions();
+            }
+        });
     }
     
-    // Gestionnaire de touches pour la recherche
-    document.getElementById('product-search').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            performSearch();
-        }
-    });
-    
-    // Gestionnaires pour les filtres
-    ['category-filter', 'transport-filter', 'adr-only', 'env-danger'].forEach(id => {
+    // Gestionnaires filtres
+    ['classe-filter', 'groupe-filter', 'adr-filter', 'env-danger'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.addEventListener('change', function() {
-                if (document.getElementById('product-search').value) {
+                const query = document.getElementById('product-search').value;
+                if (query && query.length >= window.ADR_SEARCH_CONFIG.minChars) {
                     performSearch();
                 }
             });
         }
     });
-});
-
-function loadPopularProducts() {
-    const popularContent = document.getElementById('popular-content');
     
-    fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=popular&limit=10')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.products) {
-                displayPopularProducts(data.products);
-            } else {
-                popularContent.innerHTML = '<p class="no-results">Aucun produit populaire disponible</p>';
-            }
-        })
-        .catch(error => {
-            console.error('Erreur chargement produits populaires:', error);
-            popularContent.innerHTML = '<p class="error-message">Erreur de chargement</p>';
-        });
-}
-
-function displayPopularProducts(products) {
-    const popularContent = document.getElementById('popular-content');
+    // Fermer suggestions au clic extérieur
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-container')) {
+            hideSuggestions();
+        }
+    });
     
-    if (!products || products.length === 0) {
-        popularContent.innerHTML = '<p class="no-results">Aucun produit populaire</p>';
-        return;
+    // Recherche initiale si query dans URL
+    if (window.ADR_SEARCH_CONFIG.initialQuery) {
+        setTimeout(() => performSearch(), 500);
     }
-    
-    const html = products.map(product => `
-        <div class="popular-item" onclick="selectProduct('${product.code_produit}')">
-            <div class="product-header">
-                <span class="product-code">${product.code_produit}</span>
-                ${product.numero_un ? `<span class="badge badge-adr">UN${product.numero_un}</span>` : ''}
-                ${product.danger_environnement === 'oui' ? '<span class="badge badge-env">ENV</span>' : ''}
-            </div>
-            <div class="product-name">${product.nom_produit || 'Produit sans nom'}</div>
-            <div class="product-details">
-                ${product.categorie_transport ? `Cat. ${product.categorie_transport}` : ''} 
-                ${product.type_contenant ? ` • ${product.type_contenant}` : ''}
-            </div>
-        </div>
-    `).join('');
-    
-    popularContent.innerHTML = html;
-}
-
-function selectProduct(code) {
-    document.getElementById('product-search').value = code;
-    performSearch();
-}
+});
 </script>
 
 <?php
