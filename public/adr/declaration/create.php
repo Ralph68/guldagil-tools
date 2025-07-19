@@ -1,11 +1,10 @@
 <?php
 /**
- * Titre: Formulaire déclaration ADR - Version finale
+ * Titre: Formulaire déclaration ADR - Version simplifiée
  * Chemin: /public/adr/declaration/create.php
  * Version: 0.5 beta + build auto
  */
 
-// Gestion erreurs simple
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -34,20 +33,13 @@ $transporteurs = [
     'heppner' => 'Heppner'
 ];
 
-// Calcul quotas du jour
+// Calcul quotas du jour - table existante
 $quotas = ['xpo' => 0, 'heppner' => 0];
 try {
     $stmt = $db->query("
-        SELECT transporteur, 
-               SUM(CASE 
-                   WHEN p.categorie_transport = '1' THEN d.quantite_declaree * 50
-                   WHEN p.categorie_transport = '2' THEN d.quantite_declaree * 3
-                   WHEN p.categorie_transport = '3' THEN d.quantite_declaree * 1
-                   ELSE 0
-               END) as total_points
-        FROM gul_adr_declarations d
-        JOIN gul_adr_products p ON d.code_produit = p.code_produit
-        WHERE d.date_declaration = CURDATE()
+        SELECT transporteur, SUM(total_points_adr) as total_points
+        FROM gul_adr_expeditions 
+        WHERE DATE(date_creation) = CURDATE() AND statut != 'brouillon'
         GROUP BY transporteur
     ");
     
@@ -86,41 +78,147 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_X_REQUESTED_W
             
             echo json_encode(['success' => true, 'products' => $products]);
             
+        } elseif ($action === 'search_destinataires') {
+            $query = $_POST['query'] ?? '';
+            if (strlen($query) < 2) {
+                echo json_encode(['success' => false, 'message' => 'Requête trop courte']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("
+                SELECT nom, adresse_complete, code_postal, ville, pays, telephone, email
+                FROM gul_adr_destinataires_frequents 
+                WHERE nom LIKE ? OR ville LIKE ? OR code_postal LIKE ?
+                ORDER BY frequence_utilisation DESC, derniere_utilisation DESC
+                LIMIT 10
+            ");
+            $pattern = '%' . $query . '%';
+            $stmt->execute([$pattern, $pattern, $pattern]);
+            $destinataires = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'destinataires' => $destinataires]);
+            
         } elseif ($action === 'save_declaration') {
             $transporteur = $_POST['transporteur'] ?? '';
             $produits = json_decode($_POST['produits'] ?? '[]', true);
+            $destinataire = json_decode($_POST['destinataire'] ?? '{}', true);
+            $expedition = json_decode($_POST['expedition'] ?? '{}', true);
             
-            if (empty($transporteur) || empty($produits)) {
+            if (empty($transporteur) || empty($produits) || empty($destinataire['nom'])) {
                 echo json_encode(['success' => false, 'message' => 'Données incomplètes']);
                 exit;
             }
             
-            $total_points = 0;
-            foreach ($produits as $produit) {
-                $total_points += $produit['points'];
+            $db->beginTransaction();
+            
+            try {
+                // Calcul total points
+                $total_points = 0;
+                foreach ($produits as $produit) {
+                    $quantite = (float)$produit['quantite'];
+                    $categorie = $produit['categorie'] ?? '3';
+                    
+                    // Calcul points selon catégorie
+                    switch ($categorie) {
+                        case '1': $points = $quantite * 50; break;
+                        case '2': $points = $quantite * 3; break;
+                        case '3': $points = $quantite * 1; break;
+                        default: $points = 0;
+                    }
+                    $total_points += $points;
+                }
+                
+                // 1. Créer l'expédition - numéro auto-généré par trigger
+                $stmt = $db->prepare("
+                    INSERT INTO gul_adr_expeditions 
+                    (transporteur, destinataire_nom, destinataire_adresse, destinataire_code_postal, 
+                     destinataire_ville, destinataire_pays, destinataire_telephone, destinataire_email,
+                     date_expedition, total_points_adr, statut, cree_par)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, 'valide', ?)
+                ");
+                
+                $stmt->execute([
+                    $transporteur,
+                    $destinataire['nom'],
+                    $destinataire['adresse'] ?? '',
+                    $destinataire['code_postal'],
+                    $destinataire['ville'],
+                    $destinataire['pays'] ?? 'France',
+                    $destinataire['telephone'] ?? null,
+                    $destinataire['email'] ?? null,
+                    $total_points,
+                    $_SESSION['user']['username'] ?? 'unknown'
+                ]);
+                
+                $expedition_id = $db->lastInsertId();
+                
+                // 2. Ajouter les lignes produits
+                $stmt_ligne = $db->prepare("
+                    INSERT INTO gul_adr_expedition_lignes 
+                    (expedition_id, code_produit, quantite_declaree, unite_quantite, points_adr_calcules, ordre_ligne)
+                    VALUES (?, ?, ?, 'kg', ?, ?)
+                ");
+                
+                foreach ($produits as $index => $produit) {
+                    $quantite = (float)$produit['quantite'];
+                    $categorie = $produit['categorie'] ?? '3';
+                    
+                    switch ($categorie) {
+                        case '1': $points = $quantite * 50; break;
+                        case '2': $points = $quantite * 3; break;
+                        case '3': $points = $quantite * 1; break;
+                        default: $points = 0;
+                    }
+                    
+                    $stmt_ligne->execute([
+                        $expedition_id,
+                        $produit['code'],
+                        $quantite,
+                        $points,
+                        $index + 1
+                    ]);
+                }
+                
+                // 3. Mettre à jour destinataire fréquent
+                $stmt_dest = $db->prepare("
+                    INSERT INTO gul_adr_destinataires_frequents 
+                    (nom, adresse_complete, code_postal, ville, pays, telephone, email, frequence_utilisation, cree_par)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    ON DUPLICATE KEY UPDATE 
+                    frequence_utilisation = frequence_utilisation + 1,
+                    derniere_utilisation = CURRENT_TIMESTAMP
+                ");
+                
+                $stmt_dest->execute([
+                    $destinataire['nom'],
+                    $destinataire['adresse'] ?? '',
+                    $destinataire['code_postal'],
+                    $destinataire['ville'],
+                    $destinataire['pays'] ?? 'France',
+                    $destinataire['telephone'] ?? null,
+                    $destinataire['email'] ?? null,
+                    $_SESSION['user']['username'] ?? 'unknown'
+                ]);
+                
+                // 4. Récupérer le numéro généré
+                $stmt_num = $db->prepare("SELECT numero_expedition FROM gul_adr_expeditions WHERE id = ?");
+                $stmt_num->execute([$expedition_id]);
+                $numero_expedition = $stmt_num->fetchColumn();
+                
+                $db->commit();
+                
+                echo json_encode([
+                    'success' => true,
+                    'expedition_id' => $expedition_id,
+                    'numero_expedition' => $numero_expedition,
+                    'total_points' => $total_points,
+                    'message' => "Déclaration $numero_expedition créée avec succès"
+                ]);
+                
+            } catch (Exception $e) {
+                $db->rollback();
+                throw $e;
             }
-            
-            // Sauvegarde avec nouvelles colonnes
-            $stmt = $db->prepare("
-                INSERT INTO gul_adr_declarations 
-                (transporteur, total_points, produits_json, date_declaration, 
-                 code_produit, quantite_declaree, date_expedition, cree_par)
-                VALUES (?, ?, ?, CURDATE(), 'MULTIPLE', ?, CURDATE(), ?)
-            ");
-            
-            $stmt->execute([
-                $transporteur,
-                $total_points,
-                json_encode($produits),
-                count($produits),
-                $_SESSION['user']['username'] ?? 'unknown'
-            ]);
-            
-            echo json_encode([
-                'success' => true,
-                'total_points' => $total_points,
-                'message' => "Déclaration enregistrée"
-            ]);
             
         } else {
             echo json_encode(['success' => false, 'message' => 'Action inconnue']);
@@ -137,7 +235,7 @@ include ROOT_PATH . '/templates/header.php';
 
 <style>
 .declaration-container {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
 }
@@ -179,12 +277,13 @@ include ROOT_PATH . '/templates/header.php';
     transition: width 0.3s ease;
 }
 
-.quota-fill.warning {
-    background: #ffc107;
-}
+.quota-fill.warning { background: #ffc107; }
+.quota-fill.danger { background: #dc3545; }
 
-.quota-fill.danger {
-    background: #dc3545;
+.form-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
 }
 
 .form-section {
@@ -195,15 +294,18 @@ include ROOT_PATH . '/templates/header.php';
     margin-bottom: 2rem;
 }
 
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
+.form-section.full-width {
+    grid-column: 1 / -1;
 }
 
 .form-group {
     margin-bottom: 1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
 }
 
 .form-control {
@@ -276,20 +378,9 @@ include ROOT_PATH . '/templates/header.php';
     display: inline-block;
 }
 
-.btn-primary {
-    background: #ff6b35;
-    color: white;
-}
-
-.btn-success {
-    background: #28a745;
-    color: white;
-}
-
-.btn-secondary {
-    background: #6c757d;
-    color: white;
-}
+.btn-primary { background: #ff6b35; color: white; }
+.btn-success { background: #28a745; color: white; }
+.btn-secondary { background: #6c757d; color: white; }
 
 .alert {
     padding: 1rem;
@@ -297,37 +388,21 @@ include ROOT_PATH . '/templates/header.php';
     margin: 1rem 0;
 }
 
-.alert-success {
-    background: #d4edda;
-    color: #155724;
-}
-
-.alert-danger {
-    background: #f8d7da;
-    color: #721c24;
-}
+.alert-success { background: #d4edda; color: #155724; }
+.alert-danger { background: #f8d7da; color: #721c24; }
 
 @media (max-width: 768px) {
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .quota-item {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .quota-bar {
-        width: 100%;
-        margin: 0.5rem 0;
-    }
+    .form-sections { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .quota-item { flex-direction: column; text-align: center; }
+    .quota-bar { width: 100%; margin: 0.5rem 0; }
 }
 </style>
 
 <main class="main-content">
     <div class="declaration-container">
         
-        <!-- Quotas en temps réel -->
+        <!-- Quotas -->
         <div class="quotas-display">
             <h3>⚖️ Quotas ADR du jour</h3>
             <?php foreach ($quotas as $trans => $points): ?>
@@ -349,38 +424,76 @@ include ROOT_PATH . '/templates/header.php';
         <!-- Formulaire -->
         <form id="declarationForm">
             
-            <!-- Transporteur -->
-            <div class="form-section">
-                <h2>🚛 Transporteur</h2>
-                <div class="form-group">
-                    <label for="transporteur">Choisir le transporteur *</label>
-                    <select id="transporteur" name="transporteur" class="form-control" required>
-                        <option value="">-- Sélectionner --</option>
-                        <?php foreach ($transporteurs as $code => $nom): ?>
-                        <option value="<?= $code ?>"><?= htmlspecialchars($nom) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+            <div class="form-sections">
+                
+                <!-- Transporteur -->
+                <div class="form-section">
+                    <h2>🚛 Transporteur</h2>
+                    <div class="form-group">
+                        <label for="transporteur">Transporteur *</label>
+                        <select id="transporteur" name="transporteur" class="form-control" required>
+                            <option value="">-- Sélectionner --</option>
+                            <?php foreach ($transporteurs as $code => $nom): ?>
+                            <option value="<?= $code ?>"><?= htmlspecialchars($nom) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Destinataire -->
+                <div class="form-section">
+                    <h2>📍 Destinataire</h2>
+                    
+                    <div class="form-group">
+                        <label for="search-destinataire">Rechercher</label>
+                        <div class="search-container">
+                            <input type="text" id="search-destinataire" class="form-control"
+                                   placeholder="Nom ou ville..." autocomplete="off">
+                            <div id="destinataire-suggestions" class="suggestions"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dest_nom">Nom / Raison sociale *</label>
+                        <input type="text" id="dest_nom" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dest_cp">Code postal *</label>
+                            <input type="text" id="dest_cp" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dest_ville">Ville *</label>
+                            <input type="text" id="dest_ville" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dest_adresse">Adresse</label>
+                        <textarea id="dest_adresse" class="form-control" rows="2"></textarea>
+                    </div>
                 </div>
             </div>
 
-            <!-- Ajout produits -->
-            <div class="form-section">
+            <!-- Produits -->
+            <div class="form-section full-width">
                 <h2>⚠️ Produits ADR</h2>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="search-produit">Rechercher un produit</label>
+                        <label for="search-produit">Rechercher produit</label>
                         <div class="search-container">
                             <input type="text" id="search-produit" class="form-control"
-                                   placeholder="Code ou nom du produit..." autocomplete="off">
+                                   placeholder="Code ou nom..." autocomplete="off">
                             <div id="produit-suggestions" class="suggestions"></div>
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="produit_quantite">Quantité</label>
+                        <label for="produit_quantite">Quantité (kg)</label>
                         <input type="number" id="produit_quantite" class="form-control" 
-                               step="0.1" min="0" placeholder="Ex: 25.5">
+                               step="0.1" min="0">
                     </div>
                 </div>
                 
@@ -388,7 +501,6 @@ include ROOT_PATH . '/templates/header.php';
                     ➕ Ajouter produit
                 </button>
                 
-                <!-- Tableau des produits -->
                 <table id="products-table" class="products-table" style="display: none;">
                     <thead>
                         <tr>
@@ -413,27 +525,46 @@ include ROOT_PATH . '/templates/header.php';
             </div>
 
             <!-- Actions -->
-            <div class="form-section">
+            <div class="form-section full-width">
                 <button type="submit" class="btn btn-success">
                     💾 Enregistrer déclaration
-                </button>
-                
-                <button type="button" onclick="generateRecap()" class="btn btn-secondary" 
-                        id="recap-btn" style="display: none;">
-                    🖨️ Récap pour chauffeur
                 </button>
             </div>
         </form>
         
-        <!-- Messages -->
         <div id="messages"></div>
     </div>
 </main>
 
 <script>
 let selectedProducts = [];
-let currentTransporteur = '';
+let selectedProduct = null;
 
+// Recherche destinataires
+document.getElementById('search-destinataire').addEventListener('input', function() {
+    const query = this.value;
+    if (query.length < 2) {
+        document.getElementById('destinataire-suggestions').style.display = 'none';
+        return;
+    }
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: 'action=search_destinataires&query=' + encodeURIComponent(query)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showDestinatairesSuggestions(data.destinataires);
+        }
+    });
+});
+
+// Recherche produits
 document.getElementById('search-produit').addEventListener('input', function() {
     const query = this.value;
     if (query.length < 2) {
@@ -457,6 +588,32 @@ document.getElementById('search-produit').addEventListener('input', function() {
     });
 });
 
+function showDestinatairesSuggestions(destinataires) {
+    const container = document.getElementById('destinataire-suggestions');
+    
+    if (destinataires.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.innerHTML = destinataires.map(dest => `
+        <div class="suggestion-item" onclick="selectDestinataire(${JSON.stringify(dest).replace(/"/g, '&quot;')})">
+            <strong>${dest.nom}</strong><br>
+            <small>${dest.code_postal} ${dest.ville}</small>
+        </div>
+    `).join('');
+    
+    container.style.display = 'block';
+}
+
+function selectDestinataire(dest) {
+    document.getElementById('dest_nom').value = dest.nom;
+    document.getElementById('dest_cp').value = dest.code_postal;
+    document.getElementById('dest_ville').value = dest.ville;
+    document.getElementById('dest_adresse').value = dest.adresse_complete || '';
+    document.getElementById('destinataire-suggestions').style.display = 'none';
+}
+
 function showProductSuggestions(products) {
     const container = document.getElementById('produit-suggestions');
     
@@ -465,55 +622,48 @@ function showProductSuggestions(products) {
         return;
     }
     
-    container.innerHTML = products.map(product => `
-        <div class="suggestion-item" onclick="selectProduct('${product.code_produit}', '${product.nom_produit}', '${product.numero_un}', '${product.categorie_transport}')">
-            <strong>${product.code_produit}</strong> - ${product.nom_produit}<br>
-            <small>ONU: ${product.numero_un} | Cat: ${product.categorie_transport}</small>
+    container.innerHTML = products.map(prod => `
+        <div class="suggestion-item" onclick="selectProduct(${JSON.stringify(prod).replace(/"/g, '&quot;')})">
+            <strong>${prod.code_produit}</strong> - ${prod.nom_produit}<br>
+            <small>ONU: ${prod.numero_un} | Cat: ${prod.categorie_transport}</small>
         </div>
     `).join('');
     
     container.style.display = 'block';
 }
 
-function selectProduct(code, nom, onu, categorie) {
-    document.getElementById('search-produit').value = code + ' - ' + nom;
+function selectProduct(product) {
+    selectedProduct = product;
+    document.getElementById('search-produit').value = `${product.code_produit} - ${product.nom_produit}`;
     document.getElementById('produit-suggestions').style.display = 'none';
-    document.getElementById('produit_quantite').focus();
-    
-    document.getElementById('search-produit').dataset.code = code;
-    document.getElementById('search-produit').dataset.nom = nom;
-    document.getElementById('search-produit').dataset.onu = onu;
-    document.getElementById('search-produit').dataset.categorie = categorie;
 }
 
 function addProduct() {
-    const searchInput = document.getElementById('search-produit');
-    const quantiteInput = document.getElementById('produit_quantite');
-    
-    const code = searchInput.dataset.code;
-    const nom = searchInput.dataset.nom;
-    const onu = searchInput.dataset.onu;
-    const categorie = searchInput.dataset.categorie;
-    const quantite = parseFloat(quantiteInput.value);
-    
-    if (!code || !quantite || quantite <= 0) {
-        showMessage('Sélectionner un produit et saisir une quantité valide', 'danger');
+    if (!selectedProduct) {
+        alert('Sélectionnez un produit');
         return;
     }
     
-    if (selectedProducts.find(p => p.code === code)) {
-        showMessage('Produit déjà ajouté', 'danger');
+    const quantite = parseFloat(document.getElementById('produit_quantite').value);
+    if (!quantite || quantite <= 0) {
+        alert('Quantité invalide');
         return;
     }
     
-    const pointsCategorie = {'1': 50, '2': 3, '3': 1, '4': 0};
-    const points = (pointsCategorie[categorie] || 0) * quantite;
+    // Calcul points
+    let points = 0;
+    switch (selectedProduct.categorie_transport) {
+        case '1': points = quantite * 50; break;
+        case '2': points = quantite * 3; break;
+        case '3': points = quantite * 1; break;
+        default: points = 0;
+    }
     
     const product = {
-        code: code,
-        nom: nom,
-        onu: onu,
-        categorie: categorie,
+        code: selectedProduct.code_produit,
+        nom: selectedProduct.nom_produit,
+        onu: selectedProduct.numero_un,
+        categorie: selectedProduct.categorie_transport,
         quantite: quantite,
         points: points
     };
@@ -521,14 +671,15 @@ function addProduct() {
     selectedProducts.push(product);
     updateProductsTable();
     
-    searchInput.value = '';
-    quantiteInput.value = '';
-    searchInput.removeAttribute('data-code');
-    searchInput.removeAttribute('data-nom');
-    searchInput.removeAttribute('data-onu');
-    searchInput.removeAttribute('data-categorie');
-    
-    showMessage('Produit ajouté', 'success');
+    // Reset
+    document.getElementById('search-produit').value = '';
+    document.getElementById('produit_quantite').value = '';
+    selectedProduct = null;
+}
+
+function removeProduct(index) {
+    selectedProducts.splice(index, 1);
+    updateProductsTable();
 }
 
 function updateProductsTable() {
@@ -540,49 +691,44 @@ function updateProductsTable() {
         return;
     }
     
-    tbody.innerHTML = selectedProducts.map((product, index) => `
+    tbody.innerHTML = selectedProducts.map((prod, index) => `
         <tr>
-            <td>${product.code}</td>
-            <td>${product.nom}</td>
-            <td>${product.onu}</td>
-            <td>${product.categorie}</td>
-            <td>${product.quantite}</td>
-            <td>${product.points.toFixed(1)}</td>
-            <td>
-                <button type="button" onclick="removeProduct(${index})" 
-                        style="background: #dc3545; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px;">
-                    🗑️
-                </button>
-            </td>
+            <td>${prod.code}</td>
+            <td>${prod.nom}</td>
+            <td>${prod.onu}</td>
+            <td>${prod.categorie}</td>
+            <td>${prod.quantite} kg</td>
+            <td>${prod.points}</td>
+            <td><button type="button" onclick="removeProduct(${index})" class="btn btn-sm" style="background:#dc3545;color:white;">✕</button></td>
         </tr>
     `).join('');
     
-    const totalPoints = selectedProducts.reduce((sum, p) => sum + p.points, 0);
-    document.getElementById('total-points').textContent = totalPoints.toFixed(1);
+    const totalPoints = selectedProducts.reduce((sum, prod) => sum + prod.points, 0);
+    document.getElementById('total-points').textContent = totalPoints;
     
     table.style.display = 'table';
-    document.getElementById('recap-btn').style.display = selectedProducts.length > 0 ? 'inline-block' : 'none';
 }
 
-function removeProduct(index) {
-    selectedProducts.splice(index, 1);
-    updateProductsTable();
-}
-
+// Soumission formulaire
 document.getElementById('declarationForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const transporteur = document.getElementById('transporteur').value;
-    
-    if (!transporteur) {
-        showMessage('Sélectionner un transporteur', 'danger');
-        return;
-    }
-    
     if (selectedProducts.length === 0) {
-        showMessage('Ajouter au moins un produit', 'danger');
+        alert('Ajoutez au moins un produit');
         return;
     }
+    
+    const data = {
+        action: 'save_declaration',
+        transporteur: document.getElementById('transporteur').value,
+        destinataire: JSON.stringify({
+            nom: document.getElementById('dest_nom').value,
+            code_postal: document.getElementById('dest_cp').value,
+            ville: document.getElementById('dest_ville').value,
+            adresse: document.getElementById('dest_adresse').value
+        }),
+        produits: JSON.stringify(selectedProducts)
+    };
     
     fetch(window.location.href, {
         method: 'POST',
@@ -590,59 +736,29 @@ document.getElementById('declarationForm').addEventListener('submit', function(e
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest'
         },
-        body: 'action=save_declaration&transporteur=' + transporteur + '&produits=' + encodeURIComponent(JSON.stringify(selectedProducts))
+        body: Object.keys(data).map(key => key + '=' + encodeURIComponent(data[key])).join('&')
     })
     .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showMessage('Déclaration enregistrée (' + data.total_points + ' points)', 'success');
-            currentTransporteur = transporteur;
-            setTimeout(() => location.reload(), 2000);
+    .then(result => {
+        const messages = document.getElementById('messages');
+        if (result.success) {
+            messages.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
+            // Reset form
+            selectedProducts = [];
+            updateProductsTable();
+            document.getElementById('declarationForm').reset();
+            // Actualiser quotas
+            location.reload();
         } else {
-            showMessage(data.message, 'danger');
+            messages.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
         }
     });
 });
 
-function generateRecap() {
-    if (!currentTransporteur || selectedProducts.length === 0) {
-        showMessage('Enregistrer d\'abord la déclaration', 'danger');
-        return;
-    }
-    
-    const recap = `
-        <h2>RÉCAP ADR - ${currentTransporteur.toUpperCase()}</h2>
-        <p><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
-        <table border="1" style="width: 100%; border-collapse: collapse;">
-            <tr><th>Code</th><th>Produit</th><th>ONU</th><th>Quantité</th></tr>
-            ${selectedProducts.map(p => 
-                `<tr><td>${p.code}</td><td>${p.nom}</td><td>${p.onu}</td><td>${p.quantite}</td></tr>`
-            ).join('')}
-        </table>
-        <p><strong>Total points ADR:</strong> ${selectedProducts.reduce((sum, p) => sum + p.points, 0).toFixed(1)}</p>
-    `;
-    
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write('<html><head><title>Récap ADR</title></head><body>' + recap + '</body></html>');
-    printWindow.document.close();
-    printWindow.print();
-}
-
-function showMessage(text, type) {
-    const container = document.getElementById('messages');
-    const alert = document.createElement('div');
-    alert.className = 'alert alert-' + type;
-    alert.textContent = text;
-    container.appendChild(alert);
-    
-    setTimeout(() => {
-        alert.remove();
-    }, 5000);
-}
-
+// Cacher suggestions au clic ailleurs
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.search-container')) {
-        document.getElementById('produit-suggestions').style.display = 'none';
+        document.querySelectorAll('.suggestions').forEach(s => s.style.display = 'none');
     }
 });
 </script>
