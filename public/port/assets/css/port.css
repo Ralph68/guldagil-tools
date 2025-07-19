@@ -230,6 +230,14 @@
     gap: var(--port-space-1);
 }
 
+/* Indices de champs */
+.calc-field-hint {
+    color: var(--port-text-muted);
+    font-size: 0.75rem;
+    margin-top: var(--port-space-1);
+    font-style: italic;
+}
+
 /* ============================= */
 /*          BOUTONS              */
 /* ============================= */
