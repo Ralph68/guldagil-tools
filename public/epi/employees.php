@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: Gestion des employés EPI
- * Chemin: /features/epi/employees.php
+ * Chemin: /public/epi/employees.php
  * Version: 0.5 beta + build auto
  */
 
@@ -50,7 +50,7 @@ try {
     <main class="dashboard-container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-            <a href="/features/epi/index.php">🛡️ EPI</a>
+            <a href="../index.php">🛡️ EPI</a>
             <span>›</span>
             <span>Employés</span>
         </nav>
@@ -248,11 +248,11 @@ try {
 
         <!-- Retour -->
         <div class="text-center mt-3">
-            <a href="/features/epi/index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
+            <a href="../index.php" style="color: var(--epi-primary);">← Retour au tableau de bord EPI</a>
         </div>
     </main>
 
-    <script src="/features/epi/assets/js/epi.js"></script>
+    <script src="assets/js/epi.js"></script>
     <script>
         // Script spécifique à la page employés
         document.addEventListener('DOMContentLoaded', function() {
