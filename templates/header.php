@@ -152,7 +152,7 @@ $all_modules = [
     'adr' => ['icon' => '⚠️', 'color' => '#dc2626', 'status' => 'active', 'name' => 'ADR', 'routes' => ['adr']],
     'epi' => ['icon' => '🦺', 'color' => '#7c3aed', 'status' => 'active', 'name' => 'EPI', 'routes' => ['epi']],
     'qualite' => ['icon' => '✅', 'color' => '#059669', 'status' => 'active', 'name' => 'Qualité', 'routes' => ['qualite']],
-    'outillage' => ['icon' => '🔧', 'color' => '#ea580c', 'status' => 'active', 'name' => 'Outillage', 'routes' => ['outillage']],
+    'outillages' => ['icon' => '🔧', 'color' => '#ea580c', 'status' => 'active', 'name' => 'Outillage', 'routes' => ['outillages']],
     'user' => ['icon' => '👤', 'color' => '#7c2d12', 'status' => 'active', 'name' => 'Mon compte', 'routes' => ['user', 'profile']],
     'admin' => ['icon' => '⚙️', 'color' => '#1f2937', 'status' => 'active', 'name' => 'Administration', 'routes' => ['admin']],
     'dev' => ['icon' => '💻', 'color' => '#dc2626', 'status' => 'development', 'name' => 'Développement', 'routes' => ['dev', 'debug']]
