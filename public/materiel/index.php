@@ -21,7 +21,7 @@ require_once ROOT_PATH . '/config/modules.php';
 // Variables pour template
 $page_title = 'Gestion du Matériel';
 $page_subtitle = 'Outillage et Équipements';
-$current_module = 'outillages';
+$current_module = 'materiel';
 $module_css = true;
 $user_authenticated = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
 $current_user = $_SESSION['user'] ?? ['username' => 'Anonyme', 'role' => 'guest'];
@@ -35,7 +35,7 @@ if (!$user_authenticated) {
 $user_role = $current_user['role'] ?? 'guest';
 $module_data = $modules['outillages'] ?? ['status' => 'development', 'name' => 'Matériel'];
 
-if (!canAccessModule('outillages', $module_data, $user_role)) {
+if (!canAccessModule('materiel', $module_data, $user_role)) {
     header('Location: ../../index.php?error=access_denied');
     exit;
 }
