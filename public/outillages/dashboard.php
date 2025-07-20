@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Dashboard Module Outillages - Version corrigée
+ * Titre: Dashboard Module Matériel - Version Production
  * Chemin: /public/outillages/dashboard.php
  * Version: 0.5 beta + build auto
  */
@@ -12,30 +12,22 @@ if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(dirname(__DIR__)));
 }
 
-// Session et authentification
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Configuration
 require_once ROOT_PATH . '/config/config.php';
 require_once ROOT_PATH . '/config/version.php';
-require_once ROOT_PATH . '/config/modules.php'; // Pour $modules
+require_once ROOT_PATH . '/config/modules.php';
 
 // Variables pour template
-$page_title = 'Module Outillages';
-$page_subtitle = 'Gestion des outils et équipements';
-$page_description = 'Dashboard de gestion de l\'outillage - Inventaire, attributions et demandes';
+$page_title = 'Gestion du Matériel';
+$page_subtitle = 'Outillage et Équipements';
+$page_description = 'Gestion complète du matériel : outillage manuel, électroportatif et équipements';
 $current_module = 'outillages';
 $module_css = true;
 $user_authenticated = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
 $current_user = $_SESSION['user'] ?? ['username' => 'Anonyme', 'role' => 'guest'];
-
-// Breadcrumbs
-$breadcrumbs = [
-    ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => false],
-    ['icon' => '🔧', 'text' => 'Module Outillages', 'url' => '/outillages/', 'active' => true]
-];
 
 // =====================================
 // VÉRIFICATION AUTHENTIFICATION
@@ -46,9 +38,8 @@ if (!$user_authenticated) {
 }
 
 $user_role = $current_user['role'] ?? 'guest';
+$module_data = $modules['outillages'] ?? ['status' => 'development', 'name' => 'Matériel'];
 
-// Vérification accès module avec paramètres corrects
-$module_data = $modules['outillages'] ?? ['status' => 'development', 'name' => 'Outillages'];
 if (!canAccessModule('outillages', $module_data, $user_role)) {
     header('Location: ../../index.php?error=access_denied');
     exit;
@@ -57,99 +48,119 @@ if (!canAccessModule('outillages', $module_data, $user_role)) {
 // =====================================
 // CONNEXION BASE DE DONNÉES
 // =====================================
-$db_connected = false;
-$db = null;
-
 try {
-    if (function_exists('getDB')) {
-        $db = getDB();
-        $db_connected = true;
-    } else {
-        // Connexion directe si getDB() n'existe pas
-        $db = new PDO(
-            "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
-            DB_USER,
-            DB_PASS,
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-        );
-        $db_connected = true;
-    }
+    $db = function_exists('getDB') ? getDB() : new PDO(
+        "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+        DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    $db_connected = true;
 } catch (Exception $e) {
-    error_log("Erreur connexion BDD Outillages: " . $e->getMessage());
+    error_log("Erreur BDD Matériel: " . $e->getMessage());
+    $db_connected = false;
 }
 
 // =====================================
-// GESTION DES DONNÉES
+// RÉCUPÉRATION DONNÉES RÉELLES
 // =====================================
-$stats = [
-    'total_outils' => 0,
-    'outils_attribues' => 0,
-    'demandes_attente' => 0,
-    'maintenance_due' => 0
-];
-
+$stats = [];
 $demandesEnAttente = [];
+$alerts = [];
 
 if ($db_connected) {
     try {
-        // Vérifier si les tables existent avant de les utiliser
-        $tables_check = $db->query("SHOW TABLES LIKE 'outillage_%'")->fetchAll();
+        // Statistiques globales
+        $stmt = $db->query("SELECT COUNT(*) as total FROM outillage_items");
+        $stats['total_materiel'] = $stmt->fetch()['total'] ?? 0;
         
-        if (count($tables_check) > 0) {
-            // Tables existantes - récupérer les vraies données
-            $stmt = $db->query("SELECT COUNT(*) as total FROM outillage_items");
-            $stats['total_outils'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
-            
-            $stmt = $db->query("SELECT COUNT(*) as attribues FROM outillage_attributions WHERE etat_attribution = 'active'");
-            $stats['outils_attribues'] = $stmt->fetch(PDO::FETCH_ASSOC)['attribues'] ?? 0;
-            
-            $stmt = $db->query("SELECT COUNT(*) as en_attente FROM outillage_demandes WHERE statut = 'en_attente'");
-            $stats['demandes_attente'] = $stmt->fetch(PDO::FETCH_ASSOC)['en_attente'] ?? 0;
-            
-            // Demandes récentes
-            $stmt = $db->query("SELECT d.*, t.designation, CONCAT(e.prenom, ' ', e.nom) as demandeur
-                               FROM outillage_demandes d
-                               LEFT JOIN outillage_templates t ON d.template_id = t.id
-                               LEFT JOIN outillage_employees e ON d.employee_id = e.id
-                               WHERE d.statut = 'en_attente'
-                               ORDER BY d.created_at DESC LIMIT 5");
-            $demandesEnAttente = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } else {
-            // Tables non créées - données de démonstration
-            $stats = [
-                'total_outils' => 47,
-                'outils_attribues' => 32,
-                'demandes_attente' => 5,
-                'maintenance_due' => 3
-            ];
-            
-            $demandesEnAttente = [
-                ['designation' => 'Perceuse sans fil', 'demandeur' => 'Martin Dupont', 'created_at' => date('Y-m-d H:i:s')],
-                ['designation' => 'Clé à molette 24mm', 'demandeur' => 'Sophie Bernard', 'created_at' => date('Y-m-d H:i:s')],
-                ['designation' => 'Multimètre digital', 'demandeur' => 'Pierre Martin', 'created_at' => date('Y-m-d H:i:s')]
+        $stmt = $db->query("SELECT COUNT(*) as attribues FROM outillage_attributions WHERE etat_attribution = 'active'");
+        $stats['materiel_attribue'] = $stmt->fetch()['attribues'] ?? 0;
+        
+        $stmt = $db->query("SELECT COUNT(*) as en_attente FROM outillage_demandes WHERE statut = 'en_attente'");
+        $stats['demandes_attente'] = $stmt->fetch()['en_attente'] ?? 0;
+        
+        $stmt = $db->query("SELECT COUNT(*) as maintenance FROM outillage_items i 
+                           JOIN outillage_templates t ON i.template_id = t.id 
+                           WHERE t.maintenance_requise = 1 AND i.prochaine_maintenance <= CURDATE()");
+        $stats['maintenance_due'] = $stmt->fetch()['maintenance'] ?? 0;
+        
+        // Statistiques par type
+        $stmt = $db->query("SELECT c.type, c.nom, COUNT(i.id) as count 
+                           FROM outillage_categories c
+                           LEFT JOIN outillage_templates t ON c.id = t.categorie_id
+                           LEFT JOIN outillage_items i ON t.id = i.template_id
+                           GROUP BY c.id, c.type, c.nom
+                           ORDER BY c.type, count DESC");
+        $stats['par_type'] = $stmt->fetchAll();
+        
+        // Statistiques par agence
+        $stmt = $db->query("SELECT a.nom, a.code, COUNT(i.id) as total_items,
+                           COUNT(CASE WHEN attr.etat_attribution = 'active' THEN 1 END) as attribues
+                           FROM outillage_agences a
+                           LEFT JOIN outillage_items i ON a.id = i.agence_id
+                           LEFT JOIN outillage_attributions attr ON i.id = attr.item_id AND attr.etat_attribution = 'active'
+                           GROUP BY a.id, a.nom, a.code
+                           ORDER BY total_items DESC");
+        $stats['par_agence'] = $stmt->fetchAll();
+        
+        // Demandes en attente avec détails
+        $stmt = $db->query("SELECT d.*, t.designation, t.marque, t.modele,
+                           CONCAT(e.prenom, ' ', e.nom) as demandeur,
+                           a.nom as agence_nom, a.code as agence_code,
+                           p.nom as profil_nom,
+                           DATEDIFF(NOW(), d.created_at) as jours_attente
+                           FROM outillage_demandes d
+                           LEFT JOIN outillage_templates t ON d.template_id = t.id
+                           LEFT JOIN outillage_employees e ON d.employee_id = e.id
+                           LEFT JOIN outillage_agences a ON e.agence_id = a.id
+                           LEFT JOIN outillage_profils p ON e.profil_id = p.id
+                           WHERE d.statut = 'en_attente'
+                           ORDER BY d.created_at DESC");
+        $demandesEnAttente = $stmt->fetchAll();
+        
+        // Alertes automatiques
+        if ($stats['maintenance_due'] > 0) {
+            $alerts[] = [
+                'type' => 'maintenance',
+                'level' => 'warning',
+                'message' => $stats['maintenance_due'] . ' équipement(s) nécessitent une maintenance',
+                'action' => '?view=maintenance'
             ];
         }
+        
+        if ($stats['demandes_attente'] > 10) {
+            $alerts[] = [
+                'type' => 'demandes',
+                'level' => 'info',
+                'message' => 'Backlog important : ' . $stats['demandes_attente'] . ' demandes en attente',
+                'action' => '?view=demandes&filter=pending'
+            ];
+        }
+        
+        // Demandes anciennes (> 7 jours)
+        $anciennes = array_filter($demandesEnAttente, fn($d) => $d['jours_attente'] > 7);
+        if (count($anciennes) > 0) {
+            $alerts[] = [
+                'type' => 'urgent',
+                'level' => 'danger',
+                'message' => count($anciennes) . ' demande(s) de plus de 7 jours sans traitement',
+                'action' => '?view=demandes&filter=old'
+            ];
+        }
+        
     } catch (Exception $e) {
-        error_log("Erreur récupération données outillages: " . $e->getMessage());
-        // Utiliser données de démonstration en cas d'erreur
-        $stats = [
-            'total_outils' => 47,
-            'outils_attribues' => 32,
-            'demandes_attente' => 5,
-            'maintenance_due' => 3
-        ];
+        error_log("Erreur récupération données: " . $e->getMessage());
+        $stats = ['total_materiel' => 0, 'materiel_attribue' => 0, 'demandes_attente' => 0, 'maintenance_due' => 0];
     }
+} else {
+    $stats = ['total_materiel' => 0, 'materiel_attribue' => 0, 'demandes_attente' => 0, 'maintenance_due' => 0];
 }
 
-// Configuration des droits selon le rôle
-$canManageInventory = in_array($user_role, ['admin', 'dev']);
-$canValidateDemands = in_array($user_role, ['admin', 'dev']);
-$canViewStats = in_array($user_role, ['admin', 'dev']);
-$canManageEmployees = in_array($user_role, ['admin', 'dev']);
+// Configuration des droits
+$isResponsable = in_array($user_role, ['admin', 'dev']);
+$isRespTech = $isResponsable; // À adapter selon la logique métier
+$isRespAchats = $isResponsable;
+$canValidateRequests = $isResponsable;
 
-// =====================================
-// CHARGEMENT DU TEMPLATE
-// =====================================
 $build_number = defined('BUILD_NUMBER') ? substr(BUILD_NUMBER, 0, 8) : 'dev-' . date('ymdHis');
 ?>
 <!DOCTYPE html>
@@ -168,269 +179,373 @@ $build_number = defined('BUILD_NUMBER') ? substr(BUILD_NUMBER, 0, 8) : 'dev-' . 
     <!-- CSS module -->
     <link rel="stylesheet" href="./assets/css/outillage.css?v=<?= $build_number ?>">
     
-    <!-- Font Awesome pour les icônes -->
+    <!-- Font Awesome et Chart.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 350px; gap: 2rem; margin: 2rem 0; }
+    .main-content { min-height: 600px; }
+    .sidebar { background: #f8f9fa; padding: 1.5rem; border-radius: 12px; }
+    .stats-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0; }
+    .stat-box { background: white; padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--primary-blue); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .stat-number { font-size: 2rem; font-weight: 700; color: var(--primary-blue); }
+    .stat-label { color: #666; font-size: 0.9rem; margin-top: 0.5rem; }
+    .chart-container { background: white; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .alert-item { display: flex; align-items: center; padding: 1rem; border-radius: 6px; margin: 0.5rem 0; }
+    .alert-warning { background: #fff3cd; border-left: 4px solid #ffc107; }
+    .alert-info { background: #d1ecf1; border-left: 4px solid #17a2b8; }
+    .alert-danger { background: #f8d7da; border-left: 4px solid #dc3545; }
+    .request-card { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin: 0.5rem 0; }
+    .request-meta { font-size: 0.85rem; color: #666; margin: 0.5rem 0; }
+    .btn-group { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+    .btn-sm { padding: 0.25rem 0.75rem; font-size: 0.8rem; }
+    .agence-item { display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid #eee; }
+    .progress-bar { width: 100%; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; margin: 0.5rem 0; }
+    .progress-fill { height: 100%; background: var(--primary-blue); transition: width 0.3s; }
+    </style>
 </head>
 <body>
-    <?php 
-    // Inclusion du header avec toutes les variables nécessaires
-    include ROOT_PATH . '/templates/header.php'; 
-    ?>
+    <?php include ROOT_PATH . '/templates/header.php'; ?>
     
     <main class="main-container">
-        <!-- En-tête du module -->
+        <!-- En-tête avec actions -->
         <div class="module-header">
-            <h1><i class="fas fa-tools"></i> Gestion de l'Outillage</h1>
-            <p>Dashboard de gestion des outils et équipements</p>
-            
-            <?php if (!$db_connected): ?>
-            <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle"></i>
-                Mode démonstration - Base de données non connectée
+            <div>
+                <h1><i class="fas fa-tools"></i> Gestion du Matériel</h1>
+                <p>Dashboard global - <?= count($stats['par_agence'] ?? []) ?> agences - <?= $stats['total_materiel'] ?> équipements</p>
             </div>
-            <?php endif; ?>
+            <div class="header-actions">
+                <?php if ($isRespTech): ?>
+                <button class="btn btn-primary" onclick="window.location.href='?action=add-equipment'">
+                    <i class="fas fa-plus"></i> Nouvel équipement
+                </button>
+                <?php endif; ?>
+                <button class="btn btn-secondary" onclick="window.location.href='?action=search'">
+                    <i class="fas fa-search"></i> Rechercher
+                </button>
+                <button class="btn btn-info" onclick="showNewRequestModal()">
+                    <i class="fas fa-hand-paper"></i> Nouvelle demande
+                </button>
+            </div>
         </div>
+
+        <!-- Alertes -->
+        <?php if (!empty($alerts)): ?>
+        <div class="alerts-section">
+            <?php foreach ($alerts as $alert): ?>
+            <div class="alert-item alert-<?= $alert['level'] ?>">
+                <i class="fas fa-<?= $alert['level'] === 'danger' ? 'exclamation-triangle' : ($alert['level'] === 'warning' ? 'exclamation-circle' : 'info-circle') ?>"></i>
+                <span style="margin-left: 0.5rem; flex: 1;"><?= htmlspecialchars($alert['message']) ?></span>
+                <button class="btn btn-sm btn-outline" onclick="window.location.href='<?= $alert['action'] ?>'">
+                    Voir
+                </button>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
 
         <!-- Statistiques principales -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-tools"></i>
-                </div>
-                <div class="stat-content">
-                    <h3><?= number_format($stats['total_outils']) ?></h3>
-                    <p>Outils total</p>
-                </div>
+        <div class="stats-overview">
+            <div class="stat-box">
+                <div class="stat-number"><?= number_format($stats['total_materiel']) ?></div>
+                <div class="stat-label">Équipements total</div>
             </div>
-            
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-user-check"></i>
-                </div>
-                <div class="stat-content">
-                    <h3><?= number_format($stats['outils_attribues']) ?></h3>
-                    <p>Outils attribués</p>
-                </div>
+            <div class="stat-box">
+                <div class="stat-number"><?= number_format($stats['materiel_attribue']) ?></div>
+                <div class="stat-label">Actuellement attribués</div>
             </div>
-            
-            <div class="stat-card">
-                <div class="stat-icon warning">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-content">
-                    <h3><?= number_format($stats['demandes_attente']) ?></h3>
-                    <p>Demandes en attente</p>
-                </div>
+            <div class="stat-box">
+                <div class="stat-number"><?= number_format($stats['demandes_attente']) ?></div>
+                <div class="stat-label">Demandes en attente</div>
             </div>
-            
-            <div class="stat-card">
-                <div class="stat-icon danger">
-                    <i class="fas fa-wrench"></i>
-                </div>
-                <div class="stat-content">
-                    <h3><?= number_format($stats['maintenance_due']) ?></h3>
-                    <p>Maintenance due</p>
-                </div>
+            <div class="stat-box">
+                <div class="stat-number"><?= number_format($stats['maintenance_due']) ?></div>
+                <div class="stat-label">Maintenance due</div>
             </div>
         </div>
 
-        <!-- Actions principales -->
-        <div class="actions-grid">
-            <?php if ($canManageInventory): ?>
-            <div class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-plus-circle"></i>
+        <!-- Contenu principal -->
+        <div class="dashboard-grid">
+            <div class="main-content">
+                <!-- Répartition par type -->
+                <div class="chart-container">
+                    <h3><i class="fas fa-chart-pie"></i> Répartition par type d'équipement</h3>
+                    <canvas id="typeChart" width="400" height="200"></canvas>
                 </div>
-                <h3>Ajouter un outil</h3>
-                <p>Enregistrer un nouvel outil dans l'inventaire</p>
-                <button class="btn btn-primary" onclick="window.location.href='./inventory.php?action=add'">
-                    <i class="fas fa-plus"></i> Ajouter
-                </button>
-            </div>
-            <?php endif; ?>
-            
-            <div class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-list"></i>
-                </div>
-                <h3>Consulter l'inventaire</h3>
-                <p>Voir tous les outils et leur statut</p>
-                <button class="btn btn-secondary" onclick="window.location.href='./inventory.php'">
-                    <i class="fas fa-search"></i> Consulter
-                </button>
-            </div>
-            
-            <div class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-hand-paper"></i>
-                </div>
-                <h3>Faire une demande</h3>
-                <p>Demander l'attribution d'un outil</p>
-                <button class="btn btn-info" onclick="window.location.href='./demandes.php?action=new'">
-                    <i class="fas fa-paper-plane"></i> Demander
-                </button>
-            </div>
-            
-            <?php if ($canManageEmployees): ?>
-            <div class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <h3>Gérer les employés</h3>
-                <p>Gestion des profils et attributions</p>
-                <button class="btn btn-warning" onclick="window.location.href='./employees.php'">
-                    <i class="fas fa-user-cog"></i> Gérer
-                </button>
-            </div>
-            <?php endif; ?>
-        </div>
 
-        <!-- Demandes récentes -->
-        <?php if ($canValidateDemands && !empty($demandesEnAttente)): ?>
-        <div class="section">
-            <h2><i class="fas fa-bell"></i> Demandes en attente</h2>
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Outil demandé</th>
-                            <th>Demandeur</th>
-                            <th>Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($demandesEnAttente as $demande): ?>
-                        <tr>
-                            <td><?= htmlspecialchars($demande['designation'] ?? 'N/A') ?></td>
-                            <td><?= htmlspecialchars($demande['demandeur'] ?? 'N/A') ?></td>
-                            <td><?= date('d/m/Y H:i', strtotime($demande['created_at'] ?? 'now')) ?></td>
-                            <td>
-                                <button class="btn btn-sm btn-success" onclick="approuveDemande(<?= $demande['id'] ?? 0 ?>)">
-                                    <i class="fas fa-check"></i> Approuver
+                <!-- Répartition par agence -->
+                <div class="chart-container">
+                    <h3><i class="fas fa-map-marker-alt"></i> Répartition par agence</h3>
+                    <canvas id="agenceChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Demandes récentes (pour responsables) -->
+                <?php if ($canValidateRequests && !empty($demandesEnAttente)): ?>
+                <div class="chart-container">
+                    <h3><i class="fas fa-clock"></i> Demandes à traiter (<?= count($demandesEnAttente) ?>)</h3>
+                    <?php foreach (array_slice($demandesEnAttente, 0, 5) as $demande): ?>
+                    <div class="request-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <strong><?= htmlspecialchars($demande['designation']) ?></strong>
+                                <?php if ($demande['marque']): ?>
+                                - <?= htmlspecialchars($demande['marque']) ?>
+                                <?php endif; ?>
+                                <div class="request-meta">
+                                    <i class="fas fa-user"></i> <?= htmlspecialchars($demande['demandeur']) ?>
+                                    (<?= htmlspecialchars($demande['profil_nom']) ?>)
+                                    <br>
+                                    <i class="fas fa-building"></i> <?= htmlspecialchars($demande['agence_nom']) ?>
+                                    <br>
+                                    <i class="fas fa-calendar"></i> Il y a <?= $demande['jours_attente'] ?> jour(s)
+                                    <?php if ($demande['jours_attente'] > 7): ?>
+                                    <span style="color: #dc3545; font-weight: bold;">⚠️ URGENT</span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if ($demande['raison_demande']): ?>
+                                <div style="font-style: italic; color: #666; margin-top: 0.5rem;">
+                                    "<?= htmlspecialchars($demande['raison_demande']) ?>"
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-success" onclick="approveRequest(<?= $demande['id'] ?>)">
+                                    <i class="fas fa-check"></i> Valider
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="rejetDemande(<?= $demande['id'] ?? 0 ?>)">
-                                    <i class="fas fa-times"></i> Rejeter
+                                <button class="btn btn-sm btn-danger" onclick="rejectRequest(<?= $demande['id'] ?>)">
+                                    <i class="fas fa-times"></i> Refuser
                                 </button>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                                <button class="btn btn-sm btn-info" onclick="viewRequest(<?= $demande['id'] ?>)">
+                                    <i class="fas fa-eye"></i> Détails
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    
+                    <?php if (count($demandesEnAttente) > 5): ?>
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button class="btn btn-outline" onclick="window.location.href='?view=all-requests'">
+                            Voir toutes les demandes (<?= count($demandesEnAttente) ?>)
+                        </button>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
             </div>
-        </div>
-        <?php endif; ?>
 
-        <!-- Graphiques -->
-        <?php if ($canViewStats): ?>
-        <div class="charts-section">
-            <div class="chart-container">
-                <h3>Répartition des outils</h3>
-                <canvas id="outilsChart" width="400" height="200"></canvas>
-            </div>
-            <div class="chart-container">
-                <h3>Demandes par mois</h3>
-                <canvas id="demandesChart" width="400" height="200"></canvas>
+            <div class="sidebar">
+                <!-- Actions rapides -->
+                <div class="chart-container" style="margin: 0 0 1.5rem 0;">
+                    <h4><i class="fas fa-bolt"></i> Actions rapides</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button class="btn btn-info btn-sm" onclick="showMyEquipment()">
+                            <i class="fas fa-list"></i> Mon matériel
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="showSearchModal()">
+                            <i class="fas fa-search"></i> Rechercher
+                        </button>
+                        <?php if ($isRespTech): ?>
+                        <button class="btn btn-warning btn-sm" onclick="showMaintenanceReport()">
+                            <i class="fas fa-wrench"></i> Maintenance
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="showInventoryReport()">
+                            <i class="fas fa-clipboard-list"></i> Inventaire
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Répartition par agence -->
+                <div class="chart-container" style="margin: 0;">
+                    <h4><i class="fas fa-building"></i> Par agence</h4>
+                    <?php foreach ($stats['par_agence'] ?? [] as $agence): ?>
+                    <div class="agence-item">
+                        <div>
+                            <strong><?= htmlspecialchars($agence['code']) ?></strong>
+                            <br>
+                            <small><?= htmlspecialchars($agence['nom']) ?></small>
+                        </div>
+                        <div style="text-align: right;">
+                            <strong><?= $agence['total_items'] ?></strong>
+                            <br>
+                            <small><?= $agence['attribues'] ?> attribués</small>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: <?= $agence['total_items'] > 0 ? round(($agence['attribues'] / $agence['total_items']) * 100) : 0 ?>%"></div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
-        <?php endif; ?>
     </main>
 
     <?php include ROOT_PATH . '/templates/footer.php'; ?>
 
-    <!-- JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Modal nouvelle demande -->
+    <div id="newRequestModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-hand-paper"></i> Nouvelle demande de matériel</h3>
+                <button class="close-btn" onclick="closeModal('newRequestModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="requestForm">
+                    <div class="form-group">
+                        <label>Type de demande :</label>
+                        <select name="type_demande" class="form-select" required>
+                            <option value="">-- Sélectionner --</option>
+                            <option value="nouveau">Nouveau matériel</option>
+                            <option value="remplacement">Remplacement</option>
+                            <option value="reparation">Réparation</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Équipement demandé :</label>
+                        <input type="text" name="equipement" class="form-input" placeholder="Ex: Tournevis isolé 5.5x150" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Raison de la demande :</label>
+                        <textarea name="raison" class="form-textarea" rows="3" placeholder="Expliquez pourquoi vous avez besoin de cet équipement..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('newRequestModal')">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Envoyer la demande</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Configuration des graphiques
-        <?php if ($canViewStats): ?>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Graphique répartition outils
-            const outilsCtx = document.getElementById('outilsChart').getContext('2d');
-            new Chart(outilsCtx, {
+    // Graphiques
+    document.addEventListener('DOMContentLoaded', function() {
+        // Graphique par type
+        const typeData = <?= json_encode($stats['par_type'] ?? []) ?>;
+        if (typeData.length > 0) {
+            const typeCtx = document.getElementById('typeChart').getContext('2d');
+            new Chart(typeCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Attribués', 'Disponibles', 'En maintenance'],
+                    labels: typeData.map(item => item.nom),
                     datasets: [{
-                        data: [<?= $stats['outils_attribues'] ?>, <?= $stats['total_outils'] - $stats['outils_attribues'] - $stats['maintenance_due'] ?>, <?= $stats['maintenance_due'] ?>],
-                        backgroundColor: ['#4CAF50', '#2196F3', '#FF9800']
+                        data: typeData.map(item => item.count),
+                        backgroundColor: ['#3182ce', '#38a169', '#ed8936', '#9f7aea', '#38b2ac', '#d53f8c']
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
+                    plugins: { legend: { position: 'bottom' } }
                 }
             });
+        }
 
-            // Graphique demandes
-            const demandesCtx = document.getElementById('demandesChart').getContext('2d');
-            new Chart(demandesCtx, {
-                type: 'line',
+        // Graphique par agence  
+        const agenceData = <?= json_encode($stats['par_agence'] ?? []) ?>;
+        if (agenceData.length > 0) {
+            const agenceCtx = document.getElementById('agenceChart').getContext('2d');
+            new Chart(agenceCtx, {
+                type: 'bar',
                 data: {
-                    labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'],
+                    labels: agenceData.map(item => item.code),
                     datasets: [{
-                        label: 'Demandes',
-                        data: [12, 19, 15, 25, 22, <?= $stats['demandes_attente'] ?>],
-                        borderColor: '#667eea',
-                        tension: 0.1
+                        label: 'Total équipements',
+                        data: agenceData.map(item => item.total_items),
+                        backgroundColor: '#3182ce'
+                    }, {
+                        label: 'Attribués',
+                        data: agenceData.map(item => item.attribues),
+                        backgroundColor: '#38a169'
                     }]
                 },
                 options: {
                     responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
+                    scales: { y: { beginAtZero: true } }
                 }
             });
+        }
+    });
+
+    // Fonctions de gestion
+    function showNewRequestModal() {
+        document.getElementById('newRequestModal').style.display = 'flex';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    function approveRequest(id) {
+        if (confirm('Valider cette demande ?')) {
+            // Appel API pour validation
+            fetch('./api/requests.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'approve', id: id })
+            }).then(() => location.reload());
+        }
+    }
+
+    function rejectRequest(id) {
+        const reason = prompt('Raison du refus (optionnel):');
+        if (reason !== null) {
+            fetch('./api/requests.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'reject', id: id, reason: reason })
+            }).then(() => location.reload());
+        }
+    }
+
+    function viewRequest(id) {
+        window.location.href = `?action=view-request&id=${id}`;
+    }
+
+    function showMyEquipment() {
+        window.location.href = '?action=my-equipment';
+    }
+
+    function showSearchModal() {
+        // TODO: Implémenter modal de recherche avancée
+        alert('Module de recherche en développement');
+    }
+
+    function showMaintenanceReport() {
+        window.location.href = '?action=maintenance-report';
+    }
+
+    function showInventoryReport() {
+        window.location.href = '?action=inventory-report';
+    }
+
+    // Soumission formulaire demande
+    document.getElementById('requestForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData);
+        
+        fetch('./api/requests.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'create', ...data })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Demande envoyée avec succès !');
+                closeModal('newRequestModal');
+                location.reload();
+            } else {
+                alert('Erreur: ' + data.error);
+            }
         });
-        <?php endif; ?>
+    });
 
-        // Fonctions de gestion des demandes
-        function approuveDemande(id) {
-            if (confirm('Approuver cette demande ?')) {
-                fetch('./api/demandes.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'approve', id: id })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Erreur: ' + data.error);
-                    }
-                });
-            }
-        }
-
-        function rejetDemande(id) {
-            if (confirm('Rejeter cette demande ?')) {
-                fetch('./api/demandes.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'reject', id: id })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Erreur: ' + data.error);
-                    }
-                });
-            }
-        }
-
-        // Message de développement
-        console.log('🔧 Module Outillages - Version corrigée v0.5 beta');
-        console.log('📊 Stats:', <?= json_encode($stats) ?>);
-        console.log('🔗 Connexion DB:', <?= $db_connected ? 'true' : 'false' ?>);
+    console.log('🔧 Dashboard Matériel v0.5 - Mode Production');
+    console.log('📊 Stats:', <?= json_encode($stats) ?>);
     </script>
 </body>
 </html>
