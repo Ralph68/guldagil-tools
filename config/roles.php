@@ -32,7 +32,7 @@ class RoleManager
                 'view_quality', 'manage_adr', 'view_outillage',
                 'manage_epi', 'quality_control', 'quality_analysis'
             ],
-            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin']
+            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'outillages', 'user', 'admin']
         ],
         'admin' => [
             'name' => 'Administrateur',
@@ -46,7 +46,7 @@ class RoleManager
                 'view_quality', 'manage_adr', 'view_outillage',
                 'manage_epi', 'quality_control'
             ],
-            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'outillage', 'user', 'admin']
+            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'outillages', 'user', 'admin']
         ],
         'logistique' => [
             'name' => 'Logistique',
@@ -70,7 +70,7 @@ class RoleManager
                 'manage_adr', 'manage_epi', 'view_outillage',
                 'quality_control', 'quality_analysis'
             ],
-            'modules' => ['home', 'adr', 'epi', 'outillage']
+            'modules' => ['home', 'adr', 'epi', 'outillages']
         ],
         'labo' => [
             'name' => 'Laboratoire',
@@ -82,7 +82,7 @@ class RoleManager
                 'view_quality', 'quality_control', 'quality_analysis',
                 'view_outillage'
             ],
-            'modules' => ['home', 'qualite', 'outillage']
+            'modules' => ['home', 'qualite', 'outillages']
         ],
         'user' => [
             'name' => 'Utilisateur',
@@ -91,7 +91,7 @@ class RoleManager
             'color' => '#374151',
             'icon' => '👤',
             'capabilities' => ['view_shipping'],
-            'modules' => ['home', 'port']
+            'modules' => ['home', 'port', 'outillages']
         ]
     ];
 
