@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: Dashboard Module Matériel - Version Production
- * Chemin: /public/outillages/dashboard.php
+ * Chemin: /public/materiel/dashboard.php
  * Version: 0.5 beta + build auto
  */
 
@@ -24,7 +24,7 @@ require_once ROOT_PATH . '/config/modules.php';
 $page_title = 'Gestion du Matériel';
 $page_subtitle = 'Outillage et Équipements';
 $page_description = 'Gestion complète du matériel : outillage manuel, électroportatif et équipements';
-$current_module = 'outillages';
+$current_module = 'materiel';
 $module_css = true;
 $user_authenticated = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
 $current_user = $_SESSION['user'] ?? ['username' => 'Anonyme', 'role' => 'guest'];
@@ -40,7 +40,7 @@ if (!$user_authenticated) {
 $user_role = $current_user['role'] ?? 'guest';
 $module_data = $modules['outillages'] ?? ['status' => 'development', 'name' => 'Matériel'];
 
-if (!canAccessModule('outillages', $module_data, $user_role)) {
+if (!canAccessModule('materiel', $module_data, $user_role)) {
     header('Location: ../../index.php?error=access_denied');
     exit;
 }
@@ -177,7 +177,7 @@ $build_number = defined('BUILD_NUMBER') ? substr(BUILD_NUMBER, 0, 8) : 'dev-' . 
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
     
     <!-- CSS module -->
-    <link rel="stylesheet" href="./assets/css/outillage.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="./assets/css/materiel?v=<?= $build_number ?>">
     
     <!-- Font Awesome et Chart.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
