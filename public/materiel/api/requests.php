@@ -1,7 +1,7 @@
 <?php
 /**
  * Titre: API Gestion des demandes de matériel
- * Chemin: /public/outillages/api/requests.php
+ * Chemin: /public/materiel/api/requests.php
  * Version: 0.5 beta + build auto
  */
 
