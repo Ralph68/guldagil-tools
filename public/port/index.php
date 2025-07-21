@@ -5,7 +5,73 @@
  * Version: 0.5 beta + build auto
  */
 
-// Configuration de base
+// --- GESTION AJAX CALCULATE EN TOUT DEBUT DU FICHIER ---
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    header('Content-Type: application/json');
+    // Protection : vérifier l'authentification (ajuste selon ton système)
+    if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
+        echo json_encode(['success' => false, 'error' => 'Session expirée ou utilisateur non authentifié']);
+        exit;
+    }
+
+    try {
+        parse_str(file_get_contents('php://input'), $post_data);
+
+        $params = [
+            'departement' => str_pad(trim($post_data['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
+            'poids' => floatval($post_data['poids'] ?? 0),
+            'type' => strtolower(trim($post_data['type'] ?? 'colis')),
+            'adr' => (($post_data['adr'] ?? 'non') === 'oui'),
+            'option_sup' => trim($post_data['option_sup'] ?? 'standard'),
+            'enlevement' => ($post_data['enlevement'] ?? 'non') === 'oui',
+            'palettes' => max(1, intval($post_data['palettes'] ?? 1)),
+            'palette_eur' => intval($post_data['palette_eur'] ?? 0),
+        ];
+
+        if (empty($params['departement']) || !preg_match('/^[0-9]{2,3}$/', $params['departement'])) {
+            throw new Exception('Département invalide');
+        }
+        if ($params['poids'] <= 0 || $params['poids'] > 32000) {
+            throw new Exception('Poids invalide');
+        }
+
+        $transport_file = __DIR__ . '/calculs/transport.php';
+        if (!file_exists($transport_file)) {
+            throw new Exception('Transport non trouvé: ' . $transport_file);
+        }
+
+        require_once $transport_file;
+
+        $start_time = microtime(true);
+
+        // Simulation de résultats pour éviter l'erreur
+        $results = [
+            'xpo' => ['prix_ht' => 89.50, 'prix_ttc' => 107.40, 'delai' => '24h'],
+            'heppner' => ['prix_ht' => 92.30, 'prix_ttc' => 110.76, 'delai' => '48h']
+        ];
+
+        $calc_time = round((microtime(true) - $start_time) * 1000, 2);
+
+        $response = [
+            'success' => true,
+            'carriers' => $results,
+            'time_ms' => $calc_time,
+            'debug' => []
+        ];
+
+        echo json_encode($response);
+        exit;
+
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
+}
+
+// --- FIN BLOC AJAX ---
+// (Tout le reste de ton fichier, inchangé ci-dessous)
+
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(dirname(__DIR__)));
 }
@@ -45,64 +111,6 @@ $breadcrumbs = [
 
 // Chargement header (qui gère l'authentification et les sessions)
 require_once ROOT_PATH . '/templates/header.php';
-
-// GESTION AJAX CALCULATE
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
-    header('Content-Type: application/json');
-    
-    try {
-        parse_str(file_get_contents('php://input'), $post_data);
-        
-        $params = [
-            'departement' => str_pad(trim($post_data['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
-            'poids' => floatval($post_data['poids'] ?? 0),
-            'type' => strtolower(trim($post_data['type'] ?? 'colis')),
-            'adr' => (($post_data['adr'] ?? 'non') === 'oui'),
-            'option_sup' => trim($post_data['option_sup'] ?? 'standard'),
-            'enlevement' => ($post_data['enlevement'] ?? 'non') === 'oui',
-            'palettes' => max(1, intval($post_data['palettes'] ?? 1)),
-            'palette_eur' => intval($post_data['palette_eur'] ?? 0),
-        ];
-        
-        if (empty($params['departement']) || !preg_match('/^[0-9]{2,3}$/', $params['departement'])) {
-            throw new Exception('Département invalide');
-        }
-        if ($params['poids'] <= 0 || $params['poids'] > 32000) {
-            throw new Exception('Poids invalide');
-        }
-        
-        $transport_file = __DIR__ . '/calculs/transport.php';
-        if (!file_exists($transport_file)) {
-            throw new Exception('Transport non trouvé: ' . $transport_file);
-        }
-        
-        require_once $transport_file;
-        
-        $start_time = microtime(true);
-        
-        // Simulation de résultats pour éviter l'erreur
-        $results = [
-            'xpo' => ['prix_ht' => 89.50, 'prix_ttc' => 107.40, 'delai' => '24h'],
-            'heppner' => ['prix_ht' => 92.30, 'prix_ttc' => 110.76, 'delai' => '48h']
-        ];
-        
-        $calc_time = round((microtime(true) - $start_time) * 1000, 2);
-        
-        $response = [
-            'success' => true,
-            'carriers' => $results,
-            'time_ms' => $calc_time,
-            'debug' => []
-        ];
-        
-        echo json_encode($response);
-        exit;
-        
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        exit;
-    }
-}
 ?>
 
 <!-- CSS spécifique module port via header.php automatique -->
