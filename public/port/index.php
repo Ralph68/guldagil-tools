@@ -127,7 +127,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             
             <!-- Contenu formulaire -->
             <div class="calc-form-content">
-                <form id="calculatorForm" class="calc-form">
+                <form id="calculatorForm" class="calc-form" novalidate>
                     <!-- Étape 1: Destination -->
                     <div class="calc-step-content active" data-step="1" style="display: block;">
                         <div class="calc-form-group">
