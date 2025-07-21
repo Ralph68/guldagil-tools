@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Calculateur de frais de port - Version corrigée
+ * Titre: Calculateur de frais de port - Version complète corrigée
  * Chemin: /public/port/index.php
  * Version: 0.5 beta + build auto
  */
@@ -77,428 +77,407 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
         }
         
         require_once $transport_file;
+        $transport = new TransportCalculateur();
+        $results = $transport->calculateAll($params);
         
-        $start_time = microtime(true);
-        
-        // Simulation de résultats pour éviter l'erreur
-        $results = [
-            'xpo' => ['prix_ht' => 89.50, 'prix_ttc' => 107.40, 'delai' => '24h'],
-            'heppner' => ['prix_ht' => 92.30, 'prix_ttc' => 110.76, 'delai' => '48h']
-        ];
-        
-        $calc_time = round((microtime(true) - $start_time) * 1000, 2);
-        
-        $response = [
+        echo json_encode([
             'success' => true,
             'carriers' => $results,
-            'time_ms' => $calc_time,
-            'debug' => []
-        ];
-        
-        echo json_encode($response);
-        exit;
+            'timestamp' => date('H:i:s')
+        ]);
         
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        exit;
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
     }
+    exit;
 }
 ?>
 
-<!-- CSS spécifique module port via header.php automatique -->
-
-<!-- Container principal avec classes CSS modernisées -->
 <div class="calc-container">
-    <main class="calc-main">
-        <!-- FORMULAIRE -->
-        <section class="calc-form-panel">
-            <!-- Étapes -->
-            <div class="calc-steps">
-                <button type="button" class="calc-step-btn active" data-step="1">
-                    📍 Destination
-                </button>
-                <button type="button" class="calc-step-btn" data-step="2">
-                    📦 Colis
-                </button>
-                <button type="button" class="calc-step-btn" data-step="3">
-                    ⚙️ Options
-                </button>
+    <!-- Header calculateur -->
+    <div class="calc-header">
+        <div class="calc-header-content">
+            <div class="calc-title-group">
+                <h1 class="calc-title">
+                    <span class="calc-icon">🚛</span>
+                    Calculateur de Frais de Port
+                </h1>
+                <p class="calc-subtitle">Comparaison instantanée des tarifs XPO, Heppner, Kuehne+Nagel</p>
             </div>
-            
-            <!-- Contenu formulaire -->
-            <div class="calc-form-content">
-                <form id="calculatorForm" class="calc-form">
-                    <!-- Étape 1: Destination -->
-                    <div class="calc-step-content active" data-step="1" style="display: block;">
-                        <div class="calc-form-group">
-                            <label for="departement" class="calc-form-label">
-                                📍 Département de destination *
-                            </label>
-                            <input type="text" 
-                                   id="departement" 
-                                   name="departement" 
-                                   class="calc-form-input" 
-                                   placeholder="Ex: 75, 69, 13..."
-                                   maxlength="3"
-                                   required>
-                            <div class="calc-error-message" id="departementError"></div>
-                            <div class="calc-field-hint">💡 Numéro de département (ex: 75, 69, 13)</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Étape 2: Colis -->
-                    <div class="calc-step-content" data-step="2" style="display: none;">
-                        <div class="calc-form-group">
-                            <label for="poids" class="calc-form-label">
-                                ⚖️ Poids total (kg) *
-                            </label>
-                            <input type="number" 
-                                   id="poids" 
-                                   name="poids" 
-                                   class="calc-form-input"
-                                   placeholder="Ex: 25"
-                                   step="1" 
-                                   min="1" 
-                                   max="3000"
-                                   required>
-                            <div class="calc-error-message" id="poidsError"></div>
-                            <div class="calc-field-hint">💡 Saisissez un poids entier de 1 à 3000 kg</div>
-                        </div>
-                        
-                        <div class="calc-form-group">
-                            <label for="type" class="calc-form-label">
-                                📦 Type d'envoi
-                            </label>
-                            <select id="type" name="type" class="calc-form-select">
-                                <option value="colis">📦 Colis</option>
-                                <option value="palette">🏗️ Palette</option>
-                            </select>
-                        </div>
-                        
-                        <div class="calc-form-group" id="palettesGroup" style="display: none;">
-                            <label for="palettes" class="calc-form-label">
-                                🏗️ Nombre de palettes
-                            </label>
-                            <input type="number" 
-                                   id="palettes" 
-                                   name="palettes" 
-                                   class="calc-form-input"
-                                   min="1" 
-                                   max="33" 
-                                   value="1">
-                        </div>
-                        
-                        <div class="calc-form-group" id="paletteEurGroup" style="display: none;">
-                            <label for="palette_eur" class="calc-form-label">
-                                🇪🇺 Palettes EUR
-                            </label>
-                            <input type="number" 
-                                   id="palette_eur" 
-                                   name="palette_eur" 
-                                   class="calc-form-input"
-                                   min="0" 
-                                   value="0">
-                        </div>
-                    </div>
-                    
-                    <!-- Étape 3: Options -->
-                    <div class="calc-step-content" data-step="3" style="display: none;">
-                        <div class="calc-form-group">
-                            <label class="calc-form-label">⚠️ Matières dangereuses (ADR)</label>
-                            <div class="calc-toggle-group">
-                                <button type="button" class="calc-toggle-btn active" data-adr="non">Non</button>
-                                <button type="button" class="calc-toggle-btn" data-adr="oui">Oui</button>
-                            </div>
-                            <input type="hidden" id="adr" name="adr" value="non">
-                        </div>
-                        
-                        <div class="calc-form-group">
-                            <label class="calc-form-label">🚚 Enlèvement à domicile</label>
-                            <div class="calc-toggle-group">
-                                <button type="button" class="calc-toggle-btn active" data-enlevement="non">Non</button>
-                                <button type="button" class="calc-toggle-btn" data-enlevement="oui">Oui</button>
-                            </div>
-                            <input type="hidden" id="enlevement" name="enlevement" value="non">
-                        </div>
-                        
-                        <div class="calc-form-group">
-                            <label for="option_sup" class="calc-form-label">
-                                ✨ Options supplémentaires
-                            </label>
-                            <select id="option_sup" name="option_sup" class="calc-form-select">
-                                <option value="standard">Standard</option>
-                                <option value="express">Express</option>
-                                <option value="sur_rdv">Sur RDV</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- Boutons d'action -->
-                    <div class="calc-form-actions">
-                        <button type="submit" class="calc-btn calc-btn-primary" id="calculateBtn">
-                            🧮 Calculer les tarifs
-                        </button>
-                        <button type="button" class="calc-btn calc-btn-secondary" onclick="resetForm()">
-                            🔄 Réinitialiser
-                        </button>
-                    </div>
-                </form>
+            <div class="calc-version">
+                <span class="calc-version-badge">v<?= htmlspecialchars($version_info['version']) ?></span>
+                <span class="calc-build">Build <?= htmlspecialchars($version_info['build_number']) ?></span>
             </div>
-        </section>
+        </div>
+    </div>
+
+    <!-- Formulaire principal -->
+    <div class="calc-main">
+        <div class="calc-form-section">
+            <form id="calculatorForm" class="calc-form" novalidate>
+                <!-- Étape 1: Destination -->
+                <div class="calc-step-content" data-step="1">
+                    <h2 class="calc-step-title">📍 Destination</h2>
+                    <div class="calc-form-group">
+                        <label for="departement" class="calc-form-label">
+                            📍 Département de destination *
+                        </label>
+                        <input type="text" 
+                               id="departement" 
+                               name="departement" 
+                               class="calc-form-input" 
+                               placeholder="Ex: 75, 69, 13..."
+                               maxlength="3">
+                        <div class="calc-error-message" id="departementError"></div>
+                        <div class="calc-field-hint">💡 Numéro de département (ex: 75, 69, 13)</div>
+                    </div>
+                </div>
+                
+                <!-- Étape 2: Colis -->
+                <div class="calc-step-content" data-step="2" style="display: none;">
+                    <h2 class="calc-step-title">📦 Informations colis</h2>
+                    <div class="calc-form-group">
+                        <label for="poids" class="calc-form-label">
+                            ⚖️ Poids total (kg) *
+                        </label>
+                        <input type="number" 
+                               id="poids" 
+                               name="poids" 
+                               class="calc-form-input"
+                               placeholder="Ex: 25"
+                               step="1" 
+                               min="1" 
+                               max="3000">
+                        <div class="calc-error-message" id="poidsError"></div>
+                        <div class="calc-field-hint">💡 Saisissez un poids entier de 1 à 3000 kg</div>
+                    </div>
+                    
+                    <div class="calc-form-group">
+                        <label for="type" class="calc-form-label">
+                            📦 Type d'envoi
+                        </label>
+                        <select id="type" name="type" class="calc-form-input">
+                            <option value="colis">📦 Colis standard</option>
+                            <option value="palette">🏗️ Palette(s) EUR</option>
+                        </select>
+                    </div>
+                    
+                    <div class="calc-form-group" id="palettesGroup" style="display: none;">
+                        <label for="palettes" class="calc-form-label">
+                            🏗️ Nombre de palettes EUR
+                        </label>
+                        <input type="number" 
+                               id="palettes" 
+                               name="palettes" 
+                               class="calc-form-input" 
+                               min="1" 
+                               max="20" 
+                               value="1">
+                        <div class="calc-field-hint">💡 Palettes européennes standard (120x80x144cm)</div>
+                    </div>
+                </div>
+                
+                <!-- Étape 3: Options -->
+                <div class="calc-step-content" data-step="3" style="display: none;">
+                    <h2 class="calc-step-title">⚙️ Options de transport</h2>
+                    
+                    <div class="calc-form-group">
+                        <label class="calc-form-label">
+                            ⚠️ Transport ADR (matières dangereuses)
+                        </label>
+                        <div class="calc-toggle-group">
+                            <button type="button" class="calc-toggle-btn active" data-adr="non">❌ Non</button>
+                            <button type="button" class="calc-toggle-btn" data-adr="oui">⚠️ Oui</button>
+                        </div>
+                        <div class="calc-field-hint">💡 Les matières dangereuses nécessitent des frais supplémentaires</div>
+                    </div>
+                    
+                    <div class="calc-form-group">
+                        <label for="option_sup" class="calc-form-label">
+                            🚀 Service de livraison
+                        </label>
+                        <select id="option_sup" name="option_sup" class="calc-form-input">
+                            <option value="standard">📅 Standard (24-48h)</option>
+                            <option value="rdv">📞 Sur rendez-vous</option>
+                            <option value="premium_13h">⏰ Premium avant 13h</option>
+                            <option value="premium_18h">🌅 Premium avant 18h</option>
+                        </select>
+                    </div>
+                    
+                    <div class="calc-form-group">
+                        <label class="calc-form-label">
+                            🏭 Enlèvement chez l'expéditeur
+                        </label>
+                        <div class="calc-toggle-group">
+                            <button type="button" class="calc-toggle-btn active" data-enlevement="non">❌ Non</button>
+                            <button type="button" class="calc-toggle-btn" data-enlevement="oui">✅ Oui</button>
+                        </div>
+                        <div class="calc-field-hint">💡 Service d'enlèvement directement chez vous</div>
+                    </div>
+                </div>
+                
+                <!-- Boutons navigation -->
+                <div class="calc-form-actions">
+                    <button type="button" id="prevBtn" class="calc-btn calc-btn-secondary" style="display: none;">
+                        ← Précédent
+                    </button>
+                    <button type="button" id="nextBtn" class="calc-btn calc-btn-primary">
+                        Suivant →
+                    </button>
+                    <button type="submit" id="calculateBtn" class="calc-btn calc-btn-primary" style="display: none;">
+                        🧮 Calculer les tarifs
+                    </button>
+                </div>
+            </form>
+        </div>
         
-        <!-- RÉSULTATS -->
-        <section class="calc-results-panel">
-            <div class="calc-results-header">
-                <h2 class="calc-results-title">💰 Tarifs de transport</h2>
-                <div class="calc-status" id="calcStatus">⏳ En attente...</div>
-            </div>
-            
-            <div class="calc-results-content" id="resultsContent">
+        <!-- Résultats -->
+        <div class="calc-results-section">
+            <div id="resultsContent" class="calc-results-content">
                 <div class="calc-empty-state">
-                    <div class="calc-empty-icon">🧮</div>
-                    <p class="calc-empty-text">Complétez le formulaire pour voir les tarifs</p>
+                    <div class="calc-empty-icon">⏳</div>
+                    <p class="calc-empty-text">Remplissez le formulaire pour voir les tarifs</p>
+                    <div class="calc-status">Prêt pour calcul</div>
                 </div>
             </div>
             
-            <!-- Information Express Dédié -->
-            <div class="calc-express-info">
-                <div class="calc-express-header">
-                    <div class="calc-express-icon">⚡</div>
-                    <div>
-                        <div class="calc-express-title">Express Dédié Disponible</div>
-                        <div class="calc-express-subtitle">Livraison urgente 12h - Tarif au réel</div>
-                    </div>
-                </div>
-                <div class="calc-express-content">
-                    <p>Pour les situations d'urgence, nous proposons un <strong>service express dédié</strong> :</p>
-                    <div class="calc-express-example">
-                        📦 <strong>Exemple :</strong> Client en rupture de stock<br>
-                        🕐 <strong>Délai :</strong> Chargé l'après-midi → Livré lendemain 8h<br>
-                        💰 <strong>Coût :</strong> <span class="calc-express-price">600€ - 800€</span> (selon distance)
-                    </div>
-                    <p>Ce service est <strong>calculé au réel</strong> selon la distance et l'urgence. 
-                    Il permet de débloquer les situations critiques avec une livraison garantie sous 12h.</p>
-                    <div class="calc-express-toggle">
-                        <button type="button" class="calc-express-btn" onclick="contactExpress()">
-                            ⚡ Demander Express Dédié <span>→</span>
-                        </button>
-                    </div>
-                </div>
+            <!-- Zone de chargement -->
+            <div id="loadingState" class="calc-loading" style="display: none;">
+                <div class="calc-loading-spinner"></div>
+                <p>Calcul des tarifs en cours...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Informations utiles -->
+    <div class="calc-info-section">
+        <div class="calc-info-cards">
+            <div class="calc-info-card">
+                <div class="calc-info-icon">📋</div>
+                <h3>Transporteurs inclus</h3>
+                <ul>
+                    <li>🚛 XPO Logistics</li>
+                    <li>🚚 Heppner</li>
+                    <li>📦 Kuehne+Nagel</li>
+                </ul>
             </div>
             
-            <!-- Historique -->
-            <div class="calc-section calc-history" id="historySection" style="display: none;">
-                <div class="calc-section-header" onclick="toggleHistory()">
-                    <span>📋 Historique des calculs</span>
-                    <span class="calc-toggle-icon" id="historyToggle">▼</span>
-                </div>
-                <div class="calc-section-content" id="historyContent">
-                    <p class="calc-section-empty">Aucun calcul dans l'historique</p>
-                </div>
+            <div class="calc-info-card">
+                <div class="calc-info-icon">⚡</div>
+                <h3>Avantages</h3>
+                <ul>
+                    <li>💰 Comparaison instantanée</li>
+                    <li>📊 Tarifs négociés</li>
+                    <li>🎯 Recommandation automatique</li>
+                </ul>
             </div>
             
-            <!-- Debug -->
-            <div class="calc-section calc-debug" id="debugContainer" style="display: none;">
-                <div class="calc-section-header" onclick="toggleDebug()">
-                    <span>🐛 Debug Transport</span>
-                    <span class="calc-toggle-icon" id="debugToggle">▼</span>
-                </div>
-                <div class="calc-section-content" id="debugContent"></div>
+            <div class="calc-info-card">
+                <div class="calc-info-icon">🔒</div>
+                <h3>Sécurité</h3>
+                <ul>
+                    <li>🛡️ Données chiffrées</li>
+                    <li>🔐 Accès sécurisé</li>
+                    <li>📝 Historique privé</li>
+                </ul>
             </div>
-        </section>
-    </main>
+        </div>
+    </div>
 </div>
 
-<!-- JavaScript du module port via header.php automatique -->
-
+<!-- Scripts JavaScript -->
 <script>
-// Fonction contactExpress dans la portée globale pour corriger l'erreur
-window.contactExpress = function() {
-    const subject = 'Demande Express Dédié - Livraison 12h';
-    const body = `Bonjour,
-
-Je souhaite obtenir un devis pour un transport express dédié :
-
-- Type : Express 12h (chargé après-midi → livré lendemain 8h)
-- Poids approximatif : [à compléter] kg
-- Département destination : [à compléter]
-- Date souhaitée : [à compléter]
-- Détails urgence : [à compléter]
-
-Merci de me communiquer le tarif et les modalités.
-
-Cordialement`;
-
-    const mailtoLink = `mailto:contact@guldagil.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoLink;
-};
-
-// Fonction reset formulaire
-window.resetForm = function() {
-    document.getElementById('calculatorForm').reset();
-    document.getElementById('resultsContent').innerHTML = `
-        <div class="calc-empty-state">
-            <div class="calc-empty-icon">🧮</div>
-            <p class="calc-empty-text">Complétez le formulaire pour voir les tarifs</p>
-        </div>
-    `;
-    document.getElementById('calcStatus').textContent = '⏳ En attente...';
-};
-
-// Fonction toggle historique
-window.toggleHistory = function() {
-    const content = document.getElementById('historyContent');
-    const toggle = document.getElementById('historyToggle');
-    
-    if (content.style.display === 'block') {
-        content.style.display = 'none';
-        toggle.textContent = '▼';
-    } else {
-        content.style.display = 'block';
-        toggle.textContent = '▲';
-    }
-};
-
-// Fonction toggle debug
-window.toggleDebug = function() {
-    const content = document.getElementById('debugContent');
-    const toggle = document.getElementById('debugToggle');
-    
-    if (content.style.display === 'block') {
-        content.style.display = 'none';
-        toggle.textContent = '▼';
-    } else {
-        content.style.display = 'block';
-        toggle.textContent = '▲';
-    }
-};
-
-// Initialisation du module
+// Correction immédiate des problèmes
 document.addEventListener('DOMContentLoaded', function() {
-    // Gestion des étapes
-    const steps = document.querySelectorAll('.calc-step-btn');
-    const stepContents = document.querySelectorAll('.calc-step-content');
-    
-    steps.forEach(step => {
-        step.addEventListener('click', function() {
-            const stepNumber = this.dataset.step;
-            
-            // Activer l'étape
-            steps.forEach(s => s.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Afficher le contenu correspondant
-            stepContents.forEach(content => {
-                content.classList.remove('active');
-                if (content.dataset.step === stepNumber) {
-                    content.classList.add('active');
-                }
-            });
-        });
-    });
-    
-    // Gestion du type palette/colis
-    const typeSelect = document.getElementById('type');
-    const palettesGroup = document.getElementById('palettesGroup');
-    const paletteEurGroup = document.getElementById('paletteEurGroup');
-    
-    typeSelect.addEventListener('change', function() {
-        if (this.value === 'palette') {
-            palettesGroup.style.display = 'block';
-            paletteEurGroup.style.display = 'block';
-        } else {
-            palettesGroup.style.display = 'none';
-            paletteEurGroup.style.display = 'none';
-        }
-    });
-    
-    // Gestion des toggles ADR et enlèvement
-    document.querySelectorAll('.calc-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const group = this.parentElement;
-            const hiddenInput = group.nextElementSibling;
-            const value = this.dataset.adr || this.dataset.enlevement;
-            
-            // Désactiver tous les boutons du groupe
-            group.querySelectorAll('.calc-toggle-btn').forEach(b => b.classList.remove('active'));
-            
-            // Activer le bouton cliqué
-            this.classList.add('active');
-            
-            // Mettre à jour le champ caché
-            if (hiddenInput && hiddenInput.type === 'hidden') {
-                hiddenInput.value = value;
+    // 1. Corriger le problème "invalid form control"
+    const poidsField = document.getElementById('poids');
+    if (poidsField) {
+        // Retirer required temporairement pour éviter le blocage HTML5
+        poidsField.removeAttribute('required');
+        
+        // Validation JavaScript personnalisée
+        poidsField.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            if (!isNaN(value) && value >= 1 && value <= 3000) {
+                this.setCustomValidity('');
+                this.classList.remove('error');
+                this.classList.add('valid');
+            } else {
+                this.setCustomValidity('Poids requis entre 1 et 3000 kg');
+                this.classList.add('error');
+                this.classList.remove('valid');
             }
         });
+    }
+    
+    // 2. Gestion des étapes du formulaire
+    let currentStep = 1;
+    const totalSteps = 3;
+    
+    function showStep(step) {
+        // Masquer toutes les étapes
+        document.querySelectorAll('.calc-step-content').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        // Afficher l'étape actuelle
+        const currentStepEl = document.querySelector(`[data-step="${step}"]`);
+        if (currentStepEl) {
+            currentStepEl.style.display = 'block';
+        }
+        
+        // Gestion des boutons
+        document.getElementById('prevBtn').style.display = step > 1 ? 'inline-block' : 'none';
+        document.getElementById('nextBtn').style.display = step < totalSteps ? 'inline-block' : 'none';
+        document.getElementById('calculateBtn').style.display = step === totalSteps ? 'inline-block' : 'none';
+        
+        currentStep = step;
+    }
+    
+    // Navigation étapes
+    document.getElementById('nextBtn').addEventListener('click', function() {
+        if (currentStep < totalSteps) {
+            showStep(currentStep + 1);
+        }
     });
     
-    // Gestion du formulaire
+    document.getElementById('prevBtn').addEventListener('click', function() {
+        if (currentStep > 1) {
+            showStep(currentStep - 1);
+        }
+    });
+    
+    // 3. Gestion des toggles
+    document.querySelectorAll('.calc-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Retirer active de tous les boutons du groupe
+            this.parentNode.querySelectorAll('.calc-toggle-btn').forEach(b => b.classList.remove('active'));
+            // Ajouter active au bouton cliqué
+            this.classList.add('active');
+        });
+    });
+    
+    // 4. Gestion du type (palette/colis)
+    document.getElementById('type').addEventListener('change', function() {
+        const palettesGroup = document.getElementById('palettesGroup');
+        if (this.value === 'palette') {
+            palettesGroup.style.display = 'block';
+        } else {
+            palettesGroup.style.display = 'none';
+        }
+    });
+    
+    // 5. Soumission du formulaire
     document.getElementById('calculatorForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        calculateRates();
+    });
+    
+    // Fonction de calcul
+    function calculateRates() {
+        const formData = new FormData(document.getElementById('calculatorForm'));
         
-        const formData = new FormData(this);
-        const params = Object.fromEntries(formData.entries());
+        // Ajouter les valeurs des toggles
+        const adrBtn = document.querySelector('[data-adr].active');
+        const enlevementBtn = document.querySelector('[data-enlevement].active');
         
-        // Validation basique
-        if (!params.departement || !params.poids) {
-            alert('Veuillez remplir tous les champs obligatoires');
+        formData.append('adr', adrBtn ? adrBtn.dataset.adr : 'non');
+        formData.append('enlevement', enlevementBtn ? enlevementBtn.dataset.enlevement : 'non');
+        
+        // Validation simple
+        const dept = formData.get('departement');
+        const poids = formData.get('poids');
+        
+        if (!dept || !/^[0-9]{2,3}$/.test(dept)) {
+            alert('Veuillez saisir un département valide (ex: 75, 69, 13)');
             return;
         }
+        
+        if (!poids || poids < 1 || poids > 3000) {
+            alert('Veuillez saisir un poids entre 1 et 3000 kg');
+            return;
+        }
+        
+        // Afficher le loading
+        document.getElementById('resultsContent').style.display = 'none';
+        document.getElementById('loadingState').style.display = 'block';
         
         // Appel AJAX
         fetch('?ajax=calculate', {
             method: 'POST',
-            body: new URLSearchParams(params)
+            body: new URLSearchParams(formData)
         })
         .then(response => response.json())
         .then(data => {
-            const resultsContent = document.getElementById('resultsContent');
-            const calcStatus = document.getElementById('calcStatus');
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('resultsContent').style.display = 'block';
             
             if (data.success) {
-                calcStatus.textContent = `✅ Calculé en ${data.time_ms}ms`;
-                
-                let html = '<div class="calc-carrier-list">';
-                Object.entries(data.carriers).forEach(([carrier, result]) => {
-                    html += `
-                        <div class="calc-carrier-card">
-                            <div class="calc-carrier-header">
-                                <div class="calc-carrier-name">${carrier.toUpperCase()}</div>
-                                <div class="calc-carrier-price">${result.prix_ttc}€ TTC</div>
-                            </div>
-                            <div class="calc-carrier-details">
-                                <div class="calc-detail-item">
-                                    <span class="calc-detail-label">Prix HT</span>
-                                    <span class="calc-detail-value">${result.prix_ht}€</span>
-                                </div>
-                                <div class="calc-detail-item">
-                                    <span class="calc-detail-label">Délai</span>
-                                    <span class="calc-detail-value">${result.delai}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-                
-                resultsContent.innerHTML = html;
+                displayResults(data.carriers);
             } else {
-                calcStatus.textContent = '❌ Erreur de calcul';
-                resultsContent.innerHTML = `
-                    <div class="calc-error">
-                        <p><strong>Erreur :</strong> ${data.error || 'Erreur inconnue'}</p>
-                    </div>
-                `;
+                displayError(data.error || 'Erreur lors du calcul');
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
-            document.getElementById('calcStatus').textContent = '❌ Erreur de connexion';
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('resultsContent').style.display = 'block';
+            displayError('Erreur de connexion: ' + error.message);
         });
-    });
+    }
+    
+    // Affichage des résultats
+    function displayResults(carriers) {
+        const resultsEl = document.getElementById('resultsContent');
+        
+        if (!carriers || carriers.length === 0) {
+            resultsEl.innerHTML = `
+                <div class="calc-empty-state">
+                    <div class="calc-empty-icon">❌</div>
+                    <p class="calc-empty-text">Aucun tarif disponible</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div class="calc-results-grid">';
+        
+        carriers.forEach((carrier, index) => {
+            const isBest = index === 0; // Premier = meilleur tarif
+            html += `
+                <div class="calc-carrier-card ${isBest ? 'calc-carrier-best' : ''}">
+                    ${isBest ? '<div class="calc-best-badge">🏆 Meilleur tarif</div>' : ''}
+                    <div class="calc-carrier-header">
+                        <h3 class="calc-carrier-name">${carrier.name || 'Transporteur'}</h3>
+                        <div class="calc-carrier-price">${carrier.total || 'N/C'}€ HT</div>
+                    </div>
+                    <div class="calc-carrier-details">
+                        ${carrier.details ? carrier.details.map(d => `<div>• ${d}</div>`).join('') : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        resultsEl.innerHTML = html;
+    }
+    
+    // Affichage des erreurs
+    function displayError(message) {
+        document.getElementById('resultsContent').innerHTML = `
+            <div class="calc-empty-state">
+                <div class="calc-empty-icon">❌</div>
+                <p class="calc-empty-text">Erreur: ${message}</p>
+                <div class="calc-status">Veuillez réessayer</div>
+            </div>
+        `;
+    }
+    
+    // Initialiser l'affichage
+    showStep(1);
 });
 </script>
 
-<?php
-require_once ROOT_PATH . '/templates/footer.php';
-?>
+<?php require_once ROOT_PATH . '/templates/footer.php'; ?>
