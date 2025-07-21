@@ -135,24 +135,23 @@ $all_modules = [
         'priority' => 4,
         'coming_soon' => true
     ],
-    'outillages' => [
-        'name' => 'Gestion Outillages',
-        'description' => 'Suivi et maintenance du matériel et outillages',
+    'materiel' => [
+        'name' => 'Gestion du Matériel',
+        'description' => 'Gestion complète de l\'outillage et des équipements techniques',
         'icon' => '🔧',
-        'url' => '/outillages/',
-        'status' => 'development',
-        'color' => '#6b7280',
-        'category' => 'Maintenance & Matériel',
-        'roles' => ['admin', 'dev', 'maintenance'],
+        'url' => '/materiel/',
+        'status' => 'active',
+        'color' => '#ea580c',
+        'category' => 'Équipements & Outillage',
+        'roles' => ['user', 'admin', 'dev', 'logistique'],
         'features' => [
-            'Inventaire détaillé du matériel',
-            'Planning de maintenance préventive',
-            'Suivi des réparations',
-            'Historique d\'utilisation',
-            'Gestion des prêts'
+            'Inventaire outillage complet',
+            'Attribution par technicien',
+            'Maintenance et révisions',
+            'Demandes de matériel',
+            'Tableaux de bord par agence'
         ],
-        'priority' => 5,
-        'coming_soon' => true
+        'priority' => 5
     ],
     'user' => [
         'name' => 'Mon Espace Personnel',
