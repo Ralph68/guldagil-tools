@@ -29,10 +29,10 @@ class RoleManager
                 'access_dev', 'view_debug', 'manage_system',
                 'view_logs', 'edit_modules', 'manage_users',
                 'edit_config', 'view_admin', 'manage_shipping',
-                'view_quality', 'manage_adr', 'view_outillage',
+                'view_quality', 'manage_adr', 'view_materiel',
                 'manage_epi', 'quality_control', 'quality_analysis'
             ],
-            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'outillages', 'user', 'admin']
+            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'materiel', 'user', 'admin']
         ],
         'admin' => [
             'name' => 'Administrateur',
@@ -43,10 +43,10 @@ class RoleManager
             'capabilities' => [
                 'manage_users', 'manage_system', 'view_admin',
                 'edit_config', 'view_logs', 'manage_shipping',
-                'view_quality', 'manage_adr', 'view_outillage',
+                'view_quality', 'manage_adr', 'view_materiel',
                 'manage_epi', 'quality_control'
             ],
-            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'outillages', 'user', 'admin']
+            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'materiel', 'user', 'admin']
         ],
         'logistique' => [
             'name' => 'Logistique',
@@ -56,9 +56,9 @@ class RoleManager
             'icon' => '🚛',
             'capabilities' => [
                 'manage_shipping', 'view_quality', 'manage_adr',
-                'view_outillage', 'view_shipping'
+                'view_materiel', 'view_shipping'
             ],
-            'modules' => ['home', 'port', 'qualite', 'adr', 'outillage']
+            'modules' => ['home', 'port', 'qualite', 'adr', 'materiel']
         ],
         'qhse' => [
             'name' => 'QHSE',
@@ -67,10 +67,10 @@ class RoleManager
             'color' => '#ea580c',
             'icon' => '🦺',
             'capabilities' => [
-                'manage_adr', 'manage_epi', 'view_outillage',
+                'manage_adr', 'manage_epi', 'view_materiel',
                 'quality_control', 'quality_analysis'
             ],
-            'modules' => ['home', 'adr', 'epi', 'outillages']
+            'modules' => ['home', 'adr', 'epi', 'materiel']
         ],
         'labo' => [
             'name' => 'Laboratoire',
@@ -80,9 +80,9 @@ class RoleManager
             'icon' => '🧪',
             'capabilities' => [
                 'view_quality', 'quality_control', 'quality_analysis',
-                'view_outillage'
+                'view_materiel'
             ],
-            'modules' => ['home', 'qualite', 'outillages']
+            'modules' => ['home', 'qualite', 'materiel']
         ],
         'user' => [
             'name' => 'Utilisateur',
@@ -91,7 +91,7 @@ class RoleManager
             'color' => '#374151',
             'icon' => '👤',
             'capabilities' => ['view_shipping'],
-            'modules' => ['home', 'port', 'outillages']
+            'modules' => ['home', 'port', 'materiel']
         ]
     ];
 
@@ -257,7 +257,7 @@ class RoleManager
                 'manage_shipping' => 'Gestion transport',
                 'view_quality' => 'Consultation qualité',
                 'manage_adr' => 'Gestion ADR',
-                'view_outillage' => 'Consultation outillage',
+                'view_materiel' => 'Consultation materiel',
                 'manage_epi' => 'Gestion EPI',
                 'quality_control' => 'Contrôle qualité',
                 'view_shipping' => 'Consultation transport',
