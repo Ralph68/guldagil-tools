@@ -513,28 +513,28 @@ const CalculateurModule = {
      * Appel API
      */
     async callAPI(formData) {
-        const params = new URLSearchParams(formData);
-        
-        const response = await fetch(this.config.apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: params.toString()
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
+    const params = new URLSearchParams(formData);
+    const response = await fetch(this.config.apiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString()
+    });
+
+    const text = await response.text();
+    console.log('[DEBUG] Réponse brute du serveur :', text);
+    // Ensuite, essaye de parser le JSON
+    try {
+        const result = JSON.parse(text);
         if (!result.success) {
             throw new Error(result.error || 'Erreur inconnue');
         }
-        
         return result;
-    },
+    } catch (err) {
+        throw new Error('Réponse non-JSON reçue: ' + text.substring(0, 100));
+    }
+},
 
     /**
      * Affichage des résultats
