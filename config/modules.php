@@ -49,19 +49,19 @@ $modules = [
         ]
     ],
     
-    'outillages' => [
-        'name' => 'Outillages',
-        'description' => 'Gestion des outillages industriels',
-        'class' => 'OutillagesModule',
-        'status' => 'development',
-        'icon' => '🔧',
-        'color' => '#95a5a6',
-        'routes' => ['outillages', 'outils'],
-        'assets' => [
-            'css' => ['outillages.css'],
-            'js' => ['outillages.js']
-        ]
-    ],
+    'materiel' => [
+    'name' => 'Gestion du Matériel',
+    'description' => 'Outillage et équipements',
+    'class' => 'MaterielModule',
+    'status' => 'development',
+    'icon' => '🔧',
+    'color' => '#95a5a6',
+    'routes' => ['materiel', 'outillages', 'outils'],
+    'assets' => [
+        'css' => ['materiel.css'],
+        'js' => ['materiel.js']
+    ]
+],
     
     'qualite' => [
         'name' => 'Contrôle Qualité',

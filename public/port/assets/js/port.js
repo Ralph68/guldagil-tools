@@ -1,5 +1,5 @@
 /**
- * Titre: Module JavaScript calculateur de frais de port - Version modernisée
+ * Titre: Module JavaScript calculateur de frais de port - Version corrigée
  * Chemin: /public/port/assets/js/port.js
  * Version: 0.5 beta + build auto
  */
@@ -22,7 +22,7 @@ const CalculateurModule = {
         adrSelected: false
     },
 
-    // Cache DOM avec nouvelles classes CSS
+    // Cache DOM
     dom: {},
 
     /**
@@ -65,7 +65,65 @@ const CalculateurModule = {
     },
 
     /**
-     * Configuration des étapes
+     * Configuration des événements - VERSION CORRIGÉE
+     */
+    setupEventListeners() {
+        // Validation temps réel avec progression automatique
+        if (this.dom.departement) {
+            this.dom.departement.addEventListener('input', 
+                this.debounce(() => {
+                    this.validateDepartement();
+                    this.autoProgressIfValid();
+                }, this.config.debounceDelay)
+            );
+            
+            // Validation à la perte de focus
+            this.dom.departement.addEventListener('blur', () => {
+                this.validateDepartement();
+                this.autoProgressIfValid();
+            });
+        }
+
+        if (this.dom.poids) {
+            this.dom.poids.addEventListener('input', 
+                this.debounce(() => {
+                    this.validatePoids();
+                    this.autoProgressIfValid();
+                }, this.config.debounceDelay)
+            );
+            
+            this.dom.poids.addEventListener('blur', () => {
+                this.validatePoids();
+                this.autoProgressIfValid();
+            });
+        }
+
+        // Soumission formulaire
+        if (this.dom.form) {
+            this.dom.form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleCalculate();
+            });
+        }
+
+        // Bouton calcul manuel
+        if (this.dom.calculateBtn) {
+            this.dom.calculateBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleCalculate();
+            });
+        }
+
+        // Navigation clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                this.handleEnterKey(e);
+            }
+        });
+    },
+
+    /**
+     * Configuration des étapes - VERSION CORRIGÉE
      */
     setupSteps() {
         // Gestion des boutons d'étapes
@@ -84,236 +142,498 @@ const CalculateurModule = {
         });
 
         // Gestion type palette/colis
-        this.dom.type.addEventListener('change', () => {
-            this.handleTypeChange();
-        });
-    },
-
-    /**
-     * Activer une étape avec debug
-     */
-    activateStep(stepNumber) {
-        console.log(`Activation étape ${stepNumber}`);
-        this.state.currentStep = stepNumber;
-        
-        // Mettre à jour les boutons
-        this.dom.stepBtns.forEach(btn => {
-            btn.classList.remove('active');
-            if (parseInt(btn.dataset.step) === stepNumber) {
-                btn.classList.add('active');
-            }
-        });
-
-        // Mettre à jour le contenu
-        this.dom.stepContents.forEach(content => {
-            content.classList.remove('active');
-            content.style.display = 'none';
-            if (parseInt(content.dataset.step) === stepNumber) {
-                content.classList.add('active');
-                content.style.display = 'block';
-            }
-        });
-        
-        // Focus automatique sur le premier champ de l'étape
-        setTimeout(() => {
-            if (stepNumber === 2) {
-                this.dom.poids.focus();
-            } else if (stepNumber === 3) {
-                const firstToggle = document.querySelector('[data-adr="non"]');
-                if (firstToggle) firstToggle.focus();
-            }
-        }, 100);
-    },
-
-    /**
-     * Gestion des toggles
-     */
-    handleToggle(button) {
-        const group = button.parentElement;
-        const hiddenInput = group.nextElementSibling;
-        
-        // Désactiver tous les boutons du groupe
-        group.querySelectorAll('.calc-toggle-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // Activer le bouton cliqué
-        button.classList.add('active');
-        
-        // Mettre à jour le champ caché
-        const value = button.dataset.adr || button.dataset.enlevement;
-        if (hiddenInput && hiddenInput.type === 'hidden') {
-            hiddenInput.value = value;
-        }
-
-        // Gestion spéciale ADR
-        if (button.dataset.adr) {
-            this.state.adrSelected = value === 'oui';
+        if (this.dom.type) {
+            this.dom.type.addEventListener('change', () => {
+                this.handleTypeChange();
+                this.autoProgressIfValid();
+            });
         }
     },
 
     /**
-     * Gestion du changement de type
+     * NOUVELLE FONCTION : Auto-progression intelligente des étapes
      */
-    handleTypeChange() {
-        const isLot = this.dom.type.value === 'palette';
+    autoProgressIfValid() {
+        const deptValid = this.validateDepartement();
+        const poidsValid = this.validatePoids();
         
-        if (this.dom.palettesGroup) {
-            this.dom.palettesGroup.style.display = isLot ? 'block' : 'none';
+        console.log(`Auto-progression: dept=${deptValid}, poids=${poidsValid}, step=${this.state.currentStep}`);
+        
+        // Étape 1 → 2 : Département valide
+        if (deptValid && this.state.currentStep === 1) {
+            console.log('🚀 Progression automatique : Étape 1 → 2');
+            setTimeout(() => {
+                this.activateStep(2);
+                // Focus sur le champ poids
+                if (this.dom.poids) {
+                    this.dom.poids.focus();
+                }
+            }, 600);
         }
         
-        if (this.dom.paletteEurGroup) {
-            this.dom.paletteEurGroup.style.display = isLot ? 'block' : 'none';
+        // Étape 2 → 3 : Département + Poids valides
+        else if (deptValid && poidsValid && this.state.currentStep === 2) {
+            console.log('🚀 Progression automatique : Étape 2 → 3');
+            setTimeout(() => {
+                this.activateStep(3);
+                // Focus sur le type d'envoi
+                if (this.dom.type) {
+                    this.dom.type.focus();
+                }
+            }, 600);
+        }
+        
+        // Étape 3 : Calcul automatique si tout est valide
+        else if (deptValid && poidsValid && this.state.currentStep >= 3 && !this.state.isCalculating) {
+            console.log('🚀 Lancement calcul automatique');
+            setTimeout(() => this.handleCalculate(), 1000);
         }
     },
 
     /**
-     * Configuration des événements
+     * Gestion de la touche Entrée - NOUVELLE FONCTION
      */
-    setupEventListeners() {
-        // Soumission formulaire
-        this.dom.form.addEventListener('submit', (e) => {
+    handleEnterKey(e) {
+        const activeElement = document.activeElement;
+        
+        // Si on est sur le champ département et qu'il est valide
+        if (activeElement === this.dom.departement && this.validateDepartement()) {
+            e.preventDefault();
+            this.activateStep(2);
+            setTimeout(() => this.dom.poids.focus(), 200);
+        }
+        
+        // Si on est sur le champ poids et qu'il est valide
+        else if (activeElement === this.dom.poids && this.validatePoids()) {
+            e.preventDefault();
+            this.activateStep(3);
+            setTimeout(() => this.dom.type.focus(), 200);
+        }
+        
+        // Si on est sur l'étape 3 et que tout est valide
+        else if (this.state.currentStep >= 3 && this.isFormValid()) {
             e.preventDefault();
             this.handleCalculate();
-        });
+        }
+    },
 
-        // Validation temps réel avec debounce et progression
-        this.dom.departement.addEventListener('input', 
-            this.debounce(() => {
-                console.log('Input département:', this.dom.departement.value);
-                this.validateDepartement();
-                this.autoCalculateIfValid();
-            }, this.config.debounceDelay)
-        );
-
-        this.dom.poids.addEventListener('input', 
-            this.debounce(() => {
-                console.log('Input poids:', this.dom.poids.value);
-                this.validatePoids();
-                this.autoCalculateIfValid();
-            }, this.config.debounceDelay)
-        );
-
-        // Auto-progression et calcul intelligent avec debug
-        ['departement', 'poids'].forEach(field => {
-            this.dom[field].addEventListener('change', () => {
-                console.log(`Change event sur ${field}:`, this.dom[field].value);
-                this.autoCalculateIfValid();
-            });
+    /**
+     * Activer une étape avec animations - VERSION AMÉLIORÉE
+     */
+    activateStep(stepNumber) {
+        console.log(`🎯 Activation étape ${stepNumber}`);
+        
+        const previousStep = this.state.currentStep;
+        this.state.currentStep = stepNumber;
+        
+        // Mettre à jour les boutons d'étapes
+        this.dom.stepBtns.forEach(btn => {
+            const btnStep = parseInt(btn.dataset.step);
+            btn.classList.remove('active', 'completed');
             
-            // Progression manuelle avec Enter
-            this.dom[field].addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    console.log(`Enter pressé sur ${field}`);
-                    if (field === 'departement' && this.validateDepartement()) {
-                        this.activateStep(2);
-                    } else if (field === 'poids' && this.validatePoids()) {
-                        this.activateStep(3);
-                    }
-                }
-            });
-        });
-
-        // Navigation étapes avec flèches
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey) {
-                if (e.key === 'ArrowLeft' && this.state.currentStep > 1) {
-                    this.activateStep(this.state.currentStep - 1);
-                    e.preventDefault();
-                } else if (e.key === 'ArrowRight' && this.state.currentStep < 3) {
-                    this.activateStep(this.state.currentStep + 1);
-                    e.preventDefault();
-                }
+            if (btnStep === stepNumber) {
+                btn.classList.add('active');
+            } else if (btnStep < stepNumber) {
+                btn.classList.add('completed');
             }
         });
+
+        // Mettre à jour le contenu des étapes avec animation
+        this.dom.stepContents.forEach(content => {
+            const contentStep = parseInt(content.dataset.step);
+            
+            if (contentStep === stepNumber) {
+                content.style.display = 'block';
+                content.classList.add('active');
+                // Animation d'entrée
+                setTimeout(() => {
+                    content.style.opacity = '1';
+                    content.style.transform = 'translateY(0)';
+                }, 50);
+            } else {
+                content.classList.remove('active');
+                content.style.opacity = '0';
+                content.style.transform = 'translateY(10px)';
+                setTimeout(() => {
+                    content.style.display = 'none';
+                }, 200);
+            }
+        });
+
+        // Focus sur le premier champ de l'étape active
+        this.focusFirstFieldInStep(stepNumber);
+        
+        // Notification visuelle
+        this.showStepNotification(stepNumber, previousStep);
     },
 
     /**
-     * Validation département
+     * Focus sur le premier champ de l'étape - NOUVELLE FONCTION
+     */
+    focusFirstFieldInStep(stepNumber) {
+        setTimeout(() => {
+            switch(stepNumber) {
+                case 1:
+                    if (this.dom.departement) this.dom.departement.focus();
+                    break;
+                case 2:
+                    if (this.dom.poids) this.dom.poids.focus();
+                    break;
+                case 3:
+                    if (this.dom.type) this.dom.type.focus();
+                    break;
+            }
+        }, 300);
+    },
+
+    /**
+     * Notification de changement d'étape - NOUVELLE FONCTION
+     */
+    showStepNotification(newStep, previousStep) {
+        const messages = {
+            1: '📍 Saisissez le département de destination',
+            2: '⚖️ Indiquez le poids de votre envoi',
+            3: '⚙️ Choisissez vos options d\'expédition'
+        };
+        
+        if (newStep > previousStep) {
+            this.showMessage(messages[newStep], 'success', 2000);
+        }
+    },
+
+    /**
+     * Validation département - VERSION CORRIGÉE
      */
     validateDepartement() {
+        if (!this.dom.departement) return false;
+        
         const value = this.dom.departement.value.trim();
-        const isValid = /^[0-9]{2,3}$/.test(value);
+        // Regex améliorée pour départements français (01-95 + 2A, 2B)
+        const isValid = /^(0[1-9]|[1-8][0-9]|9[0-5]|2[AB])$/i.test(value);
+        
+        console.log(`Validation département: "${value}" → ${isValid}`);
         
         this.updateFieldValidation('departement', isValid, 
-            isValid ? '' : 'Format invalide (ex: 75, 69, 13)');
+            isValid ? '' : 'Département invalide (ex: 75, 69, 13, 2A)');
         
         return isValid;
     },
 
     /**
-     * Validation poids avec debug
+     * Validation poids - VERSION CORRIGÉE
      */
     validatePoids() {
-        const value = parseFloat(this.dom.poids.value);
-        const isValid = value >= 1 && value <= 3000 && Number.isInteger(value);
+        if (!this.dom.poids) return false;
         
-        console.log(`Validation poids: ${value}, isValid: ${isValid}, currentStep: ${this.state.currentStep}`);
+        const value = parseFloat(this.dom.poids.value);
+        const isValid = value >= 1 && value <= 3000 && !isNaN(value);
+        
+        console.log(`Validation poids: ${value} → ${isValid}`);
         
         this.updateFieldValidation('poids', isValid, 
-            isValid ? '' : 'Poids entre 1 et 3000 kg (entier)');
+            isValid ? '' : 'Poids entre 1 et 3000 kg');
         
         return isValid;
     },
 
     /**
-     * Mise à jour validation champ
+     * Mise à jour validation champ - VERSION AMÉLIORÉE
      */
     updateFieldValidation(fieldName, isValid, errorMessage) {
         const field = this.dom[fieldName];
         const errorElement = document.getElementById(fieldName + 'Error');
         
+        if (!field) return;
+        
+        // Mise à jour des classes CSS
+        field.classList.remove('error', 'valid');
         if (isValid) {
-            field.classList.remove('error');
             field.classList.add('valid');
-            if (errorElement) errorElement.textContent = '';
-        } else {
+        } else if (field.value.trim() !== '') {
             field.classList.add('error');
-            field.classList.remove('valid');
-            if (errorElement) errorElement.textContent = errorMessage;
         }
         
+        // Affichage message d'erreur
+        if (errorElement) {
+            errorElement.textContent = errorMessage;
+        }
+        
+        // Mise à jour état interne
         this.state.validationErrors[fieldName] = !isValid;
     },
 
     /**
-     * Auto-calcul si formulaire valide avec debug
+     * Gestion des toggles (ADR, enlèvement) - VERSION CORRIGÉE
      */
-    autoCalculateIfValid() {
-        const deptValid = this.validateDepartement();
-        const poidsValid = this.validatePoids();
+    handleToggle(clickedBtn) {
+        const group = clickedBtn.closest('.calc-toggle-group');
+        if (!group) return;
         
-        console.log(`AutoCalculate: dept=${deptValid}, poids=${poidsValid}, step=${this.state.currentStep}`);
+        // Retirer active de tous les boutons du groupe
+        group.querySelectorAll('.calc-toggle-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
         
-        // Progression automatique des étapes
-        if (deptValid && this.state.currentStep === 1) {
-            console.log('Progression étape 1 → 2');
-            setTimeout(() => this.activateStep(2), 500);
-        } else if (deptValid && poidsValid && this.state.currentStep === 2) {
-            console.log('Progression étape 2 → 3');
-            setTimeout(() => this.activateStep(3), 500);
-        } else if (deptValid && poidsValid && this.state.currentStep >= 3 && !this.state.isCalculating) {
-            console.log('Lancement calcul automatique');
-            setTimeout(() => this.handleCalculate(), 800);
+        // Activer le bouton cliqué
+        clickedBtn.classList.add('active');
+        
+        // Mettre à jour l'état si c'est ADR
+        if (clickedBtn.dataset.adr !== undefined) {
+            this.state.adrSelected = clickedBtn.dataset.adr === 'oui';
+        }
+        
+        // Progression automatique
+        this.autoProgressIfValid();
+    },
+
+    /**
+     * Gestion changement de type - VERSION CORRIGÉE
+     */
+    handleTypeChange() {
+        if (!this.dom.type) return;
+        
+        const isPalette = this.dom.type.value === 'palette';
+        
+        // Afficher/masquer les champs palettes
+        if (this.dom.palettesGroup) {
+            this.dom.palettesGroup.style.display = isPalette ? 'block' : 'none';
+        }
+        if (this.dom.paletteEurGroup) {
+            this.dom.paletteEurGroup.style.display = isPalette ? 'block' : 'none';
+        }
+        
+        // Réinitialiser les valeurs si ce n'est pas palette
+        if (!isPalette && this.dom.palettes) {
+            this.dom.palettes.value = '1';
+        }
+        if (!isPalette && this.dom.paletteEur) {
+            this.dom.paletteEur.value = '0';
         }
     },
 
     /**
-     * Configuration validation
+     * Vérification validité formulaire complet
      */
-    setupValidation() {
-        // Validation en temps réel avec indicateurs visuels
-        const requiredFields = ['departement', 'poids'];
+    isFormValid() {
+        return this.validateDepartement() && this.validatePoids();
+    },
+
+    /**
+     * Afficher un message à l'utilisateur - NOUVELLE FONCTION
+     */
+    showMessage(message, type = 'info', duration = 3000) {
+        // Créer l'élément de notification
+        const notification = document.createElement('div');
+        notification.className = `calc-notification calc-notification-${type}`;
+        notification.textContent = message;
         
-        requiredFields.forEach(fieldName => {
-            const field = this.dom[fieldName];
-            if (field) {
-                field.addEventListener('blur', () => {
-                    this[`validate${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`]();
-                });
+        // Styles inline pour assurer l'affichage
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            background: ${type === 'success' ? '#059669' : type === 'error' ? '#dc2626' : '#3182ce'};
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Animation d'entrée
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 100);
+        
+        // Suppression automatique
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, duration);
+    },
+
+    /**
+     * Gestion du calcul
+     */
+    async handleCalculate() {
+        if (this.state.isCalculating) return;
+        
+        // Validation finale
+        if (!this.isFormValid()) {
+            this.showMessage('⚠️ Veuillez corriger les erreurs du formulaire', 'error');
+            return;
+        }
+
+        const formData = this.getFormData();
+        
+        this.state.isCalculating = true;
+        this.showLoading();
+        this.disableForm();
+
+        try {
+            console.log('🧮 Lancement calcul avec:', formData);
+            const results = await this.callAPI(formData);
+            this.displayResults(results, formData);
+            this.saveToHistory(formData, results);
+            this.showMessage('✅ Calcul terminé avec succès', 'success');
+        } catch (error) {
+            console.error('❌ Erreur calcul:', error);
+            this.showMessage('❌ Erreur lors du calcul. Veuillez réessayer.', 'error');
+        } finally {
+            this.state.isCalculating = false;
+            this.enableForm();
+        }
+    },
+
+    /**
+     * Récupération données formulaire
+     */
+    getFormData() {
+        return {
+            departement: this.dom.departement?.value.trim().padStart(2, '0') || '',
+            poids: parseFloat(this.dom.poids?.value) || 0,
+            type: this.dom.type?.value || 'colis',
+            palettes: parseInt(this.dom.palettes?.value) || 1,
+            palette_eur: parseInt(this.dom.paletteEur?.value) || 0,
+            adr: this.state.adrSelected ? 'oui' : 'non',
+            enlevement: 'non', // À implémenter si nécessaire
+            option_sup: this.dom.optionSup?.value || 'standard'
+        };
+    },
+
+    /**
+     * Appel API
+     */
+    async callAPI(formData) {
+        const params = new URLSearchParams(formData);
+        
+        const response = await fetch(this.config.apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: params.toString()
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Erreur inconnue');
+        }
+        
+        return result;
+    },
+
+    /**
+     * Affichage des résultats
+     */
+    displayResults(results, formData) {
+        if (!this.dom.resultsContent) return;
+        
+        let html = '<div class="calc-results">';
+        
+        if (results.carriers) {
+            Object.entries(results.carriers).forEach(([carrier, data]) => {
+                html += `
+                    <div class="calc-result-card">
+                        <h4>${carrier.toUpperCase()}</h4>
+                        <div class="calc-result-price">
+                            <span class="calc-price-ht">${data.prix_ht}€ HT</span>
+                            <span class="calc-price-ttc">${data.prix_ttc}€ TTC</span>
+                        </div>
+                        <div class="calc-result-delay">Délai: ${data.delai}</div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += '</div>';
+        this.dom.resultsContent.innerHTML = html;
+        
+        // Afficher la section résultats
+        const resultsSection = document.getElementById('resultsSection');
+        if (resultsSection) {
+            resultsSection.style.display = 'block';
+        }
+    },
+
+    /**
+     * Affichage du loading
+     */
+    showLoading() {
+        if (this.dom.calcStatus) {
+            this.dom.calcStatus.innerHTML = '🧮 Calcul en cours...';
+            this.dom.calcStatus.style.display = 'block';
+        }
+    },
+
+    /**
+     * Désactiver formulaire
+     */
+    disableForm() {
+        const fields = ['departement', 'poids', 'type', 'palettes', 'paletteEur'];
+        fields.forEach(field => {
+            if (this.dom[field]) {
+                this.dom[field].disabled = true;
             }
         });
+        
+        if (this.dom.calculateBtn) {
+            this.dom.calculateBtn.disabled = true;
+        }
+    },
+
+    /**
+     * Réactiver formulaire
+     */
+    enableForm() {
+        const fields = ['departement', 'poids', 'type', 'palettes', 'paletteEur'];
+        fields.forEach(field => {
+            if (this.dom[field]) {
+                this.dom[field].disabled = false;
+            }
+        });
+        
+        if (this.dom.calculateBtn) {
+            this.dom.calculateBtn.disabled = false;
+        }
+        
+        if (this.dom.calcStatus) {
+            this.dom.calcStatus.style.display = 'none';
+        }
+    },
+
+    /**
+     * Sauvegarde dans l'historique
+     */
+    saveToHistory(params, results) {
+        const entry = {
+            timestamp: Date.now(),
+            params: { ...params },
+            results: { ...results },
+            id: 'calc_' + Date.now()
+        };
+        
+        this.state.history.unshift(entry);
+        this.state.history = this.state.history.slice(0, 10);
+        
+        try {
+            localStorage.setItem('calc_history', JSON.stringify(this.state.history));
+        } catch (e) {
+            console.warn('Erreur sauvegarde historique:', e);
+        }
     },
 
     /**
@@ -330,269 +650,7 @@ const CalculateurModule = {
     },
 
     /**
-     * Sauvegarde dans l'historique
-     */
-    saveToHistory(params, results) {
-        const entry = {
-            timestamp: Date.now(),
-            params: { ...params },
-            results: { ...results },
-            id: 'calc_' + Date.now()
-        };
-        
-        this.state.history.unshift(entry);
-        this.state.history = this.state.history.slice(0, 10); // Garder 10 max
-        
-        try {
-            localStorage.setItem('calc_history', JSON.stringify(this.state.history));
-        } catch (e) {
-            console.warn('Erreur sauvegarde historique:', e);
-        }
-        
-        this.updateHistoryDisplay();
-    },
-
-    /**
-     * Mise à jour affichage historique
-     */
-    updateHistoryDisplay() {
-        const historySection = document.getElementById('historySection');
-        const historyContent = document.getElementById('historyContent');
-        
-        if (!historySection || !historyContent) return;
-        
-        if (this.state.history.length > 0) {
-            historySection.style.display = 'block';
-            
-            let html = '<div class="calc-history-list">';
-            this.state.history.forEach(entry => {
-                const date = new Date(entry.timestamp).toLocaleString();
-                html += `
-                    <div class="calc-history-item" onclick="CalculateurModule.replayCalculation('${entry.id}')">
-                        <div class="calc-history-header">
-                            <span class="calc-history-date">${date}</span>
-                            <span class="calc-history-dept">${entry.params.departement}</span>
-                        </div>
-                        <div class="calc-history-details">
-                            ${entry.params.poids}kg - ${entry.params.type}
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            
-            historyContent.innerHTML = html;
-        }
-    },
-
-    /**
-     * Rejouer un calcul
-     */
-    replayCalculation(entryId) {
-        const entry = this.state.history.find(h => h.id === entryId);
-        if (!entry) return;
-        
-        // Remplir le formulaire
-        Object.entries(entry.params).forEach(([key, value]) => {
-            const field = this.dom[key];
-            if (field) {
-                if (field.type === 'checkbox') {
-                    field.checked = value;
-                } else {
-                    field.value = value;
-                }
-            }
-        });
-        
-        // Mettre à jour l'affichage
-        this.handleTypeChange();
-        this.displayResults(entry.results);
-    },
-
-    /**
-     * Gestion du calcul
-     */
-    async handleCalculate() {
-        if (this.state.isCalculating) return;
-        
-        // Validation finale
-        if (!this.validateDepartement() || !this.validatePoids()) {
-            this.showError('Veuillez corriger les erreurs dans le formulaire');
-            return;
-        }
-        
-        this.state.isCalculating = true;
-        this.dom.form.classList.add('loading');
-        this.dom.calcStatus.textContent = '⏳ Calcul en cours...';
-        this.dom.calculateBtn.disabled = true;
-        
-        try {
-            const formData = this.getFormData();
-            const data = await this.callAPI(formData);
-            this.displayResults(data);
-            this.saveToHistory(formData, data);
-        } catch (error) {
-            console.error('Erreur calcul:', error);
-            this.showError('Erreur de calcul: ' + error.message);
-        } finally {
-            this.state.isCalculating = false;
-            this.dom.form.classList.remove('loading');
-            this.dom.calculateBtn.disabled = false;
-        }
-    },
-
-    /**
-     * Récupération données formulaire
-     */
-    getFormData() {
-        const formData = new FormData(this.dom.form);
-        const params = Object.fromEntries(formData.entries());
-        
-        // Ajouter palette_eur si visible
-        if (this.dom.paletteEurGroup && this.dom.paletteEurGroup.style.display !== 'none') {
-            params.palette_eur = parseInt(this.dom.paletteEur.value) || 0;
-        }
-        
-        return params;
-    },
-
-    /**
-     * Appel API
-     */
-    async callAPI(params) {
-        const response = await fetch(this.config.apiUrl, {
-            method: 'POST',
-            body: new URLSearchParams(params),
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.error || 'Erreur inconnue');
-        }
-        
-        return data;
-    },
-
-    /**
-     * Affichage des résultats avec nouvelles classes CSS
-     */
-    displayResults(data) {
-        this.state.currentData = data;
-        this.dom.calcStatus.textContent = `✅ Calculé en ${data.time_ms || 0}ms`;
-        
-        // Tri des transporteurs par prix
-        const carriers = Object.entries(data.carriers || {})
-            .filter(([name, result]) => result && result.prix_ttc)
-            .sort((a, b) => a[1].prix_ttc - b[1].prix_ttc);
-        
-        if (carriers.length === 0) {
-            this.showError('Aucun transporteur disponible pour cette destination');
-            return;
-        }
-        
-        let html = '<div class="calc-carrier-list">';
-        
-        carriers.forEach(([carrierName, result], index) => {
-            const isBest = index === 0;
-            const cardClass = isBest ? 'calc-carrier-card calc-carrier-best' : 'calc-carrier-card';
-            
-            html += `
-                <div class="${cardClass}">
-                    ${isBest ? '<div class="calc-best-badge">🏆 Meilleur tarif</div>' : ''}
-                    <div class="calc-carrier-header">
-                        <div class="calc-carrier-name">${this.formatCarrierName(carrierName)}</div>
-                        <div class="calc-carrier-price">${this.formatPrice(result.prix_ttc)} €</div>
-                    </div>
-                    <div class="calc-carrier-details">
-                        <div class="calc-detail-item">
-                            <span class="calc-detail-label">Prix HT</span>
-                            <span class="calc-detail-value">${this.formatPrice(result.prix_ht)} €</span>
-                        </div>
-                        <div class="calc-detail-item">
-                            <span class="calc-detail-label">Délai</span>
-                            <span class="calc-detail-value">${result.delai || 'N/A'}</span>
-                        </div>
-                        ${result.service ? `
-                        <div class="calc-detail-item">
-                            <span class="calc-detail-label">Service</span>
-                            <span class="calc-detail-value">${result.service}</span>
-                        </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-        this.dom.resultsContent.innerHTML = html;
-        
-        // Afficher debug si disponible
-        if (data.debug && data.debug.length > 0) {
-            this.showDebugInfo(data.debug);
-        }
-    },
-
-    /**
-     * Formatage nom transporteur
-     */
-    formatCarrierName(name) {
-        const names = {
-            'xpo': 'XPO Logistics',
-            'heppner': 'Heppner',
-            'kn': 'Kuehne+Nagel',
-            'geodis': 'Geodis'
-        };
-        return names[name.toLowerCase()] || name.toUpperCase();
-    },
-
-    /**
-     * Formatage prix
-     */
-    formatPrice(price) {
-        return parseFloat(price).toFixed(2);
-    },
-
-    /**
-     * Affichage erreur
-     */
-    showError(message) {
-        this.dom.calcStatus.textContent = '❌ Erreur';
-        this.dom.resultsContent.innerHTML = `
-            <div class="calc-error">
-                <div class="calc-error-icon">❌</div>
-                <div class="calc-error-content">
-                    <h3>Erreur de calcul</h3>
-                    <p>${message}</p>
-                </div>
-            </div>
-        `;
-    },
-
-    /**
-     * Affichage debug
-     */
-    showDebugInfo(debugData) {
-        const debugContainer = document.getElementById('debugContainer');
-        const debugContent = document.getElementById('debugContent');
-        
-        if (debugContainer && debugContent) {
-            debugContainer.style.display = 'block';
-            debugContent.innerHTML = `
-                <pre class="calc-debug-pre">${JSON.stringify(debugData, null, 2)}</pre>
-            `;
-        }
-    },
-
-    /**
-     * Debounce utility
+     * Fonction debounce
      */
     debounce(func, wait) {
         let timeout;
@@ -604,95 +662,40 @@ const CalculateurModule = {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
-    }
-};
+    },
 
-// Fonctions globales pour les boutons onclick
-window.contactExpress = function() {
-    const subject = 'Demande Express Dédié - Livraison 12h';
-    const body = `Bonjour,
-
-Je souhaite obtenir un devis pour un transport express dédié :
-
-- Type : Express 12h (chargé après-midi → livré lendemain 8h)
-- Poids approximatif : [à compléter] kg
-- Département destination : [à compléter]
-- Date souhaitée : [à compléter]
-- Détails urgence : [à compléter]
-
-Merci de me communiquer le tarif et les modalités.
-
-Cordialement`;
-
-    const mailtoLink = `mailto:contact@guldagil.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoLink;
-};
-
-window.resetForm = function() {
-    const form = document.getElementById('calculatorForm');
-    if (form) {
-        form.reset();
+    /**
+     * Configuration validation - NOUVELLE FONCTION
+     */
+    setupValidation() {
+        // Validation en temps réel avec indicateurs visuels
+        const requiredFields = ['departement', 'poids'];
         
-        // Reset état
-        CalculateurModule.state.currentStep = 1;
-        CalculateurModule.state.adrSelected = false;
-        CalculateurModule.activateStep(1);
-        
-        // Reset affichage
-        CalculateurModule.handleTypeChange();
-        
-        // Reset résultats
-        document.getElementById('resultsContent').innerHTML = `
-            <div class="calc-empty-state">
-                <div class="calc-empty-icon">🧮</div>
-                <p class="calc-empty-text">Complétez le formulaire pour voir les tarifs</p>
-            </div>
-        `;
-        document.getElementById('calcStatus').textContent = '⏳ En attente...';
-        
-        // Reset validation
-        document.querySelectorAll('.calc-form-input').forEach(input => {
-            input.classList.remove('error', 'valid');
-        });
-        document.querySelectorAll('.calc-error-message').forEach(error => {
-            error.textContent = '';
+        requiredFields.forEach(fieldName => {
+            const field = this.dom[fieldName];
+            if (field) {
+                // Validation à la perte de focus
+                field.addEventListener('blur', () => {
+                    this[`validate${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`]();
+                });
+                
+                // Nettoyage des erreurs à la saisie
+                field.addEventListener('focus', () => {
+                    field.classList.remove('error');
+                    const errorElement = document.getElementById(fieldName + 'Error');
+                    if (errorElement) {
+                        errorElement.textContent = '';
+                    }
+                });
+            }
         });
     }
 };
 
-window.toggleHistory = function() {
-    const content = document.getElementById('historyContent');
-    const toggle = document.getElementById('historyToggle');
-    
-    if (content && toggle) {
-        if (content.style.display === 'block') {
-            content.style.display = 'none';
-            toggle.textContent = '▼';
-        } else {
-            content.style.display = 'block';
-            toggle.textContent = '▲';
-        }
-    }
-};
-
-window.toggleDebug = function() {
-    const content = document.getElementById('debugContent');
-    const toggle = document.getElementById('debugToggle');
-    
-    if (content && toggle) {
-        if (content.style.display === 'block') {
-            content.style.display = 'none';
-            toggle.textContent = '▼';
-        } else {
-            content.style.display = 'block';
-            toggle.textContent = '▲';
-        }
-    }
-};
-
-// Initialisation
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => CalculateurModule.init());
-} else {
+// Initialisation automatique quand le DOM est prêt
+document.addEventListener('DOMContentLoaded', () => {
     CalculateurModule.init();
-}
+});
+
+// Export global pour compatibilité
+window.CalculateurModule = CalculateurModule;

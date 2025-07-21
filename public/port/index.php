@@ -127,7 +127,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
             
             <!-- Contenu formulaire -->
             <div class="calc-form-content">
-                <form id="calculatorForm" class="calc-form">
+                <form id="calculatorForm" class="calc-form" novalidate>
                     <!-- Étape 1: Destination -->
                     <div class="calc-step-content active" data-step="1" style="display: block;">
                         <div class="calc-form-group">
@@ -169,7 +169,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
                             <label for="type" class="calc-form-label">
                                 📦 Type d'envoi
                             </label>
-                            <select id="type" name="type" class="calc-form-select">
+                            <select id="type" name="type" class="calc-form-input">
                                 <option value="colis">📦 Colis</option>
                                 <option value="palette">🏗️ Palette</option>
                             </select>
@@ -225,7 +225,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
                             <label for="option_sup" class="calc-form-label">
                                 ✨ Options supplémentaires
                             </label>
-                            <select id="option_sup" name="option_sup" class="calc-form-select">
+                            <select id="option_sup" name="option_sup" class="calc-form-input">
                                 <option value="standard">Standard</option>
                                 <option value="express">Express</option>
                                 <option value="sur_rdv">Sur RDV</option>
@@ -308,196 +308,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
         </section>
     </main>
 </div>
-
-<!-- JavaScript du module port via header.php automatique -->
-
-<script>
-// Fonction contactExpress dans la portée globale pour corriger l'erreur
-window.contactExpress = function() {
-    const subject = 'Demande Express Dédié - Livraison 12h';
-    const body = `Bonjour,
-
-Je souhaite obtenir un devis pour un transport express dédié :
-
-- Type : Express 12h (chargé après-midi → livré lendemain 8h)
-- Poids approximatif : [à compléter] kg
-- Département destination : [à compléter]
-- Date souhaitée : [à compléter]
-- Détails urgence : [à compléter]
-
-Merci de me communiquer le tarif et les modalités.
-
-Cordialement`;
-
-    const mailtoLink = `mailto:contact@guldagil.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoLink;
-};
-
-// Fonction reset formulaire
-window.resetForm = function() {
-    document.getElementById('calculatorForm').reset();
-    document.getElementById('resultsContent').innerHTML = `
-        <div class="calc-empty-state">
-            <div class="calc-empty-icon">🧮</div>
-            <p class="calc-empty-text">Complétez le formulaire pour voir les tarifs</p>
-        </div>
-    `;
-    document.getElementById('calcStatus').textContent = '⏳ En attente...';
-};
-
-// Fonction toggle historique
-window.toggleHistory = function() {
-    const content = document.getElementById('historyContent');
-    const toggle = document.getElementById('historyToggle');
-    
-    if (content.style.display === 'block') {
-        content.style.display = 'none';
-        toggle.textContent = '▼';
-    } else {
-        content.style.display = 'block';
-        toggle.textContent = '▲';
-    }
-};
-
-// Fonction toggle debug
-window.toggleDebug = function() {
-    const content = document.getElementById('debugContent');
-    const toggle = document.getElementById('debugToggle');
-    
-    if (content.style.display === 'block') {
-        content.style.display = 'none';
-        toggle.textContent = '▼';
-    } else {
-        content.style.display = 'block';
-        toggle.textContent = '▲';
-    }
-};
-
-// Initialisation du module
-document.addEventListener('DOMContentLoaded', function() {
-    // Gestion des étapes
-    const steps = document.querySelectorAll('.calc-step-btn');
-    const stepContents = document.querySelectorAll('.calc-step-content');
-    
-    steps.forEach(step => {
-        step.addEventListener('click', function() {
-            const stepNumber = this.dataset.step;
-            
-            // Activer l'étape
-            steps.forEach(s => s.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Afficher le contenu correspondant
-            stepContents.forEach(content => {
-                content.classList.remove('active');
-                if (content.dataset.step === stepNumber) {
-                    content.classList.add('active');
-                }
-            });
-        });
-    });
-    
-    // Gestion du type palette/colis
-    const typeSelect = document.getElementById('type');
-    const palettesGroup = document.getElementById('palettesGroup');
-    const paletteEurGroup = document.getElementById('paletteEurGroup');
-    
-    typeSelect.addEventListener('change', function() {
-        if (this.value === 'palette') {
-            palettesGroup.style.display = 'block';
-            paletteEurGroup.style.display = 'block';
-        } else {
-            palettesGroup.style.display = 'none';
-            paletteEurGroup.style.display = 'none';
-        }
-    });
-    
-    // Gestion des toggles ADR et enlèvement
-    document.querySelectorAll('.calc-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const group = this.parentElement;
-            const hiddenInput = group.nextElementSibling;
-            const value = this.dataset.adr || this.dataset.enlevement;
-            
-            // Désactiver tous les boutons du groupe
-            group.querySelectorAll('.calc-toggle-btn').forEach(b => b.classList.remove('active'));
-            
-            // Activer le bouton cliqué
-            this.classList.add('active');
-            
-            // Mettre à jour le champ caché
-            if (hiddenInput && hiddenInput.type === 'hidden') {
-                hiddenInput.value = value;
-            }
-        });
-    });
-    
-    // Gestion du formulaire
-    document.getElementById('calculatorForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const params = Object.fromEntries(formData.entries());
-        
-        // Validation basique
-        if (!params.departement || !params.poids) {
-            alert('Veuillez remplir tous les champs obligatoires');
-            return;
-        }
-        
-        // Appel AJAX
-        fetch('?ajax=calculate', {
-            method: 'POST',
-            body: new URLSearchParams(params)
-        })
-        .then(response => response.json())
-        .then(data => {
-            const resultsContent = document.getElementById('resultsContent');
-            const calcStatus = document.getElementById('calcStatus');
-            
-            if (data.success) {
-                calcStatus.textContent = `✅ Calculé en ${data.time_ms}ms`;
-                
-                let html = '<div class="calc-carrier-list">';
-                Object.entries(data.carriers).forEach(([carrier, result]) => {
-                    html += `
-                        <div class="calc-carrier-card">
-                            <div class="calc-carrier-header">
-                                <div class="calc-carrier-name">${carrier.toUpperCase()}</div>
-                                <div class="calc-carrier-price">${result.prix_ttc}€ TTC</div>
-                            </div>
-                            <div class="calc-carrier-details">
-                                <div class="calc-detail-item">
-                                    <span class="calc-detail-label">Prix HT</span>
-                                    <span class="calc-detail-value">${result.prix_ht}€</span>
-                                </div>
-                                <div class="calc-detail-item">
-                                    <span class="calc-detail-label">Délai</span>
-                                    <span class="calc-detail-value">${result.delai}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-                
-                resultsContent.innerHTML = html;
-            } else {
-                calcStatus.textContent = '❌ Erreur de calcul';
-                resultsContent.innerHTML = `
-                    <div class="calc-error">
-                        <p><strong>Erreur :</strong> ${data.error || 'Erreur inconnue'}</p>
-                    </div>
-                `;
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            document.getElementById('calcStatus').textContent = '❌ Erreur de connexion';
-        });
-    });
-});
-</script>
 
 <?php
 require_once ROOT_PATH . '/templates/footer.php';

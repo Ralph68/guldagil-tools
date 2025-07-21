@@ -294,3 +294,8 @@ function deleteEmployee($data): array {
         $db->rollBack();
         error_log("Erreur PDO delete employee: " . $e->getMessage());
         return [
+            'success' => false,
+            'message' => 'Erreur de base de données'
+        ];
+    }
+}
