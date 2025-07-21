@@ -169,7 +169,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
                             <label for="type" class="calc-form-label">
                                 📦 Type d'envoi
                             </label>
-                            <select id="type" name="type" class="calc-form-select">
+                            <select id="type" name="type" class="calc-form-input">
                                 <option value="colis">📦 Colis</option>
                                 <option value="palette">🏗️ Palette</option>
                             </select>
@@ -225,7 +225,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
                             <label for="option_sup" class="calc-form-label">
                                 ✨ Options supplémentaires
                             </label>
-                            <select id="option_sup" name="option_sup" class="calc-form-select">
+                            <select id="option_sup" name="option_sup" class="calc-form-input">
                                 <option value="standard">Standard</option>
                                 <option value="express">Express</option>
                                 <option value="sur_rdv">Sur RDV</option>
