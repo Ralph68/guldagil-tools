@@ -1,120 +1,44 @@
 /**
- * Titre: Module JavaScript calculateur de frais de port - VERSION CORRIGÉE
+ * Titre: Module JavaScript calculateur de frais de port - Version modernisée
  * Chemin: /public/port/assets/js/port.js
  * Version: 0.5 beta + build auto
- * Description: Gestion complète du formulaire avec corrections des erreurs
  */
 
-// ===============================================
-// 🔧 MODULE PRINCIPAL PORTMODULE
-// ===============================================
-
-const PortModule = {
+const CalculateurModule = {
     // Configuration
     config: {
-        apiUrl: window.location.pathname + '?ajax=calculate',
+        apiUrl: '?ajax=calculate',
         debounceDelay: 300,
-        maxRetries: 3,
-        autoProgressDelay: 800,
-        validationDelay: 500
+        maxRetries: 3
     },
 
     // État du module
     state: {
-        currentStep: 1,
-        totalSteps: 3,
         isCalculating: false,
         currentData: null,
         history: [],
         validationErrors: {},
-        formData: {}
+        currentStep: 1,
+        adrSelected: false
     },
 
-    // Cache DOM
+    // Cache DOM avec nouvelles classes CSS
     dom: {},
 
     /**
      * Initialisation du module
      */
     init() {
-        console.log('🚛 Initialisation module Port...');
-        
-        // Appliquer les correctifs immédiatement
-        this.applyFormFixes();
-        
-        // Cache des éléments DOM
         this.cacheDOMElements();
-        
-        // Configuration des événements
         this.setupEventListeners();
-        
-        // Configuration validation
-        this.setupValidation();
-        
-        // Chargement historique
         this.loadHistory();
-        
-        // Affichage de la première étape
-        this.showStep(1);
-        
-        console.log('✅ Module Port initialisé avec succès');
+        this.setupValidation();
+        this.setupSteps();
+        console.log('🧮 Calculateur module initialisé');
     },
 
     /**
-     * CORRECTION: Appliquer les correctifs pour éviter les erreurs
-     */
-    applyFormFixes() {
-        // Correction 1: Problème "invalid form control"
-        document.addEventListener('DOMContentLoaded', () => {
-            const form = document.getElementById('calculatorForm');
-            if (form) {
-                // Désactiver la validation HTML5 native qui pose problème
-                form.setAttribute('novalidate', 'novalidate');
-                console.log('✅ Validation HTML5 native désactivée');
-            }
-            
-            // Correction spécifique pour le champ poids
-            const poidsField = document.getElementById('poids');
-            if (poidsField) {
-                // Retirer required temporairement
-                poidsField.removeAttribute('required');
-                
-                // Validation JavaScript personnalisée
-                poidsField.addEventListener('input', (e) => {
-                    this.handlePoidsValidation(e.target);
-                });
-                
-                console.log('✅ Validation poids corrigée');
-            }
-        });
-    },
-
-    /**
-     * Validation personnalisée du champ poids
-     */
-    handlePoidsValidation(field) {
-        const value = parseFloat(field.value);
-        const isValid = !isNaN(value) && value >= 1 && value <= 3000 && Number.isInteger(value);
-        
-        // Nettoyer les erreurs précédentes
-        this.clearFieldError(field);
-        
-        if (field.value && !isValid) {
-            this.showFieldError(field, 'Poids requis: nombre entier entre 1 et 3000 kg');
-            field.classList.add('error');
-        } else if (isValid) {
-            field.classList.remove('error');
-            field.classList.add('valid');
-            // Re-ajouter required si valide
-            field.setAttribute('required', 'required');
-        }
-        
-        this.state.validationErrors.poids = !isValid;
-        return isValid;
-    },
-
-    /**
-     * Cache des éléments DOM
+     * Cache des éléments DOM avec classes CSS modernisées
      */
     cacheDOMElements() {
         this.dom = {
@@ -123,27 +47,124 @@ const PortModule = {
             poids: document.getElementById('poids'),
             type: document.getElementById('type'),
             palettes: document.getElementById('palettes'),
-            palettesGroup: document.getElementById('palettesGroup'),
+            paletteEur: document.getElementById('palette_eur'),
+            adr: document.getElementById('adr'),
+            enlevement: document.getElementById('enlevement'),
             optionSup: document.getElementById('option_sup'),
-            
-            // Boutons navigation
-            prevBtn: document.getElementById('prevBtn'),
-            nextBtn: document.getElementById('nextBtn'),
             calculateBtn: document.getElementById('calculateBtn'),
-            
-            // Zones d'affichage
             resultsContent: document.getElementById('resultsContent'),
-            loadingState: document.getElementById('loadingState'),
+            calcStatus: document.getElementById('calcStatus'),
+            palettesGroup: document.getElementById('palettesGroup'),
+            paletteEurGroup: document.getElementById('paletteEurGroup'),
             
-            // Étapes
+            // Nouveaux éléments pour les étapes
+            stepBtns: document.querySelectorAll('.calc-step-btn'),
             stepContents: document.querySelectorAll('.calc-step-content'),
-            
-            // Toggles
-            adrToggles: document.querySelectorAll('[data-adr]'),
-            enlevementToggles: document.querySelectorAll('[data-enlevement]')
+            toggleBtns: document.querySelectorAll('.calc-toggle-btn')
         };
+    },
+
+    /**
+     * Configuration des étapes
+     */
+    setupSteps() {
+        // Gestion des boutons d'étapes
+        this.dom.stepBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const step = parseInt(e.target.dataset.step);
+                this.activateStep(step);
+            });
+        });
+
+        // Gestion des toggles (ADR, enlèvement)
+        this.dom.toggleBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.handleToggle(e.target);
+            });
+        });
+
+        // Gestion type palette/colis
+        this.dom.type.addEventListener('change', () => {
+            this.handleTypeChange();
+        });
+    },
+
+    /**
+     * Activer une étape avec debug
+     */
+    activateStep(stepNumber) {
+        console.log(`Activation étape ${stepNumber}`);
+        this.state.currentStep = stepNumber;
         
-        console.log('📋 Éléments DOM mis en cache');
+        // Mettre à jour les boutons
+        this.dom.stepBtns.forEach(btn => {
+            btn.classList.remove('active');
+            if (parseInt(btn.dataset.step) === stepNumber) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Mettre à jour le contenu
+        this.dom.stepContents.forEach(content => {
+            content.classList.remove('active');
+            content.style.display = 'none';
+            if (parseInt(content.dataset.step) === stepNumber) {
+                content.classList.add('active');
+                content.style.display = 'block';
+            }
+        });
+        
+        // Focus automatique sur le premier champ de l'étape
+        setTimeout(() => {
+            if (stepNumber === 2) {
+                this.dom.poids.focus();
+            } else if (stepNumber === 3) {
+                const firstToggle = document.querySelector('[data-adr="non"]');
+                if (firstToggle) firstToggle.focus();
+            }
+        }, 100);
+    },
+
+    /**
+     * Gestion des toggles
+     */
+    handleToggle(button) {
+        const group = button.parentElement;
+        const hiddenInput = group.nextElementSibling;
+        
+        // Désactiver tous les boutons du groupe
+        group.querySelectorAll('.calc-toggle-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Activer le bouton cliqué
+        button.classList.add('active');
+        
+        // Mettre à jour le champ caché
+        const value = button.dataset.adr || button.dataset.enlevement;
+        if (hiddenInput && hiddenInput.type === 'hidden') {
+            hiddenInput.value = value;
+        }
+
+        // Gestion spéciale ADR
+        if (button.dataset.adr) {
+            this.state.adrSelected = value === 'oui';
+        }
+    },
+
+    /**
+     * Gestion du changement de type
+     */
+    handleTypeChange() {
+        const isLot = this.dom.type.value === 'palette';
+        
+        if (this.dom.palettesGroup) {
+            this.dom.palettesGroup.style.display = isLot ? 'block' : 'none';
+        }
+        
+        if (this.dom.paletteEurGroup) {
+            this.dom.paletteEurGroup.style.display = isLot ? 'block' : 'none';
+        }
     },
 
     /**
@@ -151,208 +172,69 @@ const PortModule = {
      */
     setupEventListeners() {
         // Soumission formulaire
-        if (this.dom.form) {
-            this.dom.form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleCalculate();
+        this.dom.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleCalculate();
+        });
+
+        // Validation temps réel avec debounce et progression
+        this.dom.departement.addEventListener('input', 
+            this.debounce(() => {
+                console.log('Input département:', this.dom.departement.value);
+                this.validateDepartement();
+                this.autoCalculateIfValid();
+            }, this.config.debounceDelay)
+        );
+
+        this.dom.poids.addEventListener('input', 
+            this.debounce(() => {
+                console.log('Input poids:', this.dom.poids.value);
+                this.validatePoids();
+                this.autoCalculateIfValid();
+            }, this.config.debounceDelay)
+        );
+
+        // Auto-progression et calcul intelligent avec debug
+        ['departement', 'poids'].forEach(field => {
+            this.dom[field].addEventListener('change', () => {
+                console.log(`Change event sur ${field}:`, this.dom[field].value);
+                this.autoCalculateIfValid();
             });
-        }
-
-        // Navigation étapes
-        if (this.dom.nextBtn) {
-            this.dom.nextBtn.addEventListener('click', () => this.nextStep());
-        }
-        
-        if (this.dom.prevBtn) {
-            this.dom.prevBtn.addEventListener('click', () => this.prevStep());
-        }
-
-        // Validation temps réel avec debounce
-        if (this.dom.departement) {
-            this.dom.departement.addEventListener('input', 
-                this.debounce(() => this.validateDepartement(), this.config.debounceDelay)
-            );
-        }
-
-        if (this.dom.poids) {
-            this.dom.poids.addEventListener('input', 
-                this.debounce(() => this.validatePoids(), this.config.debounceDelay)
-            );
-        }
-
-        // Gestion du type (colis/palette)
-        if (this.dom.type) {
-            this.dom.type.addEventListener('change', () => this.handleTypeChange());
-        }
-
-        // Gestion des toggles ADR
-        this.dom.adrToggles.forEach(btn => {
-            btn.addEventListener('click', (e) => this.handleToggle(e, 'adr'));
-        });
-
-        // Gestion des toggles enlèvement
-        this.dom.enlevementToggles.forEach(btn => {
-            btn.addEventListener('click', (e) => this.handleToggle(e, 'enlevement'));
-        });
-
-        // Auto-progression et auto-calcul
-        ['departement', 'poids'].forEach(fieldName => {
-            const field = this.dom[fieldName];
-            if (field) {
-                field.addEventListener('input', 
-                    this.debounce(() => this.autoProgressIfValid(), this.config.autoProgressDelay)
-                );
-            }
-        });
-        
-        console.log('🎯 Événements configurés');
-    },
-
-    /**
-     * Gestion des toggles
-     */
-    handleToggle(event, type) {
-        event.preventDefault();
-        
-        const clickedBtn = event.target;
-        const group = clickedBtn.closest('.calc-toggle-group');
-        
-        // Retirer active de tous les boutons du groupe
-        group.querySelectorAll('.calc-toggle-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // Ajouter active au bouton cliqué
-        clickedBtn.classList.add('active');
-        
-        // Sauvegarder la valeur
-        this.state.formData[type] = clickedBtn.dataset[type];
-        
-        console.log(`🔄 Toggle ${type}: ${clickedBtn.dataset[type]}`);
-    },
-
-    /**
-     * Gestion changement de type (colis/palette)
-     */
-    handleTypeChange() {
-        const isPalette = this.dom.type.value === 'palette';
-        
-        if (this.dom.palettesGroup) {
-            this.dom.palettesGroup.style.display = isPalette ? 'block' : 'none';
             
-            if (!isPalette && this.dom.palettes) {
-                this.dom.palettes.value = '1';
-            }
-        }
-        
-        console.log(`📦 Type changé: ${this.dom.type.value}`);
-    },
-
-    /**
-     * Navigation vers l'étape suivante
-     */
-    nextStep() {
-        if (this.canProgressToStep(this.state.currentStep + 1)) {
-            this.showStep(this.state.currentStep + 1);
-        }
-    },
-
-    /**
-     * Navigation vers l'étape précédente
-     */
-    prevStep() {
-        if (this.state.currentStep > 1) {
-            this.showStep(this.state.currentStep - 1);
-        }
-    },
-
-    /**
-     * Affichage d'une étape spécifique
-     */
-    showStep(step) {
-        // Masquer toutes les étapes
-        this.dom.stepContents.forEach(content => {
-            content.style.display = 'none';
+            // Progression manuelle avec Enter
+            this.dom[field].addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    console.log(`Enter pressé sur ${field}`);
+                    if (field === 'departement' && this.validateDepartement()) {
+                        this.activateStep(2);
+                    } else if (field === 'poids' && this.validatePoids()) {
+                        this.activateStep(3);
+                    }
+                }
+            });
         });
-        
-        // Afficher l'étape demandée
-        const stepContent = document.querySelector(`[data-step="${step}"]`);
-        if (stepContent) {
-            stepContent.style.display = 'block';
-        }
-        
-        // Mettre à jour les boutons
-        this.updateNavigationButtons(step);
-        
-        // Mettre à jour l'état
-        this.state.currentStep = step;
-        
-        console.log(`📍 Étape ${step} affichée`);
-    },
 
-    /**
-     * Mise à jour des boutons de navigation
-     */
-    updateNavigationButtons(step) {
-        if (this.dom.prevBtn) {
-            this.dom.prevBtn.style.display = step > 1 ? 'inline-block' : 'none';
-        }
-        
-        if (this.dom.nextBtn) {
-            this.dom.nextBtn.style.display = step < this.state.totalSteps ? 'inline-block' : 'none';
-        }
-        
-        if (this.dom.calculateBtn) {
-            this.dom.calculateBtn.style.display = step === this.state.totalSteps ? 'inline-block' : 'none';
-        }
-    },
-
-    /**
-     * Vérifier si on peut progresser vers une étape
-     */
-    canProgressToStep(step) {
-        switch (step) {
-            case 2:
-                return this.validateDepartement();
-            case 3:
-                return this.validateDepartement() && this.validatePoids();
-            default:
-                return true;
-        }
-    },
-
-    /**
-     * Auto-progression si formulaire valide
-     */
-    autoProgressIfValid() {
-        const deptValid = this.validateDepartement();
-        const poidsValid = this.validatePoids();
-        
-        console.log(`🔄 Auto-progression: dept=${deptValid}, poids=${poidsValid}, step=${this.state.currentStep}`);
-        
-        // Progression automatique des étapes
-        if (deptValid && this.state.currentStep === 1) {
-            console.log('🚀 Progression automatique étape 1 → 2');
-            setTimeout(() => this.showStep(2), 500);
-        } else if (deptValid && poidsValid && this.state.currentStep === 2) {
-            console.log('🚀 Progression automatique étape 2 → 3');
-            setTimeout(() => this.showStep(3), 500);
-        } else if (deptValid && poidsValid && this.state.currentStep >= 3 && !this.state.isCalculating) {
-            console.log('🚀 Lancement calcul automatique');
-            setTimeout(() => this.handleCalculate(), 800);
-        }
+        // Navigation étapes avec flèches
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey) {
+                if (e.key === 'ArrowLeft' && this.state.currentStep > 1) {
+                    this.activateStep(this.state.currentStep - 1);
+                    e.preventDefault();
+                } else if (e.key === 'ArrowRight' && this.state.currentStep < 3) {
+                    this.activateStep(this.state.currentStep + 1);
+                    e.preventDefault();
+                }
+            }
+        });
     },
 
     /**
      * Validation département
      */
     validateDepartement() {
-        if (!this.dom.departement) return false;
-        
         const value = this.dom.departement.value.trim();
-        const isValid = /^(0[1-9]|[1-8][0-9]|9[0-5]|97[1-8]|98[0-8])$/.test(value);
-        
-        console.log(`✓ Validation département: ${value} → ${isValid}`);
+        const isValid = /^[0-9]{2,3}$/.test(value);
         
         this.updateFieldValidation('departement', isValid, 
             isValid ? '' : 'Format invalide (ex: 75, 69, 13)');
@@ -361,15 +243,13 @@ const PortModule = {
     },
 
     /**
-     * Validation poids avec correction
+     * Validation poids avec debug
      */
     validatePoids() {
-        if (!this.dom.poids) return false;
-        
         const value = parseFloat(this.dom.poids.value);
-        const isValid = !isNaN(value) && value >= 1 && value <= 3000 && Number.isInteger(value);
+        const isValid = value >= 1 && value <= 3000 && Number.isInteger(value);
         
-        console.log(`✓ Validation poids: ${value}, isValid: ${isValid}, currentStep: ${this.state.currentStep}`);
+        console.log(`Validation poids: ${value}, isValid: ${isValid}, currentStep: ${this.state.currentStep}`);
         
         this.updateFieldValidation('poids', isValid, 
             isValid ? '' : 'Poids entre 1 et 3000 kg (entier)');
@@ -382,8 +262,6 @@ const PortModule = {
      */
     updateFieldValidation(fieldName, isValid, errorMessage) {
         const field = this.dom[fieldName];
-        if (!field) return;
-        
         const errorElement = document.getElementById(fieldName + 'Error');
         
         if (isValid) {
@@ -400,9 +278,32 @@ const PortModule = {
     },
 
     /**
-     * Configuration validation globale
+     * Auto-calcul si formulaire valide avec debug
+     */
+    autoCalculateIfValid() {
+        const deptValid = this.validateDepartement();
+        const poidsValid = this.validatePoids();
+        
+        console.log(`AutoCalculate: dept=${deptValid}, poids=${poidsValid}, step=${this.state.currentStep}`);
+        
+        // Progression automatique des étapes
+        if (deptValid && this.state.currentStep === 1) {
+            console.log('Progression étape 1 → 2');
+            setTimeout(() => this.activateStep(2), 500);
+        } else if (deptValid && poidsValid && this.state.currentStep === 2) {
+            console.log('Progression étape 2 → 3');
+            setTimeout(() => this.activateStep(3), 500);
+        } else if (deptValid && poidsValid && this.state.currentStep >= 3 && !this.state.isCalculating) {
+            console.log('Lancement calcul automatique');
+            setTimeout(() => this.handleCalculate(), 800);
+        }
+    },
+
+    /**
+     * Configuration validation
      */
     setupValidation() {
+        // Validation en temps réel avec indicateurs visuels
         const requiredFields = ['departement', 'poids'];
         
         requiredFields.forEach(fieldName => {
@@ -413,300 +314,285 @@ const PortModule = {
                 });
             }
         });
-        
-        console.log('✅ Validation configurée');
     },
 
     /**
-     * Gestion du calcul des tarifs
+     * Chargement historique
+     */
+    loadHistory() {
+        try {
+            const saved = localStorage.getItem('calc_history');
+            this.state.history = saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.warn('Erreur chargement historique:', e);
+            this.state.history = [];
+        }
+    },
+
+    /**
+     * Sauvegarde dans l'historique
+     */
+    saveToHistory(params, results) {
+        const entry = {
+            timestamp: Date.now(),
+            params: { ...params },
+            results: { ...results },
+            id: 'calc_' + Date.now()
+        };
+        
+        this.state.history.unshift(entry);
+        this.state.history = this.state.history.slice(0, 10); // Garder 10 max
+        
+        try {
+            localStorage.setItem('calc_history', JSON.stringify(this.state.history));
+        } catch (e) {
+            console.warn('Erreur sauvegarde historique:', e);
+        }
+        
+        this.updateHistoryDisplay();
+    },
+
+    /**
+     * Mise à jour affichage historique
+     */
+    updateHistoryDisplay() {
+        const historySection = document.getElementById('historySection');
+        const historyContent = document.getElementById('historyContent');
+        
+        if (!historySection || !historyContent) return;
+        
+        if (this.state.history.length > 0) {
+            historySection.style.display = 'block';
+            
+            let html = '<div class="calc-history-list">';
+            this.state.history.forEach(entry => {
+                const date = new Date(entry.timestamp).toLocaleString();
+                html += `
+                    <div class="calc-history-item" onclick="CalculateurModule.replayCalculation('${entry.id}')">
+                        <div class="calc-history-header">
+                            <span class="calc-history-date">${date}</span>
+                            <span class="calc-history-dept">${entry.params.departement}</span>
+                        </div>
+                        <div class="calc-history-details">
+                            ${entry.params.poids}kg - ${entry.params.type}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            historyContent.innerHTML = html;
+        }
+    },
+
+    /**
+     * Rejouer un calcul
+     */
+    replayCalculation(entryId) {
+        const entry = this.state.history.find(h => h.id === entryId);
+        if (!entry) return;
+        
+        // Remplir le formulaire
+        Object.entries(entry.params).forEach(([key, value]) => {
+            const field = this.dom[key];
+            if (field) {
+                if (field.type === 'checkbox') {
+                    field.checked = value;
+                } else {
+                    field.value = value;
+                }
+            }
+        });
+        
+        // Mettre à jour l'affichage
+        this.handleTypeChange();
+        this.displayResults(entry.results);
+    },
+
+    /**
+     * Gestion du calcul
      */
     async handleCalculate() {
-        if (this.state.isCalculating) {
-            console.log('⏳ Calcul déjà en cours...');
-            return;
-        }
-        
-        console.log('🧮 Démarrage calcul des tarifs...');
-        
-        const formData = this.collectFormData();
+        if (this.state.isCalculating) return;
         
         // Validation finale
-        if (!this.validateFormData(formData)) {
-            console.log('❌ Validation formulaire échouée');
+        if (!this.validateDepartement() || !this.validatePoids()) {
+            this.showError('Veuillez corriger les erreurs dans le formulaire');
             return;
         }
-
+        
         this.state.isCalculating = true;
-        this.showLoading();
-        this.disableForm();
-
+        this.dom.form.classList.add('loading');
+        this.dom.calcStatus.textContent = '⏳ Calcul en cours...';
+        this.dom.calculateBtn.disabled = true;
+        
         try {
-            const results = await this.callAPI(formData);
-            this.displayResults(results, formData);
-            this.saveToHistory(formData, results);
-            console.log('✅ Calcul terminé avec succès');
+            const formData = this.getFormData();
+            const data = await this.callAPI(formData);
+            this.displayResults(data);
+            this.saveToHistory(formData, data);
         } catch (error) {
-            console.error('❌ Erreur calcul:', error);
-            this.showError('Erreur lors du calcul. Veuillez réessayer.');
+            console.error('Erreur calcul:', error);
+            this.showError('Erreur de calcul: ' + error.message);
         } finally {
             this.state.isCalculating = false;
-            this.enableForm();
-            this.hideLoading();
+            this.dom.form.classList.remove('loading');
+            this.dom.calculateBtn.disabled = false;
         }
     },
 
     /**
-     * Collecte des données du formulaire
+     * Récupération données formulaire
      */
-    collectFormData() {
-        const adrActive = document.querySelector('[data-adr].active');
-        const enlevementActive = document.querySelector('[data-enlevement].active');
+    getFormData() {
+        const formData = new FormData(this.dom.form);
+        const params = Object.fromEntries(formData.entries());
         
-        return {
-            departement: this.dom.departement?.value?.trim() || '',
-            poids: parseFloat(this.dom.poids?.value) || 0,
-            type: this.dom.type?.value || 'colis',
-            palettes: parseInt(this.dom.palettes?.value) || 1,
-            adr: adrActive?.dataset?.adr || 'non',
-            enlevement: enlevementActive?.dataset?.enlevement || 'non',
-            option_sup: this.dom.optionSup?.value || 'standard'
-        };
+        // Ajouter palette_eur si visible
+        if (this.dom.paletteEurGroup && this.dom.paletteEurGroup.style.display !== 'none') {
+            params.palette_eur = parseInt(this.dom.paletteEur.value) || 0;
+        }
+        
+        return params;
     },
 
     /**
-     * Validation des données du formulaire
+     * Appel API
      */
-    validateFormData(data) {
-        const errors = [];
-        
-        if (!data.departement || !/^[0-9]{2,3}$/.test(data.departement)) {
-            errors.push('Département invalide');
-        }
-        
-        if (!data.poids || data.poids < 1 || data.poids > 3000) {
-            errors.push('Poids invalide (1-3000 kg)');
-        }
-        
-        if (errors.length > 0) {
-            this.showError('Erreurs: ' + errors.join(', '));
-            return false;
-        }
-        
-        return true;
-    },
-
-    /**
-     * Appel API pour le calcul
-     */
-    async callAPI(formData) {
+    async callAPI(params) {
         const response = await fetch(this.config.apiUrl, {
             method: 'POST',
+            body: new URLSearchParams(params),
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams(formData)
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
         });
-
+        
         if (!response.ok) {
-            throw new Error(`Erreur HTTP: ${response.status}`);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-
+        
         const data = await response.json();
         
         if (!data.success) {
             throw new Error(data.error || 'Erreur inconnue');
         }
-
+        
         return data;
     },
 
     /**
-     * Affichage des résultats
+     * Affichage des résultats avec nouvelles classes CSS
      */
-    displayResults(data, formData) {
-        if (!data.carriers || data.carriers.length === 0) {
-            this.showEmptyResults();
+    displayResults(data) {
+        this.state.currentData = data;
+        this.dom.calcStatus.textContent = `✅ Calculé en ${data.time_ms || 0}ms`;
+        
+        // Tri des transporteurs par prix
+        const carriers = Object.entries(data.carriers || {})
+            .filter(([name, result]) => result && result.prix_ttc)
+            .sort((a, b) => a[1].prix_ttc - b[1].prix_ttc);
+        
+        if (carriers.length === 0) {
+            this.showError('Aucun transporteur disponible pour cette destination');
             return;
         }
-
-        const resultsHTML = this.buildResultsHTML(data.carriers);
-        this.dom.resultsContent.innerHTML = resultsHTML;
         
-        // Animation d'entrée
-        this.dom.resultsContent.style.opacity = '0';
-        setTimeout(() => {
-            this.dom.resultsContent.style.opacity = '1';
-        }, 100);
+        let html = '<div class="calc-carrier-list">';
         
-        console.log(`📊 ${data.carriers.length} résultats affichés`);
-    },
-
-    /**
-     * Construction HTML des résultats
-     */
-    buildResultsHTML(carriers) {
-        let html = '<div class="calc-results-grid">';
-        
-        carriers.forEach((carrier, index) => {
+        carriers.forEach(([carrierName, result], index) => {
             const isBest = index === 0;
+            const cardClass = isBest ? 'calc-carrier-card calc-carrier-best' : 'calc-carrier-card';
+            
             html += `
-                <div class="calc-carrier-card ${isBest ? 'calc-carrier-best' : ''}">
+                <div class="${cardClass}">
                     ${isBest ? '<div class="calc-best-badge">🏆 Meilleur tarif</div>' : ''}
                     <div class="calc-carrier-header">
-                        <h3 class="calc-carrier-name">${this.escapeHtml(carrier.name || 'Transporteur')}</h3>
-                        <div class="calc-carrier-price">${carrier.total || 'N/C'}€ HT</div>
+                        <div class="calc-carrier-name">${this.formatCarrierName(carrierName)}</div>
+                        <div class="calc-carrier-price">${this.formatPrice(result.prix_ttc)} €</div>
                     </div>
                     <div class="calc-carrier-details">
-                        ${carrier.details ? carrier.details.map(d => `<div>• ${this.escapeHtml(d)}</div>`).join('') : ''}
+                        <div class="calc-detail-item">
+                            <span class="calc-detail-label">Prix HT</span>
+                            <span class="calc-detail-value">${this.formatPrice(result.prix_ht)} €</span>
+                        </div>
+                        <div class="calc-detail-item">
+                            <span class="calc-detail-label">Délai</span>
+                            <span class="calc-detail-value">${result.delai || 'N/A'}</span>
+                        </div>
+                        ${result.service ? `
+                        <div class="calc-detail-item">
+                            <span class="calc-detail-label">Service</span>
+                            <span class="calc-detail-value">${result.service}</span>
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
         });
         
         html += '</div>';
-        return html;
+        this.dom.resultsContent.innerHTML = html;
+        
+        // Afficher debug si disponible
+        if (data.debug && data.debug.length > 0) {
+            this.showDebugInfo(data.debug);
+        }
     },
 
     /**
-     * Affichage état vide
+     * Formatage nom transporteur
      */
-    showEmptyResults() {
-        this.dom.resultsContent.innerHTML = `
-            <div class="calc-empty-state">
-                <div class="calc-empty-icon">❌</div>
-                <p class="calc-empty-text">Aucun tarif disponible pour ces critères</p>
-                <div class="calc-status">Essayez d'autres paramètres</div>
-            </div>
-        `;
+    formatCarrierName(name) {
+        const names = {
+            'xpo': 'XPO Logistics',
+            'heppner': 'Heppner',
+            'kn': 'Kuehne+Nagel',
+            'geodis': 'Geodis'
+        };
+        return names[name.toLowerCase()] || name.toUpperCase();
     },
 
     /**
-     * Affichage des erreurs
+     * Formatage prix
+     */
+    formatPrice(price) {
+        return parseFloat(price).toFixed(2);
+    },
+
+    /**
+     * Affichage erreur
      */
     showError(message) {
+        this.dom.calcStatus.textContent = '❌ Erreur';
         this.dom.resultsContent.innerHTML = `
-            <div class="calc-empty-state">
-                <div class="calc-empty-icon">❌</div>
-                <p class="calc-empty-text">Erreur: ${this.escapeHtml(message)}</p>
-                <div class="calc-status">Veuillez réessayer</div>
+            <div class="calc-error">
+                <div class="calc-error-icon">❌</div>
+                <div class="calc-error-content">
+                    <h3>Erreur de calcul</h3>
+                    <p>${message}</p>
+                </div>
             </div>
         `;
     },
 
     /**
-     * Affichage loading
+     * Affichage debug
      */
-    showLoading() {
-        if (this.dom.loadingState) {
-            this.dom.loadingState.style.display = 'flex';
-        }
-        if (this.dom.resultsContent) {
-            this.dom.resultsContent.style.display = 'none';
-        }
-    },
-
-    /**
-     * Masquer loading
-     */
-    hideLoading() {
-        if (this.dom.loadingState) {
-            this.dom.loadingState.style.display = 'none';
-        }
-        if (this.dom.resultsContent) {
-            this.dom.resultsContent.style.display = 'block';
-        }
-    },
-
-    /**
-     * Désactiver formulaire
-     */
-    /**
-     * Désactiver formulaire
-     */
-    disableForm() {
-        const inputs = this.dom.form?.querySelectorAll('input, select, button');
-        inputs?.forEach(input => {
-            input.disabled = true;
-        });
-    },
-
-    /**
-     * Réactiver formulaire
-     */
-    enableForm() {
-        const inputs = this.dom.form?.querySelectorAll('input, select, button');
-        inputs?.forEach(input => {
-            input.disabled = false;
-        });
-    },
-
-    /**
-     * Sauvegarde dans l'historique
-     */
-    saveToHistory(formData, results) {
-        const historyEntry = {
-            timestamp: new Date().toISOString(),
-            formData: { ...formData },
-            results: results,
-            bestPrice: results.carriers?.[0]?.total || null
-        };
+    showDebugInfo(debugData) {
+        const debugContainer = document.getElementById('debugContainer');
+        const debugContent = document.getElementById('debugContent');
         
-        this.state.history.unshift(historyEntry);
-        
-        // Limiter à 10 entrées
-        if (this.state.history.length > 10) {
-            this.state.history = this.state.history.slice(0, 10);
-        }
-        
-        // Sauvegarder en localStorage si disponible
-        try {
-            localStorage.setItem('port_calc_history', JSON.stringify(this.state.history));
-        } catch (e) {
-            console.warn('⚠️ Impossible de sauvegarder l\'historique:', e);
+        if (debugContainer && debugContent) {
+            debugContainer.style.display = 'block';
+            debugContent.innerHTML = `
+                <pre class="calc-debug-pre">${JSON.stringify(debugData, null, 2)}</pre>
+            `;
         }
     },
 
     /**
-     * Chargement de l'historique
-     */
-    loadHistory() {
-        try {
-            const saved = localStorage.getItem('port_calc_history');
-            this.state.history = saved ? JSON.parse(saved) : [];
-            console.log(`📚 Historique chargé: ${this.state.history.length} entrées`);
-        } catch (e) {
-            console.warn('⚠️ Erreur chargement historique:', e);
-            this.state.history = [];
-        }
-    },
-
-    /**
-     * Affichage erreur de champ
-     */
-    showFieldError(field, message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'calc-error-message';
-        errorDiv.textContent = message;
-        
-        // Retirer erreur existante
-        this.clearFieldError(field);
-        
-        // Ajouter nouvelle erreur
-        field.parentNode.appendChild(errorDiv);
-    },
-
-    /**
-     * Nettoyage erreur de champ
-     */
-    clearFieldError(field) {
-        const existingError = field.parentNode.querySelector('.calc-error-message');
-        if (existingError) {
-            existingError.remove();
-        }
-    },
-
-    /**
-     * Fonction debounce pour limiter les appels
+     * Debounce utility
      */
     debounce(func, wait) {
         let timeout;
@@ -718,248 +604,95 @@ const PortModule = {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
-    },
+    }
+};
 
-    /**
-     * Échappement HTML pour sécurité
-     */
-    escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, (m) => map[m]);
-    },
+// Fonctions globales pour les boutons onclick
+window.contactExpress = function() {
+    const subject = 'Demande Express Dédié - Livraison 12h';
+    const body = `Bonjour,
 
-    /**
-     * Réinitialisation du formulaire
-     */
-    resetForm() {
-        if (this.dom.form) {
-            this.dom.form.reset();
-        }
+Je souhaite obtenir un devis pour un transport express dédié :
+
+- Type : Express 12h (chargé après-midi → livré lendemain 8h)
+- Poids approximatif : [à compléter] kg
+- Département destination : [à compléter]
+- Date souhaitée : [à compléter]
+- Détails urgence : [à compléter]
+
+Merci de me communiquer le tarif et les modalités.
+
+Cordialement`;
+
+    const mailtoLink = `mailto:contact@guldagil.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
+};
+
+window.resetForm = function() {
+    const form = document.getElementById('calculatorForm');
+    if (form) {
+        form.reset();
         
-        // Retour à l'étape 1
-        this.showStep(1);
+        // Reset état
+        CalculateurModule.state.currentStep = 1;
+        CalculateurModule.state.adrSelected = false;
+        CalculateurModule.activateStep(1);
         
-        // Nettoyage des erreurs
-        this.state.validationErrors = {};
+        // Reset affichage
+        CalculateurModule.handleTypeChange();
         
-        // Nettoyage des classes CSS
+        // Reset résultats
+        document.getElementById('resultsContent').innerHTML = `
+            <div class="calc-empty-state">
+                <div class="calc-empty-icon">🧮</div>
+                <p class="calc-empty-text">Complétez le formulaire pour voir les tarifs</p>
+            </div>
+        `;
+        document.getElementById('calcStatus').textContent = '⏳ En attente...';
+        
+        // Reset validation
         document.querySelectorAll('.calc-form-input').forEach(input => {
             input.classList.remove('error', 'valid');
         });
-        
-        // Affichage état initial
-        this.showInitialState();
-        
-        console.log('🔄 Formulaire réinitialisé');
-    },
-
-    /**
-     * Affichage état initial
-     */
-    showInitialState() {
-        this.dom.resultsContent.innerHTML = `
-            <div class="calc-empty-state">
-                <div class="calc-empty-icon">⏳</div>
-                <p class="calc-empty-text">Remplissez le formulaire pour voir les tarifs</p>
-                <div class="calc-status">Prêt pour calcul</div>
-            </div>
-        `;
-    }
-};
-
-// ===============================================
-// 🛡️ CORRECTIFS COOKIES (Anti-boucle infinie)
-// ===============================================
-
-const CookieConfigFix = {
-    applied: false,
-    
-    /**
-     * Arrêter la boucle infinie des cookies
-     */
-    stopCookieLoop() {
-        if (this.applied) return;
-        
-        console.log('🛑 Application correctif boucle cookies...');
-        
-        // Désactiver les rechargements automatiques
-        if (typeof initAdvancedCookieConfig !== 'undefined') {
-            // Redéfinir la fonction problématique
-            window.initAdvancedCookieConfig = function() {
-                console.log('🍪 Cookie config désactivé pour éviter boucle');
-                return false;
-            };
-        }
-        
-        // Créer gestionnaire minimal si nécessaire
-        if (typeof window.cookieBanner === 'undefined') {
-            this.createMinimalBanner();
-        }
-        
-        this.applied = true;
-        console.log('✅ Correctif cookies appliqué');
-    },
-    
-    /**
-     * Créer un gestionnaire minimal fonctionnel
-     */
-    createMinimalBanner() {
-        window.cookieBanner = {
-            acceptAll: function() {
-                document.cookie = 'guldagil_cookie_consent=accepted; path=/; max-age=31536000';
-                this.hideBanners();
-                console.log('✅ Cookies acceptés (version simplifiée)');
-            },
-            
-            acceptMinimal: function() {
-                document.cookie = 'guldagil_cookie_consent=minimal; path=/; max-age=31536000';
-                this.hideBanners();
-                console.log('⚙️ Cookies techniques (version simplifiée)');
-            },
-            
-            hideBanners: function() {
-                document.querySelectorAll('#cookie-banner, .cookie-banner').forEach(el => {
-                    el.style.display = 'none';
-                });
-            },
-            
-            showDetails: function() {
-                console.log('ℹ️ Détails cookies (version simplifiée)');
-            }
-        };
-        
-        console.log('🍪 Gestionnaire cookies minimal créé');
-    }
-};
-
-// ===============================================
-// 🚀 INITIALISATION AUTOMATIQUE
-// ===============================================
-
-/**
- * Fonction d'initialisation principale
- */
-function initPortModule() {
-    console.log('🚀 Démarrage initialisation module Port...');
-    
-    // 1. Appliquer les correctifs en premier
-    CookieConfigFix.stopCookieLoop();
-    
-    // 2. Attendre que le DOM soit prêt
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => PortModule.init(), 100);
+        document.querySelectorAll('.calc-error-message').forEach(error => {
+            error.textContent = '';
         });
-    } else {
-        setTimeout(() => PortModule.init(), 100);
-    }
-    
-    // 3. Exposer le module globalement
-    window.PortModule = PortModule;
-    window.CookieConfigFix = CookieConfigFix;
-}
-
-// ===============================================
-// 🎯 GESTION DES ERREURS GLOBALES
-// ===============================================
-
-/**
- * Gestionnaire d'erreurs global pour le module
- */
-window.addEventListener('error', function(event) {
-    // Filtrer les erreurs liées aux cookies pour éviter le spam
-    if (event.message && (
-        event.message.includes('cookie') || 
-        event.message.includes('initAdvancedCookieConfig')
-    )) {
-        console.warn('⚠️ Erreur cookies interceptée et ignorée:', event.message);
-        event.preventDefault();
-        return;
-    }
-    
-    // Logger les autres erreurs importantes
-    if (event.message && event.message.includes('Port')) {
-        console.error('❌ Erreur module Port:', event.message);
-    }
-});
-
-/**
- * Gestionnaire pour les promesses rejetées
- */
-window.addEventListener('unhandledrejection', function(event) {
-    if (event.reason && event.reason.toString().includes('cookie')) {
-        console.warn('⚠️ Promesse cookie rejetée ignorée:', event.reason);
-        event.preventDefault();
-        return;
-    }
-    
-    console.error('❌ Promesse rejetée:', event.reason);
-});
-
-// ===============================================
-// 🔧 UTILITAIRES DE DEBUG
-// ===============================================
-
-/**
- * Utilitaires de debug pour le développement
- */
-window.PortDebug = {
-    /**
-     * Afficher l'état actuel du module
-     */
-    getState() {
-        return {
-            module: PortModule.state,
-            dom: Object.keys(PortModule.dom),
-            cookieFixed: CookieConfigFix.applied,
-            timestamp: new Date().toISOString()
-        };
-    },
-    
-    /**
-     * Forcer un calcul de test
-     */
-    testCalculation() {
-        PortModule.state.formData = {
-            departement: '75',
-            poids: 25,
-            type: 'colis',
-            adr: 'non',
-            enlevement: 'non'
-        };
-        PortModule.handleCalculate();
-    },
-    
-    /**
-     * Réinitialiser complètement le module
-     */
-    reset() {
-        PortModule.resetForm();
-        PortModule.state.history = [];
-        localStorage.removeItem('port_calc_history');
-        console.log('🔄 Module Port complètement réinitialisé');
     }
 };
 
-// ===============================================
-// 🎬 LANCEMENT DE L'INITIALISATION
-// ===============================================
-
-// Démarrer immédiatement l'initialisation
-initPortModule();
-
-// Re-essayer après un délai si nécessaire
-setTimeout(() => {
-    if (!window.PortModule || !PortModule.dom.form) {
-        console.warn('⚠️ Re-tentative initialisation module Port...');
-        initPortModule();
+window.toggleHistory = function() {
+    const content = document.getElementById('historyContent');
+    const toggle = document.getElementById('historyToggle');
+    
+    if (content && toggle) {
+        if (content.style.display === 'block') {
+            content.style.display = 'none';
+            toggle.textContent = '▼';
+        } else {
+            content.style.display = 'block';
+            toggle.textContent = '▲';
+        }
     }
-}, 1000);
+};
 
-console.log('📦 Module Port chargé - Version corrigée anti-erreurs');
+window.toggleDebug = function() {
+    const content = document.getElementById('debugContent');
+    const toggle = document.getElementById('debugToggle');
+    
+    if (content && toggle) {
+        if (content.style.display === 'block') {
+            content.style.display = 'none';
+            toggle.textContent = '▼';
+        } else {
+            content.style.display = 'block';
+            toggle.textContent = '▲';
+        }
+    }
+};
+
+// Initialisation
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => CalculateurModule.init());
+} else {
+    CalculateurModule.init();
+}
