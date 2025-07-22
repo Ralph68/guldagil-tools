@@ -425,3 +425,6 @@ if (file_exists($template_footer)) {
                     </div>
                 </div>
             </div>
+
+
+<?php include ROOT_PATH . '/templates/footer.php'; ?>
