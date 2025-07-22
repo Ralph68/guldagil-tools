@@ -96,512 +96,251 @@ if (file_exists($header_path)) {
             </div>
 
             <!-- Filtres avancés -->
-            <div class="search-filters">
-                <details class="filter-group">
-                    <summary>Filtres avancés</summary>
-                    <div class="filters-content">
-                        <div class="filter-row">
-                            <label for="classe-filter">Classe ADR :</label>
-                            <select id="classe-filter" name="classe">
-                                <option value="">Toutes les classes</option>
-                                <option value="1">Classe 1 - Explosifs</option>
-                                <option value="2">Classe 2 - Gaz</option>
-                                <option value="3">Classe 3 - Liquides inflammables</option>
-                                <option value="4">Classe 4 - Solides inflammables</option>
-                                <option value="5">Classe 5 - Oxydants</option>
-                                <option value="6">Classe 6 - Toxiques</option>
-                                <option value="8">Classe 8 - Corrosifs</option>
-                                <option value="9">Classe 9 - Divers</option>
-                            </select>
-                        </div>
-                        
-                        <div class="filter-row">
-                            <label for="groupe-filter">Groupe d'emballage :</label>
-                            <select id="groupe-filter" name="groupe">
-                                <option value="">Tous les groupes</option>
-                                <option value="I">Groupe I - Très dangereux</option>
-                                <option value="II">Groupe II - Moyennement dangereux</option>
-                                <option value="III">Groupe III - Faiblement dangereux</option>
-                            </select>
-                        </div>
-
-                        <div class="filter-row">
-                            <label for="adr-filter">Statut ADR :</label>
-                            <select id="adr-filter" name="adr_status">
-                                <option value="">Tous les produits</option>
-                                <option value="adr_only">Uniquement ADR</option>
-                                <option value="non_adr_only">Uniquement non-ADR</option>
-                            </select>
-                        </div>
-
-                        <div class="filter-row">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="env-danger" name="env_danger">
-                                Dangereux pour l'environnement
-                            </label>
-                        </div>
+            <div class="advanced-filters" id="advanced-filters">
+                <div class="filters-row">
+                    <div class="filter-group">
+                        <label for="category-filter">Catégorie transport :</label>
+                        <select id="category-filter" class="filter-select">
+                            <option value="">Toutes les catégories</option>
+                            <option value="0">Catégorie 0</option>
+                            <option value="1">Catégorie 1</option>
+                            <option value="2">Catégorie 2</option>
+                            <option value="3">Catégorie 3</option>
+                        </select>
                     </div>
-                </details>
+                    
+                    <div class="filter-group">
+                        <label for="transport-filter">Type transport :</label>
+                        <select id="transport-filter" class="filter-select">
+                            <option value="">Tous les types</option>
+                            <option value="route">Route</option>
+                            <option value="mer">Mer</option>
+                            <option value="air">Air</option>
+                            <option value="rail">Rail</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filters-row">
+                    <div class="filter-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="adr-only">
+                            <span>Produits ADR uniquement</span>
+                        </label>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="env-danger">
+                            <span>Dangereux pour l'environnement</span>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Zone de résultats -->
+    <!-- Résultats de recherche -->
     <section id="search-results" class="results-section" style="display: none;">
         <div class="results-header">
             <h2 id="results-title">Résultats de recherche</h2>
             <div class="results-actions">
-                <button class="btn-export" onclick="exportResults()">📋 Exporter</button>
-                <button class="btn-clear" onclick="clearSearch()">🗑️ Effacer</button>
+                <button class="btn-export" onclick="exportResults()">📊 Exporter</button>
+                <button class="btn-clear" onclick="clearResults()">🗑️ Effacer</button>
             </div>
         </div>
-        
         <div id="results-content" class="results-content">
-            <!-- Résultats chargés ici -->
+            <!-- Les résultats seront injectés ici -->
+        </div>
+        <div id="results-pagination" class="pagination">
+            <!-- Pagination sera générée ici -->
         </div>
     </section>
 
     <!-- Produits populaires -->
     <section id="popular-products" class="popular-section">
-        <h2>🔥 Produits populaires</h2>
+        <div class="section-header">
+            <h2>🔥 Produits populaires</h2>
+            <p>Les produits les plus recherchés</p>
+        </div>
         <div id="popular-content" class="popular-content">
-            <div class="loading-spinner">Chargement des produits populaires...</div>
+            <!-- Chargement automatique des produits populaires -->
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Chargement des produits populaires...</p>
+            </div>
         </div>
     </section>
 
-    <!-- Instructions -->
-    <section class="help-section">
-        <details>
-            <summary>💡 Aide à la recherche</summary>
-            <div class="help-content">
-                <h3>Comment rechercher efficacement :</h3>
-                <ul>
-                    <li><strong>Code produit :</strong> Tapez le code exact (ex: G18) - affiche codes liés (SOL11 + SOL111)</li>
-                    <li><strong>Nom produit :</strong> Recherche partielle possible (ex: "Corg 315")</li>
-                    <li><strong>Numéro UN :</strong> Format UN suivi de 4 chiffres (ex: UN1719) → tous les produits avec cet UN</li>
-                    <li><strong>Mots-clés :</strong> Plusieurs mots séparés par des espaces</li>
-                </ul>
-                
-                <h3>Filtres disponibles :</h3>
-                <ul>
-                    <li><strong>Classe ADR :</strong> Filtre par classe de danger</li>
-                    <li><strong>Groupe emballage :</strong> I, II, III</li>
-                    <li><strong>Produits ADR :</strong> Uniquement ADR / Uniquement non-ADR / Tous</li>
-                    <li><strong>Environnement :</strong> Dangereux pour l'environnement</li>
-                </ul>
+    <!-- Statistiques rapides -->
+    <section class="stats-section">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-content">
+                    <h3 id="stat-total">-</h3>
+                    <p>Produits total</p>
+                </div>
             </div>
-        </details>
+            <div class="stat-card">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-content">
+                    <h3 id="stat-adr">-</h3>
+                    <p>Produits ADR</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🌍</div>
+                <div class="stat-content">
+                    <h3 id="stat-env">-</h3>
+                    <p>Danger environnement</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Aide et documentation -->
+    <section class="help-section">
+        <div class="help-content">
+            <h3>💡 Aide à la recherche</h3>
+            <div class="help-grid">
+                <div class="help-item">
+                    <strong>Codes produits :</strong>
+                    <p>Recherchez par code complet (ex: SOL11) ou partiel (ex: SOL)</p>
+                </div>
+                <div class="help-item">
+                    <strong>Numéros UN :</strong>
+                    <p>Tapez le numéro UN avec ou sans "UN" (ex: 1824 ou UN1824)</p>
+                </div>
+                <div class="help-item">
+                    <strong>Noms de produits :</strong>
+                    <p>Recherche dans les noms et descriptions techniques</p>
+                </div>
+                <div class="help-item">
+                    <strong>Filtres avancés :</strong>
+                    <p>Utilisez les filtres pour affiner vos résultats</p>
+                </div>
+            </div>
+        </div>
     </section>
 
 </main>
 
+<!-- Configuration JavaScript -->
 <script>
-// Configuration globale
+// Configuration pour la recherche ADR
 window.ADR_SEARCH_CONFIG = {
-    apiEndpoint: '/adr/search/api.php',
+    apiEndpoint: '/adr/search/search.php',
     minChars: 3,
     maxResults: 50,
-    initialQuery: '<?= addslashes($query) ?>',
-    debug: <?= defined('DEBUG') && DEBUG ? 'true' : 'false' ?>
+    searchDelay: 300
 };
 
-// Variables globales
-let searchTimeout = null;
-let selectedIndex = -1;
+// Variables globales pour le module
+window.ADR_CURRENT_QUERY = <?= json_encode($query) ?>;
+</script>
 
-// Fonctions principales
-function performSearch() {
-    const query = document.getElementById('product-search').value.trim();
-    if (query.length >= window.ADR_SEARCH_CONFIG.minChars) {
-        fullSearch(query);
+<!-- JavaScript du module recherche -->
+<script src="/adr/assets/js/adr.js?v=<?= $build_number ?>"></script>
+<script src="/adr/assets/js/search.js?v=<?= $build_number ?>"></script>
+
+<script>
+// Initialisation page de recherche
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 Initialisation page recherche ADR');
+    
+    // Initialiser le module recherche
+    if (typeof ADR !== 'undefined' && ADR.Search) {
+        ADR.Search.init();
+        
+        // Charger produits populaires
+        loadPopularProducts();
+        
+        // Charger statistiques
+        loadStats();
+        
+        // Si requête dans URL, lancer recherche
+        if (window.ADR_CURRENT_QUERY && window.ADR_CURRENT_QUERY.length >= 3) {
+            setTimeout(function() {
+                performSearch(window.ADR_CURRENT_QUERY);
+            }, 500);
+        }
+    } else {
+        console.error('❌ Module ADR.Search non disponible');
+    }
+});
+
+// Fonctions globales pour la recherche
+function performSearch(query) {
+    if (typeof ADR !== 'undefined' && ADR.Search) {
+        ADR.Search.performFullSearch(query || document.getElementById('product-search').value);
     }
 }
 
-function clearSearch() {
-    document.getElementById('product-search').value = '';
-    document.getElementById('search-results').style.display = 'none';
-    document.getElementById('popular-products').style.display = 'block';
-    
-    // Réinitialiser filtres
-    document.getElementById('classe-filter').value = '';
-    document.getElementById('groupe-filter').value = '';
-    document.getElementById('adr-filter').value = '';
-    document.getElementById('env-danger').checked = false;
-    
-    hideSearchHint();
+function clearResults() {
+    if (typeof ADR !== 'undefined' && ADR.Search) {
+        ADR.Search.clearResults();
+    }
 }
 
 function exportResults() {
-    alert('Fonction export à implémenter');
-}
-
-// Gestion de la saisie
-function handleSearchInput(query) {
-    clearTimeout(searchTimeout);
-    
-    if (query.length > 0 && query.length < window.ADR_SEARCH_CONFIG.minChars) {
-        showSearchHint();
-        hideSuggestions();
-        return;
-    } else {
-        hideSearchHint();
+    if (typeof ADR !== 'undefined' && ADR.Search) {
+        ADR.Search.exportResults();
     }
-    
-    if (query.length < window.ADR_SEARCH_CONFIG.minChars) {
-        hideSuggestions();
-        document.getElementById('search-results').style.display = 'none';
-        document.getElementById('popular-products').style.display = 'block';
-        return;
-    }
-    
-    searchTimeout = setTimeout(() => {
-        fetchSuggestions(query);
-    }, 300);
 }
 
-// API Suggestions
-function fetchSuggestions(query) {
-    const url = window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=suggestions&q=' + encodeURIComponent(query) + '&limit=10';
-    
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displaySuggestions(data.suggestions);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur suggestions:', error);
-        });
-}
-
-// Affichage suggestions
-function displaySuggestions(suggestions) {
-    const container = document.getElementById('search-suggestions');
-    if (!container) return;
-    
-    if (!suggestions || suggestions.length === 0) {
-        hideSuggestions();
-        return;
-    }
-    
-    let html = '';
-    suggestions.forEach((product, index) => {
-        html += '<div class="suggestion-item" onclick="selectProduct(\'' + product.code_produit + '\')">';
-        html += '<div class="suggestion-content">';
-        html += '<div class="suggestion-name">' + escapeHtml(product.nom_produit || 'Produit sans nom') + '</div>';
-        html += '<div class="suggestion-code">Code: ' + product.code_produit + '</div>';
-        html += '<div class="suggestion-badges">';
-        if (product.numero_un) {
-            html += '<span class="badge badge-adr">UN' + product.numero_un + '</span>';
-        }
-        if (product.danger_environnement === 'oui') {
-            html += '<span class="badge badge-env">ENV</span>';
-        }
-        if (product.classe_adr) {
-            html += '<span class="badge badge-classe">Classe ' + product.classe_adr + '</span>';
-        }
-        html += '</div></div></div>';
-    });
-    
-    container.innerHTML = html;
-    showSuggestions();
-}
-
-// Recherche complète
-function fullSearch(query) {
-    document.getElementById('popular-products').style.display = 'none';
-    
-    // Construire URL avec filtres
-    let url = window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=search&q=' + encodeURIComponent(query) + '&limit=' + window.ADR_SEARCH_CONFIG.maxResults;
-    
-    const classe = document.getElementById('classe-filter').value;
-    const groupe = document.getElementById('groupe-filter').value;
-    const adrStatus = document.getElementById('adr-filter').value;
-    const envDanger = document.getElementById('env-danger').checked;
-    
-    if (classe) url += '&classe=' + encodeURIComponent(classe);
-    if (groupe) url += '&groupe=' + encodeURIComponent(groupe);
-    if (adrStatus) url += '&adr_status=' + encodeURIComponent(adrStatus);
-    if (envDanger) url += '&env_danger=true';
-    
-    // Afficher loading
-    showLoading();
-    
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayResults(data.products, data.total, query);
-            } else {
-                showError('Erreur de recherche: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur recherche:', error);
-            showError('Erreur de connexion');
-        });
-}
-
-// Affichage résultats en tableau
-function displayResults(products, total, query) {
-    const resultsContent = document.getElementById('results-content');
-    const resultsTitle = document.getElementById('results-title');
-    
-    if (resultsTitle) {
-        const count = products.length;
-        const totalText = total > count ? ' (' + total + ' au total)' : '';
-        resultsTitle.textContent = count + ' résultat' + (count > 1 ? 's' : '') + ' pour "' + query + '"' + totalText;
-    }
-    
-    if (products.length === 0) {
-        resultsContent.innerHTML = '<div class="no-results"><p>Aucun produit trouvé pour "' + escapeHtml(query) + '"</p></div>';
-    } else {
-        let html = '<div class="results-table-container">';
-        html += '<table class="adr-results-table">';
-        html += '<thead><tr>';
-        html += '<th>Code Article</th>';
-        html += '<th>Nom du Produit</th>';
-        html += '<th>UN</th>';
-        html += '<th>Classe</th>';
-        html += '<th>Groupe</th>';
-        html += '<th>ENV</th>';
-        html += '<th>Contenant</th>';
-        html += '<th>Actions</th>';
-        html += '</tr></thead><tbody>';
-        
-        products.forEach(product => {
-            html += '<tr class="result-row" onclick="showProductDetail(\'' + product.code_produit + '\')">';
-            html += '<td class="code-cell"><strong>' + product.code_produit + '</strong></td>';
-            html += '<td class="name-cell">' + escapeHtml(product.nom_produit || 'Sans nom') + '</td>';
-            html += '<td class="un-cell">' + (product.numero_un ? 'UN' + product.numero_un : '-') + '</td>';
-            html += '<td class="class-cell">' + (product.classe_adr || '-') + '</td>';
-            html += '<td class="group-cell">' + (product.groupe_emballage || '-') + '</td>';
-            html += '<td class="env-cell">' + (product.danger_environnement === 'oui' ? '⚠️' : '-') + '</td>';
-            html += '<td class="container-cell">' + escapeHtml(product.type_contenant || '-') + '</td>';
-            html += '<td class="actions-cell">';
-            html += '<a href="' + product.fds_url + '" target="_blank" class="fds-btn" onclick="event.stopPropagation()">📄 FDS</a>';
-            html += '</td></tr>';
-        });
-        
-        html += '</tbody></table></div>';
-        resultsContent.innerHTML = html;
-    }
-    
-    showResults();
-}
-
-// Chargement produits populaires
 function loadPopularProducts() {
-    const popularContent = document.getElementById('popular-content');
-    
-    fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=popular&limit=10')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur HTTP: ' + response.status);
-            }
-            return response.json();
-        })
+    fetch('/adr/search/search.php?action=popular&limit=6')
+        .then(response => response.json())
         .then(data => {
             if (data.success && data.products) {
                 displayPopularProducts(data.products);
-            } else {
-                popularContent.innerHTML = '<p class="no-results">Aucun produit populaire disponible</p>';
             }
         })
         .catch(error => {
             console.error('Erreur chargement produits populaires:', error);
-            popularContent.innerHTML = '<p class="error-message">Erreur de chargement</p>';
+            document.getElementById('popular-content').innerHTML = '<p class="error">Erreur de chargement</p>';
+        });
+}
+
+function loadStats() {
+    fetch('/adr/search/search.php?action=stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.stats) {
+                document.getElementById('stat-total').textContent = data.stats.total || '0';
+                document.getElementById('stat-adr').textContent = data.stats.adr || '0';
+                document.getElementById('stat-env').textContent = data.stats.env || '0';
+            }
+        })
+        .catch(error => {
+            console.error('Erreur chargement statistiques:', error);
         });
 }
 
 function displayPopularProducts(products) {
-    const popularContent = document.getElementById('popular-content');
-    
-    if (!products || products.length === 0) {
-        popularContent.innerHTML = '<p class="no-results">Aucun produit populaire</p>';
+    const container = document.getElementById('popular-content');
+    if (!products.length) {
+        container.innerHTML = '<p>Aucun produit populaire disponible</p>';
         return;
     }
     
-    let html = '';
-    products.forEach(product => {
-        html += '<div class="popular-item" onclick="selectProduct(\'' + product.code_produit + '\')">';
-        html += '<div class="product-header">';
-        html += '<span class="product-code">' + product.code_produit + '</span>';
-        if (product.numero_un) {
-            html += '<span class="badge badge-adr">UN' + product.numero_un + '</span>';
-        }
-        if (product.danger_environnement === 'oui') {
-            html += '<span class="badge badge-env">ENV</span>';
-        }
-        html += '</div>';
-        html += '<div class="product-name">' + escapeHtml(product.nom_produit || 'Produit sans nom') + '</div>';
-        html += '<div class="product-details">';
-        if (product.classe_adr) {
-            html += 'Classe ' + product.classe_adr;
-        }
-        if (product.type_contenant) {
-            html += ' • ' + escapeHtml(product.type_contenant);
-        }
-        html += '</div></div>';
-    });
-    
-    popularContent.innerHTML = html;
+    container.innerHTML = products.map(product => `
+        <div class="popular-item" onclick="searchProduct('${product.code_produit}')">
+            <div class="popular-header">
+                <strong>${product.code_produit}</strong>
+                ${product.numero_un ? `<span class="un-badge">UN${product.numero_un}</span>` : ''}
+            </div>
+            <p class="popular-name">${product.nom_produit}</p>
+            ${product.classe_adr ? `<span class="classe-badge">Classe ${product.classe_adr}</span>` : ''}
+        </div>
+    `).join('');
 }
 
-function showProductDetail(code) {
-    fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=detail&q=' + encodeURIComponent(code))
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayProductModal(data.product, data.history);
-            } else {
-                alert('Erreur: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur détail:', error);
-            alert('Erreur de connexion');
-        });
-}
-
-function displayProductModal(product, history) {
-    const modal = document.createElement('div');
-    modal.className = 'product-modal';
-    modal.innerHTML = 
-        '<div class="modal-content">' +
-        '<div class="modal-header">' +
-        '<h2>' + product.code_produit + ' - ' + escapeHtml(product.nom_produit || 'Sans nom') + '</h2>' +
-        '<button class="modal-close" onclick="this.closest(\'.product-modal\').remove()">×</button>' +
-        '</div>' +
-        '<div class="modal-body">' +
-        '<div class="product-info">' +
-        (product.numero_un ? '<p><strong>Numéro UN:</strong> UN' + product.numero_un + '</p>' : '') +
-        (product.nom_description_un ? '<p><strong>Description UN:</strong> ' + escapeHtml(product.nom_description_un) + '</p>' : '') +
-        (product.classe_adr ? '<p><strong>Classe ADR:</strong> ' + product.classe_adr + '</p>' : '') +
-        (product.groupe_emballage ? '<p><strong>Groupe emballage:</strong> ' + product.groupe_emballage + '</p>' : '') +
-        (product.type_contenant ? '<p><strong>Contenant:</strong> ' + escapeHtml(product.type_contenant) + '</p>' : '') +
-        (product.poids_contenant ? '<p><strong>Poids:</strong> ' + escapeHtml(product.poids_contenant) + '</p>' : '') +
-        (product.danger_environnement === 'oui' ? '<p><strong>⚠️ Dangereux pour l\'environnement</strong></p>' : '') +
-        '</div>' +
-        (history.length > 0 ? 
-            '<div class="product-history">' +
-            '<h3>Déclarations récentes</h3>' +
-            '<ul>' +
-            history.slice(0, 5).map(h => 
-                '<li>' + h.date_expedition + ' - ' + h.transporteur + ' - ' + h.quantite_declaree + ' ' + h.unite_quantite +
-                (h.destinataire_nom ? ' vers ' + h.destinataire_nom : '') + '</li>'
-            ).join('') +
-            '</ul></div>' : '') +
-        '</div></div>';
-    
-    document.body.appendChild(modal);
-    
-    // Fermer au clic extérieur
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-}
-
-function selectProduct(code) {
+function searchProduct(code) {
     document.getElementById('product-search').value = code;
-    performSearch();
+    performSearch(code);
 }
-
-// Utilitaires affichage
-function showSuggestions() {
-    document.getElementById('search-suggestions').style.display = 'block';
-}
-
-function hideSuggestions() {
-    document.getElementById('search-suggestions').style.display = 'none';
-}
-
-function showResults() {
-    document.getElementById('search-results').style.display = 'block';
-}
-
-function showSearchHint() {
-    document.getElementById('search-hint').classList.add('show');
-}
-
-function hideSearchHint() {
-    document.getElementById('search-hint').classList.remove('show');
-}
-
-function showLoading() {
-    const resultsContent = document.getElementById('results-content');
-    resultsContent.innerHTML = '<div class="loading-spinner"><p>🔍 Recherche en cours...</p></div>';
-    showResults();
-}
-
-function showError(message) {
-    const resultsContent = document.getElementById('results-content');
-    resultsContent.innerHTML = '<div class="error-message"><p>❌ ' + escapeHtml(message) + '</p></div>';
-    showResults();
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Initialisation
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔍 Page de recherche ADR chargée');
-    
-    // Charger produits populaires
-    loadPopularProducts();
-    
-    // Gestionnaire recherche
-    const searchInput = document.getElementById('product-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
-            handleSearchInput(e.target.value);
-        });
-        
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        });
-        
-        searchInput.addEventListener('focus', function() {
-            if (this.value.length >= window.ADR_SEARCH_CONFIG.minChars) {
-                showSuggestions();
-            }
-        });
-    }
-    
-    // Gestionnaires filtres
-    ['classe-filter', 'groupe-filter', 'adr-filter', 'env-danger'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('change', function() {
-                const query = document.getElementById('product-search').value;
-                if (query && query.length >= window.ADR_SEARCH_CONFIG.minChars) {
-                    performSearch();
-                }
-            });
-        }
-    });
-    
-    // Fermer suggestions au clic extérieur
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.search-container')) {
-            hideSuggestions();
-        }
-    });
-    
-    // Recherche initiale si query dans URL
-    if (window.ADR_SEARCH_CONFIG.initialQuery) {
-        setTimeout(() => performSearch(), 500);
-    }
-});
 </script>
 
 <?php
