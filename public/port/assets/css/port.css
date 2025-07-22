@@ -1,844 +1,745 @@
 /**
- * Titre: Styles calculateur de frais de port - Version moderne professionnelle
+ * Titre: CSS Module Port - Version Enhancée
  * Chemin: /public/port/assets/css/port.css
  * Version: 0.5 beta + build auto
- * Design moderne avec accessibilité et performance optimisées
  */
 
-/* ============================= */
-/*        VARIABLES CSS          */
-/* ============================= */
+/* ========================================
+   🎨 VARIABLES CSS POUR LE THÈME BLEU
+   ======================================== */
 :root {
-    /* Couleurs principales - Palette professionnelle */
-    --port-primary: #0066cc;
-    --port-primary-hover: #0052a3;
-    --port-primary-light: #e6f3ff;
+    --port-primary: #2563eb;
+    --port-primary-dark: #1d4ed8;
+    --port-primary-light: #60a5fa;
+    --port-secondary: #64748b;
+    --port-success: #10b981;
+    --port-warning: #f59e0b;
+    --port-danger: #ef4444;
+    --port-info: #06b6d4;
     
-    /* Couleurs statuts */
-    --port-success: #16a34a;
-    --port-warning: #d97706;
-    --port-error: #dc2626;
-    --port-info: #0284c7;
+    --port-bg-main: #f8fafc;
+    --port-bg-panel: #ffffff;
+    --port-bg-step: #f1f5f9;
     
-    /* Couleurs neutres */
-    --port-gray-50: #fafafa;
-    --port-gray-100: #f4f4f5;
-    --port-gray-200: #e4e4e7;
-    --port-gray-300: #d1d5db;
-    --port-gray-400: #9ca3af;
-    --port-gray-500: #6b7280;
-    --port-gray-600: #4b5563;
-    --port-gray-700: #374151;
-    --port-gray-800: #1f2937;
-    --port-gray-900: #111827;
+    --port-border: #e2e8f0;
+    --port-border-active: var(--port-primary);
     
-    /* Couleurs de surface */
-    --port-background: #ffffff;
-    --port-surface: #ffffff;
-    --port-border: #e5e7eb;
-    --port-shadow: rgba(0, 0, 0, 0.1);
-    
-    /* Typographie */
-    --port-text-primary: #111827;
-    --port-text-secondary: #4b5563;
-    --port-text-muted: #6b7280;
-    
-    /* Dimensions */
-    --port-max-width: 1200px;
-    --port-form-width: 440px;
-    --port-results-width: 720px;
-    
-    /* Espacements */
-    --port-space-1: 0.25rem;
-    --port-space-2: 0.5rem;
-    --port-space-3: 0.75rem;
-    --port-space-4: 1rem;
-    --port-space-6: 1.5rem;
-    --port-space-8: 2rem;
-    --port-space-12: 3rem;
-    
-    /* Rayons de bordure */
-    --port-radius-sm: 4px;
-    --port-radius-md: 6px;
-    --port-radius-lg: 8px;
-    --port-radius-xl: 12px;
-    
-    /* Ombres */
     --port-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --port-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --port-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     
-    /* Transitions */
-    --port-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --port-radius-sm: 0.375rem;
+    --port-radius-md: 0.5rem;
+    --port-radius-lg: 0.75rem;
     
-    /* Breakpoints */
-    --port-breakpoint-sm: 640px;
-    --port-breakpoint-md: 768px;
-    --port-breakpoint-lg: 1024px;
+    --port-transition: all 0.2s ease-in-out;
+    --port-transition-slow: all 0.3s ease-in-out;
 }
 
-/* ============================= */
-/*      STRUCTURE GÉNÉRALE       */
-/* ============================= */
-
+/* ========================================
+   🏗️ LAYOUT PRINCIPAL
+   ======================================== */
 .calc-container {
     min-height: 100vh;
-    background: var(--port-gray-50);
-    padding: var(--port-space-6);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    color: var(--port-text-primary);
-    line-height: 1.5;
+    background: var(--port-bg-main);
+    padding: 2rem 1rem;
 }
 
 .calc-main {
-    max-width: var(--port-max-width);
+    max-width: 1400px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: var(--port-form-width) 1fr;
-    gap: var(--port-space-8);
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
     align-items: start;
 }
 
-/* ============================= */
-/*       PANNEAUX PRINCIPAUX     */
-/* ============================= */
-
-.calc-form-panel,
-.calc-results-panel {
-    background: var(--port-background);
+/* ========================================
+   📋 EN-TÊTE DU MODULE
+   ======================================== */
+.calc-header {
+    grid-column: 1 / -1;
+    text-align: center;
+    margin-bottom: 1rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, var(--port-primary) 0%, var(--port-primary-dark) 100%);
+    color: white;
     border-radius: var(--port-radius-lg);
-    box-shadow: var(--port-shadow-sm);
-    border: 1px solid var(--port-border);
-    overflow: hidden;
+    box-shadow: var(--port-shadow-lg);
 }
 
+.calc-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.calc-header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+/* ========================================
+   🎯 PANEL FORMULAIRE
+   ======================================== */
 .calc-form-panel {
-    position: sticky;
-    top: var(--port-space-6);
-    max-height: calc(100vh - 3rem);
-    overflow-y: auto;
+    background: var(--port-bg-panel);
+    border-radius: var(--port-radius-lg);
+    box-shadow: var(--port-shadow-md);
+    overflow: hidden;
+    border: 1px solid var(--port-border);
 }
 
-.calc-results-panel {
-    min-height: 600px;
-}
-
-/* ============================= */
-/*         ÉTAPES/TABS           */
-/* ============================= */
-
+/* Étapes de navigation */
 .calc-steps {
     display: flex;
-    gap: var(--port-space-1);
-    margin-bottom: var(--port-space-6);
-    padding: var(--port-space-6) var(--port-space-6) 0;
+    background: var(--port-bg-step);
     border-bottom: 1px solid var(--port-border);
 }
 
 .calc-step-btn {
-    background: none;
+    flex: 1;
+    padding: 1rem;
+    background: transparent;
     border: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--port-secondary);
     cursor: pointer;
-    padding: var(--port-space-3) var(--port-space-4);
-    font-weight: 500;
-    font-size: 0.875rem;
-    color: var(--port-text-secondary);
     transition: var(--port-transition);
-    border-radius: var(--port-radius-md) var(--port-radius-md) 0 0;
-    display: flex;
-    align-items: center;
-    gap: var(--port-space-2);
     position: relative;
-    margin-bottom: -1px;
+    border-bottom: 3px solid transparent;
 }
 
 .calc-step-btn:hover {
+    background: rgba(37, 99, 235, 0.1);
     color: var(--port-primary);
-    background: var(--port-primary-light);
 }
 
 .calc-step-btn.active {
     color: var(--port-primary);
-    background: var(--port-background);
-    border: 1px solid var(--port-border);
-    border-bottom: 1px solid var(--port-background);
-    font-weight: 600;
+    background: var(--port-bg-panel);
+    border-bottom-color: var(--port-primary);
 }
 
-.calc-step-btn:focus-visible {
-    outline: 2px solid var(--port-primary);
-    outline-offset: 2px;
-}
-
-/* ============================= */
-/*         FORMULAIRE            */
-/* ============================= */
-
-.calc-form-content {
-    padding: var(--port-space-6);
-}
-
-.calc-form-group {
-    margin-bottom: var(--port-space-6);
-}
-
-.calc-form-label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: var(--port-space-2);
-    color: var(--port-text-primary);
-    font-size: 0.875rem;
-}
-
-.calc-form-input,
-.calc-form-select {
-    width: 100%;
-    padding: var(--port-space-3);
-    border: 1px solid var(--port-border);
-    border-radius: var(--port-radius-md);
-    font-size: 0.875rem;
-    transition: var(--port-transition);
-    background: var(--port-background);
-    color: var(--port-text-primary);
-}
-
-.calc-form-input:focus,
-.calc-form-select:focus {
-    outline: none;
-    border-color: var(--port-primary);
-    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-}
-
-.calc-form-input::placeholder {
-    color: var(--port-text-muted);
-}
-
-/* Champs avec erreurs */
-.calc-form-input.error,
-.calc-form-select.error {
-    border-color: var(--port-error);
-    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-}
-
-/* Messages d'erreur */
-.calc-error-message {
-    color: var(--port-error);
-    font-size: 0.75rem;
-    margin-top: var(--port-space-1);
-    display: flex;
-    align-items: center;
-    gap: var(--port-space-1);
-}
-
-/* Indices de champs */
-.calc-field-hint {
-    color: var(--port-text-muted);
-    font-size: 0.75rem;
-    margin-top: var(--port-space-1);
-    font-style: italic;
-}
-
-/* ============================= */
-/*          BOUTONS              */
-/* ============================= */
-
-.calc-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--port-space-2);
-    padding: var(--port-space-3) var(--port-space-6);
-    border: none;
-    border-radius: var(--port-radius-md);
-    font-weight: 500;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: var(--port-transition);
-    text-decoration: none;
-}
-
-.calc-btn-primary {
-    background: var(--port-primary);
-    color: white;
-}
-
-.calc-btn-primary:hover:not(:disabled) {
-    background: var(--port-primary-hover);
-    transform: translateY(-1px);
-    box-shadow: var(--port-shadow-md);
-}
-
-.calc-btn-primary:disabled {
-    background: var(--port-gray-300);
-    cursor: not-allowed;
-    transform: none;
-}
-
-.calc-btn:focus-visible {
-    outline: 2px solid var(--port-primary);
-    outline-offset: 2px;
-}
-
-/* ============================= */
-/*         RÉSULTATS             */
-/* ============================= */
-
-.calc-results-content {
-    padding: var(--port-space-6);
-}
-
-.calc-results-header {
-    margin-bottom: var(--port-space-6);
-    padding-bottom: var(--port-space-4);
-    border-bottom: 1px solid var(--port-border);
-}
-
-.calc-results-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--port-text-primary);
-    margin: 0 0 var(--port-space-2);
-}
-
-.calc-results-meta {
-    color: var(--port-text-secondary);
-    font-size: 0.875rem;
-}
-
-.calc-carrier-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--port-space-4);
-}
-
-.calc-carrier-card {
-    border: 1px solid var(--port-border);
-    border-radius: var(--port-radius-lg);
-    padding: var(--port-space-6);
-    transition: var(--port-transition);
-    background: var(--port-surface);
-}
-
-.calc-carrier-card:hover {
-    border-color: var(--port-primary);
-    box-shadow: var(--port-shadow-md);
-}
-
-.calc-carrier-header {
-    display: flex;
-    justify-content: between;
-    align-items: center;
-    margin-bottom: var(--port-space-4);
-}
-
-.calc-carrier-name {
-    font-weight: 600;
-    font-size: 1.125rem;
-    color: var(--port-text-primary);
-}
-
-.calc-carrier-price {
-    font-weight: 700;
-    font-size: 1.5rem;
-    color: var(--port-primary);
-}
-
-.calc-carrier-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: var(--port-space-4);
-    font-size: 0.875rem;
-}
-
-.calc-detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: var(--port-space-1);
-}
-
-.calc-detail-label {
-    color: var(--port-text-secondary);
-    font-weight: 500;
-}
-
-.calc-detail-value {
-    color: var(--port-text-primary);
-}
-
-/* ============================= */
-/*          ÉTATS                */
-/* ============================= */
-
-.calc-loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--port-space-12);
-    color: var(--port-text-secondary);
-}
-
-.calc-spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--port-border);
-    border-top-color: var(--port-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: var(--port-space-2);
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.calc-error {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: var(--port-error);
-    padding: var(--port-space-4);
-    border-radius: var(--port-radius-md);
-    margin-bottom: var(--port-space-4);
-}
-
-.calc-success {
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
+.calc-step-btn.completed {
     color: var(--port-success);
-    padding: var(--port-space-4);
-    border-radius: var(--port-radius-md);
-    margin-bottom: var(--port-space-4);
 }
 
-/* ============================= */
-/*        RESPONSIVE             */
-/* ============================= */
-
-@media (max-width: 1024px) {
-    .calc-main {
-        grid-template-columns: 1fr;
-        gap: var(--port-space-6);
-    }
-    
-    .calc-form-panel {
-        position: static;
-        max-height: none;
-    }
+.calc-step-btn.completed::after {
+    content: '✓';
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--port-success);
 }
 
-@media (max-width: 768px) {
-    .calc-container {
-        padding: var(--port-space-4);
-    }
-    
-    .calc-steps {
-        flex-wrap: wrap;
-        gap: var(--port-space-1);
-    }
-    
-    .calc-step-btn {
-        flex: 1;
-        min-width: 120px;
-        justify-content: center;
-    }
-    
-    .calc-carrier-details {
-        grid-template-columns: 1fr;
-    }
+/* Contenu formulaire */
+.calc-form-content {
+    padding: 2rem;
 }
 
-@media (max-width: 480px) {
-    .calc-container {
-        padding: var(--port-space-2);
-    }
-    
-    .calc-form-content,
-    .calc-results-content {
-        padding: var(--port-space-4);
-    }
-    
-    .calc-carrier-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--port-space-2);
-    }
-    
-    .calc-carrier-price {
-        font-size: 1.25rem;
-    }
-}
-
-/* ============================= */
-/*       ACCESSIBILITÉ           */
-/* ============================= */
-
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-
-@media (prefers-contrast: high) {
-    :root {
-        --port-border: #000000;
-        --port-shadow: rgba(0, 0, 0, 0.3);
-    }
-    
-    .calc-form-input:focus,
-    .calc-form-select:focus {
-        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.3);
-    }
-}
-
-/* ============================= */
-/*    CLASSES MANQUANTES         */
-/* ============================= */
-
-/* États vides */
-.calc-empty-state {
-    text-align: center;
-    padding: var(--port-space-12);
-    color: var(--port-text-secondary);
-}
-
-.calc-empty-icon {
-    font-size: 3rem;
-    margin-bottom: var(--port-space-4);
-}
-
-.calc-empty-text {
-    font-size: 1rem;
-    margin: 0;
-}
-
-/* Status du calcul */
-.calc-status {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--port-text-secondary);
-}
-
-/* Actions formulaire */
-.calc-form-actions {
-    display: flex;
-    gap: var(--port-space-4);
-    margin-top: var(--port-space-8);
-    padding-top: var(--port-space-6);
-    border-top: 1px solid var(--port-border);
-}
-
-.calc-btn-secondary {
-    background: var(--port-gray-100);
-    color: var(--port-text-primary);
-}
-
-.calc-btn-secondary:hover {
-    background: var(--port-gray-200);
-}
-
-/* Contenu des étapes */
 .calc-step-content {
     display: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: var(--port-transition-slow);
 }
 
 .calc-step-content.active {
     display: block;
+    opacity: 1;
+    transform: translateY(0);
 }
 
-/* Toggles */
-.calc-toggle-group {
-    display: flex;
-    gap: var(--port-space-2);
-    margin-top: var(--port-space-2);
+/* ========================================
+   📝 ÉLÉMENTS DE FORMULAIRE
+   ======================================== */
+.calc-form-group {
+    margin-bottom: 1.5rem;
 }
 
-.calc-toggle-btn {
-    flex: 1;
-    padding: var(--port-space-3);
-    border: 1px solid var(--port-border);
-    background: var(--port-background);
-    color: var(--port-text-secondary);
-    border-radius: var(--port-radius-md);
-    cursor: pointer;
-    transition: var(--port-transition);
-    font-size: 0.875rem;
-}
-
-.calc-toggle-btn:hover {
-    border-color: var(--port-primary);
-}
-
-.calc-toggle-btn.active {
-    background: var(--port-primary);
-    color: white;
-    border-color: var(--port-primary);
-}
-
-/* Validation champs */
-.calc-form-input.valid {
-    border-color: var(--port-success);
-    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
-}
-
-/* Meilleur tarif */
-.calc-carrier-best {
-    border-color: var(--port-success);
-    background: linear-gradient(135deg, #f0fdf4 0%, var(--port-background) 100%);
-}
-
-.calc-best-badge {
-    background: var(--port-success);
-    color: white;
-    padding: var(--port-space-1) var(--port-space-3);
-    border-radius: var(--port-radius-md);
-    font-size: 0.75rem;
+.calc-label {
+    display: block;
     font-weight: 600;
-    margin-bottom: var(--port-space-3);
-    width: fit-content;
+    color: var(--port-secondary);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
 }
 
-/* Express info */
-.calc-express-info {
-    margin-top: var(--port-space-8);
-    padding: var(--port-space-6);
-    background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
-    border-radius: var(--port-radius-lg);
-    border: 1px solid #f59e0b;
+.calc-input,
+.calc-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--port-border);
+    border-radius: var(--port-radius-md);
+    font-size: 1rem;
+    transition: var(--port-transition);
+    background: white;
 }
 
-.calc-express-header {
+.calc-input:focus,
+.calc-select:focus {
+    outline: none;
+    border-color: var(--port-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.calc-input-group {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: var(--port-space-3);
-    margin-bottom: var(--port-space-4);
 }
 
-.calc-express-icon {
-    font-size: 1.5rem;
-}
-
-.calc-express-title {
+.calc-input-suffix {
+    position: absolute;
+    right: 1rem;
+    color: var(--port-secondary);
     font-weight: 600;
-    color: #92400e;
-}
-
-.calc-express-subtitle {
-    color: #b45309;
-    font-size: 0.875rem;
-}
-
-.calc-express-content p {
-    margin: var(--port-space-3) 0;
-    color: #92400e;
-}
-
-.calc-express-example {
-    background: rgba(255, 255, 255, 0.5);
-    padding: var(--port-space-4);
-    border-radius: var(--port-radius-md);
-    margin: var(--port-space-4) 0;
-    font-size: 0.875rem;
-    color: #92400e;
-}
-
-.calc-express-price {
-    font-weight: 700;
-    color: #b45309;
-}
-
-.calc-express-btn {
-    background: #f59e0b;
-    color: white;
-    border: none;
-    padding: var(--port-space-3) var(--port-space-6);
-    border-radius: var(--port-radius-md);
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--port-transition);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--port-space-2);
-}
-
-.calc-express-btn:hover {
-    background: #d97706;
-    transform: translateY(-1px);
-}
-
-/* Sections collapsibles */
-.calc-section {
-    margin-top: var(--port-space-6);
-    border: 1px solid var(--port-border);
-    border-radius: var(--port-radius-lg);
-    overflow: hidden;
-}
-
-.calc-section-header {
-    padding: var(--port-space-4);
-    background: var(--port-gray-50);
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 500;
-    transition: var(--port-transition);
-}
-
-.calc-section-header:hover {
-    background: var(--port-gray-100);
-}
-
-.calc-section-content {
-    padding: var(--port-space-4);
-    display: none;
-}
-
-.calc-section-empty {
-    color: var(--port-text-muted);
-    font-style: italic;
-    margin: 0;
-}
-
-/* Historique */
-.calc-history-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--port-space-3);
-}
-
-.calc-history-item {
-    padding: var(--port-space-3);
-    border: 1px solid var(--port-border);
-    border-radius: var(--port-radius-md);
-    cursor: pointer;
-    transition: var(--port-transition);
-}
-
-.calc-history-item:hover {
-    border-color: var(--port-primary);
-    background: var(--port-primary-light);
-}
-
-.calc-history-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: var(--port-space-1);
-}
-
-.calc-history-date {
-    font-size: 0.75rem;
-    color: var(--port-text-muted);
-}
-
-.calc-history-dept {
-    font-weight: 600;
-    color: var(--port-primary);
-}
-
-.calc-history-details {
-    font-size: 0.875rem;
-    color: var(--port-text-secondary);
-}
-
-/* Debug */
-.calc-debug-pre {
-    background: var(--port-gray-900);
-    color: #10b981;
-    padding: var(--port-space-4);
-    border-radius: var(--port-radius-md);
-    font-size: 0.75rem;
-    overflow-x: auto;
-    margin: 0;
-    font-family: 'Consolas', 'Monaco', monospace;
-}
-
-/* États de chargement */
-.calc-form.loading {
-    opacity: 0.7;
     pointer-events: none;
 }
 
-.calc-form.loading .calc-btn {
-    cursor: wait;
+.calc-help {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--port-secondary);
+    margin-top: 0.25rem;
+    opacity: 0.8;
 }
 
-/* Indicateur de chargement sur le bouton */
-.calc-btn.loading::before {
-    content: "";
-    width: 16px;
-    height: 16px;
-    border: 2px solid transparent;
-    border-top: 2px solid currentColor;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: var(--port-space-2);
+/* ========================================
+   🔘 BOUTONS TOGGLE (ADR, ENLÈVEMENT)
+   ======================================== */
+.calc-toggle-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
 }
 
-/* Justification du header carrier */
-.calc-carrier-header {
+.calc-toggle-btn {
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--port-border);
+    background: white;
+    border-radius: var(--port-radius-md);
+    cursor: pointer;
+    transition: var(--port-transition);
+    font-weight: 500;
+    text-align: center;
+    color: var(--port-secondary);
+}
+
+.calc-toggle-btn:hover {
+    border-color: var(--port-primary-light);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.calc-toggle-btn.active {
+    border-color: var(--port-primary);
+    background: var(--port-primary);
+    color: white;
+    box-shadow: var(--port-shadow-sm);
+}
+
+/* ========================================
+   🔲 BOUTONS PRINCIPAUX
+   ======================================== */
+.calc-btn-primary {
+    width: 100%;
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, var(--port-primary) 0%, var(--port-primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: var(--port-radius-md);
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: var(--port-transition);
+    box-shadow: var(--port-shadow-md);
+    text-transform: none;
+}
+
+.calc-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--port-shadow-lg);
+}
+
+.calc-btn-primary:active {
+    transform: translateY(0);
+}
+
+.calc-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ========================================
+   📊 PANEL RÉSULTATS
+   ======================================== */
+.calc-results-panel {
+    background: var(--port-bg-panel);
+    border-radius: var(--port-radius-lg);
+    box-shadow: var(--port-shadow-md);
+    border: 1px solid var(--port-border);
+    overflow: hidden;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.calc-results-header {
+    padding: 1.5rem 2rem;
+    background: var(--port-bg-step);
+    border-bottom: 1px solid var(--port-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--port-space-4);
 }
 
-/* États d'erreur spécialisés */
-.calc-error-state {
-    text-align: center;
-    padding: var(--port-space-8);
-    color: var(--port-error);
-}
-
-.calc-error-icon {
-    font-size: 2.5rem;
-    margin-bottom: var(--port-space-4);
-}
-
-.calc-error-content h3 {
-    margin: 0 0 var(--port-space-2);
-    color: var(--port-error);
-}
-
-.calc-error-content p {
+.calc-results-header h2 {
     margin: 0;
-    color: var(--port-text-secondary);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--port-secondary);
 }
 
-/* ============================= */
-/*        UTILITAIRES            */
-/* ============================= */
+.calc-status {
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: var(--port-radius-sm);
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--port-info);
+}
 
-.calc-sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
+.calc-results-content {
+    padding: 2rem;
+    min-height: 300px;
+}
+
+/* État d'accueil */
+.calc-welcome {
+    text-align: center;
+    color: var(--port-secondary);
+}
+
+.calc-welcome-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+}
+
+.calc-welcome h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+    color: var(--port-primary);
+}
+
+.calc-welcome p {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 2rem 0;
+    opacity: 0.8;
+}
+
+.calc-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.calc-feature {
+    padding: 1rem;
+    background: var(--port-bg-step);
+    border-radius: var(--port-radius-md);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+.calc-feature-icon {
+    font-size: 1.2rem;
+}
+
+/* ========================================
+   🎯 RÉSULTATS DE CALCUL
+   ======================================== */
+.calc-results-wrapper {
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.calc-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--port-border);
+}
+
+.calc-results-header h3 {
+    margin: 0;
+    color: var(--port-primary);
+    font-size: 1.3rem;
+}
+
+.calc-results-header small {
+    color: var(--port-secondary);
+    font-weight: 500;
+}
+
+.calc-results-grid {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.calc-result-card {
+    background: white;
+    border: 2px solid var(--port-border);
+    border-radius: var(--port-radius-lg);
+    padding: 1.5rem;
+    transition: var(--port-transition);
+    position: relative;
     overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
 }
 
-.calc-text-center { text-align: center; }
-.calc-text-right { text-align: right; }
-.calc-font-bold { font-weight: 700; }
-.calc-font-medium { font-weight: 500; }
-
-/* ============================= */
-/*      PERFORMANCE              */
-/* ============================= */
-
-.calc-carrier-card,
-.calc-btn {
-    will-change: transform;
+.calc-result-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--port-primary);
+    transform: scaleY(0);
+    transition: var(--port-transition);
 }
 
-.calc-form-panel {
-    contain: layout style;
+.calc-result-card:hover {
+    border-color: var(--port-primary);
+    box-shadow: var(--port-shadow-md);
+    transform: translateY(-2px);
 }
 
-.calc-results-panel {
-    contain: layout;
+.calc-result-card:hover::before {
+    transform: scaleY(1);
+}
+
+.calc-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.calc-result-header strong {
+    font-size: 1.1rem;
+    color: var(--port-primary);
+    font-weight: 700;
+}
+
+.calc-result-delay {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--port-success);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--port-radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.calc-result-price {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--port-primary-dark);
+    text-align: center;
+    margin: 0.5rem 0;
+}
+
+.calc-result-price-ht {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--port-secondary);
+    opacity: 0.8;
+}
+
+.calc-no-results {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--port-secondary);
+}
+
+.calc-no-results p {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* ========================================
+   ⚠️ VALIDATION ET ERREURS
+   ======================================== */
+.calc-form-group.has-error .calc-input,
+.calc-form-group.has-error .calc-select {
+    border-color: var(--port-danger) !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.calc-error-message {
+    color: var(--port-danger) !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    margin-top: 0.5rem !important;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.calc-error-message::before {
+    content: '⚠️';
+    font-size: 0.9rem;
+}
+
+/* État de chargement */
+.calc-form.loading {
+    opacity: 0.7;
+    pointer-events: none;
+    position: relative;
+}
+
+.calc-form.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: var(--port-radius-lg);
+}
+
+/* ========================================
+   🔧 PANEL DEBUG (RESPONSIVE)
+   ======================================== */
+#calc-debug-panel {
+    transition: var(--port-transition-slow);
+}
+
+#calc-debug-panel .calc-debug-header {
+    user-select: none;
+}
+
+#calc-debug-panel .calc-debug-toggle {
+    transition: var(--port-transition);
+}
+
+/* ========================================
+   📱 RESPONSIVE DESIGN
+   ======================================== */
+@media (max-width: 1024px) {
+    .calc-main {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .calc-container {
+        padding: 1rem;
+    }
+    
+    .calc-header h1 {
+        font-size: 2rem;
+    }
+    
+    .calc-form-content,
+    .calc-results-content {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .calc-steps {
+        flex-direction: column;
+    }
+    
+    .calc-step-btn {
+        border-bottom: 1px solid var(--port-border);
+        border-right: none;
+    }
+    
+    .calc-step-btn:last-child {
+        border-bottom: none;
+    }
+    
+    .calc-toggle-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .calc-header {
+        padding: 1.5rem 1rem;
+    }
+    
+    .calc-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .calc-results-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+    
+    .calc-features {
+        grid-template-columns: 1fr;
+    }
+    
+    #calc-debug-panel {
+        position: fixed !important;
+        bottom: 10px !important;
+        right: 10px !important;
+        left: 10px !important;
+        width: auto !important;
+        max-width: none !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .calc-form-content,
+    .calc-results-content {
+        padding: 1rem;
+    }
+    
+    .calc-header {
+        padding: 1rem;
+    }
+    
+    .calc-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .calc-header p {
+        font-size: 1rem;
+    }
+    
+    .calc-result-price {
+        font-size: 1.5rem;
+    }
+}
+
+/* ========================================
+   🎨 ANIMATIONS PERSONNALISÉES
+   ======================================== */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 30px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translate3d(30px, 0, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+/* Classes utilitaires d'animation */
+.calc-animate-fadein {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.calc-animate-slide {
+    animation: slideInRight 0.4s ease-out;
+}
+
+.calc-animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+/* ========================================
+   🖨️ STYLES D'IMPRESSION
+   ======================================== */
+@media print {
+    .calc-container {
+        background: white;
+    }
+    
+    .calc-form-panel {
+        display: none;
+    }
+    
+    .calc-results-panel {
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    #calc-debug-panel {
+        display: none !important;
+    }
+    
+    .calc-result-card {
+        break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+}
+
+/* ========================================
+   🌙 MODE SOMBRE (OPTIONNEL)
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --port-bg-main: #0f172a;
+        --port-bg-panel: #1e293b;
+        --port-bg-step: #334155;
+        --port-border: #475569;
+        --port-secondary: #cbd5e1;
+    }
+    
+    .calc-input,
+    .calc-select,
+    .calc-toggle-btn {
+        background: var(--port-bg-panel);
+        color: var(--port-secondary);
+    }
+    
+    .calc-result-card {
+        background: var(--port-bg-step);
+    }
 }
