@@ -65,6 +65,23 @@ try {
         }
         
         echo json_encode(['success' => true, 'products' => $products, 'count' => count($products), 'total' => count($products), 'query' => $query]);
+    } elseif ($action === 'detail') {
+    $code = $_GET['code'] ?? '';
+    if (!$code) {
+        echo json_encode(['success' => false, 'error' => 'Code produit manquant']);
+        exit;
+    }
+
+    $sql = "SELECT * FROM gul_adr_products WHERE code_produit = ? AND actif = 1 LIMIT 1";
+    $stmt = $db->prepare($sql);
+    $stmt->execute([$code]);
+    $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($product) {
+        echo json_encode(['success' => true, 'product' => $product]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Produit introuvable']);
+    }
 
     } elseif ($action === 'stats') {
     $sql = "SELECT 
