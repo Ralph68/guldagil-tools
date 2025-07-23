@@ -1,8 +1,7 @@
 /**
- * Titre: JavaScript complémentaire pour la recherche ADR  
- * Chemin: /public/adr/assets/js/search.js
+ * Titre: Recherche ADR optimisée avec suggestions dynamiques
+ * Chemin: /public/adr/assets/js/search.js (remplacement)
  * Version: 0.5 beta + build auto
- * Note: Complément au fichier adr.js principal
  */
 
 // Extension du namespace ADR pour la recherche
@@ -10,15 +9,15 @@ if (typeof window.ADR === 'undefined') {
     window.ADR = {};
 }
 
-// ========== MODULE RECHERCHE ==========
+// ========== MODULE RECHERCHE OPTIMISÉ ==========
 ADR.Search = {
     config: {
         apiEndpoint: '/adr/search/search.php',
-        minChars: 1,
-        maxResults: 50,
-        searchDelay: 300,
+        minChars: 2, // Réduit à 2 caractères pour plus de réactivité
+        maxResults: 100,
+        searchDelay: 200, // Réduit pour plus de réactivité
         currentPage: 1,
-        itemsPerPage: 20
+        itemsPerPage: 25
     },
     
     state: {
@@ -27,13 +26,14 @@ ADR.Search = {
         lastQuery: '',
         currentResults: [],
         totalResults: 0,
-        isSearching: false
+        isSearching: false,
+        suggestionsVisible: false
     },
     
     elements: {},
     
     init: function() {
-        console.log('🔍 Initialisation module recherche ADR');
+        console.log('🔍 Initialisation module recherche ADR optimisé');
         
         // Configuration depuis variables globales
         if (typeof window.ADR_SEARCH_CONFIG !== 'undefined') {
@@ -42,8 +42,9 @@ ADR.Search = {
         
         this.cacheElements();
         this.bindEvents();
+        this.setupTable();
         
-        console.log('✅ Recherche ADR prête');
+        console.log('✅ Recherche ADR optimisée prête');
     },
     
     cacheElements: function() {
@@ -54,93 +55,149 @@ ADR.Search = {
             resultsContent: document.getElementById('results-content'),
             resultsTitle: document.getElementById('results-title'),
             popularSection: document.getElementById('popular-products'),
+            searchHint: document.getElementById('search-hint'),
+            // Filtres
             categoryFilter: document.getElementById('category-filter'),
             transportFilter: document.getElementById('transport-filter'),
             adrOnlyFilter: document.getElementById('adr-only'),
             envDangerFilter: document.getElementById('env-danger')
         };
         
-        return !!this.elements.searchInput;
+        return Object.values(this.elements).some(el => el !== null);
     },
     
     bindEvents: function() {
-        const input = this.elements.searchInput;
-        if (!input) return;
+        if (!this.elements.searchInput) {
+            console.warn('Element product-search introuvable');
+            return;
+        }
         
-        // Événements de saisie
-        input.addEventListener('input', (e) => {
+        // Recherche en temps réel avec suggestions
+        this.elements.searchInput.addEventListener('input', (e) => {
             this.handleSearchInput(e.target.value);
         });
         
-        input.addEventListener('keydown', (e) => {
-            this.handleKeyboardNavigation(e);
+        // Navigation clavier dans les suggestions
+        this.elements.searchInput.addEventListener('keydown', (e) => {
+            this.handleKeyNavigation(e);
         });
         
-        input.addEventListener('focus', () => {
-            this.showSuggestions();
+        // Focus/blur
+        this.elements.searchInput.addEventListener('focus', () => {
+            if (this.elements.suggestionsContainer && this.elements.suggestionsContainer.innerHTML.trim()) {
+                this.showSuggestions();
+            }
         });
         
-        // Fermer suggestions au clic extérieur
+        this.elements.searchInput.addEventListener('blur', () => {
+            setTimeout(() => this.hideSuggestions(), 150);
+        });
+        
+        // Filtres en temps réel
+        ['categoryFilter', 'transportFilter', 'adrOnlyFilter', 'envDangerFilter'].forEach(filterId => {
+            const element = this.elements[filterId];
+            if (element) {
+                element.addEventListener('change', () => {
+                    if (this.state.lastQuery.length >= this.config.minChars) {
+                        this.performFullSearch();
+                    }
+                });
+            }
+        });
+        
+        // Clic en dehors pour fermer suggestions
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.search-container')) {
                 this.hideSuggestions();
             }
         });
-        
-        // Gestionnaires filtres
-        [this.elements.categoryFilter, this.elements.transportFilter, 
-         this.elements.adrOnlyFilter, this.elements.envDangerFilter].forEach(element => {
-            if (element) {
-                element.addEventListener('change', () => {
-                    if (this.elements.searchInput.value) {
-                        this.performFullSearch(this.elements.searchInput.value);
-                    }
-                });
-            }
-        });
+    },
+    
+    setupTable: function() {
+        // Créer structure tableau si elle n'existe pas
+        if (this.elements.resultsContent && !this.elements.resultsContent.querySelector('table')) {
+            this.elements.resultsContent.innerHTML = `
+                <div class="table-responsive">
+                    <table class="adr-results-table" id="adr-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom produit</th>
+                                <th>UN</th>
+                                <th>Classe</th>
+                                <th>Groupe</th>
+                                <th>Cat.</th>
+                                <th>ENV</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adr-table-body">
+                            <!-- Résultats seront injectés ici -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-pagination" id="table-pagination">
+                    <!-- Pagination sera générée ici -->
+                </div>
+            `;
+        }
     },
     
     handleSearchInput: function(query) {
-        clearTimeout(this.state.searchTimeout);
+        query = query.trim();
+        this.state.lastQuery = query;
         
-        if (query.length < this.config.minChars) {
+        if (this.state.searchTimeout) {
+            clearTimeout(this.state.searchTimeout);
+        }
+        
+        if (query.length === 0) {
             this.hideSuggestions();
-            this.hideResults();
-            this.showPopular();
+            this.showSearchHint();
+            this.clearResults();
             return;
         }
         
+        if (query.length < this.config.minChars) {
+            this.showSearchHint();
+            this.hideSuggestions();
+            return;
+        }
+        
+        this.hideSearchHint();
+        
+        // Déclencher suggestions et recherche en parallèle
         this.state.searchTimeout = setTimeout(() => {
             this.fetchSuggestions(query);
+            this.performFullSearch(query);
         }, this.config.searchDelay);
     },
     
-    handleKeyboardNavigation: function(e) {
-        const suggestions = this.elements.suggestionsContainer;
-        if (!suggestions || suggestions.style.display === 'none') return;
+    handleKeyNavigation: function(e) {
+        if (!this.state.suggestionsVisible) return;
         
-        const items = suggestions.querySelectorAll('.suggestion-item');
-        if (items.length === 0) return;
+        const suggestions = document.querySelectorAll('.suggestion-item');
         
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
-                this.state.selectedIndex = Math.min(this.state.selectedIndex + 1, items.length - 1);
-                this.highlightSuggestion(items);
+                this.state.selectedIndex = Math.min(this.state.selectedIndex + 1, suggestions.length - 1);
+                this.highlightSuggestion();
                 break;
                 
             case 'ArrowUp':
                 e.preventDefault();
                 this.state.selectedIndex = Math.max(this.state.selectedIndex - 1, -1);
-                this.highlightSuggestion(items);
+                this.highlightSuggestion();
                 break;
                 
             case 'Enter':
                 e.preventDefault();
-                if (this.state.selectedIndex >= 0) {
-                    this.selectSuggestion(items[this.state.selectedIndex]);
+                if (this.state.selectedIndex >= 0 && suggestions[this.state.selectedIndex]) {
+                    const code = suggestions[this.state.selectedIndex].dataset.code;
+                    this.selectProduct(code);
                 } else {
-                    this.performFullSearch(this.elements.searchInput.value);
+                    this.hideSuggestions();
                 }
                 break;
                 
@@ -154,23 +211,29 @@ ADR.Search = {
     fetchSuggestions: function(query) {
         if (this.state.isSearching) return;
         
-        const url = `${this.config.apiEndpoint}?action=suggestions&q=${encodeURIComponent(query)}&limit=10`;
+        const url = `${this.config.apiEndpoint}?action=suggestions&q=${encodeURIComponent(query)}&limit=8`;
         
         fetch(url)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.success) {
-                    this.displaySuggestions(data.suggestions);
+                if (data.success && data.suggestions) {
+                    this.displaySuggestions(data.suggestions, query);
                 } else {
-                    console.error('Erreur suggestions:', data.error);
+                    this.hideSuggestions();
                 }
             })
             .catch(error => {
-                console.error('Erreur fetch suggestions:', error);
+                console.error('Erreur suggestions:', error.message || 'Erreur serveur');
+                this.hideSuggestions();
             });
     },
     
-    displaySuggestions: function(suggestions) {
+    displaySuggestions: function(suggestions, query) {
         const container = this.elements.suggestionsContainer;
         if (!container) return;
         
@@ -179,376 +242,389 @@ ADR.Search = {
             return;
         }
         
-        const html = suggestions.map((product, index) => `
-            <div class="suggestion-item" data-index="${index}" onclick="ADR.Search.selectSuggestionByCode('${product.code_produit}')">
-                <div class="suggestion-content">
-                    <div class="suggestion-name">${this.escapeHtml(product.nom_produit || 'Produit sans nom')}</div>
-                    <div class="suggestion-code">Code: ${product.code_produit}</div>
-                    <div class="suggestion-badges">
-                        ${product.numero_un ? `<span class="badge badge-adr">UN${product.numero_un}</span>` : ''}
-                        ${product.danger_environnement === 'oui' ? '<span class="badge badge-env">ENV</span>' : ''}
-                        ${product.categorie_transport ? `<span class="badge badge-cat">Cat. ${product.categorie_transport}</span>` : ''}
+        const html = suggestions.map((product, index) => {
+            const highlightedName = this.highlightMatch(product.nom_produit || 'Produit sans nom', query);
+            const highlightedCode = this.highlightMatch(product.code_produit, query);
+            
+            return `
+                <div class="suggestion-item" 
+                     data-index="${index}" 
+                     data-code="${product.code_produit}"
+                     onclick="ADR.Search.selectProduct('${product.code_produit}')">
+                    <div class="suggestion-main">
+                        <div class="suggestion-code">${highlightedCode}</div>
+                        <div class="suggestion-name">${highlightedName}</div>
+                    </div>
+                    <div class="suggestion-meta">
+                        ${product.numero_un ? `<span class="badge badge-un">UN${product.numero_un}</span>` : ''}
+                        ${product.classe_adr ? `<span class="badge badge-classe">Cl.${product.classe_adr}</span>` : ''}
+                        ${product.danger_environnement === 'OUI' ? '<span class="badge badge-env">ENV</span>' : ''}
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         
         container.innerHTML = html;
         this.showSuggestions();
         this.state.selectedIndex = -1;
     },
     
-    selectSuggestionByCode: function(code) {
-        this.elements.searchInput.value = code;
-        this.hideSuggestions();
-        this.performFullSearch(code);
+    highlightMatch: function(text, query) {
+        if (!text || !query) return text;
+        
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<mark>$1</mark>');
     },
     
-    selectSuggestion: function(element) {
-        const code = element.querySelector('.suggestion-code').textContent.replace('Code: ', '');
-        this.selectSuggestionByCode(code);
-    },
-    
-    highlightSuggestion: function(items) {
-        items.forEach((item, index) => {
-            item.classList.toggle('highlighted', index === this.state.selectedIndex);
-        });
-    },
-    
-    performFullSearch: function(query) {
-        if (this.state.isSearching) return;
-        
-        this.state.isSearching = true;
-        this.state.lastQuery = query;
-        this.hideSuggestions();
-        this.hidePopular();
-        
-        // Construire URL avec filtres
-        const params = new URLSearchParams({
-            action: 'search',
-            q: query,
-            limit: this.config.maxResults
-        });
-        
-        // Ajouter filtres
-        if (this.elements.categoryFilter?.value) {
-            params.append('category', this.elements.categoryFilter.value);
-        }
-        if (this.elements.transportFilter?.value) {
-            params.append('transport', this.elements.transportFilter.value);
-        }
-        if (this.elements.adrOnlyFilter?.checked) {
-            params.append('adr_only', 'true');
-        }
-        if (this.elements.envDangerFilter?.checked) {
-            params.append('env_danger', 'true');
-        }
-        
-        const url = `${this.config.apiEndpoint}?${params.toString()}`;
-        
-        // Afficher loading
-        this.showLoading();
-        
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                this.state.isSearching = false;
-                
-                if (data.success) {
-                    this.displayResults(data.products, data.total, query);
-                } else {
-                    this.showError('Erreur de recherche: ' + data.error);
-                }
-            })
-            .catch(error => {
-                this.state.isSearching = false;
-                console.error('Erreur recherche:', error);
-                this.showError('Erreur de connexion');
-            });
-    },
-    
-    displayResults: function(products, total, query) {
-        if (!this.elements.resultsContent) return;
-        
-        this.state.currentResults = products;
-        this.state.totalResults = total;
-        
-        // Titre des résultats
-        if (this.elements.resultsTitle) {
-            const count = products.length;
-            const totalText = total > count ? ` (${total} au total)` : '';
-            this.elements.resultsTitle.textContent = 
-                `${count} résultat${count > 1 ? 's' : ''} pour "${query}"${totalText}`;
-        }
-        
-        if (products.length === 0) {
-            this.elements.resultsContent.innerHTML = `
-                <div class="no-results">
-                    <p>Aucun produit trouvé pour "${this.escapeHtml(query)}"</p>
-                    <p>Essayez avec d'autres termes de recherche ou vérifiez les filtres.</p>
-                </div>
-            `;
-        } else {
-            const html = products.map(product => this.renderProductCard(product)).join('');
-            this.elements.resultsContent.innerHTML = html;
-        }
-        
-        this.showResults();
-    },
-    
-    renderProductCard: function(product) {
-        return `
-            <div class="result-item" onclick="ADR.Search.showProductDetail('${product.code_produit}')">
-                <div class="result-header">
-                    <span class="result-code">${product.code_produit}</span>
-                    <div class="result-badges">
-                        ${product.numero_un ? `<span class="badge badge-adr">UN${product.numero_un}</span>` : ''}
-                        ${product.danger_environnement === 'oui' ? '<span class="badge badge-env">ENV</span>' : ''}
-                        ${product.categorie_transport ? `<span class="badge badge-cat">Cat. ${product.categorie_transport}</span>` : ''}
-                        ${product.statut_produit ? `<span class="badge badge-status">${product.statut_produit}</span>` : ''}
-                    </div>
-                </div>
-                <div class="result-name">${this.escapeHtml(product.nom_produit || 'Produit sans nom')}</div>
-                <div class="result-details">
-                    ${product.nom_description_un ? `<span class="result-label">Description UN:</span><span>${this.escapeHtml(product.nom_description_un)}</span>` : ''}
-                    ${product.type_contenant ? `<span class="result-label">Contenant:</span><span>${this.escapeHtml(product.type_contenant)}</span>` : ''}
-                    ${product.poids_contenant ? `<span class="result-label">Poids:</span><span>${this.escapeHtml(product.poids_contenant)}</span>` : ''}
-                    ${product.groupe_emballage ? `<span class="result-label">Groupe:</span><span>${product.groupe_emballage}</span>` : ''}
-                    ${product.quota_max_vehicule ? `<span class="result-label">Quota véhicule:</span><span>${product.quota_max_vehicule} kg</span>` : ''}
-                </div>
-            </div>
-        `;
-    },
-    
-    showProductDetail: function(code) {
-        // Afficher détail produit (modal ou page dédiée)
-        const url = `${this.config.apiEndpoint}?action=detail&q=${encodeURIComponent(code)}`;
-        
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    this.displayProductModal(data.product, data.history);
-                } else {
-                    alert('Erreur lors du chargement du détail');
-                }
-            })
-            .catch(error => {
-                console.error('Erreur détail produit:', error);
-                alert('Erreur de connexion');
-            });
-    },
-    
-    displayProductModal: function(product, history) {
-        // Créer modal simple pour le détail
-        const modal = document.createElement('div');
-        modal.className = 'product-modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>${product.code_produit} - ${this.escapeHtml(product.nom_produit || 'Produit sans nom')}</h2>
-                    <button class="modal-close" onclick="this.closest('.product-modal').remove()">×</button>
-                </div>
-                <div class="modal-body">
-                    <div class="product-info">
-                        ${product.numero_un ? `<p><strong>Numéro UN:</strong> UN${product.numero_un}</p>` : ''}
-                        ${product.nom_description_un ? `<p><strong>Description UN:</strong> ${this.escapeHtml(product.nom_description_un)}</p>` : ''}
-                        ${product.categorie_transport ? `<p><strong>Catégorie transport:</strong> ${product.categorie_transport}</p>` : ''}
-                        ${product.type_contenant ? `<p><strong>Type contenant:</strong> ${this.escapeHtml(product.type_contenant)}</p>` : ''}
-                        ${product.danger_environnement === 'oui' ? '<p><strong>⚠️ Dangereux pour l\'environnement</strong></p>' : ''}
-                    </div>
-                    ${history.length > 0 ? `
-                        <div class="product-history">
-                            <h3>Déclarations récentes</h3>
-                            <ul>
-                                ${history.slice(0, 5).map(h => `
-                                    <li>${h.date_expedition} - ${h.transporteur} - ${h.quantite_declaree} ${h.unite_quantite} 
-                                    ${h.destinataire_nom ? `vers ${h.destinataire_nom}` : ''}</li>
-                                `).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Style modal
-        modal.style.cssText = `
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7); z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-        `;
-        
-        modal.querySelector('.modal-content').style.cssText = `
-            background: white; border-radius: 8px; padding: 2rem;
-            max-width: 600px; max-height: 80vh; overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        `;
-        
-        // Fermer modal au clic extérieur
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
-    },
-    
-    exportResults: function() {
-        if (!this.state.currentResults || this.state.currentResults.length === 0) {
-            alert('Aucun résultat à exporter');
-            return;
-        }
-        
-        // Créer CSV
-        const headers = ['Code', 'Nom', 'UN', 'Catégorie', 'Type contenant', 'Poids', 'Danger env.'];
-        const csvContent = [
-            headers.join(';'),
-            ...this.state.currentResults.map(product => [
-                product.code_produit || '',
-                (product.nom_produit || '').replace(/;/g, ','),
-                product.numero_un || '',
-                product.categorie_transport || '',
-                (product.type_contenant || '').replace(/;/g, ','),
-                (product.poids_contenant || '').replace(/;/g, ','),
-                product.danger_environnement === 'oui' ? 'Oui' : 'Non'
-            ].join(';'))
-        ].join('\n');
-        
-        // Télécharger
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', `recherche_adr_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        console.log('✅ Export CSV généré');
-    },
-    
-    // Utilitaires d'affichage
     showSuggestions: function() {
         if (this.elements.suggestionsContainer) {
             this.elements.suggestionsContainer.style.display = 'block';
+            this.state.suggestionsVisible = true;
         }
     },
     
     hideSuggestions: function() {
         if (this.elements.suggestionsContainer) {
             this.elements.suggestionsContainer.style.display = 'none';
+            this.state.suggestionsVisible = false;
         }
         this.state.selectedIndex = -1;
     },
     
-    showResults: function() {
-        if (this.elements.resultsSection) {
-            this.elements.resultsSection.style.display = 'block';
-        }
+    highlightSuggestion: function() {
+        document.querySelectorAll('.suggestion-item').forEach((item, index) => {
+            item.classList.toggle('highlighted', index === this.state.selectedIndex);
+        });
     },
     
-    hideResults: function() {
-        if (this.elements.resultsSection) {
-            this.elements.resultsSection.style.display = 'none';
-        }
+    selectProduct: function(code) {
+        this.elements.searchInput.value = code;
+        this.hideSuggestions();
+        this.performFullSearch(code);
+        
+        // Scroll vers le produit dans les résultats
+        setTimeout(() => {
+            const row = document.querySelector(`[data-product-code="${code}"]`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.add('highlight-row');
+                setTimeout(() => row.classList.remove('highlight-row'), 2000);
+            }
+        }, 500);
     },
     
-    showPopular: function() {
-        if (this.elements.popularSection) {
-            this.elements.popularSection.style.display = 'block';
+    performFullSearch: function(query) {
+        query = query || this.state.lastQuery || this.elements.searchInput.value.trim();
+        
+        if (!query || query.length < this.config.minChars) {
+            this.showSearchHint();
+            return;
         }
+        
+        this.state.isSearching = true;
+        this.hideSuggestions();
+        this.hideSearchHint();
+        this.showLoadingTable();
+        
+        const filters = this.getFilters();
+        const params = new URLSearchParams({
+            action: 'search',
+            q: query,
+            limit: this.config.maxResults,
+            ...filters
+        });
+        
+        fetch(`${this.config.apiEndpoint}?${params}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    this.displayResults(data.products || data.results || [], query);
+                } else {
+                    this.showError('Erreur de recherche: ' + (data.error || 'Erreur inconnue'));
+                }
+            })
+            .catch(error => {
+                console.error('Erreur recherche:', error);
+                this.showError('Erreur de connexion au serveur');
+            })
+            .finally(() => {
+                this.state.isSearching = false;
+            });
     },
     
-    hidePopular: function() {
+    getFilters: function() {
+        const filters = {};
+        
+        if (this.elements.categoryFilter?.value) {
+            filters.classe = this.elements.categoryFilter.value;
+        }
+        
+        if (this.elements.transportFilter?.value) {
+            filters.transport = this.elements.transportFilter.value;
+        }
+        
+        if (this.elements.adrOnlyFilter?.checked) {
+            filters.adr_status = 'adr_only';
+        }
+        
+        if (this.elements.envDangerFilter?.checked) {
+            filters.env_danger = 'true';
+        }
+        
+        return filters;
+    },
+    
+    displayResults: function(results, query) {
+        if (!this.elements.resultsSection) return;
+        
+        this.state.currentResults = results || [];
+        this.state.totalResults = this.state.currentResults.length;
+        
+        // Afficher section résultats
+        this.elements.resultsSection.style.display = 'block';
+        
+        // Mettre à jour titre
+        if (this.elements.resultsTitle) {
+            this.elements.resultsTitle.textContent = 
+                `${this.state.totalResults} résultat${this.state.totalResults > 1 ? 's' : ''} pour "${query}"`;
+        }
+        
+        // Afficher résultats dans le tableau
+        this.populateTable(this.state.currentResults);
+        
+        // Masquer produits populaires
         if (this.elements.popularSection) {
             this.elements.popularSection.style.display = 'none';
         }
     },
     
-    showLoading: function() {
-        if (this.elements.resultsContent) {
-            this.elements.resultsContent.innerHTML = `
-                <div class="loading-spinner">
-                    <p>🔍 Recherche en cours...</p>
-                </div>
+    populateTable: function(products) {
+        const tbody = document.getElementById('adr-table-body');
+        if (!tbody) return;
+        
+        if (products.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="no-results-cell">
+                        <div class="no-results">
+                            <h3>Aucun résultat trouvé</h3>
+                            <p>Essayez avec d'autres mots-clés ou vérifiez l'orthographe.</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = products.map(product => this.renderTableRow(product)).join('');
+        
+        // Ajouter pagination si nécessaire
+        this.setupPagination(products.length);
+    },
+    
+    renderTableRow: function(product) {
+        const fdsUrl = `https://www.quickfds.com/fr/search/Guldagil/${encodeURIComponent(product.code_produit)}`;
+        
+        return `
+            <tr data-product-code="${product.code_produit}" class="product-row">
+                <td class="col-code">
+                    <strong>${product.code_produit}</strong>
+                    ${product.corde_article_ferme === 'x' ? '<span class="badge badge-closed">Fermé</span>' : ''}
+                </td>
+                <td class="col-name">
+                    <div class="product-name">${product.nom_produit || 'Nom non disponible'}</div>
+                    ${product.nom_technique ? `<div class="product-tech">${product.nom_technique}</div>` : ''}
+                    ${product.poids_contenant ? `<small class="product-weight">${product.poids_contenant} - ${product.type_contenant || ''}</small>` : ''}
+                </td>
+                <td class="col-un">
+                    ${product.numero_un ? `<span class="badge badge-un">UN${product.numero_un}</span>` : '-'}
+                </td>
+                <td class="col-classe">
+                    ${product.classe_adr ? `<span class="badge badge-classe">${product.classe_adr}</span>` : '-'}
+                </td>
+                <td class="col-groupe">
+                    ${product.groupe_emballage ? `<span class="badge badge-groupe">${product.groupe_emballage}</span>` : '-'}
+                </td>
+                <td class="col-cat">
+                    ${product.categorie_transport ? `<span class="badge badge-cat">${product.categorie_transport}</span>` : '-'}
+                </td>
+                <td class="col-env">
+                    ${product.danger_environnement === 'OUI' ? '<span class="badge badge-env">OUI</span>' : '-'}
+                </td>
+                <td class="col-actions">
+                    <div class="action-buttons">
+                        <a href="${fdsUrl}" target="_blank" class="btn-fds" title="Fiche de Données de Sécurité">
+                            📄 FDS
+                        </a>
+                        ${product.numero_un ? `<button class="btn-detail" onclick="ADR.Search.showDetail('${product.code_produit}')" title="Détail produit">ℹ️</button>` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    },
+    
+    setupPagination: function(totalItems) {
+        const paginationContainer = document.getElementById('table-pagination');
+        if (!paginationContainer || totalItems <= this.config.itemsPerPage) {
+            if (paginationContainer) paginationContainer.innerHTML = '';
+            return;
+        }
+        
+        const totalPages = Math.ceil(totalItems / this.config.itemsPerPage);
+        let paginationHTML = '<div class="pagination-controls">';
+        
+        for (let i = 1; i <= totalPages; i++) {
+            const activeClass = i === this.config.currentPage ? 'active' : '';
+            paginationHTML += `<button class="page-btn ${activeClass}" onclick="ADR.Search.goToPage(${i})">${i}</button>`;
+        }
+        
+        paginationHTML += '</div>';
+        paginationContainer.innerHTML = paginationHTML;
+    },
+    
+    goToPage: function(page) {
+        this.config.currentPage = page;
+        // Implémentation pagination si nécessaire
+        console.log('Page:', page);
+    },
+    
+    showLoadingTable: function() {
+        const tbody = document.getElementById('adr-table-body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="loading-cell">
+                        <div class="loading-results">
+                            <div class="spinner"></div>
+                            <p>Recherche en cours...</p>
+                        </div>
+                    </td>
+                </tr>
             `;
         }
-        this.showResults();
+        
+        if (this.elements.resultsSection) {
+            this.elements.resultsSection.style.display = 'block';
+        }
     },
     
     showError: function(message) {
-        if (this.elements.resultsContent) {
-            this.elements.resultsContent.innerHTML = `
-                <div class="error-message">
-                    <p>❌ ${this.escapeHtml(message)}</p>
-                    <button onclick="ADR.Search.hideResults(); ADR.Search.showPopular();">Retour</button>
-                </div>
+        const tbody = document.getElementById('adr-table-body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="error-cell">
+                        <div class="error-results">
+                            <h3>❌ Erreur</h3>
+                            <p>${message}</p>
+                            <button onclick="location.reload()" class="btn-retry">Réessayer</button>
+                        </div>
+                    </td>
+                </tr>
             `;
         }
-        this.showResults();
-    },
-    
-    escapeHtml: function(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    },
-    
-    // API publique pour compatibilité
-    clear: function() {
-        if (this.elements.searchInput) {
-            this.elements.searchInput.value = '';
-        }
-        this.hideResults();
-        this.hideSuggestions();
-        this.showPopular();
         
-        // Réinitialiser filtres
-        if (this.elements.categoryFilter) this.elements.categoryFilter.value = '';
-        if (this.elements.transportFilter) this.elements.transportFilter.value = '';
-        if (this.elements.adrOnlyFilter) this.elements.adrOnlyFilter.checked = false;
-        if (this.elements.envDangerFilter) this.elements.envDangerFilter.checked = false;
+        if (this.elements.resultsSection) {
+            this.elements.resultsSection.style.display = 'block';
+        }
+    },
+    
+    showSearchHint: function() {
+        if (this.elements.searchHint) {
+            this.elements.searchHint.style.display = 'block';
+        }
+    },
+    
+    hideSearchHint: function() {
+        if (this.elements.searchHint) {
+            this.elements.searchHint.style.display = 'none';
+        }
+    },
+    
+    clearResults: function() {
+        if (this.elements.resultsSection) {
+            this.elements.resultsSection.style.display = 'none';
+        }
+        
+        if (this.elements.popularSection) {
+            this.elements.popularSection.style.display = 'block';
+        }
+        
+        this.hideSuggestions();
+        this.showSearchHint();
+        this.state.currentResults = [];
+        this.state.totalResults = 0;
+        this.state.lastQuery = '';
+    },
+    
+    showDetail: function(codeProduct) {
+        // Placeholder pour affichage détail
+        alert(`Détail du produit ${codeProduct}\n\nÀ implémenter : modal avec toutes les infos techniques`);
+    },
+    
+    exportResults: function() {
+        if (this.state.currentResults.length === 0) {
+            alert('Aucun résultat à exporter');
+            return;
+        }
+        
+        try {
+            const csvContent = this.convertToCSV(this.state.currentResults);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            link.href = URL.createObjectURL(blob);
+            link.download = `adr-recherche-${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            
+            URL.revokeObjectURL(link.href);
+        } catch (error) {
+            console.error('Erreur export:', error);
+            alert('Erreur lors de l\'export');
+        }
+    },
+    
+    convertToCSV: function(data) {
+        const headers = ['Code', 'Nom', 'UN', 'Nom UN', 'Classe', 'Groupe', 'Catégorie', 'Environnement', 'Contenant', 'Poids'];
+        const rows = data.map(item => [
+            item.code_produit,
+            item.nom_produit,
+            item.numero_un || '',
+            item.nom_description_un || '',
+            item.classe_adr || '',
+            item.groupe_emballage || '',
+            item.categorie_transport || '',
+            item.danger_environnement || '',
+            item.type_contenant || '',
+            item.poids_contenant || ''
+        ]);
+        
+        return [headers, ...rows]
+            .map(row => row.map(field => `"${(field || '').toString().replace(/"/g, '""')}"`).join(','))
+            .join('\n');
     }
 };
 
-// ========== INITIALISATION ==========
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialiser recherche si on est sur la page
-    if (document.getElementById('product-search') && typeof window.ADR_SEARCH_CONFIG !== 'undefined') {
-        ADR.Search.init();
-    }
-});
-
-// ========== API GLOBALE ==========
-// Exposer fonctions pour compatibilité/usage externe
-window.performSearch = function() {
-    const query = document.getElementById('product-search')?.value?.trim();
-    if (query && ADR.Search) {
+// Fonctions globales pour compatibilité
+window.performSearch = function(query) {
+    if (ADR.Search) {
         ADR.Search.performFullSearch(query);
     }
 };
 
-window.clearSearch = function() {
+window.clearResults = function() {
     if (ADR.Search) {
-        ADR.Search.clear();
+        ADR.Search.clearResults();
     }
 };
 
 window.exportResults = function() {
     if (ADR.Search) {
         ADR.Search.exportResults();
-    }
-};
-
-window.selectProduct = function(code) {
-    if (ADR.Search && document.getElementById('product-search')) {
-        document.getElementById('product-search').value = code;
-        ADR.Search.performFullSearch(code);
     }
 };
