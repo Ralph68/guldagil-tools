@@ -34,7 +34,10 @@ $breadcrumbs = [
     ['icon' => '🚛', 'text' => 'Calculateur', 'url' => '/port/', 'active' => true]
 ];
 
-session_start();
+// Correction session doublée
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // ========================================
 // 🔐 AUTHENTIFICATION OBLIGATOIRE
