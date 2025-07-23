@@ -514,3 +514,73 @@
     outline: 2px solid var(--adr-primary);
     outline-offset: 2px;
 }
+/* ==== TABLEAU DES RÉSULTATS (desktop first) ==== */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.adr-results-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px; /* Largeur minimum pour éviter la compacité */
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(100,110,140,0.06);
+    border-radius: 8px;
+    font-size: 1rem;
+    table-layout: auto; /* Permet à la table de s'étendre */
+}
+
+.adr-results-table th,
+.adr-results-table td {
+    padding: 1.1rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid #e4e4e7;
+    white-space: nowrap;
+}
+
+.adr-results-table th {
+    background: #f3f4f6;
+    color: #212121;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-top: 2px solid var(--adr-primary, #b91c1c);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.adr-results-table tr:hover td {
+    background: #f1f5f9;
+}
+
+.adr-results-table td.col-actions {
+    text-align: center;
+}
+
+.adr-results-table td {
+    max-width: 340px;
+    overflow-x: auto;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 1200px) {
+    .adr-results-table, .table-responsive {
+        min-width: 800px;
+        font-size: 0.96rem;
+    }
+}
+
+@media (max-width: 900px) {
+    .adr-results-table, .table-responsive {
+        min-width: 600px;
+        font-size: 0.92rem;
+    }
+}
+
+/* Optionnel : pour vraiment forcer le tableau à sortir du “grid” */
+.results-content {
+    display: block !important;
+    width: 100%;
+    padding: 0;
+}
