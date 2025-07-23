@@ -30,6 +30,22 @@ $files = [
 foreach ($files as $name => $path) {
     echo "<p><strong>$name:</strong> " . (file_exists($path) ? "✅" : "❌") . "</p>";
 }
+// Vérification des fichiers JS
+$js_files = [
+    'adr.js' => $root_path . '/public/adr/assets/js/adr.js',
+    'search.js' => $root_path . '/public/adr/assets/js/search.js',
+];
+
+foreach ($js_files as $name => $path) {
+    echo "<p><strong>$name:</strong> " . (file_exists($path) ? "✅" : "❌") . "</p>";
+}
+<script>
+fetch('/adr/search/search.php?action=stats')
+    .then(r => r.json())
+    .then(d => console.log('✅ Données stats:', d))
+    .catch(e => console.error('❌ Erreur AJAX stats', e));
+</script>
+
 
 // Test syntaxe PHP de index.php
 if (file_exists(__DIR__ . '/index.php')) {
