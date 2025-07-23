@@ -65,7 +65,26 @@ try {
         }
         
         echo json_encode(['success' => true, 'products' => $products, 'count' => count($products), 'total' => count($products), 'query' => $query]);
-        
+
+    } elseif ($action === 'stats') {
+    $sql = "SELECT 
+                COUNT(*) AS total, 
+                SUM(CASE WHEN numero_un IS NOT NULL AND numero_un != '' THEN 1 ELSE 0 END) AS adr,
+                SUM(CASE WHEN danger_environnement = 'OUI' THEN 1 ELSE 0 END) AS env
+            FROM gul_adr_products
+            WHERE actif = 1";
+    $stmt = $db->query($sql);
+    $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'success' => true,
+        'stats' => [
+            'total' => (int) $stats['total'],
+            'adr'   => (int) $stats['adr'],
+            'env'   => (int) $stats['env']
+        ]
+    ]);
+    
     } else {
         echo json_encode(['success' => false, 'error' => 'Action inconnue']);
     }
