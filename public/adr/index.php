@@ -1,4 +1,9 @@
 <?php
+// Affichage des erreurs
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 /**
  * Titre: Page de recherche ADR optimisée - Version finale
  * Chemin: /public/adr/search/index.php
@@ -7,8 +12,9 @@
 
 // Configuration de base
 if (!defined('ROOT_PATH')) {
-    define('ROOT_PATH', dirname(dirname(dirname(__DIR__))));
+    define('ROOT_PATH', dirname(dirname(__DIR__)));
 }
+
 
 // Démarrage session si pas déjà active
 if (session_status() === PHP_SESSION_NONE) {
