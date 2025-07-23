@@ -380,5 +380,73 @@ ADR.Search = {
             display: flex; align-items: center; justify-content: center;
         `;
         
-        modal.querySelector('.modal-content').style.cssText = `
-            background: white; border-radius: 8px;
+        
+modal.querySelector('.modal-content').style.cssText = `
+    background: white; border-radius: 8px;
+    padding: 20px; max-width: 600px; max-height: 80vh; overflow-y: auto;
+`;
+    }, // Fin de displayProductModal
+
+    escapeHtml: function (text) {
+        const div = document.createElement("div");
+        div.innerText = text;
+        return div.innerHTML;
+    },
+
+    showSuggestions: function () {
+        if (this.elements.suggestionsContainer) {
+            this.elements.suggestionsContainer.style.display = 'block';
+        }
+    },
+
+    hideSuggestions: function () {
+        if (this.elements.suggestionsContainer) {
+            this.elements.suggestionsContainer.style.display = 'none';
+        }
+    },
+
+    hideResults: function () {
+        if (this.elements.resultsSection) {
+            this.elements.resultsSection.style.display = 'none';
+        }
+    },
+
+    showResults: function () {
+        if (this.elements.resultsSection) {
+            this.elements.resultsSection.style.display = 'block';
+        }
+    },
+
+    showPopular: function () {
+        if (this.elements.popularSection) {
+            this.elements.popularSection.style.display = 'block';
+        }
+    },
+
+    hidePopular: function () {
+        if (this.elements.popularSection) {
+            this.elements.popularSection.style.display = 'none';
+        }
+    },
+
+    showLoading: function () {
+        if (this.elements.resultsContent) {
+            this.elements.resultsContent.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Recherche en cours...</p>
+                </div>
+            `;
+        }
+    },
+
+    showError: function (message) {
+        if (this.elements.resultsContent) {
+            this.elements.resultsContent.innerHTML = `
+                <div class="error">
+                    <p>❌ ${this.escapeHtml(message)}</p>
+                </div>
+            `;
+        }
+    }
+}; // <-- fin de ADR.Search
