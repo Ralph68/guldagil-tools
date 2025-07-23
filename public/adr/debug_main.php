@@ -19,7 +19,7 @@ session_start();
 $_SESSION['authenticated'] = true;
 $_SESSION['user'] = ['username' => 'debug', 'role' => 'admin'];
 
-// Test fichiers
+// Test fichiers PHP
 $files = [
     'adr/index.php' => __DIR__ . '/index.php',
     'config.php' => $root_path . '/config/config.php',
@@ -30,7 +30,8 @@ $files = [
 foreach ($files as $name => $path) {
     echo "<p><strong>$name:</strong> " . (file_exists($path) ? "✅" : "❌") . "</p>";
 }
-// Vérification des fichiers JS
+
+// Test fichiers JS
 $js_files = [
     'adr.js' => $root_path . '/public/adr/assets/js/adr.js',
     'search.js' => $root_path . '/public/adr/assets/js/search.js',
@@ -39,26 +40,30 @@ $js_files = [
 foreach ($js_files as $name => $path) {
     echo "<p><strong>$name:</strong> " . (file_exists($path) ? "✅" : "❌") . "</p>";
 }
+
+// Test syntaxe PHP
+if (file_exists(__DIR__ . '/index.php')) {
+    $output = shell_exec("php -l '" . __DIR__ . "/index.php' 2>&1");
+    echo "<h2>Syntaxe PHP:</h2>";
+    echo "<pre>" . htmlspecialchars($output) . "</pre>";
+
+    $content = file_get_contents(__DIR__ . '/index.php');
+    echo "<h2>Début fichier (500 chars):</h2>";
+    echo "<pre>" . htmlspecialchars(substr($content, 0, 500)) . "</pre>";
+}
+
+// Lien vers la page réelle
+echo "<p><a href='index.php' style='background:#dc3545;color:white;padding:10px;text-decoration:none;'>🔗 Tester index.php</a></p>";
+
+// Bloc JS à injecter correctement
+echo <<<HTML
 <script>
 fetch('/adr/search/search.php?action=stats')
     .then(r => r.json())
     .then(d => console.log('✅ Données stats:', d))
     .catch(e => console.error('❌ Erreur AJAX stats', e));
 </script>
+HTML;
 
-
-// Test syntaxe PHP de index.php
-if (file_exists(__DIR__ . '/index.php')) {
-    $output = shell_exec("php -l '" . __DIR__ . "/index.php' 2>&1");
-    echo "<h2>Syntaxe PHP:</h2>";
-    echo "<pre>" . htmlspecialchars($output) . "</pre>";
-    
-    // Afficher début du fichier
-    $content = file_get_contents(__DIR__ . '/index.php');
-    echo "<h2>Début fichier (500 chars):</h2>";
-    echo "<pre>" . htmlspecialchars(substr($content, 0, 500)) . "</pre>";
-}
-
-echo "<p><a href='index.php' style='background:#dc3545;color:white;padding:10px;text-decoration:none;'>🔗 Tester index.php</a></p>";
 echo "</body></html>";
 ?>
