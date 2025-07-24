@@ -231,7 +231,7 @@ if (!function_exists('getRoleBadgeClass')) {
     </header>
 
     <!-- Navigation sticky avec menu modules + fil d'Ariane -->
-    <nav class="sticky-navigation" id="stickyNav">
+    <nav class="main-navigation" id="mainNav">
         <div class="nav-container">
             <!-- Menu modules horizontal -->
             <?php if ($user_authenticated): ?>
@@ -292,6 +292,40 @@ if (!function_exists('getRoleBadgeClass')) {
             <!-- Fil d'Ariane -->
             <?php if (!empty($breadcrumbs)): ?>
             <div class="breadcrumb-navigation">
+                <?php foreach ($breadcrumbs as $index => $crumb): ?>
+                    <?php if ($index > 0): ?>
+                        <span class="breadcrumb-separator">›</span>
+                    <?php endif; ?>
+                    <?php if (!($crumb['active'] ?? false)): ?>
+                        <a href="<?= htmlspecialchars($crumb['url']) ?>" class="breadcrumb-item">
+                            <?= $crumb['icon'] ?> <?= htmlspecialchars($crumb['text']) ?>
+                        </a>
+                    <?php else: ?>
+                        <span class="breadcrumb-item active">
+                            <?= $crumb['icon'] ?> <?= htmlspecialchars($crumb['text']) ?>
+                        </span>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+    </nav>
+
+    <!-- Barre compacte sticky au scroll -->
+    <nav class="sticky-navigation" id="stickyNav">
+        <div class="nav-container">
+            <!-- Logo + nom module -->
+            <div class="sticky-branding">
+                <div class="sticky-logo">💧</div>
+                <span class="sticky-module">
+                    <span class="module-icon" style="color: <?= $module_color ?>"><?= $module_icon ?></span>
+                    <?= $page_title ?>
+                </span>
+            </div>
+
+            <!-- Fil d'Ariane compact -->
+            <?php if (!empty($breadcrumbs)): ?>
+            <div class="breadcrumb-navigation compact">
                 <?php foreach ($breadcrumbs as $index => $crumb): ?>
                     <?php if ($index > 0): ?>
                         <span class="breadcrumb-separator">›</span>
@@ -584,14 +618,14 @@ if (!function_exists('getRoleBadgeClass')) {
             margin: 0 var(--spacing-xs, 0.25rem);
         }
 
-        /* Ajustement du contenu principal pour header fixe */
+        // Ajustement du contenu principal pour header fixe + navigation
         .portal-main {
-            margin-top: 120px; /* Espace pour header + nav */
+            margin-top: 160px; /* Espace pour header + nav principale */
             transition: margin-top 0.3s ease;
         }
 
         body.header-compact .portal-main {
-            margin-top: 100px; /* Moins d'espace en mode compact */
+            margin-top: 140px; /* Moins d'espace en mode compact */
         }
 
         /* Responsive */
