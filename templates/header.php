@@ -5,6 +5,23 @@
  * Version: 0.5 beta + build auto
  */
 
+// Chargement des configurations
+require_once ROOT_PATH . '/config/config.php';
+require_once ROOT_PATH . '/config/version.php';
+
+// Chargement des fichiers config additionnels si disponibles
+$additional_configs = [
+    ROOT_PATH . '/config/roles.php',
+    ROOT_PATH . '/config/functions.php',
+    ROOT_PATH . '/config/modules.php'
+];
+
+foreach ($additional_configs as $config_file) {
+    if (file_exists($config_file)) {
+        require_once $config_file;
+    }
+}
+
 // Variables par défaut si pas définies
 $app_name = $app_name ?? 'Portail Guldagil';
 $page_title = $page_title ?? 'Accueil';
@@ -13,7 +30,7 @@ $current_module = $current_module ?? 'home';
 $module_icon = $module_icon ?? '🏠';
 $module_color = $module_color ?? '#3182ce';
 $module_status = $module_status ?? 'active';
-$build_number = $build_number ?? '00000000';
+$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : '00000000';
 $breadcrumbs = $breadcrumbs ?? [];
 $module_css = $module_css ?? false;
 $module_js = $module_js ?? false;
@@ -57,6 +74,11 @@ if (!function_exists('getRoleBadgeClass')) {
     <meta name="description" content="<?= htmlspecialchars($page_description ?? $page_title . ' - ' . $app_name) ?>">
     <title><?= htmlspecialchars($page_title . ' - ' . $app_name) ?></title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/assets/img/favicon_32x32.png">
+    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon_180x180.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/assets/img/icon_512x512.png">
+    
     <!-- CSS principal OBLIGATOIRE -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
@@ -66,8 +88,8 @@ if (!function_exists('getRoleBadgeClass')) {
     <!-- CSS modulaire avec fallback intelligent -->
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
-        // 1. Priorité : nouveau système dans /module/assets/
-        $new_css_path = "{$current_module}/assets/css/{$current_module}.css";
+        // 1. Priorité : nouveau système dans /public/module/assets/
+        $new_css_path = "/public/{$current_module}/assets/css/{$current_module}.css";
         $module_css_loaded = false;
         
         if (file_exists(ROOT_PATH . $new_css_path)): ?>
@@ -208,10 +230,66 @@ if (!function_exists('getRoleBadgeClass')) {
         </div>
     </header>
 
-    <!-- Fil d'Ariane sticky uniquement -->
+    <!-- Navigation sticky avec menu modules + fil d'Ariane -->
     <nav class="sticky-navigation" id="stickyNav">
         <div class="nav-container">
-            <!-- Fil d'Ariane centré -->
+            <!-- Menu modules horizontal -->
+            <?php if ($user_authenticated): ?>
+            <div class="module-navigation">
+                <?php 
+                // Configuration des modules disponibles
+                $all_modules = $all_modules ?? [
+                    'home' => ['icon' => '🏠', 'color' => '#059669', 'name' => 'Accueil', 'url' => '/', 'status' => 'active'],
+                    'port' => ['icon' => '📦', 'color' => '#3182ce', 'name' => 'Frais de port', 'url' => '/port/', 'status' => 'active'],
+                    'adr' => ['icon' => '⚠️', 'color' => '#dc2626', 'name' => 'ADR', 'url' => '/adr/', 'status' => 'active'],
+                    'user' => ['icon' => '👤', 'color' => '#7c2d12', 'name' => 'Mon compte', 'url' => '/user/', 'status' => 'active'],
+                    'admin' => ['icon' => '⚙️', 'color' => '#1f2937', 'name' => 'Administration', 'url' => '/admin/', 'status' => 'active']
+                ];
+
+                // Fonction simple de navigation si pas définie
+                if (!function_exists('getNavigationModules')) {
+                    function getNavigationModules($user_role, $all_modules) {
+                        $accessible = [];
+                        foreach ($all_modules as $key => $module) {
+                            if ($key === 'home') continue; // Exclure home de la nav
+                            
+                            // Logique d'accès simple
+                            switch ($user_role) {
+                                case 'admin':
+                                case 'dev':
+                                    $accessible[$key] = $module;
+                                    break;
+                                case 'logistique':
+                                    if (in_array($key, ['port', 'adr', 'user'])) {
+                                        $accessible[$key] = $module;
+                                    }
+                                    break;
+                                case 'user':
+                                    if (in_array($key, ['port', 'user'])) {
+                                        $accessible[$key] = $module;
+                                    }
+                                    break;
+                            }
+                        }
+                        return $accessible;
+                    }
+                }
+
+                $navigation_modules = getNavigationModules($current_user['role'] ?? 'user', $all_modules);
+                foreach ($navigation_modules as $nav_key => $nav_module): 
+                    $is_active = $nav_key === $current_module;
+                    $nav_class = 'module-nav-item' . ($is_active ? ' active' : '');
+                ?>
+                <a href="<?= $nav_module['url'] ?>" class="<?= $nav_class ?>" 
+                   style="--module-color: <?= $nav_module['color'] ?>">
+                    <span class="module-nav-icon"><?= $nav_module['icon'] ?></span>
+                    <span class="module-nav-name"><?= htmlspecialchars($nav_module['name']) ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <!-- Fil d'Ariane -->
             <?php if (!empty($breadcrumbs)): ?>
             <div class="breadcrumb-navigation">
                 <?php foreach ($breadcrumbs as $index => $crumb): ?>
@@ -435,7 +513,44 @@ if (!function_exists('getRoleBadgeClass')) {
             min-height: 48px;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            gap: var(--spacing-md, 1rem);
+        }
+
+        /* Menu modules horizontal */
+        .module-navigation {
+            display: flex;
+            gap: var(--spacing-xs, 0.25rem);
+            align-items: center;
+        }
+
+        .module-nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs, 0.25rem);
+            padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 1rem);
+            border-radius: 0.375rem;
+            text-decoration: none;
+            color: #4b5563;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .module-nav-item:hover {
+            background: var(--module-color, #2563eb)20;
+            color: var(--module-color, #2563eb);
+            transform: translateY(-1px);
+        }
+
+        .module-nav-item.active {
+            background: var(--module-color, #2563eb);
+            color: white;
+            font-weight: 600;
+        }
+
+        .module-nav-icon {
+            font-size: 1rem;
         }
 
         /* Fil d'Ariane centré */
@@ -603,7 +718,7 @@ if (!function_exists('getRoleBadgeClass')) {
         <?php 
         // Ordre de priorité pour trouver le JS du module
         $module_js_paths = [
-            "{$current_module}/assets/js/{$current_module}.js",
+            "/public/{$current_module}/assets/js/{$current_module}.js",
             "/{$current_module}/assets/js/{$current_module}.js",
             "/assets/js/modules/{$current_module}.js"
         ];
