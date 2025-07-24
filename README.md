@@ -550,15 +550,3 @@ storage/logs/admin.log      # Actions admin
 Ce logiciel est la propriété exclusive de Guldagil. Toute reproduction, distribution ou modification non autorisée est strictement interdite.
 
 ---
-
-<div align="center">
-
-**🚀 Portail Guldagil** - *Solutions professionnelles pour l'achats et la logistique*
-
-[![Version](https://img.shields.io/badge/Version-0.5_beta-orange)](CHANGELOG.md)
-[![Build](https://img.shields.io/badge/Build-Auto-green)](config/version.php)
-[![Status](https://img.shields.io/badge/Status-En_développement-blue)]()
-
-*Développé avec ❤️ pour l'efficacité opérationnelle*
-
-</div>
