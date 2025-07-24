@@ -223,8 +223,8 @@ if ($user_authenticated) {
     <!-- CSS modulaire avec fallback intelligent -->
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
-        // 1. Priorité : nouveau système dans /public/module/assets/
-        $new_css_path = "/public/{$current_module}/assets/css/{$current_module}.css";
+        // 1. Priorité : nouveau système dans module/assets/
+        $new_css_path = "{$current_module}/assets/css/{$current_module}.css";
         $module_css_loaded = false;
         
         if (file_exists(ROOT_PATH . $new_css_path)): ?>
@@ -800,5 +800,5 @@ if ($user_authenticated) {
 
     <!-- JavaScript spécifique au module -->
     <?php if ($module_js && $current_module !== 'home'): ?>
-    <script src="/public/<?= $current_module ?>/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
+    <script src="<?= $current_module ?>/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
     <?php endif; ?>
