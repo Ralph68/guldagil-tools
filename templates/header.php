@@ -66,8 +66,8 @@ if (!function_exists('getRoleBadgeClass')) {
     <!-- CSS modulaire avec fallback intelligent -->
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
-        // 1. Priorité : nouveau système dans /public/module/assets/
-        $new_css_path = "/public/{$current_module}/assets/css/{$current_module}.css";
+        // 1. Priorité : nouveau système dans /module/assets/
+        $new_css_path = "{$current_module}/assets/css/{$current_module}.css";
         $module_css_loaded = false;
         
         if (file_exists(ROOT_PATH . $new_css_path)): ?>
@@ -603,7 +603,7 @@ if (!function_exists('getRoleBadgeClass')) {
         <?php 
         // Ordre de priorité pour trouver le JS du module
         $module_js_paths = [
-            "/public/{$current_module}/assets/js/{$current_module}.js",
+            "{$current_module}/assets/js/{$current_module}.js",
             "/{$current_module}/assets/js/{$current_module}.js",
             "/assets/js/modules/{$current_module}.js"
         ];
