@@ -8,37 +8,23 @@
 // Configuration et sécurité
 session_start();
 define('PORTAL_ACCESS', true);
+define('ROOT_PATH', dirname(dirname(__DIR__)));
 
-// Chargement de la configuration
-if (file_exists(__DIR__ . '/../../config/config.php')) {
-    require_once __DIR__ . '/../../config/config.php';
-}
-if (file_exists(__DIR__ . '/../../config/version.php')) {
-    require_once __DIR__ . '/../../config/version.php';
-}
+// Debug
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
-// Variables d'environnement
+// Variables
 $current_module = 'qualite';
 $page_title = 'Liste des Contrôles';
-$page_description = 'Consultation et gestion des contrôles qualité';
 
-// Chargement du gestionnaire qualité
-if (file_exists(__DIR__ . '/classes/qualite_manager.php')) {
-    require_once __DIR__ . '/classes/qualite_manager.php';
-}
-
-// Paramètres de recherche et filtres
-$action = $_GET['action'] ?? 'list';
+// Paramètres
 $search = $_GET['search'] ?? '';
 $status_filter = $_GET['status'] ?? '';
-$type_filter = $_GET['type'] ?? '';
-$agency_filter = $_GET['agency'] ?? '';
-$date_from = $_GET['date_from'] ?? '';
-$date_to = $_GET['date_to'] ?? '';
 $page = max(1, intval($_GET['page'] ?? 1));
-$per_page = 25;
+$per_page = 10;
 
-// Simulation des données (à remplacer par vraie base de données)
+// Données simulées
 $mock_controls = [
     [
         'id' => 1,
@@ -61,27 +47,15 @@ $mock_controls = [
         'status' => 'in_progress',
         'created_at' => '2025-01-23 10:15:00',
         'prepared_by' => 'M. Contrôleur'
-    ],
-    [
-        'id' => 3,
-        'control_number' => 'ADOU_20250122_003',
-        'equipment_type' => 'Adoucisseur',
-        'equipment_model' => 'Fleck SXT',
-        'installation_name' => 'Installation Importante',
-        'agency_code' => 'GUL31',
-        'status' => 'validated',
-        'created_at' => '2025-01-22 16:45:00',
-        'prepared_by' => 'A. Expert'
     ]
 ];
 
-// Filtrage des données (simulation)
+// Filtrage
 $filtered_controls = $mock_controls;
 if ($search) {
     $filtered_controls = array_filter($filtered_controls, function($control) use ($search) {
         return stripos($control['control_number'], $search) !== false ||
-               stripos($control['installation_name'], $search) !== false ||
-               stripos($control['agency_code'], $search) !== false;
+               stripos($control['installation_name'], $search) !== false;
     });
 }
 if ($status_filter) {
@@ -89,18 +63,10 @@ if ($status_filter) {
         return $control['status'] === $status_filter;
     });
 }
-if ($type_filter) {
-    $filtered_controls = array_filter($filtered_controls, function($control) use ($type_filter) {
-        return stripos($control['equipment_type'], $type_filter) !== false;
-    });
-}
 
 $total_controls = count($filtered_controls);
-$total_pages = ceil($total_controls / $per_page);
-$offset = ($page - 1) * $per_page;
-$current_controls = array_slice($filtered_controls, $offset, $per_page);
+$current_controls = array_slice($filtered_controls, ($page - 1) * $per_page, $per_page);
 
-// Labels pour les statuts
 $status_labels = [
     'draft' => 'Brouillon',
     'in_progress' => 'En cours',
@@ -108,427 +74,401 @@ $status_labels = [
     'validated' => 'Validé',
     'sent' => 'Envoyé'
 ];
-
-// Chargement du header
-if (file_exists(__DIR__ . '/../../templates/header.php')) {
-    require_once __DIR__ . '/../../templates/header.php';
-}
 ?>
 
-<div class="qualite-module">
-    <!-- Header du module -->
-    <div class="module-header">
-        <div class="breadcrumb">
-            <a href="/" class="breadcrumb-item">🏠 Accueil</a>
-            <span class="breadcrumb-separator">›</span>
-            <a href="/qualite/" class="breadcrumb-item">🔬 Contrôle Qualité</a>
-            <span class="breadcrumb-separator">›</span>
-            <span class="breadcrumb-item current">📋 Liste des Contrôles</span>
-        </div>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($page_title) ?> - Contrôle Qualité</title>
+    
+    <style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        padding: 2rem;
+        background: linear-gradient(135deg, #f0fdf4 0%, #f9fafb 100%);
+        min-height: 100vh;
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .header {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        border-left: 4px solid #10b981;
+    }
+
+    .header h1 {
+        margin: 0 0 0.5rem 0;
+        color: #1f2937;
+        font-size: 1.875rem;
+    }
+
+    .breadcrumb {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+
+    .breadcrumb a {
+        color: #10b981;
+        text-decoration: none;
+    }
+
+    .filters {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #374151;
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+    }
+
+    .btn-primary {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #059669;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+
+    .btn-small {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    .table-section {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        background: #f8fafc;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .table tr:hover {
+        background: #f9fafb;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-draft { background: #fef3c7; color: #92400e; }
+    .status-in_progress { background: #dbeafe; color: #1e40af; }
+    .status-completed { background: #d1fae5; color: #065f46; }
+    .status-validated { background: #dcfce7; color: #166534; }
+    .status-sent { background: #e0e7ff; color: #3730a3; }
+
+    .agency-badge {
+        background: #f3f4f6;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6b7280;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .debug {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        color: #6b7280;
+        border-left: 4px solid #3b82f6;
+    }
+
+    @media (max-width: 768px) {
+        body {
+            padding: 1rem;
+        }
         
-        <div class="module-header-content">
-            <div class="module-title">
-                <div class="module-icon">📋</div>
-                <div class="module-info">
-                    <h1>Liste des Contrôles</h1>
-                    <div class="module-version"><?= $total_controls ?> contrôle(s) trouvé(s)</div>
-                </div>
-            </div>
-            
-            <div class="module-actions">
-                <a href="/qualite/" class="btn btn-secondary">
-                    ← Retour Dashboard
-                </a>
-                <button onclick="nouveauControle()" class="btn btn-primary">
-                    ➕ Nouveau contrôle
-                </button>
-            </div>
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .table-section {
+            overflow-x: auto;
+        }
+    }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <div class="breadcrumb">
+            <a href="/">🏠 Accueil</a> › 
+            <a href="/qualite/">🔬 Contrôle Qualité</a> › 
+            <span>📋 Liste des Contrôles</span>
+        </div>
+        <h1>📋 Liste des Contrôles</h1>
+        <p><?= $total_controls ?> contrôle(s) trouvé(s)</p>
+        <div>
+            <a href="/qualite/" class="btn btn-secondary">← Retour Dashboard</a>
+            <button onclick="nouveauControle()" class="btn btn-primary">➕ Nouveau contrôle</button>
         </div>
     </div>
 
-    <!-- Contenu principal -->
-    <main class="main-content">
-        <!-- Filtres et recherche -->
-        <section class="filters-section">
-            <form method="GET" class="filters-form">
-                <input type="hidden" name="action" value="<?= htmlspecialchars($action) ?>">
-                
-                <div class="filters-grid">
-                    <div class="filter-group">
-                        <label for="search">🔍 Recherche</label>
-                        <input type="text" id="search" name="search" 
-                               value="<?= htmlspecialchars($search) ?>"
-                               placeholder="N° contrôle, installation, agence...">
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="status">📊 Statut</label>
-                        <select id="status" name="status">
-                            <option value="">Tous les statuts</option>
-                            <?php foreach ($status_labels as $status => $label): ?>
-                            <option value="<?= $status ?>" <?= $status_filter === $status ? 'selected' : '' ?>>
-                                <?= $label ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="type">⚙️ Type</label>
-                        <select id="type" name="type">
-                            <option value="">Tous les types</option>
-                            <option value="Adoucisseur" <?= $type_filter === 'Adoucisseur' ? 'selected' : '' ?>>
-                                Adoucisseur
-                            </option>
-                            <option value="Pompe" <?= $type_filter === 'Pompe' ? 'selected' : '' ?>>
-                                Pompe Doseuse
-                            </option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="agency">🏢 Agence</label>
-                        <select id="agency" name="agency">
-                            <option value="">Toutes les agences</option>
-                            <option value="GUL31" <?= $agency_filter === 'GUL31' ? 'selected' : '' ?>>GUL31</option>
-                            <option value="GUL82" <?= $agency_filter === 'GUL82' ? 'selected' : '' ?>>GUL82</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="date_from">📅 Du</label>
-                        <input type="date" id="date_from" name="date_from" 
-                               value="<?= htmlspecialchars($date_from) ?>">
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="date_to">📅 Au</label>
-                        <input type="date" id="date_to" name="date_to" 
-                               value="<?= htmlspecialchars($date_to) ?>">
-                    </div>
+    <!-- Filtres -->
+    <div class="filters">
+        <form method="GET" class="filters-form">
+            <div class="filters-grid">
+                <div class="form-group">
+                    <label for="search">🔍 Recherche</label>
+                    <input type="text" id="search" name="search" 
+                           value="<?= htmlspecialchars($search) ?>"
+                           placeholder="N° contrôle, installation...">
                 </div>
                 
-                <div class="filters-actions">
-                    <button type="submit" class="btn btn-primary">🔍 Filtrer</button>
-                    <a href="list.php" class="btn btn-secondary">🔄 Réinitialiser</a>
-                </div>
-            </form>
-        </section>
-
-        <!-- Tableau des résultats -->
-        <section class="results-section">
-            <?php if (!empty($current_controls)): ?>
-            <div class="table-container">
-                <table class="controls-table">
-                    <thead>
-                        <tr>
-                            <th>N° Contrôle</th>
-                            <th>Type / Modèle</th>
-                            <th>Installation</th>
-                            <th>Agence</th>
-                            <th>Statut</th>
-                            <th>Date</th>
-                            <th>Technicien</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($current_controls as $control): ?>
-                        <tr class="control-row">
-                            <td>
-                                <strong class="control-number">
-                                    <?= htmlspecialchars($control['control_number']) ?>
-                                </strong>
-                            </td>
-                            <td>
-                                <div class="equipment-info">
-                                    <span class="equipment-type">
-                                        <?= htmlspecialchars($control['equipment_type']) ?>
-                                    </span>
-                                    <br>
-                                    <small class="equipment-model">
-                                        <?= htmlspecialchars($control['equipment_model']) ?>
-                                    </small>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="installation-name">
-                                    <?= htmlspecialchars($control['installation_name']) ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="agency-badge">
-                                    <?= htmlspecialchars($control['agency_code']) ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="status-badge status-<?= $control['status'] ?>">
-                                    <?= $status_labels[$control['status']] ?? $control['status'] ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="control-date">
-                                    <?= date('d/m/Y H:i', strtotime($control['created_at'])) ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="technician-name">
-                                    <?= htmlspecialchars($control['prepared_by']) ?>
-                                </span>
-                            </td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="btn btn-small btn-secondary" 
-                                            onclick="viewControl(<?= $control['id'] ?>)"
-                                            title="Voir le détail">
-                                        👁️
-                                    </button>
-                                    <?php if (in_array($control['status'], ['draft', 'in_progress'])): ?>
-                                    <button class="btn btn-small btn-primary"
-                                            onclick="editControl(<?= $control['id'] ?>)"
-                                            title="Modifier">
-                                        ✏️
-                                    </button>
-                                    <?php endif; ?>
-                                    <button class="btn btn-small btn-warning"
-                                            onclick="exportControl(<?= $control['id'] ?>)"
-                                            title="Exporter PDF">
-                                        📄
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+                <div class="form-group">
+                    <label for="status">📊 Statut</label>
+                    <select id="status" name="status">
+                        <option value="">Tous les statuts</option>
+                        <?php foreach ($status_labels as $status => $label): ?>
+                        <option value="<?= $status ?>" <?= $status_filter === $status ? 'selected' : '' ?>>
+                            <?= $label ?>
+                        </option>
                         <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            <?php if ($total_pages > 1): ?>
-            <div class="pagination">
-                <?php if ($page > 1): ?>
-                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" 
-                   class="pagination-btn">← Précédent</a>
-                <?php endif; ?>
+                    </select>
+                </div>
                 
-                <span class="pagination-info">
-                    Page <?= $page ?> sur <?= $total_pages ?> 
-                    (<?= $total_controls ?> contrôle(s))
-                </span>
-                
-                <?php if ($page < $total_pages): ?>
-                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" 
-                   class="pagination-btn">Suivant →</a>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-
-            <?php else: ?>
-            <!-- État vide -->
-            <div class="empty-state">
-                <div class="empty-icon">📋</div>
-                <h3>Aucun contrôle trouvé</h3>
-                <p>Aucun contrôle ne correspond à vos critères de recherche.</p>
-                <div class="empty-actions">
-                    <button onclick="nouveauControle()" class="btn btn-primary">
-                        ➕ Créer un nouveau contrôle
-                    </button>
-                    <a href="list.php" class="btn btn-secondary">
-                        🔄 Réinitialiser les filtres
-                    </a>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">🔍 Filtrer</button>
                 </div>
             </div>
-            <?php endif; ?>
-        </section>
-    </main>
+        </form>
+    </div>
+    <!-- Tableau des résultats -->
+    <div class="table-section">
+        <?php if (!empty($current_controls)): ?>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>N° Contrôle</th>
+                    <th>Type / Modèle</th>
+                    <th>Installation</th>
+                    <th>Agence</th>
+                    <th>Statut</th>
+                    <th>Date</th>
+                    <th>Technicien</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($current_controls as $control): ?>
+                <tr>
+                    <td>
+                        <strong><?= htmlspecialchars($control['control_number']) ?></strong>
+                    </td>
+                    <td>
+                        <div>
+                            <?= htmlspecialchars($control['equipment_type']) ?>
+                            <br>
+                            <small style="color: #6b7280;">
+                                <?= htmlspecialchars($control['equipment_model']) ?>
+                            </small>
+                        </div>
+                    </td>
+                    <td>
+                        <?= htmlspecialchars($control['installation_name']) ?>
+                    </td>
+                    <td>
+                        <span class="agency-badge">
+                            <?= htmlspecialchars($control['agency_code']) ?>
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge status-<?= $control['status'] ?>">
+                            <?= $status_labels[$control['status']] ?? htmlspecialchars($control['status']) ?>
+                        </span>
+                    </td>
+                    <td>
+                        <?= date('d/m/Y H:i', strtotime($control['created_at'])) ?>
+                    </td>
+                    <td>
+                        <?= htmlspecialchars($control['prepared_by']) ?>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-small btn-secondary" 
+                                    onclick="viewControl(<?= $control['id'] ?>)"
+                                    title="Voir le détail">
+                                👁️
+                            </button>
+                            <?php if (in_array($control['status'], ['draft', 'in_progress'])): ?>
+                            <button class="btn btn-small btn-primary"
+                                    onclick="editControl(<?= $control['id'] ?>)"
+                                    title="Modifier">
+                                ✏️
+                            </button>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <?php else: ?>
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>Aucun contrôle trouvé</h3>
+            <p>Aucun contrôle ne correspond à vos critères de recherche.</p>
+            <button onclick="nouveauControle()" class="btn btn-primary">
+                ➕ Créer un nouveau contrôle
+            </button>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Information de debug -->
+    <div class="debug">
+        <strong>Debug Info:</strong><br>
+        ROOT_PATH: <?= ROOT_PATH ?><br>
+        Fichier: <?= __FILE__ ?><br>
+        Total contrôles: <?= $total_controls ?><br>
+        Filtres: search=<?= htmlspecialchars($search) ?>, status=<?= htmlspecialchars($status_filter) ?><br>
+        PHP Version: <?= PHP_VERSION ?><br>
+        Mémoire: <?= round(memory_get_usage() / 1024 / 1024, 2) ?> MB<br>
+        Heure: <?= date('Y-m-d H:i:s') ?>
+    </div>
 </div>
 
-<!-- CSS spécifique -->
-<style>
-/* Filtres */
-.filters-section {
-    background: white;
-    margin-bottom: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 2rem;
-}
-
-.filters-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.filter-group label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #374151;
-}
-
-.filter-group input,
-.filter-group select {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 0.875rem;
-}
-
-.filters-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: flex-end;
-}
-
-/* Tableau */
-.table-container {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.controls-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.controls-table th {
-    background: #f8fafc;
-    padding: 1rem;
-    text-align: left;
-    font-weight: 600;
-    color: #374151;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.controls-table td {
-    padding: 1rem;
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.control-row:hover {
-    background: #f9fafb;
-}
-
-/* Badges et statuts */
-.status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.status-draft { background: #fef3c7; color: #92400e; }
-.status-in_progress { background: #dbeafe; color: #1e40af; }
-.status-completed { background: #d1fae5; color: #065f46; }
-.status-validated { background: #dcfce7; color: #166534; }
-.status-sent { background: #e0e7ff; color: #3730a3; }
-
-.agency-badge {
-    background: #f3f4f6;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-/* Actions */
-.action-buttons {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.btn-small {
-    padding: 0.5rem;
-    font-size: 0.875rem;
-    min-width: auto;
-}
-
-/* Pagination */
-.pagination {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 2rem;
-    padding: 1rem;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.pagination-btn {
-    background: #3b82f6;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.pagination-btn:hover {
-    background: #2563eb;
-}
-
-.pagination-info {
-    color: #6b7280;
-    font-weight: 500;
-}
-
-/* État vide */
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.empty-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-}
-
-.empty-actions {
-    margin-top: 2rem;
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-}
-</style>
-
-<!-- JavaScript -->
 <script>
 function nouveauControle() {
-    const type = prompt('Type de contrôle :\n1 - Adoucisseur\n2 - Pompe\n\nEntrez 1 ou 2 :');
+    const type = prompt('Type de contrôle :\n1 - Adoucisseur\n2 - Pompe Doseuse\n\nEntrez 1 ou 2 :');
     
     if (type === '1') {
         window.location.href = 'components/adoucisseurs.php';
     } else if (type === '2') {
         alert('🚧 Module contrôle pompes en développement');
+    } else if (type !== null) {
+        alert('⚠️ Veuillez entrer 1 ou 2');
     }
 }
 
 function viewControl(id) {
-    window.location.href = `view.php?id=${id}`;
+    alert('👁️ Affichage du contrôle #' + id + '\n(Fonctionnalité en développement)');
 }
 
 function editControl(id) {
-    window.location.href = `edit.php?id=${id}`;
+    alert('✏️ Modification du contrôle #' + id + '\n(Fonctionnalité en développement)');
 }
 
-function exportControl(id) {
-    window.location.href = `export.php?id=${id}&format=pdf`;
-}
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📋 Page Liste des Contrôles chargée');
+    console.log('Statistiques:', {
+        total: <?= $total_controls ?>,
+        search: '<?= addslashes($search) ?>',
+        status: '<?= addslashes($status_filter) ?>'
+    });
+});
+
+console.log('✅ Module Liste Contrôles Qualité chargé avec succès');
 </script>
 
+</body>
+</html>
+
 <?php
-// Chargement du footer
-if (file_exists(__DIR__ . '/../../templates/footer.php')) {
-    require_once __DIR__ . '/../../templates/footer.php';
+// Debug final
+if (defined('DEBUG') && DEBUG) {
+    echo "<!-- DEBUG: Fin de list.php -->\n";
 }
 ?>
