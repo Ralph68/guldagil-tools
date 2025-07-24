@@ -13,12 +13,34 @@ $current_module = $current_module ?? 'home';
 $module_icon = $module_icon ?? '🏠';
 $module_color = $module_color ?? '#3182ce';
 $module_status = $module_status ?? 'active';
-$user_authenticated = $user_authenticated ?? false;
-$current_user = $current_user ?? null;
 $build_number = $build_number ?? '00000000';
 $breadcrumbs = $breadcrumbs ?? [];
 $module_css = $module_css ?? false;
 $module_js = $module_js ?? false;
+
+// Authentification - variables par défaut
+$user_authenticated = false;
+$current_user = null;
+
+// Vérification AuthManager en priorité
+if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
+    try {
+        require_once ROOT_PATH . '/core/auth/AuthManager.php';
+        $auth = new AuthManager();
+        if ($auth->isAuthenticated()) {
+            $user_authenticated = true;
+            $current_user = $auth->getCurrentUser();
+        }
+    } catch (Exception $e) {
+        error_log("Erreur AuthManager: " . $e->getMessage());
+    }
+}
+
+// Fallback session classique
+if (!$user_authenticated && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
+    $user_authenticated = true;
+    $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
+}
 
 // Fonction helper pour classes rôle si pas définie
 if (!function_exists('getRoleBadgeClass')) {
@@ -186,28 +208,10 @@ if (!function_exists('getRoleBadgeClass')) {
         </div>
     </header>
 
-    <!-- Navigation principale et fil d'Ariane sticky -->
+    <!-- Fil d'Ariane sticky uniquement -->
     <nav class="sticky-navigation" id="stickyNav">
         <div class="nav-container">
-            <!-- Menu navigation modules -->
-            <?php if ($user_authenticated && function_exists('getNavigationModules')): ?>
-            <div class="module-navigation">
-                <?php 
-                $navigation_modules = getNavigationModules($current_user['role'] ?? 'user', $all_modules ?? []);
-                foreach ($navigation_modules as $nav_module): 
-                    $is_active = $nav_module['slug'] === $current_module;
-                    $nav_class = 'module-nav-item' . ($is_active ? ' active' : '');
-                ?>
-                <a href="<?= $nav_module['url'] ?>" class="<?= $nav_class ?>" 
-                   style="--module-color: <?= $nav_module['color'] ?>">
-                    <span class="module-nav-icon"><?= $nav_module['icon'] ?></span>
-                    <span class="module-nav-name"><?= htmlspecialchars($nav_module['name']) ?></span>
-                </a>
-                <?php endforeach; ?>
-            </div>
-            <?php endif; ?>
-
-            <!-- Fil d'Ariane -->
+            <!-- Fil d'Ariane centré -->
             <?php if (!empty($breadcrumbs)): ?>
             <div class="breadcrumb-navigation">
                 <?php foreach ($breadcrumbs as $index => $crumb): ?>
@@ -226,11 +230,6 @@ if (!function_exists('getRoleBadgeClass')) {
                 <?php endforeach; ?>
             </div>
             <?php endif; ?>
-
-            <!-- Indicateur de scroll (optionnel) -->
-            <div class="scroll-indicator">
-                <div class="scroll-progress" id="scrollProgress"></div>
-            </div>
         </div>
     </nav>
 
@@ -264,13 +263,6 @@ if (!function_exists('getRoleBadgeClass')) {
                     header.classList.remove('header-compact');
                     stickyNav.classList.remove('nav-sticky');
                 }
-            }
-
-            // Mise à jour barre de progression
-            if (scrollProgress) {
-                const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-                const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
-                scrollProgress.style.width = Math.min(progress, 100) + '%';
             }
 
             // Debounce pour performance
@@ -350,7 +342,42 @@ if (!function_exists('getRoleBadgeClass')) {
             right: 0;
             z-index: 1000;
             padding: var(--spacing-lg, 1.5rem) 0;
-            background: linear-gradient(135deg, var(--primary-blue-dark), var(--primary-blue));
+            background: linear-gradient(135deg, #2563eb, #1d4ed8); /* Bleu eau cohérent */
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg, 1.5rem);
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: var(--spacing-lg, 1.5rem);
+            min-height: 64px;
+        }
+
+        /* Page info centrée */
+        .header-page-info {
+            text-align: center;
+            justify-self: center;
+        }
+
+        .page-main-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm, 0.5rem);
+        }
+
+        .page-subtitle {
+            margin-top: var(--spacing-xs, 0.25rem);
+            opacity: 0.9;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
         }
 
         .portal-header.header-compact {
@@ -382,7 +409,7 @@ if (!function_exists('getRoleBadgeClass')) {
             font-size: 0.8rem;
         }
 
-        /* Navigation sticky */
+        /* Navigation sticky - Fil d'Ariane uniquement */
         .sticky-navigation {
             position: fixed;
             top: 0;
@@ -391,7 +418,7 @@ if (!function_exists('getRoleBadgeClass')) {
             z-index: 999;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--gray-200);
+            border-bottom: 1px solid #e5e7eb;
             transform: translateY(-100%);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -405,109 +432,41 @@ if (!function_exists('getRoleBadgeClass')) {
             max-width: 1200px;
             margin: 0 auto;
             padding: var(--spacing-sm, 0.5rem) var(--spacing-lg, 1.5rem);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: var(--spacing-lg, 1.5rem);
             min-height: 48px;
-        }
-
-        /* Menu modules horizontal compact */
-        .module-navigation {
-            display: flex;
-            gap: var(--spacing-xs, 0.25rem);
-            align-items: center;
-        }
-
-        .module-nav-item {
             display: flex;
             align-items: center;
-            gap: var(--spacing-xs, 0.25rem);
-            padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 1rem);
-            border-radius: var(--radius-md, 0.375rem);
-            text-decoration: none;
-            color: var(--gray-700);
-            font-size: var(--font-size-sm, 0.875rem);
-            font-weight: 500;
-            transition: all 0.2s ease;
-            position: relative;
+            justify-content: center;
         }
 
-        .module-nav-item:hover {
-            background: var(--module-color, var(--primary-blue))20;
-            color: var(--module-color, var(--primary-blue));
-            transform: translateY(-1px);
-        }
-
-        .module-nav-item.active {
-            background: var(--module-color, var(--primary-blue));
-            color: white;
-            font-weight: 600;
-        }
-
-        .module-nav-item.active::after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 6px;
-            height: 6px;
-            background: var(--module-color, var(--primary-blue));
-            border-radius: 50%;
-        }
-
-        .module-nav-icon {
-            font-size: 1rem;
-        }
-
-        /* Fil d'Ariane compact */
+        /* Fil d'Ariane centré */
         .breadcrumb-navigation {
             display: flex;
             align-items: center;
             gap: var(--spacing-xs, 0.25rem);
             font-size: var(--font-size-sm, 0.875rem);
-            flex: 1;
-            justify-content: center;
         }
 
         .breadcrumb-item {
-            color: var(--gray-600);
+            color: #4b5563;
             text-decoration: none;
             padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
-            border-radius: var(--radius-sm, 0.25rem);
+            border-radius: 0.25rem;
             transition: all 0.2s ease;
         }
 
         .breadcrumb-item:hover:not(.active) {
-            background: var(--gray-100);
-            color: var(--gray-900);
+            background: #f3f4f6;
+            color: #111827;
         }
 
         .breadcrumb-item.active {
-            color: var(--primary-blue);
+            color: #2563eb; /* Bleu eau cohérent */
             font-weight: 600;
         }
 
         .breadcrumb-separator {
-            color: var(--gray-400);
+            color: #9ca3af;
             margin: 0 var(--spacing-xs, 0.25rem);
-        }
-
-        /* Indicateur de progression de scroll */
-        .scroll-indicator {
-            width: 60px;
-            height: 3px;
-            background: var(--gray-200);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .scroll-progress {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-blue), var(--primary-blue-light));
-            transition: width 0.1s ease;
-            border-radius: 2px;
         }
 
         /* Ajustement du contenu principal pour header fixe */
