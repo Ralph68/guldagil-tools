@@ -153,7 +153,7 @@ if (!function_exists('getRoleBadgeClass')) {
                     <?php if (file_exists(ROOT_PATH . '/assets/img/logo.png')): ?>
                         <img src="/assets/img/logo.png" alt="Logo" width="32" height="32">
                     <?php else: ?>
-                        🌊
+                        💧
                     <?php endif; ?>
                 </div>
                 <div class="header-brand-text"><?= $app_name ?></div>
