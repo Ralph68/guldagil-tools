@@ -22,22 +22,41 @@ foreach ($additional_configs as $config_file) {
     }
 }
 
-// Variables par défaut si pas définies
-$app_name = $app_name ?? 'Portail Guldagil';
-$page_title = $page_title ?? 'Accueil';
-$page_subtitle = $page_subtitle ?? '';
-$current_module = $current_module ?? 'home';
-$module_icon = $module_icon ?? '🏠';
-$module_color = $module_color ?? '#3182ce';
-$module_status = $module_status ?? 'active';
-$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : '00000000';
-$breadcrumbs = $breadcrumbs ?? [];
-$module_css = $module_css ?? false;
-$module_js = $module_js ?? false;
+// Variables avec fallbacks sécurisés
+$page_title = htmlspecialchars($page_title ?? 'Portail Guldagil');
+$page_subtitle = htmlspecialchars($page_subtitle ?? 'Solutions professionnelles');
+$page_description = htmlspecialchars($page_description ?? 'Portail de gestion');
+$current_module = htmlspecialchars($current_module ?? 'home');
+
+// Utilisation des nouvelles variables de config
+$app_version = defined('APP_VERSION') ? APP_VERSION : '0.5-beta';
+$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd') . '001';
+$app_name = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
+$app_author = defined('APP_AUTHOR') ? APP_AUTHOR : 'Jean-Thomas RUNSER';
+
+// Titre complet de la page
+$full_title = $page_title . ' - ' . $app_name . ' v' . $app_version;
+
+// Icône, couleur et statut du module actuel
+$module_icon = $all_modules[$current_module]['icon'] ?? '🏠';
+$module_color = $all_modules[$current_module]['color'] ?? '#3182ce';
+$module_status = $all_modules[$current_module]['status'] ?? 'active';
+
+// Navigation modules avec système de rôles centralisé
+$navigation_modules = [];
+if ($user_authenticated) {
+    $user_role = $current_user['role'] ?? 'user';
+    $navigation_modules = getNavigationModules($user_role, $all_modules);
+}
 
 // Authentification - variables par défaut
 $user_authenticated = false;
 $current_user = null;
+
+// Démarrage session si pas déjà fait
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Vérification AuthManager en priorité
 if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
@@ -57,6 +76,22 @@ if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
 if (!$user_authenticated && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
     $user_authenticated = true;
     $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
+}
+
+// Redirection si non authentifié (sauf pages publiques)
+$public_pages = ['/auth/login.php', '/auth/logout.php', '/legal/', '/maintenance.php'];
+$current_script = $_SERVER['SCRIPT_NAME'] ?? '';
+$is_public_page = false;
+foreach ($public_pages as $page) {
+    if (strpos($current_script, $page) !== false) {
+        $is_public_page = true;
+        break;
+    }
+}
+
+if (!$user_authenticated && !$is_public_page) {
+    header('Location: /auth/login.php');
+    exit;
 }
 
 // Fonction helper pour classes rôle si pas définie
@@ -89,7 +124,7 @@ if (!function_exists('getRoleBadgeClass')) {
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
         // 1. Priorité : nouveau système dans /public/module/assets/
-        $new_css_path = "{$current_module}/assets/css/{$current_module}.css";
+        $new_css_path = "/public/{$current_module}/assets/css/{$current_module}.css";
         $module_css_loaded = false;
         
         if (file_exists(ROOT_PATH . $new_css_path)): ?>
@@ -223,7 +258,8 @@ if (!function_exists('getRoleBadgeClass')) {
             <!-- Boutons d'authentification pour utilisateurs non connectés -->
             <div class="header-auth-actions">
                 <a href="/auth/login.php" class="login-btn">
-                    🔐 Connexion
+                    <span class="login-icon">🔐</span>
+                    <span class="login-text">Connexion</span>
                 </a>
             </div>
             <?php endif; ?>
@@ -583,8 +619,185 @@ if (!function_exists('getRoleBadgeClass')) {
             font-weight: 600;
         }
 
-        .module-nav-icon {
+        /* Bouton connexion stylé */
+        .login-btn {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs, 0.25rem);
+            padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 1rem);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0.5rem;
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .login-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .login-icon {
             font-size: 1rem;
+        }
+
+        .login-text {
+            font-size: 0.875rem;
+        }
+
+        /* Menu utilisateur */
+        .user-menu-trigger {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm, 0.5rem);
+            padding: var(--spacing-sm, 0.5rem);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .user-menu-trigger:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .user-name {
+            color: white;
+            font-weight: 500;
+            font-size: 0.875rem;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+
+        .dropdown-icon {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.75rem;
+            transition: transform 0.2s ease;
+        }
+
+        .user-menu-trigger[aria-expanded="true"] .dropdown-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Dropdown menu */
+        .user-dropdown {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            right: 0;
+            min-width: 220px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            overflow: hidden;
+            display: none;
+        }
+
+        .dropdown-header {
+            padding: var(--spacing-md, 1rem);
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dropdown-user-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: var(--spacing-xs, 0.25rem);
+        }
+
+        .dropdown-user-email {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 0;
+        }
+
+        .dropdown-item {
+            display: block;
+            padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 1rem);
+            color: #374151;
+            text-decoration: none;
+            transition: background-color 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .dropdown-item:hover {
+            background: #f3f4f6;
+        }
+
+        .dropdown-item-danger {
+            color: #dc2626;
+        }
+
+        .dropdown-item-danger:hover {
+            background: #fef2f2;
+        }
+
+        .role-badge {
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .role-user {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .role-admin {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .role-dev {
+            background: #f3e8ff;
+            color: #7c3aed;
+        }
+
+        .role-logistique {
+            background: #dcfce7;
+            color: #166534;
         }
 
         /* Fil d'Ariane centré */
@@ -628,7 +841,7 @@ if (!function_exists('getRoleBadgeClass')) {
             margin-top: 140px; /* Moins d'espace en mode compact */
         }
 
-        /* Responsive */
+        /* Responsive - garde toujours le menu visible */
         @media (max-width: 768px) {
             .header-container {
                 grid-template-columns: auto 1fr auto;
@@ -644,29 +857,23 @@ if (!function_exists('getRoleBadgeClass')) {
             }
 
             .module-nav-name {
-                display: none;
+                font-size: 0.8rem;
             }
 
             .module-nav-item {
-                padding: var(--spacing-sm, 0.5rem);
-                min-width: 40px;
-                justify-content: center;
+                padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
             }
 
             .breadcrumb-navigation {
-                display: none;
-            }
-
-            .scroll-indicator {
-                width: 40px;
+                font-size: 0.8rem;
             }
 
             .portal-main {
-                margin-top: 100px;
+                margin-top: 140px;
             }
 
             body.header-compact .portal-main {
-                margin-top: 80px;
+                margin-top: 120px;
             }
         }
 
@@ -679,8 +886,14 @@ if (!function_exists('getRoleBadgeClass')) {
                 display: none;
             }
 
-            .module-navigation {
-                gap: 0;
+            .module-nav-name {
+                display: none;
+            }
+
+            .module-nav-item {
+                padding: var(--spacing-sm, 0.5rem);
+                min-width: 40px;
+                justify-content: center;
             }
 
             .nav-container {
@@ -688,11 +901,11 @@ if (!function_exists('getRoleBadgeClass')) {
             }
 
             .portal-main {
-                margin-top: 80px;
+                margin-top: 120px;
             }
 
             body.header-compact .portal-main {
-                margin-top: 60px;
+                margin-top: 100px;
             }
         }
 
@@ -752,7 +965,7 @@ if (!function_exists('getRoleBadgeClass')) {
         <?php 
         // Ordre de priorité pour trouver le JS du module
         $module_js_paths = [
-            "{$current_module}/assets/js/{$current_module}.js",
+            "/public/{$current_module}/assets/js/{$current_module}.js",
             "/{$current_module}/assets/js/{$current_module}.js",
             "/assets/js/modules/{$current_module}.js"
         ];
