@@ -1,8 +1,9 @@
 <?php
 /**
- * Titre: Header du portail Guldagil - VERSION AVEC SYSTÈME DE RÔLES CENTRALISÉ + ADAPTATIF
+ * Titre: Portail Guldagil - Plateforme collaborative logistique, achats, qualité, EPI, ADR, matériels, etc.
  * Chemin: /templates/header.php
  * Version: 0.5 beta + build auto
+ * Description: Portail interne Guldagil pour tous les collaborateurs, accès multi-modules selon rôles (logistique, achats, qualité, EPI, ADR, matériels, etc).
  */
 
 // Protection contre l'accès direct
@@ -135,8 +136,8 @@ if (!$is_public_page) {
 
 // Variables avec fallbacks sécurisés
 $page_title = htmlspecialchars($page_title ?? 'Portail Guldagil');
-$page_subtitle = htmlspecialchars($page_subtitle ?? 'Solutions professionnelles');
-$page_description = htmlspecialchars($page_description ?? 'Portail de gestion');
+$page_subtitle = htmlspecialchars($page_subtitle ?? 'Plateforme collaborative multi-métiers (logistique, achats, qualité, EPI, ADR, matériels...)');
+$page_description = htmlspecialchars($page_description ?? 'Portail interne Guldagil pour tous les collaborateurs. Accès centralisé à la logistique, achats, qualité, EPI, ADR, matériels, etc. selon les rôles.');
 $current_module = htmlspecialchars($current_module ?? 'home');
 
 // Utilisation des nouvelles variables de config
@@ -497,38 +498,48 @@ if ($user_authenticated) {
 
     <!-- Header principal -->
     <header class="portal-header" id="mainHeader">
-        <div class="header-container">
-            <!-- Logo et branding -->
-            <a href="/" class="header-brand">
-                <div class="header-logo">
+        <div class="header-container" id="headerContainer">
+            <!-- Logo et nom du module (toujours visible, compact si scroll) -->
+            <a href="/" class="header-brand" id="headerBrand">
+                <div class="header-logo" id="headerLogo">
                     <?php if (file_exists(ROOT_PATH . '/assets/img/logo.png')): ?>
-                        <img src="/assets/img/logo.png" alt="Logo" width="32" height="32">
+                        <img src="/assets/img/logo.png" alt="Logo" width="36" height="36" style="object-fit:contain;max-width:36px;max-height:36px;">
                     <?php else: ?>
                         💧
                     <?php endif; ?>
                 </div>
-                <div class="header-brand-text"><?= $app_name ?></div>
+                <div class="header-brand-text" id="headerBrandText">
+                    <?= $all_modules[$current_module]['name'] ?? $app_name ?>
+                </div>
             </a>
 
-            <!-- Informations page courante -->
-            <div class="header-page-info">
-                <h1 class="page-main-title">
-                    <span class="module-icon" style="color: <?= $module_color ?>"><?= $module_icon ?></span>
-                    <?= $page_title ?>
-                    <?php if ($module_status === 'development'): ?>
-                        <span class="status-badge development">DEV</span>
-                    <?php elseif ($module_status === 'beta'): ?>
-                        <span class="status-badge beta">BETA</span>
-                    <?php endif; ?>
-                </h1>
-                <?php if (!empty($page_subtitle)): ?>
-                <div class="page-subtitle">
-                    <span class="page-subtitle-text"><?= $page_subtitle ?></span>
-                </div>
+            <!-- Fil d'Ariane (au centre/droite dans le header compact) -->
+            <div class="header-breadcrumbs" id="headerBreadcrumbs" style="flex:1;display:flex;justify-content:center;">
+                <?php if (count($breadcrumbs) > 0): ?>
+                <nav class="breadcrumb-nav" style="background:none;box-shadow:none;padding:0;margin:0;">
+                    <div class="breadcrumb-container" style="padding:0;">
+                        <?php foreach ($breadcrumbs as $index => $crumb): ?>
+                            <?php if ($index > 0): ?>
+                                <span class="breadcrumb-separator">›</span>
+                            <?php endif; ?>
+                            <?php if (!empty($crumb['url']) && !($crumb['active'] ?? false)): ?>
+                                <a href="<?= htmlspecialchars($crumb['url']) ?>" class="breadcrumb-item">
+                                    <span><?= $crumb['icon'] ?? '' ?></span>
+                                    <span><?= htmlspecialchars($crumb['text']) ?></span>
+                                </a>
+                            <?php else: ?>
+                                <span class="breadcrumb-item active">
+                                    <span><?= $crumb['icon'] ?? '' ?></span>
+                                    <span><?= htmlspecialchars($crumb['text']) ?></span>
+                                </span>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+                </nav>
                 <?php endif; ?>
             </div>
 
-            <!-- Navigation utilisateur -->
+            <!-- Navigation utilisateur (inchangé) -->
             <?php if ($user_authenticated && $current_user): ?>
             <div class="header-user-nav">
                 <div class="user-menu-trigger" id="userMenuTrigger" aria-haspopup="true" aria-expanded="false">
@@ -643,18 +654,33 @@ if ($user_authenticated) {
             </div>
             <?php endif; ?>
         </div>
+        <!-- Informations page courante (titre, sous-titre) : visible uniquement hors mode compact -->
+        <div class="header-page-info" id="headerPageInfo">
+            <h1 class="page-main-title">
+                <span class="module-icon" style="color: <?= $module_color ?>"><?= $module_icon ?></span>
+                <?= $page_title ?>
+                <?php if ($module_status === 'development'): ?>
+                    <span class="status-badge development">DEV</span>
+                <?php elseif ($module_status === 'beta'): ?>
+                    <span class="status-badge beta">BETA</span>
+                <?php endif; ?>
+            </h1>
+            <?php if (!empty($page_subtitle)): ?>
+            <div class="page-subtitle">
+                <span class="page-subtitle-text"><?= $page_subtitle ?></span>
+            </div>
+            <?php endif; ?>
+        </div>
     </header>
 
-    <!-- Navigation modules (si utilisateur connecté) -->
-    <?php if ($user_authenticated && !empty($navigation_modules)): ?>
-    <nav class="modules-nav">
+    <!-- Navigation modules (toujours visible, même au premier affichage) -->
+    <nav class="modules-nav" id="modulesNav">
         <div class="modules-nav-container">
             <div class="modules-nav-items" style="justify-content: center;">
                 <?php foreach ($navigation_modules as $module_key => $module_data): 
                     $is_active = $current_module === $module_key;
                     $css_classes = ['module-nav-item'];
                     if ($is_active) $css_classes[] = 'active';
-                    
                     $href = "/{$module_key}/";
                 ?>
                     <a href="<?= $href ?>" 
@@ -670,8 +696,6 @@ if ($user_authenticated) {
                     </a>
                 <?php endforeach; ?>
             </div>
-            
-            <!-- Menu burger mobile -->
             <button class="mobile-menu-toggle" aria-label="Menu modules" id="mobileMenuToggle">
                 <span></span>
                 <span></span>
@@ -679,7 +703,6 @@ if ($user_authenticated) {
             </button>
         </div>
     </nav>
-    <?php endif; ?>
 
     <!-- Fil d'Ariane -->
     <?php if (count($breadcrumbs) > 1): ?>
@@ -713,36 +736,47 @@ if ($user_authenticated) {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const header = document.getElementById('mainHeader');
-            const userMenuTrigger = document.getElementById('userMenuTrigger');
-            const userDropdown = document.getElementById('userDropdown');
+            const headerContainer = document.getElementById('headerContainer');
+            const headerBrand = document.getElementById('headerBrand');
+            const headerBrandText = document.getElementById('headerBrandText');
+            const headerLogo = document.getElementById('headerLogo');
+            const headerPageInfo = document.getElementById('headerPageInfo');
+            const headerBreadcrumbs = document.getElementById('headerBreadcrumbs');
             
             let isHeaderCompact = false;
             let scrollTimeout;
 
-            // Gestion du scroll pour header adaptatif
             function handleScroll() {
                 const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                 const shouldBeCompact = scrollTop > 100;
 
                 if (shouldBeCompact !== isHeaderCompact) {
                     isHeaderCompact = shouldBeCompact;
-                    
+
                     if (isHeaderCompact) {
                         header.classList.add('header-compact');
                         document.body.classList.add('header-compact');
+                        // Compact: logo + nom module à gauche, fil d'ariane centré, cacher titre/sous-titre
+                        if(headerPageInfo) headerPageInfo.style.display = 'none';
+                        if(headerBrandText) headerBrandText.textContent = "<?= $all_modules[$current_module]['name'] ?? $app_name ?>";
+                        if(headerBreadcrumbs) headerBreadcrumbs.style.justifyContent = "center";
                     } else {
                         header.classList.remove('header-compact');
                         document.body.classList.remove('header-compact');
+                        // Normal: logo + nom portail, titre/sous-titre visibles
+                        if(headerPageInfo) headerPageInfo.style.display = '';
+                        if(headerBrandText) headerBrandText.textContent = "<?= $app_name ?>";
+                        if(headerBreadcrumbs) headerBreadcrumbs.style.justifyContent = "center";
                     }
                 }
-
                 clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {
-                    // Actions supplémentaires si nécessaire
-                }, 10);
+                scrollTimeout = setTimeout(() => {}, 10);
             }
 
             // Gestion menu utilisateur
+            const userMenuTrigger = document.getElementById('userMenuTrigger');
+            const userDropdown = document.getElementById('userDropdown');
+            
             if (userMenuTrigger && userDropdown) {
                 // Toggle menu au clic
                 userMenuTrigger.addEventListener('click', function(e) {
