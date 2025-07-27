@@ -1,205 +1,135 @@
 /**
- * JavaScript pour header moderne
- * Version: 1.0 - Refonte complète
+ * JavaScript pour le header unifié
+ * Version: 1.6 - Gestion améliorée du scroll et transformation du header
  */
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Header moderne initialisé');
-
-    // === ÉLÉMENTS DOM ===
-    const mainHeader = document.getElementById('mainHeader');
-    const compactHeader = document.getElementById('compactHeader');
+document.addEventListener('DOMContentLoaded', () => {
+    const body = document.body;
+    const header = document.getElementById('mainHeader');
     const mainNav = document.getElementById('mainNav');
     const breadcrumbNav = document.getElementById('breadcrumbNav');
     const userTrigger = document.getElementById('userTrigger');
     const userDropdown = document.getElementById('userDropdown');
     const mobileNavToggle = document.getElementById('mobileNavToggle');
-    const compactUserBtn = document.getElementById('compactUserBtn');
-
-    // Vérification des éléments essentiels
-    if (!mainHeader) console.warn('Header: élément #mainHeader non trouvé');
-    if (!compactHeader) console.warn('Header: élément #compactHeader non trouvé');
-
-    // === GESTION DU SCROLL ET HEADER COMPACT ===
-    let lastScrollTop = 0;
-    const scrollThreshold = 100;
-    let scrollTimeout;
-
-    function handleScroll() {
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        
-        if (scrollTop > scrollThreshold && scrollTop > lastScrollTop) {
-            // Scroll vers le bas - masquer header principal, montrer compact
-            if (mainHeader) mainHeader.classList.add('hidden');
-            if (mainNav) mainNav.classList.add('hidden');
-            if (compactHeader) compactHeader.classList.add('visible');
-            
-            // Ajuster position breadcrumb si présent
-            if (breadcrumbNav) {
-                breadcrumbNav.style.top = '0px';
-                breadcrumbNav.classList.add('scrolled');
-            }
-        } else if (scrollTop <= scrollThreshold) {
-            // Retour en haut - montrer header principal, masquer compact
-            if (mainHeader) mainHeader.classList.remove('hidden');
-            if (mainNav) mainNav.classList.remove('hidden');
-            if (compactHeader) compactHeader.classList.remove('visible');
-            
-            // Réinitialiser position breadcrumb
-            if (breadcrumbNav) {
-                const navHeight = mainNav ? mainNav.offsetHeight + 'px' : '0';
-                breadcrumbNav.style.top = navHeight;
-                breadcrumbNav.classList.remove('scrolled');
-            }
-        }
-        
-        lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+    
+    // Détection page d'accueil
+    const isHomePage = window.location.pathname === '/' || window.location.pathname === '/index.php';
+    if (isHomePage) {
+        document.body.classList.add('home-page');
+    }
+    
+    // Détection de la présence du fil d'ariane
+    const hasBreadcrumb = breadcrumbNav !== null;
+    if (!hasBreadcrumb) {
+        body.classList.add('no-breadcrumb');
     }
 
-    // Optimisation des événements de scroll avec throttle
-    window.addEventListener('scroll', function() {
-        if (!scrollTimeout) {
-            scrollTimeout = setTimeout(function() {
+    // --- 1. GESTION DU SCROLL POUR LE MENU ---
+    const handleScroll = () => {
+        const scrollY = window.scrollY;
+        const scrollThreshold = 80; // Hauteur du header
+        
+        if (scrollY > scrollThreshold) {
+            body.classList.add('scrolled');
+            
+            // Appliquer la transition du header
+            if (header) {
+                header.classList.add('transformed');
+            }
+            
+            // Rendre le fil d'ariane sticky - utiliser la classe CSS seulement
+            if (breadcrumbNav) {
+                breadcrumbNav.classList.add('sticky');
+            }
+        } else {
+            body.classList.remove('scrolled');
+            
+            // Réinitialiser le header
+            if (header) {
+                header.classList.remove('transformed');
+            }
+            
+            // Réinitialiser le fil d'ariane
+            if (breadcrumbNav) {
+                breadcrumbNav.classList.remove('sticky');
+            }
+        }
+    };
+
+    // Optimisation: throttle la fonction de scroll
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
                 handleScroll();
-                scrollTimeout = null;
-            }, 10);
+                ticking = false;
+            });
+            ticking = true;
         }
     }, { passive: true });
 
-    // === GESTION MENU UTILISATEUR ===
+    // Exécuter une fois au chargement
+    handleScroll();
+
+    // --- 2. GESTION DU MENU UTILISATEUR ---
     if (userTrigger && userDropdown) {
-        userTrigger.addEventListener('click', function(e) {
-            e.preventDefault();
+        userTrigger.addEventListener('click', (e) => {
             e.stopPropagation();
-            
-            const isExpanded = userTrigger.getAttribute('aria-expanded') === 'true';
-            userTrigger.setAttribute('aria-expanded', !isExpanded);
-            userDropdown.setAttribute('aria-hidden', isExpanded);
-            userDropdown.classList.toggle('show');
+            const isExpanded = userDropdown.classList.toggle('show');
+            userTrigger.setAttribute('aria-expanded', isExpanded);
         });
 
-        // Fermer le menu si clic ailleurs
-        document.addEventListener('click', function(e) {
-            if (userTrigger && userDropdown && 
-                !userTrigger.contains(e.target) && 
-                !userDropdown.contains(e.target)) {
-                userTrigger.setAttribute('aria-expanded', 'false');
-                userDropdown.setAttribute('aria-hidden', 'true');
+        // Fermer le menu si on clique en dehors
+        document.addEventListener('click', (e) => {
+            if (!userTrigger.contains(e.target) && !userDropdown.contains(e.target)) {
                 userDropdown.classList.remove('show');
+                userTrigger.setAttribute('aria-expanded', 'false');
             }
         });
     }
 
-    // === GESTION MENU MOBILE ===
+    // --- 3. GESTION DU MENU MOBILE ---
     if (mobileNavToggle && mainNav) {
-        mobileNavToggle.addEventListener('click', function() {
-            const isExpanded = mobileNavToggle.getAttribute('aria-expanded') === 'true';
-            mobileNavToggle.setAttribute('aria-expanded', !isExpanded);
-            mainNav.classList.toggle('mobile-open');
+        mobileNavToggle.addEventListener('click', () => {
+            const isExpanded = mainNav.classList.toggle('mobile-open');
+            mobileNavToggle.setAttribute('aria-expanded', isExpanded);
             mobileNavToggle.classList.toggle('open');
         });
     }
-
-    // === GESTION MENU UTILISATEUR COMPACT ===
-    if (compactUserBtn && userDropdown) {
-        compactUserBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const isHidden = userDropdown.getAttribute('aria-hidden') === 'true';
-            userDropdown.setAttribute('aria-hidden', !isHidden);
-            userDropdown.classList.toggle('show');
-            
-            // Position sous le bouton compact
-            if (isHidden) {
-                const btnRect = compactUserBtn.getBoundingClientRect();
-                userDropdown.style.top = (btnRect.bottom + 10) + 'px';
-                userDropdown.style.right = '10px';
+    
+    // --- 4. FONCTIONS D'ACCESSIBILITÉ ---
+    // Navigation au clavier avec Tab
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                item.click();
             }
         });
-    }
-
-    // ====================================================
-    // AMÉLIORATION DE L'ACCESSIBILITÉ
-    // ====================================================
+    });
     
-    function enhanceAccessibility() {
-        // Rôles ARIA
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(function(item) {
-            if (!item.getAttribute('role')) {
-                item.setAttribute('role', 'menuitem');
-            }
-        });
+    // --- 5. SCAN ET VÉRIFICATION DES MODULES ---
+    // Cette fonction pourrait être implémentée pour détecter dynamiquement les modules
+    function scanAvailableModules() {
+        console.log('Scanning des modules disponibles...');
         
-        // Gestion des focus
-        const focusableElements = document.querySelectorAll('a, button, [tabindex="0"]');
-        focusableElements.forEach(function(element) {
-            element.addEventListener('focus', function() {
-                // S'assurer que l'élément est visible si dans une liste défilante
-                if (element.closest('.nav-items, .dropdown-menu, .breadcrumb-container')) {
-                    element.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'nearest',
-                        inline: 'nearest'
-                    });
-                }
-            });
-        });
+        // TODO: Implémentation pour détecter les modules disponibles:
+        // 1. Port (alias calculateur) - Frais de port
+        // 2. ADR - Gestion ADR (produits dangereux)
+        // 3. Qualité - Contrôle qualité
+        // 4. Matériel - Gestion du matériel
+        // 5. EPI - Équipements de protection individuelle
+        // 6. User (alias profile) - Espace utilisateur
+        // 7. Admin - Administration du portail (pour admin et dev seulement)
     }
-
-    // ====================================================
-    // FONCTIONS UTILITAIRES
-    // ====================================================
     
-    function adjustDropdownPosition(dropdown) {
-        if (!dropdown) return;
-        
-        // Vérifier si le dropdown sort de la fenêtre
-        const rect = dropdown.getBoundingClientRect();
-        const windowWidth = window.innerWidth;
-        
-        if (rect.right > windowWidth) {
-            dropdown.style.right = '0';
-            dropdown.style.left = 'auto';
+    // Exécuter au chargement si on est administrateur
+    const userRole = document.body.getAttribute('data-role') || '';
+    if (userRole === 'admin' || userRole === 'dev') {
+        // Scan uniquement si en mode développement
+        if (document.querySelector('.debug-banner')) {
+            setTimeout(scanAvailableModules, 1000);
         }
-    }
-    
-    function getModuleColor() {
-        // Récupère la couleur du module actif depuis les variables CSS
-        return getComputedStyle(document.documentElement)
-            .getPropertyValue('--current-module-color')
-            .trim() || '#3182ce';
-    }
-    
-    // Détection si écran tactile pour améliorer l'expérience
-    const isTouchDevice = ('ontouchstart' in window) || 
-                         (navigator.maxTouchPoints > 0) || 
-                         (navigator.msMaxTouchPoints > 0);
-                         
-    if (isTouchDevice) {
-        document.body.classList.add('touch-device');
-    }
-
-    // ====================================================
-    // INITIALISATION ET LANCEMENT
-    // ====================================================
-    
-    try {
-        // Lancer les améliorations d'accessibilité
-        enhanceAccessibility();
-        
-        // Appliquer le premier check de scroll
-        setTimeout(handleScroll, 100);
-        
-        console.log('✅ Header moderne entièrement initialisé');
-        
-        // Événement personnalisé pour notifier les autres scripts
-        window.dispatchEvent(new CustomEvent('headerReady', {
-            detail: { timestamp: Date.now() }
-        }));
-    } catch (error) {
-        console.error('❌ Erreur lors de l\'initialisation du header:', error);
     }
 });
 
@@ -316,35 +246,6 @@ window.HeaderAPI = {
         });
     }
 };
-
-// ====================================================
-// FONCTIONS GLOBALES
-// ====================================================
-
-/**
- * Affiche l'aide contextuelle pour le module actuel
- */
-function showHelp() {
-    const module = document.body.dataset.module || 'inconnu';
-    const version = document.querySelector('meta[name="version"]')?.content || 'inconnu';
-    const build = document.querySelector('meta[name="build"]')?.content || 'inconnu';
-    
-    const message = `Aide contextuelle - Module: ${module}\nVersion: ${version}\nBuild: ${build}\n\nRaccourcis clavier:\n• Alt+H: Accueil\n• Alt+A: Administration\n• Échap: Fermer les menus`;
-    
-    // Utiliser l'API de notification si disponible, sinon alert
-    if (window.HeaderAPI && window.HeaderAPI.showNotification) {
-        window.HeaderAPI.showNotification('Aide contextuelle affichée', 'info');
-        console.info(message);
-    } else {
-        alert(message);
-    }
-}
-
-console.log('🎯 Header API disponible globalement');
-
-// ====================================================
-// FONCTIONS GLOBALES
-// ====================================================
 
 /**
  * Affiche l'aide contextuelle pour le module actuel

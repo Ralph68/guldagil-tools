@@ -47,10 +47,13 @@ $build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd');
 // Définition des modules (si non définis par la page appelante)
 $all_modules = $all_modules ?? [
     'home' => ['name' => 'Accueil', 'icon' => '🏠', 'color' => '#0ea5e9'],
-    'port' => ['name' => 'Frais de port', 'icon' => '📦', 'color' => '#06b6d4'],
-    'adr' => ['name' => 'ADR', 'icon' => '⚠️', 'color' => '#0284c7'],
-    'user' => ['name' => 'Mon compte', 'icon' => '👤', 'color' => '#3b82f6'],
-    'admin' => ['name' => 'Administration', 'icon' => '⚙️', 'color' => '#64748b'],
+    'port' => ['name' => 'Frais de port', 'icon' => '📦', 'color' => '#06b6d4', 'alias' => 'calculateur'],
+    'adr' => ['name' => 'ADR', 'icon' => '⚠️', 'color' => '#dc2626'],
+    'qualite' => ['name' => 'Contrôle qualité', 'icon' => '🔬', 'color' => '#059669'],
+    'materiel' => ['name' => 'Gestion du matériel', 'icon' => '🔨', 'color' => '#6b7280'],
+    'epi' => ['name' => 'Équipements de protection', 'icon' => '🥽', 'color' => '#f59e0b'],
+    'user' => ['name' => 'Mon compte', 'icon' => '👤', 'color' => '#3b82f6', 'alias' => 'profile'],
+    'admin' => ['name' => 'Administration', 'icon' => '⚙️', 'color' => '#64748b', 'restricted' => ['admin', 'dev']],
 ];
 
 // Détection et propriétés du module actuel
@@ -60,7 +63,34 @@ $module_name = $all_modules[$current_module]['name'] ?? 'Guldagil';
 
 // Navigation et fil d'ariane
 $navigation_modules = $user_authenticated ? getNavigationModules($current_user['role'], $all_modules) : [];
-$breadcrumbs = $breadcrumbs ?? [['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => true]];
+
+// Génération automatique du fil d'ariane pour toutes les pages sauf l'index principal
+$is_home_page = ($_SERVER['REQUEST_URI'] === '/' || $_SERVER['REQUEST_URI'] === '/index.php');
+if (!isset($breadcrumbs) || empty($breadcrumbs)) {
+    $breadcrumbs = [['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => $is_home_page]];
+    
+    if (!$is_home_page) {
+        // Ajouter le module actuel
+        if (isset($all_modules[$current_module]) && $current_module !== 'home') {
+            $breadcrumbs[] = [
+                'icon' => $all_modules[$current_module]['icon'] ?? '📁',
+                'text' => $all_modules[$current_module]['name'] ?? ucfirst($current_module),
+                'url' => '/' . $current_module . '/',
+                'active' => ($page_title == $all_modules[$current_module]['name'])
+            ];
+        }
+        
+        // Ajouter la page courante si elle est différente du module
+        if ($page_title != ($all_modules[$current_module]['name'] ?? '') && !$is_home_page) {
+            $breadcrumbs[] = [
+                'icon' => '', 
+                'text' => $page_title,
+                'url' => '', 
+                'active' => true
+            ];
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -115,6 +145,18 @@ $breadcrumbs = $breadcrumbs ?? [['icon' => '🏠', 'text' => 'Accueil', 'url' =>
             <?php else: ?>
             <a href="/auth/login.php" class="login-btn">🔑 Connexion</a>
             <?php endif; ?>
+        </div>
+        
+        <!-- Élément caché qui apparaît au scroll -->
+        <div class="scroll-header" id="scrollHeader">
+            <div class="scroll-header-container">
+                <div class="module-info">
+                    <span class="module-icon"><?= $module_icon ?></span>
+                    <span class="module-name"><?= $module_name ?></span>
+                </div>
+                <div class="current-page-title"><?= $page_title ?></div>
+                <div class="scroll-placeholder"></div>
+            </div>
         </div>
     </header>
 

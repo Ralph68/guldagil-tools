@@ -22,12 +22,13 @@ $breadcrumbs = [
 
 // Définition des modules pour l'affichage des cartes sur cette page
 $all_modules = [
-    'calculateur' => ['name' => 'Calculateur Frais de Port', 'description' => 'Calcul intelligent des frais de transport.', 'icon' => '📦', 'url' => '/port/', 'status' => 'active', 'color' => '#0ea5e9', 'category' => 'Logistique & Transport', 'priority' => 1],
+    'port' => ['name' => 'Calculateur Frais de Port', 'description' => 'Calcul intelligent des frais de transport.', 'icon' => '📦', 'url' => '/port/', 'status' => 'active', 'color' => '#0ea5e9', 'category' => 'Logistique & Transport', 'priority' => 1, 'alias' => 'calculateur'],
     'adr' => ['name' => 'Module ADR', 'description' => 'Gestion des marchandises dangereuses.', 'icon' => '⚠️', 'url' => '/adr/', 'status' => 'development', 'color' => '#dc2626', 'category' => 'Sécurité & Conformité', 'priority' => 2],
     'qualite' => ['name' => 'Contrôle Qualité', 'description' => 'Suivi et contrôle qualité des processus.', 'icon' => '🔬', 'url' => '/qualite/', 'status' => 'development', 'color' => '#059669', 'category' => 'Qualité & Contrôles', 'priority' => 3],
-    'maintenance' => ['name' => 'Maintenance & Outillages', 'description' => 'Gestion de la maintenance préventive.', 'icon' => '🔧', 'url' => '/maintenance/', 'status' => 'development', 'color' => '#6b7280', 'category' => 'Maintenance & Matériel', 'priority' => 4],
-    'user' => ['name' => 'Mon Espace Personnel', 'description' => 'Profil, paramètres et historique.', 'icon' => '👤', 'url' => '/user/', 'status' => 'active', 'color' => '#9b59b6', 'category' => 'Personnel & Compte', 'priority' => 5],
-    'admin' => ['name' => 'Administration', 'description' => 'Configuration avancée du portail.', 'icon' => '⚙️', 'url' => '/admin/', 'status' => 'active', 'color' => '#34495e', 'category' => 'Système & Configuration', 'priority' => 6]
+    'materiel' => ['name' => 'Gestion du matériel', 'description' => 'Inventaire et gestion du matériel.', 'icon' => '🔨', 'url' => '/materiel/', 'status' => 'development', 'color' => '#6b7280', 'category' => 'Maintenance & Matériel', 'priority' => 4],
+    'epi' => ['name' => 'Équipements de protection', 'description' => 'Gestion des EPI et équipements de sécurité.', 'icon' => '🥽', 'url' => '/epi/', 'status' => 'development', 'color' => '#f59e0b', 'category' => 'Sécurité & Conformité', 'priority' => 5],
+    'user' => ['name' => 'Mon Espace Personnel', 'description' => 'Profil, paramètres et historique.', 'icon' => '👤', 'url' => '/user/', 'status' => 'active', 'color' => '#9b59b6', 'category' => 'Personnel & Compte', 'priority' => 6, 'alias' => 'profile'],
+    'admin' => ['name' => 'Administration', 'description' => 'Configuration avancée du portail.', 'icon' => '⚙️', 'url' => '/admin/', 'status' => 'active', 'color' => '#34495e', 'category' => 'Système & Configuration', 'priority' => 7, 'restricted' => ['admin', 'dev']]
 ];
 
 // --- Inclusion du header ---

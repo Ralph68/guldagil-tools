@@ -253,18 +253,31 @@ if (!function_exists('canAccessModule')) {
 }
 
 if (!function_exists('getNavigationModules')) {
-    function getNavigationModules(string $user_role, array $all_modules_from_page): array 
-    {
-        $accessibleModuleKeys = RoleManager::getAccessibleModules($user_role);
-        $navigation = [];
-
-        foreach ($all_modules_from_page as $key => $module) {
-            if (in_array($key, $accessibleModuleKeys)) {
-                $navigation[$key] = $module;
+    /**
+     * Récupère les modules de navigation en fonction du rôle de l'utilisateur
+     * @param string $userRole Le rôle de l'utilisateur
+     * @param array $modules Tableau des modules disponibles
+     * @return array Modules filtrés selon les droits
+     */
+    function getNavigationModules($userRole, $modules) {
+        $filteredModules = [];
+        
+        foreach ($modules as $id => $module) {
+            // Sauter le module home qui est toujours accessible via le logo
+            if ($id === 'home') continue;
+            
+            // Vérifier si le module est restreint à certains rôles
+            if (isset($module['restricted']) && is_array($module['restricted'])) {
+                if (!in_array($userRole, $module['restricted'])) {
+                    continue; // Sauter ce module si l'utilisateur n'a pas le rôle requis
+                }
             }
+            
+            // Ajouter le module au tableau filtré
+            $filteredModules[$id] = $module;
         }
-
-        return $navigation;
+        
+        return $filteredModules;
     }
 }
 
