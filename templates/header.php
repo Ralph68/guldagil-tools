@@ -99,9 +99,9 @@ if (!isset($breadcrumbs) || empty($breadcrumbs)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - <?= $app_name ?></title>
     <link rel="icon" type="image/png" href="/assets/img/favicon.png">
-    <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="./assets/css/header.css?v=<?= $build_number ?>">
     <?php if (($module_css ?? true) && $current_module !== 'home' && file_exists(ROOT_PATH . "/assets/css/{$current_module}.css")): ?>
-        <link rel="stylesheet" href="/assets/css/<?= $current_module ?>.css?v=<?= $build_number ?>">
+        <link rel="stylesheet" href="./assets/css/<?= $current_module ?>.css?v=<?= $build_number ?>">
     <?php endif; ?>
 
     <?php
@@ -109,9 +109,9 @@ if (!isset($breadcrumbs) || empty($breadcrumbs)) {
     if (
         ($module_js ?? true)
         && $current_module !== 'home'
-        && file_exists(ROOT_PATH . "/assets/js/{$current_module}.js")
+        && file_exists(ROOT_PATH . "./assets/js/{$current_module}.js")
     ): ?>
-        <script src="/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
+        <script src="./assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
     <?php endif; ?>
     <style>:root { --current-module-color: <?= $module_color ?>; }</style>
 </head>
