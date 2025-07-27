@@ -1,12 +1,18 @@
 <?php
 /**
- * Titre: Politique de confidentialité du portail
- * Chemin: /public/privacy.php
+ * Titre: Politique de confidentialité
+ * Chemin: /public/legal/privacy.php
  * Version: 0.5 beta + build auto
  */
 
+// Vérification et définition de ROOT_PATH si nécessaire
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', dirname(dirname(__DIR__)));
+}
+
 // Configuration et includes
-require_once __DIR__ . '/../config/version.php';
+require_once ROOT_PATH . '/config/version.php';
+require_once ROOT_PATH . '/config/config.php';
 
 // Meta données de la page
 $page_title = "Politique de confidentialité";

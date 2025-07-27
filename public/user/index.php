@@ -281,45 +281,53 @@ if (!empty($restricted_modules)) {
     ];
 }
 
-// Activités récentes simulées
-$recent_activities = [
-    [
-        'icon' => '🔐',
-        'title' => 'Connexion réussie',
-        'time' => 'Maintenant',
-        'type' => 'login',
-        'details' => 'Authentification avec AuthManager'
-    ],
-    [
-        'icon' => '🧮',
-        'title' => 'Calcul frais de port',
-        'time' => 'Il y a 15 min',
-        'type' => 'calculation',
-        'details' => 'Heppner France - Colis 5kg Paris->Lyon'
-    ],
-    [
-        'icon' => '👤',
-        'title' => 'Mise à jour profil',
-        'time' => 'Hier à 14:30',
-        'type' => 'profile',
-        'details' => 'Modification préférences notifications'
-    ],
-    [
-        'icon' => '📊',
-        'title' => 'Export rapport',
-        'time' => 'Avant-hier',
-        'type' => 'export',
-        'details' => 'Téléchargement historique calculs PDF'
-    ]
-];
+// Charger les activités récentes depuis la base de données
+function loadRecentActivities($userId, $db) {
+    $stmt = $db->prepare("
+        SELECT icon, title, details, type, time 
+        FROM user_activities 
+        WHERE user_id = :user_id 
+        ORDER BY time DESC 
+        LIMIT 10
+    ");
+    $stmt->execute(['user_id' => $userId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
-// Statistiques utilisateur détaillées
-$user_stats = [
-    'derniere_connexion' => $current_user['last_login'] ?? date('d/m/Y H:i'),
-    'nb_calculs' => rand(15, 150),
-    'modules_actifs' => count(array_filter($user_modules, fn($m) => $m['can_access'])),
-    'notifications' => rand(0, 5),
-    'temps_session' => '2h 15min',
+// Charger les statistiques utilisateur depuis la base de données
+function loadUserStats($userId, $db) {
+    $stmt = $db->prepare("
+        SELECT 
+            last_login, 
+            nb_calculs, 
+            modules_actifs, 
+            notifications, 
+            temps_session, 
+            derniere_ip 
+        FROM user_stats 
+        WHERE user_id = :user_id
+    ");
+    $stmt->execute(['user_id' => $userId]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// Charger les activités récentes et statistiques utilisateur
+if ($user_authenticated) {
+    $userId = $current_user['id'] ?? null;
+    if ($userId) {
+        $recent_activities = loadRecentActivities($userId, $db);
+        $user_stats = loadUserStats($userId, $db);
+    }
+}
+
+// Remplacer les données de démonstration par les données réelles
+$recent_activities = $recent_activities ?? [];
+$user_stats = $user_stats ?? [
+    'last_login' => date('d/m/Y H:i'),
+    'nb_calculs' => 0,
+    'modules_actifs' => 0,
+    'notifications' => 0,
+    'temps_session' => '0h 0min',
     'derniere_ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
 ];
 

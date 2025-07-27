@@ -1,17 +1,17 @@
 <?php
 /**
- * Titre: Mentions légales conformes à la réglementation française 2025
+ * Titre: Mentions légales
  * Chemin: /public/legal/mentions.php
  * Version: 0.5 beta + build auto
  */
 
 // Configuration et includes
-require_once __DIR__ . '/../../config/version.php';
-require_once __DIR__ . '/../../config/config.php';
+require_once ROOT_PATH . '/config/version.php';
+require_once ROOT_PATH . '/config/config.php';
 
 // Meta données de la page
 $page_title = "Mentions légales";
-$page_description = "Mentions légales obligatoires du portail Guldagil - Conformité réglementation française 2025";
+$page_description = "Mentions légales du portail Guldagil - Conformité légale et réglementaire";
 $page_type = "legal";
 $current_module = "legal";
 
@@ -43,7 +43,7 @@ $module_css = true;
             <div class="legal-header">
                 <h1>⚖️ Mentions légales</h1>
                 <p class="legal-meta">
-                    <strong>Conformément à la loi n° 2004-575 du 21 juin 2004 et à la réglementation française en vigueur</strong><br>
+                    <strong>Conformité légale et réglementaire</strong><br>
                     Dernière mise à jour : <?= date('d/m/Y', BUILD_TIMESTAMP) ?><br>
                     Version du portail : <?= APP_VERSION ?> - Build <?= BUILD_NUMBER ?>
                 </p>
@@ -446,10 +446,5 @@ $module_css = true;
     </main>
 
     <?php include ROOT_PATH . '/templates/footer.php'; ?>
-
-    <!-- Horodatage et build fixe OBLIGATOIRE -->
-    <div class="build-info">
-        <p>Version <?= APP_VERSION ?> - Build <?= BUILD_NUMBER ?> - <?= date('d/m/Y H:i', BUILD_TIMESTAMP) ?></p>
-    </div>
 </body>
 </html>

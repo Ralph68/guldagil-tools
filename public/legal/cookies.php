@@ -6,8 +6,8 @@
  */
 
 // Configuration et includes
-require_once __DIR__ . '/../../config/version.php';
-require_once __DIR__ . '/../../config/config.php';
+require_once ROOT_PATH . '/config/version.php';
+require_once ROOT_PATH . '/config/config.php';
 
 // Meta données de la page
 $page_title = "Politique de cookies";
@@ -546,10 +546,5 @@ $module_css = true;
     </main>
 
     <?php include ROOT_PATH . '/templates/footer.php'; ?>
-
-    <!-- Horodatage et build fixe OBLIGATOIRE -->
-    <div class="build-info">
-        <p>Version <?= APP_VERSION ?> - Build <?= BUILD_NUMBER ?> - <?= date('d/m/Y H:i', BUILD_TIMESTAMP) ?></p>
-    </div>
 </body>
 </html>

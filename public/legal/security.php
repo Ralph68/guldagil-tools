@@ -6,12 +6,12 @@
  */
 
 // Configuration et includes
-require_once __DIR__ . '/../../config/version.php';
-require_once __DIR__ . '/../../config/config.php';
+require_once ROOT_PATH . '/config/version.php';
+require_once ROOT_PATH . '/config/config.php';
 
 // Meta données de la page
 $page_title = "Politique de sécurité";
-$page_description = "Mesures de sécurité et procédures de protection du portail Guldagil";
+$page_description = "Politique de sécurité du portail Guldagil - Protection des données et conformité";
 $page_type = "legal";
 $current_module = "legal";
 
@@ -42,9 +42,9 @@ $module_css = true;
     <main class="legal-main">
         <div class="legal-container">
             <div class="legal-header">
-                <h1>🔐 Politique de sécurité informatique</h1>
+                <h1>🔒 Politique de sécurité</h1>
                 <p class="legal-meta">
-                    <strong>Portail interne Guldagil - Mesures de protection</strong><br>
+                    <strong>Protection des données et conformité</strong><br>
                     Dernière mise à jour : <?= date('d/m/Y', BUILD_TIMESTAMP) ?><br>
                     Version du portail : <?= APP_VERSION ?> - Build <?= BUILD_NUMBER ?>
                 </p>
@@ -516,15 +516,7 @@ $module_css = true;
                         <li><strong>Utilisateurs :</strong> Impact sur leurs données (72h max)</li>
                         <li><strong>Autorités sectorielles :</strong> Selon réglementation transport</li>
                         <li><strong>Assureur cyber :</strong> Déclaration sinistre (48h)</li>
-                    </ul>neur</h4>
-                            <p><strong>Délai :</strong> 24 heures</p>
-                            <ul>
-                                <li>Bug interface utilisateur</li>
-                                <li>Performance dégradée</li>
-                                <li>Erreur de calcul ponctuelle</li>
-                            </ul>
-                        </div>
-                    </div>
+                    </ul>
 
                     <h3>Notifications obligatoires</h3>
                     <ul>
