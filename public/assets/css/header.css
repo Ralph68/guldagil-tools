@@ -81,7 +81,8 @@
 body {
     margin: 0;
     padding: 0;
-    padding-top: var(--header-height);
+    /* Ajustement pour tenir compte de tous les éléments d'en-tête */
+    padding-top: calc(var(--header-height) + var(--nav-height) + var(--breadcrumb-height));
 }
 
 /* === HEADER PRINCIPAL === */
@@ -721,6 +722,23 @@ body.scrolled .header-container {
     top: 0;
     left: 0;
     width: 100%;
+}
+
+/* === MAIN CONTENT === */
+.main-content {
+    /* Ajout pour s'assurer que le contenu principal commence bien après les éléments d'en-tête */
+    position: relative;
+    z-index: 1; /* Valeur inférieure aux éléments d'en-tête */
+    margin-top: 1rem; /* Espace supplémentaire pour la séparation visuelle */
+}
+
+/* Ajustements conditionnels selon la présence ou non du fil d'ariane */
+body:not(.no-breadcrumb) .main-content {
+    padding-top: 0; /* Reset car déjà géré par le padding-top sur body */
+}
+
+body.no-breadcrumb .main-content {
+    padding-top: 1rem; /* Espace supplémentaire quand il n'y a pas de fil d'ariane */
 }
 
 /* === RESPONSIVE === */

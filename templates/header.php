@@ -189,7 +189,13 @@ if (!isset($breadcrumbs) || empty($breadcrumbs)) {
             <?php endforeach; ?>
         </div>
     </nav>
+    <?php else: ?>
+    <!-- Ajout d'une classe pour identifier l'absence de fil d'ariane -->
+    <script>document.body.classList.add('no-breadcrumb');</script>
     <?php endif; ?>
+
+    <!-- Ajouter un indicateur visuel pour aider à identifier la transition entre l'en-tête et le contenu -->
+    <div class="content-separator"></div>
 
     <main class="main-content">
     <!-- Le contenu de la page commence ici -->
