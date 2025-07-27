@@ -30,17 +30,7 @@ $page_type = "legal";
     <link rel="stylesheet" href="/assets/css/legal.css?v<?= substr(BUILD_NUMBER, -6) ?>">
 </head>
 <body class="legal-page">
-    <header class="portal-header">
-        <div class="header-container">
-            <div class="header-brand">
-                <h1 class="brand-title"><?= APP_NAME ?></h1>
-                <span class="brand-version">v<?= APP_VERSION ?> build <?= BUILD_NUMBER ?></span>
-            </div>
-            <nav class="header-nav">
-                <a href="/index.php" class="nav-link">🏠 Accueil</a>
-            </nav>
-        </div>
-    </header>
+    <?php include ROOT_PATH . '/templates/header.php'; ?>
 
     <main class="legal-main">
         <div class="legal-container">
@@ -160,6 +150,16 @@ $page_type = "legal";
             <div class="legal-footer">
                 <div class="legal-actions">
                     <a href="/index.php" class="btn btn-primary">🏠 Retour à l'accueil</a>
+                    <a href="/terms.php" class="btn btn-secondary">📋 Conditions d'utilisation</a>
+                    <a href="/security.php" class="btn btn-secondary">🔐 Sécurité</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <?php include ROOT_PATH . '/templates/footer.php'; ?>
+</body>
+</html>
                     <a href="/terms.php" class="btn btn-secondary">📋 Conditions d'utilisation</a>
                     <a href="/security.php" class="btn btn-secondary">🔐 Sécurité</a>
                 </div>
