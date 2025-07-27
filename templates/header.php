@@ -1,95 +1,37 @@
 <?php
 /**
- * Titre: Header Unifié du Portail Guldagil
+ * Titre: Header principal du portail avec chemins CSS/JS corrigés
  * Chemin: /templates/header.php
- * Version: 1.3 - Nettoyage final et centralisation
+ * Version: 0.5 beta + build auto
  */
 
-// Protection et configuration de base
-if (!defined('ROOT_PATH')) {
-    define('ROOT_PATH', dirname(__DIR__));
-}
-require_once ROOT_PATH . '/config/roles.php';
-
-// --- Initialisation et Authentification ---
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-$user_authenticated = false;
-$current_user = null;
-if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-    require_once ROOT_PATH . '/core/auth/AuthManager.php';
-    $auth = new AuthManager();
-    if ($auth->isAuthenticated()) {
-        $user_authenticated = true;
-        $current_user = $auth->getCurrentUser();
-    }
-}
-
-// Redirection si la page n'est pas publique et que l'utilisateur n'est pas connecté
-$public_pages = ['/auth/login.php', '/auth/logout.php', '/error.php'];
-$is_public_page = in_array($_SERVER['SCRIPT_NAME'], $public_pages);
-
-if (!$is_public_page && !$user_authenticated) {
-    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI'] ?? '/'));
-    exit;
-}
-
-// --- Variables de Page et Module ---
-$page_title = htmlspecialchars($page_title ?? 'Portail Guldagil');
-$page_subtitle = htmlspecialchars($page_subtitle ?? 'Solutions professionnelles');
+// Variables par défaut si non définies
 $current_module = $current_module ?? 'home';
+$app_name = $app_name ?? 'Guldagil';
+$app_version = $app_version ?? '0.5 beta';
+$build_number = $build_number ?? date('Ymd') . '001';
+$page_title = $page_title ?? 'Accueil';
+$page_description = $page_description ?? 'Portail de gestion';
+$app_author = $app_author ?? 'Guldagil';
+$user_authenticated = $user_authenticated ?? false;
+$current_user = $current_user ?? null;
+$all_modules = $all_modules ?? [];
+$module_css = $module_css ?? true;
+$module_js = $module_js ?? true;
 
-$app_name = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
-$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd');
+// Titre complet de la page
+$full_title = $page_title . ' - ' . $app_name . ' v' . $app_version;
 
-// Définition des modules (si non définis par la page appelante)
-$all_modules = $all_modules ?? [
-    'home' => ['name' => 'Accueil', 'icon' => '🏠', 'color' => '#0ea5e9'],
-    'port' => ['name' => 'Frais de port', 'icon' => '📦', 'color' => '#06b6d4', 'alias' => 'calculateur'],
-    'adr' => ['name' => 'ADR', 'icon' => '⚠️', 'color' => '#dc2626'],
-    'qualite' => ['name' => 'Contrôle qualité', 'icon' => '🔬', 'color' => '#059669'],
-    'materiel' => ['name' => 'Gestion du matériel', 'icon' => '🔨', 'color' => '#6b7280'],
-    'epi' => ['name' => 'Équipements de protection', 'icon' => '🥽', 'color' => '#f59e0b'],
-    'user' => ['name' => 'Mon compte', 'icon' => '👤', 'color' => '#3b82f6', 'alias' => 'profile'],
-    'admin' => ['name' => 'Administration', 'icon' => '⚙️', 'color' => '#64748b', 'restricted' => ['admin', 'dev']],
-];
+// Icône, couleur et statut du module actuel
+$module_icon = $all_modules[$current_module]['icon'] ?? '🏠';
+$module_color = $all_modules[$current_module]['color'] ?? '#3182ce';
+$module_status = $all_modules[$current_module]['status'] ?? 'active';
 
-// Détection et propriétés du module actuel
-$module_icon = $all_modules[$current_module]['icon'] ?? '💧';
-$module_color = $all_modules[$current_module]['color'] ?? '#3b82f6';
-$module_name = $all_modules[$current_module]['name'] ?? 'Guldagil';
-
-// Navigation et fil d'ariane
-$navigation_modules = $user_authenticated ? getNavigationModules($current_user['role'], $all_modules) : [];
-
-// Génération automatique du fil d'ariane pour toutes les pages sauf l'index principal
-$is_home_page = ($_SERVER['REQUEST_URI'] === '/' || $_SERVER['REQUEST_URI'] === '/index.php');
-if (!isset($breadcrumbs) || empty($breadcrumbs)) {
-    $breadcrumbs = [['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => $is_home_page]];
-    
-    if (!$is_home_page) {
-        // Ajouter le module actuel
-        if (isset($all_modules[$current_module]) && $current_module !== 'home') {
-            $breadcrumbs[] = [
-                'icon' => $all_modules[$current_module]['icon'] ?? '📁',
-                'text' => $all_modules[$current_module]['name'] ?? ucfirst($current_module),
-                'url' => '/' . $current_module . '/',
-                'active' => ($page_title == $all_modules[$current_module]['name'])
-            ];
-        }
-        
-        // Ajouter la page courante si elle est différente du module
-        if ($page_title != ($all_modules[$current_module]['name'] ?? '') && !$is_home_page) {
-            $breadcrumbs[] = [
-                'icon' => '', 
-                'text' => $page_title,
-                'url' => '', 
-                'active' => true
-            ];
-        }
-    }
+// Navigation modules avec système de rôles centralisé
+$navigation_modules = [];
+if ($user_authenticated) {
+    $user_role = $current_user['role'] ?? 'user';
+    $navigation_modules = getNavigationModules($user_role, $all_modules);
 }
 ?>
 <!DOCTYPE html>
@@ -97,115 +39,220 @@ if (!isset($breadcrumbs) || empty($breadcrumbs)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $page_title ?> - <?= $app_name ?></title>
+    <meta name="description" content="<?= $page_description ?>">
+    <meta name="author" content="<?= $app_author ?>">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="<?= $module_color ?>">
+    
+    <title><?= $full_title ?></title>
+
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="/assets/img/favicon.png">
-    <link rel="stylesheet" href="assets/css/header.css?v=<?= $build_number ?>">
-    <?php if (($module_css ?? true) && $current_module !== 'home' && file_exists(ROOT_PATH . "/assets/css/{$current_module}.css")): ?>
-        <link rel="stylesheet" href="assets/css/<?= $current_module ?>.css?v=<?= $build_number ?>">
-    <?php endif; ?>
+    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 
-    <?php
-    // Correction du chemin pour éviter la duplication du nom du module
-    if (
-        ($module_js ?? true)
-        && $current_module !== 'home'
-        && file_exists(ROOT_PATH . "assets/js/{$current_module}.js")
-    ): ?>
-        <script src="assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
-    <?php endif; ?>
-    <style>:root { --current-module-color: <?= $module_color ?>; }</style>
-</head>
-<body data-module="<?= $current_module ?>" class="<?= $user_authenticated ? 'authenticated' : 'guest' ?><?= defined('DEBUG') && DEBUG ? ' has-debug' : '' ?>">
+    <!-- CSS principal OBLIGATOIRE - chemins critiques à préserver -->
+    <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/footer.css?v=<?= $build_number ?>">
+    <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
+    <!-- CSS bannière cookie RGPD -->
+    <link rel="stylesheet" href="/assets/css/cookie_banner.css?v=<?= $build_number ?>">
 
-    <?php if (defined('DEBUG') && DEBUG === true): ?>
-    <div class="debug-banner">MODE DEBUG ACTIVÉ</div>
-    <?php endif; ?>
-
-    <header class="portal-header" id="mainHeader">
-        <div class="header-container">
-            <a href="/" class="header-brand">
-                <span class="brand-logo">💧</span>
-                <span class="brand-text"><?= $app_name ?></span>
-            </a>
-            <div class="page-title-section">
-                <h1 class="page-title"><?= $page_title ?></h1>
-                <?php if (!empty($page_subtitle)): ?><p class="page-subtitle"><?= $page_subtitle ?></p><?php endif; ?>
-            </div>
-            <?php if ($user_authenticated && $current_user): ?>
-            <div class="user-nav">
-                <button class="user-trigger" id="userTrigger" aria-expanded="false">
-                    <div class="user-avatar"><?= strtoupper(substr($current_user['username'] ?? 'U', 0, 1)) ?></div>
-                    <div class="user-info">
-                        <span class="user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></span>
-                        <span class="user-role"><?= ucfirst($current_user['role'] ?? 'user') ?></span>
-                    </div>
-                    <span class="dropdown-arrow">▼</span>
-                </button>
-                <div class="user-dropdown" id="userDropdown" aria-hidden="true">
-                    <a href="/user/" class="dropdown-item">👤 Mon profil</a>
-                    <a href="/user/settings.php" class="dropdown-item">⚙️ Paramètres</a>
-                    <?php if (RoleManager::hasCapability($current_user['role'], 'view_admin')): ?>
-                        <div class="dropdown-divider"></div>
-                        <a href="/admin/" class="dropdown-item">🔧 Administration</a>
-                    <?php endif; ?>
-                    <div class="dropdown-divider"></div>
-                    <a href="/auth/logout.php" class="dropdown-item logout">🚪 Déconnexion</a>
-                </div>
-            </div>
-            <?php else: ?>
-            <a href="/auth/login.php" class="login-btn">🔑 Connexion</a>
-            <?php endif; ?>
-        </div>
+    <!-- CSS modulaire avec fallback intelligent et chemins CORRIGÉS -->
+    <?php if ($module_css && $current_module !== 'home'): ?>
+        <?php 
+        // 1. Priorité : nouveau système dans /public/module/assets/ - CHEMIN CORRIGÉ
+        $new_css_path = "/{$current_module}/assets/css/{$current_module}.css";
+        $module_css_loaded = false;
         
-        <!-- Élément caché qui apparaît au scroll -->
-        <div class="scroll-header" id="scrollHeader">
-            <div class="scroll-header-container">
-                <div class="module-info">
-                    <span class="module-icon"><?= $module_icon ?></span>
-                    <span class="module-name"><?= $module_name ?></span>
+        // Vérification avec le chemin absolu pour file_exists
+        if (file_exists(ROOT_PATH . "/public{$new_css_path}")): ?>
+            <link rel="stylesheet" href="<?= $new_css_path ?>?v=<?= $build_number ?>">
+            <?php $module_css_loaded = true; ?>
+        <?php endif; ?>
+        
+        <?php if (!$module_css_loaded): ?>
+            <?php 
+            // 2. Fallback : ancien système
+            $legacy_paths = [
+                "/assets/css/modules/{$current_module}.css",
+                "/{$current_module}/css/{$current_module}.css"
+            ];
+            
+            foreach ($legacy_paths as $css_path):
+                if (file_exists(ROOT_PATH . "/public" . $css_path)): ?>
+                    <link rel="stylesheet" href="<?= $css_path ?>?v=<?= $build_number ?>">
+                    <?php break; ?>
+                <?php endif;
+            endforeach; ?>
+        <?php endif; ?>
+    <?php endif; ?>
+
+    <!-- Variable CSS pour la couleur du module -->
+    <style>
+        :root {
+            --current-module-color: <?= $module_color ?>;
+            --current-module-color-light: <?= $module_color ?>20;
+            --current-module-color-dark: <?= $module_color ?>dd;
+        }
+    </style>
+</head>
+<body data-module="<?= $current_module ?>" data-module-status="<?= $module_status ?>" 
+      class="<?= $user_authenticated ? 'authenticated' : 'auth-page' ?>">
+
+    <!-- Bannière de debug (masquée en production) -->
+    <?php if (defined('DEBUG') && DEBUG === true): ?>
+    <div class="debug-banner" style="background: #dc2626; color: white; padding: 0.5rem; text-align: center; font-size: 0.875rem;">
+        🔒 MODE DEBUG - <?= htmlspecialchars($current_user['username'] ?? 'non connecté') ?> 
+        <?php if ($current_user): ?>(<?= htmlspecialchars($current_user['role'] ?? 'User') ?>)<?php endif; ?> | 
+        <?= date('H:i:s') ?> | 
+        IP: <?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'unknown') ?> |
+        Module: <?= $current_module ?> |
+        Build: <?= $build_number ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Header principal -->
+    <header class="portal-header">
+        <div class="header-container">
+            <!-- Logo et branding -->
+            <a href="/" class="header-brand">
+                <div class="header-logo">
+                    <?php if (file_exists(ROOT_PATH . '/public/assets/img/logo.png')): ?>
+                        <img src="/assets/img/logo.png" alt="<?= $app_name ?>" width="32" height="32">
+                    <?php else: ?>
+                        <div class="logo-placeholder"><?= $module_icon ?></div>
+                    <?php endif; ?>
                 </div>
-                <div class="current-page-title"><?= $page_title ?></div>
-                <div class="scroll-placeholder"></div>
+                <div class="header-brand-text">
+                    <span class="brand-name"><?= $app_name ?></span>
+                    <span class="brand-version">v<?= $app_version ?></span>
+                </div>
+            </a>
+
+            <!-- Titre de page/module -->
+            <div class="header-page-info">
+                <h1 class="page-title"><?= $page_title ?></h1>
+                <?php if ($current_module !== 'home'): ?>
+                    <div class="module-indicator">
+                        <span class="module-icon"><?= $module_icon ?></span>
+                        <span class="module-name"><?= $all_modules[$current_module]['name'] ?? ucfirst($current_module) ?></span>
+                    </div>
+                <?php endif; ?>
             </div>
+
+            <!-- Zone utilisateur -->
+            <?php if ($user_authenticated): ?>
+                <div class="header-user">
+                    <div class="user-dropdown">
+                        <button class="user-menu-trigger" id="userMenuTrigger">
+                            <div class="user-avatar">
+                                <?= strtoupper(substr($current_user['username'] ?? 'U', 0, 1)) ?>
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></span>
+                                <span class="user-role"><?= htmlspecialchars($current_user['role'] ?? 'User') ?></span>
+                            </div>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        
+                        <div class="dropdown-menu" id="userDropdownMenu">
+                            <a href="/user/profile.php" class="dropdown-item">
+                                👤 Mon profil
+                            </a>
+                            <a href="/user/settings.php" class="dropdown-item">
+                                ⚙️ Paramètres
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="/auth/logout.php" class="dropdown-item logout">
+                                🚪 Déconnexion
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="header-auth">
+                    <a href="/auth/login.php" class="btn btn-primary">Se connecter</a>
+                </div>
+            <?php endif; ?>
         </div>
     </header>
 
+    <!-- Navigation modules -->
     <?php if ($user_authenticated && !empty($navigation_modules)): ?>
-    <nav class="modules-nav" id="mainNav">
+    <nav class="modules-nav">
         <div class="nav-container">
             <div class="nav-items">
-                <?php foreach ($navigation_modules as $module_key => $module_data): ?>
-                    <a href="/<?= $module_key ?>/" class="nav-item <?= $current_module === $module_key ? 'active' : '' ?>" style="--module-color: <?= $module_data['color'] ?? '#3b82f6' ?>">
-                        <span class="nav-icon"><?= $module_data['icon'] ?? '📁' ?></span>
-                        <span class="nav-text"><?= htmlspecialchars($module_data['name']) ?></span>
+                <?php foreach ($navigation_modules as $module => $module_info): ?>
+                    <a href="/<?= $module ?>/" 
+                       class="nav-item <?= $current_module === $module ? 'active' : '' ?>"
+                       title="<?= htmlspecialchars($module_info['description'] ?? '') ?>">
+                        <span class="nav-icon"><?= $module_info['icon'] ?? '📁' ?></span>
+                        <span class="nav-text"><?= htmlspecialchars($module_info['name']) ?></span>
                     </a>
                 <?php endforeach; ?>
             </div>
-            <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Menu principal"><span></span><span></span><span></span></button>
         </div>
     </nav>
     <?php endif; ?>
 
-    <?php if (count($breadcrumbs) > 1): ?>
-    <nav class="breadcrumb-nav" id="breadcrumbNav">
-        <div class="breadcrumb-container">
-            <?php foreach ($breadcrumbs as $index => $crumb): ?>
-                <?php if ($index > 0) echo '<span class="breadcrumb-separator">›</span>'; ?>
-                <?php if (!empty($crumb['url']) && !($crumb['active'] ?? false)): ?>
-                    <a href="<?= htmlspecialchars($crumb['url']) ?>" class="breadcrumb-item"><?= $crumb['icon'] ?? '' ?> <?= htmlspecialchars($crumb['text']) ?></a>
-                <?php else: ?>
-                    <span class="breadcrumb-item active"><?= $crumb['icon'] ?? '' ?> <?= htmlspecialchars($crumb['text']) ?></span>
-                <?php endif; ?>
-            <?php endforeach; ?>
-        </div>
-    </nav>
-    <?php else: ?>
-    <!-- Ajout d'une classe pour identifier l'absence de fil d'ariane -->
-    <script>document.body.classList.add('no-breadcrumb');</script>
+    <!-- Contenu principal commence ici -->
+    <main class="portal-main">
+
+<!-- JavaScript CORRIGÉ pour éviter duplication du nom du module -->
+<?php if ($module_js && $current_module !== 'home'): ?>
+    <?php 
+    // Priorité : nouveau système dans /public/module/assets/ - CHEMIN CORRIGÉ
+    $new_js_path = "/{$current_module}/assets/js/{$current_module}.js";
+    $module_js_loaded = false;
+    
+    // Vérification avec le chemin absolu pour file_exists
+    if (file_exists(ROOT_PATH . "/public{$new_js_path}")): ?>
+        <script src="<?= $new_js_path ?>?v=<?= $build_number ?>"></script>
+        <?php $module_js_loaded = true; ?>
     <?php endif; ?>
+    
+    <?php if (!$module_js_loaded): ?>
+        <?php 
+        // Fallback : ancien système
+        $legacy_js_paths = [
+            "/assets/js/modules/{$current_module}.js",
+            "/{$current_module}/js/{$current_module}.js"
+        ];
+        
+        foreach ($legacy_js_paths as $js_path):
+            if (file_exists(ROOT_PATH . "/public" . $js_path)): ?>
+                <script src="<?= $js_path ?>?v=<?= $build_number ?>"></script>
+                <?php break; ?>
+            <?php endif;
+        endforeach; ?>
+    <?php endif; ?>
+<?php endif; ?>
 
-    <!-- Ajouter un indicateur visuel pour aider à identifier la transition entre l'en-tête et le contenu -->
-    <div class="content-separator"></div>
+<!-- JavaScript bannière cookie RGPD -->
+<script src="/assets/js/cookie_banner.js?v=<?= $build_number ?>"></script>
+<script src="/assets/js/cookie_config.js?v=<?= $build_number ?>"></script>
+<!-- Analytics -->
+<script src="/assets/js/analytics.js?v=<?= $build_number ?>"></script>
 
-    <main class="main-content">
-    <!-- Le contenu de la page commence ici -->
+<!-- JavaScript pour dropdown utilisateur -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userMenuTrigger = document.getElementById('userMenuTrigger');
+    const userDropdownMenu = document.getElementById('userDropdownMenu');
+    
+    if (userMenuTrigger && userDropdownMenu) {
+        userMenuTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            userDropdownMenu.classList.toggle('show');
+        });
+        
+        // Fermer au clic extérieur
+        document.addEventListener('click', function(e) {
+            if (!userMenuTrigger.contains(e.target) && !userDropdownMenu.contains(e.target)) {
+                userDropdownMenu.classList.remove('show');
+            }
+        });
+    }
+});
+</script>

@@ -53,6 +53,9 @@ uasort($user_modules, fn($a, $b) => ($a['priority'] ?? 999) <=> ($b['priority'] 
 // Simuler des données pour l'affichage
 $portal_stats = ['modules_accessibles' => count($user_modules), 'calculs_aujourd_hui' => rand(25, 75)];
 $recent_activities = [['icon' => '📦', 'title' => 'Nouveau calcul de frais de port', 'details' => 'Destination: Lyon, Poids: 15kg', 'time' => 'Il y a 5 minutes', 'type' => 'calcul']];
+
+$module_css_path = "/user/assets/css/user.css";
+$module_js_path = "/user/assets/js/user.js";
 ?>
 
 <!-- Le contenu de la page commence ici, après le <main> du header -->
@@ -143,3 +146,5 @@ $recent_activities = [['icon' => '📦', 'title' => 'Nouveau calcul de frais de 
 // --- Inclusion du footer ---
 include_once ROOT_PATH . '/templates/footer.php';
 ?>
+<link rel="stylesheet" href="<?= $module_css_path ?>?v=<?= $build_number ?>">
+<script src="<?= $module_js_path ?>?v=<?= $build_number ?>"></script>
