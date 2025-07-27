@@ -474,6 +474,33 @@ if ($user_authenticated) {
         body.header-compact .portal-main {
             margin-top: 100px;
         }
+
+        /* Navigation modules sticky */
+        .modules-nav {
+            position: sticky;
+            top: 0;
+            z-index: 998;
+            background: white;
+            transition: transform 0.3s ease;
+        }
+
+        .modules-nav.hide-modules-nav {
+            transform: translateY(-100%);
+        }
+
+        /* Fil d'Ariane sticky */
+        .breadcrumb-nav {
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            background: white;
+            transition: padding 0.3s ease;
+        }
+
+        .breadcrumb-nav-minimal {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
     </style>
     <!-- JavaScript bannière cookie RGPD -->
 <script src="/assets/js/cookie_banner.js?v=<?= $build_number ?>"></script>
@@ -705,14 +732,12 @@ if ($user_authenticated) {
     </nav>
 
     <!-- Fil d'Ariane -->
-    <?php if (count($breadcrumbs) > 1): ?>
-    <nav class="breadcrumb-nav">
+    <nav class="breadcrumb-nav" id="breadcrumbNav" style="position:sticky;top:0;z-index:999;">
         <div class="breadcrumb-container">
             <?php foreach ($breadcrumbs as $index => $crumb): ?>
                 <?php if ($index > 0): ?>
                     <span class="breadcrumb-separator">›</span>
                 <?php endif; ?>
-                
                 <?php if (!empty($crumb['url']) && !($crumb['active'] ?? false)): ?>
                     <a href="<?= htmlspecialchars($crumb['url']) ?>" class="breadcrumb-item">
                         <span><?= $crumb['icon'] ?? '' ?></span>
@@ -727,50 +752,54 @@ if ($user_authenticated) {
             <?php endforeach; ?>
         </div>
     </nav>
-    <?php endif; ?>
 
     <!-- Contenu principal -->
     <main class="portal-main">
 
-    <!-- JavaScript pour interactions header -->
+    <!-- JavaScript pour interactions header et menu sticky -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const header = document.getElementById('mainHeader');
-            const headerContainer = document.getElementById('headerContainer');
-            const headerBrand = document.getElementById('headerBrand');
-            const headerBrandText = document.getElementById('headerBrandText');
-            const headerLogo = document.getElementById('headerLogo');
             const headerPageInfo = document.getElementById('headerPageInfo');
+            const headerBrandText = document.getElementById('headerBrandText');
             const headerBreadcrumbs = document.getElementById('headerBreadcrumbs');
-            
+            const modulesNav = document.getElementById('modulesNav');
+            const breadcrumbNav = document.getElementById('breadcrumbNav');
             let isHeaderCompact = false;
-            let scrollTimeout;
+            let isMenuHidden = false;
 
             function handleScroll() {
                 const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                 const shouldBeCompact = scrollTop > 100;
 
+                // Header compact
                 if (shouldBeCompact !== isHeaderCompact) {
                     isHeaderCompact = shouldBeCompact;
-
                     if (isHeaderCompact) {
                         header.classList.add('header-compact');
                         document.body.classList.add('header-compact');
-                        // Compact: logo + nom module à gauche, fil d'ariane centré, cacher titre/sous-titre
                         if(headerPageInfo) headerPageInfo.style.display = 'none';
                         if(headerBrandText) headerBrandText.textContent = "<?= $all_modules[$current_module]['name'] ?? $app_name ?>";
                         if(headerBreadcrumbs) headerBreadcrumbs.style.justifyContent = "center";
                     } else {
                         header.classList.remove('header-compact');
                         document.body.classList.remove('header-compact');
-                        // Normal: logo + nom portail, titre/sous-titre visibles
                         if(headerPageInfo) headerPageInfo.style.display = '';
                         if(headerBrandText) headerBrandText.textContent = "<?= $app_name ?>";
                         if(headerBreadcrumbs) headerBreadcrumbs.style.justifyContent = "center";
                     }
                 }
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {}, 10);
+
+                // Affichage/masquage du menu modules
+                if (scrollTop > 100 && !isMenuHidden) {
+                    modulesNav.classList.add('hide-modules-nav');
+                    breadcrumbNav.classList.add('breadcrumb-nav-minimal');
+                    isMenuHidden = true;
+                } else if (scrollTop <= 100 && isMenuHidden) {
+                    modulesNav.classList.remove('hide-modules-nav');
+                    breadcrumbNav.classList.remove('breadcrumb-nav-minimal');
+                    isMenuHidden = false;
+                }
             }
 
             // Gestion menu utilisateur
@@ -810,11 +839,11 @@ if ($user_authenticated) {
             
             // Gestion menu mobile
             const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-            const modulesNav = document.querySelector('.modules-nav');
+            const modulesNavMobile = document.querySelector('.modules-nav');
             
-            if (mobileMenuToggle && modulesNav) {
+            if (mobileMenuToggle && modulesNavMobile) {
                 mobileMenuToggle.addEventListener('click', function() {
-                    modulesNav.classList.toggle('mobile-open');
+                    modulesNavMobile.classList.toggle('mobile-open');
                     mobileMenuToggle.classList.toggle('open');
                 });
             }
@@ -836,3 +865,32 @@ if ($user_authenticated) {
     <?php if ($module_js && $current_module !== 'home'): ?>
     <script src="<?= $current_module ?>/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
     <?php endif; ?>
+</main>
+
+<!-- Footer simplifié -->
+<footer class="portal-footer">
+    <div class="footer-container">
+        <div class="footer-logo">
+            <?php if (file_exists(ROOT_PATH . '/assets/img/logo_footer.png')): ?>
+                <img src="/assets/img/logo_footer.png" alt="Logo Guldagil" width="120">
+            <?php else: ?>
+                💧
+            <?php endif; ?>
+        </div>
+        <div class="footer-links">
+            <a href="/about.php">À propos</a>
+            <a href="/contact.php">Contact</a>
+            <a href="/legal.php">Mentions légales</a>
+            <a href="/privacy.php">Politique de confidentialité</a>
+        </div>
+    </div>
+</footer>
+
+<!-- Scripts nécessaires -->
+<script src="/assets/js/header.js?v=<?= $build_number ?>"></script>
+<?php if ($module_js && $current_module !== 'home'): ?>
+    <script src="/<?= $current_module ?>/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
+<?php endif; ?>
+
+</body>
+</html>

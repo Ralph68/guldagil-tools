@@ -14,8 +14,17 @@ $page_title = "Documents légaux et politiques";
 $page_description = "Centre de documentation légale - RGPD, conditions d'utilisation et sécurité";
 $page_type = "legal-index";
 
-// Documents légaux disponibles
+// Documents légaux disponibles - AJOUT des mentions légales et cookies
 $legal_documents = [
+    'mentions' => [
+        'title' => 'Mentions légales',
+        'description' => 'Informations légales obligatoires conformes à la réglementation française 2025',
+        'icon' => '⚖️',
+        'file' => 'mentions.php',
+        'last_update' => date('d/m/Y', BUILD_TIMESTAMP),
+        'mandatory' => true,
+        'category' => 'Réglementation'
+    ],
     'privacy' => [
         'title' => 'Politique de confidentialité',
         'description' => 'Protection des données personnelles et respect du RGPD 2025',
@@ -33,6 +42,15 @@ $legal_documents = [
         'last_update' => date('d/m/Y', BUILD_TIMESTAMP),
         'mandatory' => true,
         'category' => 'Utilisation'
+    ],
+    'cookies' => [
+        'title' => 'Politique de cookies',
+        'description' => 'Utilisation des cookies et gestion des préférences utilisateur',
+        'icon' => '🍪',
+        'file' => 'cookies.php',
+        'last_update' => date('d/m/Y', BUILD_TIMESTAMP),
+        'mandatory' => false,
+        'category' => 'Cookies'
     ],
     'security' => [
         'title' => 'Politique de sécurité',
@@ -60,22 +78,18 @@ $legal_stats = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?> - <?= APP_NAME ?></title>
     <meta name="description" content="<?= $page_description ?>">
-    <link rel="stylesheet" href="/assets/css/portal.css">
-    <link rel="stylesheet" href="/assets/css/legal.css">
+    
+    <!-- CSS principal OBLIGATOIRE -->
+    <link rel="stylesheet" href="/assets/css/portal.css?v=<?= BUILD_NUMBER ?>">
+    <link rel="stylesheet" href="/assets/css/header.css?v=<?= BUILD_NUMBER ?>">
+    <link rel="stylesheet" href="/assets/css/footer.css?v=<?= BUILD_NUMBER ?>">
+    <link rel="stylesheet" href="/assets/css/components.css?v=<?= BUILD_NUMBER ?>">
+    <link rel="stylesheet" href="/assets/css/legal.css?v=<?= BUILD_NUMBER ?>">
+    
     <link rel="canonical" href="/legal/">
 </head>
 <body class="legal-page">
-    <header class="portal-header">
-        <div class="header-container">
-            <div class="header-brand">
-                <h1 class="brand-title"><?= APP_NAME ?></h1>
-                <span class="brand-version">v<?= APP_VERSION ?> build <?= BUILD_NUMBER ?></span>
-            </div>
-            <nav class="header-nav">
-                <a href="/index.php" class="nav-link">🏠 Accueil</a>
-            </nav>
-        </div>
-    </header>
+    <?php include ROOT_PATH . '/templates/header.php'; ?>
 
     <main class="legal-main">
         <div class="legal-container">
@@ -83,7 +97,8 @@ $legal_stats = [
                 <h1>⚖️ Centre de documentation légale</h1>
                 <p class="legal-meta">
                     Mise à jour : <?= $legal_stats['last_update'] ?> - Conformité <?= $legal_stats['compliance_status'] ?><br>
-                    Révision : <?= $legal_stats['review_period'] ?> - Version portail : <?= APP_VERSION ?>
+                    Révision : <?= $legal_stats['review_period'] ?> - Version portail : <?= APP_VERSION ?><br>
+                    <strong><?= $legal_stats['documents_total'] ?> documents</strong> dont <strong><?= $legal_stats['documents_mandatory'] ?> obligatoires</strong>
                 </p>
             </div>
 
@@ -98,7 +113,7 @@ $legal_stats = [
                     
                     <div class="documents-grid">
                         <?php foreach ($legal_documents as $doc_id => $document): ?>
-                        <div class="document-card" onclick="window.location.href='/legal/<?= $document['file'] ?>'">
+                        <div class="document-card <?= $document['mandatory'] ? 'mandatory' : 'optional' ?>" onclick="window.location.href='/legal/<?= $document['file'] ?>'">
                             <div class="document-header">
                                 <div class="document-icon"><?= $document['icon'] ?></div>
                                 <div class="document-meta">
@@ -166,8 +181,8 @@ $legal_stats = [
                             <h3>📞 Contact</h3>
                             <p>
                                 Pour toute question sur ces documents :<br>
-                                📧 <a href="mailto:legal@guldagil.com">legal@guldagil.com</a><br>
-                                📧 <a href="mailto:dpo@guldagil.com">dpo@guldagil.com</a> (RGPD)
+                                📧 <a href="mailto:guldagil@guldagil.com">guldagil@guldagil.com</a><br>
+                                📧 <a href="mailto:guldagil@guldagil.com">guldagil@guldagil.com</a> (RGPD)
                             </p>
                         </div>
                     </div>
@@ -194,212 +209,50 @@ $legal_stats = [
                             <li><strong>Responsable :</strong> <?= APP_AUTHOR ?></li>
                         </ul>
                     </div>
+
+                    <div class="compliance-checklist">
+                        <h4>✅ Checklist de conformité</h4>
+                        <ul>
+                            <li>✅ <strong>Loi LCEN</strong> (2004-575) : Mentions légales obligatoires</li>
+                            <li>✅ <strong>RGPD</strong> (2018) : Protection des données personnelles</li>
+                            <li>✅ <strong>Loi Informatique et Libertés</strong> : Version 2025</li>
+                            <li>✅ <strong>Code de la propriété intellectuelle</strong> : Droits d'auteur</li>
+                            <li>✅ <strong>Directive ePrivacy</strong> : Cookies et communications</li>
+                            <li>✅ <strong>Accessibilité numérique</strong> : RGAA 4.1</li>
+                        </ul>
+                    </div>
                 </section>
             </div>
 
             <div class="legal-footer">
                 <div class="legal-actions">
                     <a href="/index.php" class="btn btn-primary">🏠 Retour à l'accueil</a>
+                    <a href="/legal/mentions.php" class="btn btn-secondary">⚖️ Mentions légales</a>
                     <a href="/legal/privacy.php" class="btn btn-secondary">🔒 Confidentialité</a>
                     <a href="/legal/terms.php" class="btn btn-secondary">📋 CGU</a>
+                    <a href="/legal/cookies.php" class="btn btn-secondary">🍪 Cookies</a>
                     <a href="/legal/security.php" class="btn btn-secondary">🔐 Sécurité</a>
+                </div>
+                
+                <div class="legal-summary">
+                    <p>
+                        <small>
+                            📚 <strong>Résumé :</strong> 
+                            Ce centre légal contient tous les documents requis par la réglementation française 
+                            pour un portail d'entreprise traitant des données personnelles. 
+                            Conformité vérifiée : <?= date('m/Y') ?>
+                        </small>
+                    </p>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer class="portal-footer">
-        <div class="footer-container">
-            <div class="footer-info">
-                <p>&copy; <?= COPYRIGHT_YEAR ?> <?= APP_AUTHOR ?> - <?= APP_NAME ?></p>
-                <p>Version <?= APP_VERSION ?> - Build <?= BUILD_NUMBER ?> (<?= date('d/m/Y H:i', BUILD_TIMESTAMP) ?>)</p>
-            </div>
-            <div class="footer-links">
-                <a href="/legal/">Mentions légales</a>
-                <a href="/legal/privacy.php">Confidentialité</a>
-                <a href="/legal/terms.php">CGU</a>
-                <a href="/legal/security.php">Sécurité</a>
-            </div>
-        </div>
-    </footer>
+    <?php include ROOT_PATH . '/templates/footer.php'; ?>
 
-    <style>
-        /* Styles spécifiques pour l'index légal */
-        .documents-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: var(--spacing-xl);
-            margin: var(--spacing-xl) 0;
-        }
-        
-        .document-card {
-            background: white;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--gray-200);
-            overflow: hidden;
-            transition: var(--transition-normal);
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .document-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-        }
-        
-        .document-header {
-            padding: var(--spacing-lg);
-            background: var(--gray-50);
-            border-bottom: 1px solid var(--gray-200);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-        }
-        
-        .document-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: var(--radius-md);
-            background: var(--primary-blue);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--font-size-xl);
-        }
-        
-        .document-meta {
-            flex: 1;
-        }
-        
-        .document-title {
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            color: var(--gray-900);
-            margin: 0 0 var(--spacing-xs) 0;
-        }
-        
-        .document-category {
-            font-size: var(--font-size-sm);
-            color: var(--gray-600);
-            display: block;
-            margin-bottom: var(--spacing-xs);
-        }
-        
-        .document-badge {
-            font-size: var(--font-size-sm);
-            padding: 0.25rem 0.5rem;
-            border-radius: var(--radius-sm);
-            font-weight: 500;
-        }
-        
-        .document-badge.mandatory {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--color-danger);
-        }
-        
-        .document-badge.optional {
-            background: rgba(107, 114, 128, 0.1);
-            color: var(--gray-600);
-        }
-        
-        .document-body {
-            padding: var(--spacing-lg);
-            flex: 1;
-        }
-        
-        .document-description {
-            color: var(--gray-700);
-            line-height: 1.6;
-            margin: 0 0 var(--spacing-md) 0;
-        }
-        
-        .document-info {
-            font-size: var(--font-size-sm);
-            color: var(--gray-500);
-        }
-        
-        .document-footer {
-            padding: var(--spacing-lg);
-            background: var(--gray-50);
-            border-top: 1px solid var(--gray-200);
-        }
-        
-        .document-link {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            color: var(--primary-blue);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: var(--font-size-sm);
-        }
-        
-        .document-link:hover {
-            text-decoration: underline;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: var(--spacing-lg);
-            margin: var(--spacing-lg) 0;
-        }
-        
-        .info-card {
-            background: var(--gray-50);
-            padding: var(--spacing-lg);
-            border-radius: var(--radius-md);
-            border-left: 4px solid var(--primary-blue);
-        }
-        
-        .info-card h3 {
-            margin: 0 0 var(--spacing-md) 0;
-            color: var(--gray-900);
-            font-size: var(--font-size-lg);
-        }
-        
-        .info-card p {
-            margin: 0;
-            color: var(--gray-700);
-            line-height: 1.6;
-        }
-        
-        .version-info {
-            background: var(--primary-blue-light);
-            padding: var(--spacing-lg);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--primary-blue);
-            margin: var(--spacing-lg) 0;
-        }
-        
-        .version-info h4 {
-            margin: 0 0 var(--spacing-md) 0;
-            color: var(--primary-blue-dark);
-        }
-        
-        .version-info ul {
-            margin: 0;
-            padding-left: var(--spacing-lg);
-        }
-        
-        .version-info li {
-            margin: var(--spacing-sm) 0;
-            color: var(--gray-700);
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .documents-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <!-- Horodatage et build fixe OBLIGATOIRE -->
+    <div class="build-info">
+        <p>Version <?= APP_VERSION ?> - Build <?= BUILD_NUMBER ?> - <?= date('d/m/Y H:i', BUILD_TIMESTAMP) ?></p>
+    </div>
 </body>
 </html>
