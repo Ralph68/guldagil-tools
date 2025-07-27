@@ -105,7 +105,7 @@ if (!isset($breadcrumbs) || empty($breadcrumbs)) {
     <?php endif; ?>
     <style>:root { --current-module-color: <?= $module_color ?>; }</style>
 </head>
-<body data-module="<?= $current_module ?>" class="<?= $user_authenticated ? 'authenticated' : 'guest' ?>">
+<body data-module="<?= $current_module ?>" class="<?= $user_authenticated ? 'authenticated' : 'guest' ?><?= defined('DEBUG') && DEBUG ? ' has-debug' : '' ?>">
 
     <?php if (defined('DEBUG') && DEBUG === true): ?>
     <div class="debug-banner">MODE DEBUG ACTIVÉ</div>

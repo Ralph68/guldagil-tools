@@ -18,6 +18,9 @@ $app_name = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
 $app_author = defined('APP_AUTHOR') ? APP_AUTHOR : 'Jean-Thomas RUNSER';
 $current_module = $current_module ?? 'home';
 
+// Variables avec fallbacks pour éviter les erreurs
+$module_js = $module_js ?? true;
+
 // Récupérer rôle utilisateur pour personnalisation
 $user_role = 'user';
 if (isset($current_user['role'])) {
