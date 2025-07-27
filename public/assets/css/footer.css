@@ -1,14 +1,14 @@
 /**
- * Titre: Footer du portail Guldagil - CSS corrigé
+ * Titre: Footer du portail Guldagil - CSS fonctionnel
  * Chemin: /assets/css/footer.css
  * Version: 0.5 beta + build auto
  */
 
-/* === STRUCTURE DE BASE === */
+/* Structure de base */
 .portal-footer {
     margin-top: 2rem;
-    background-color: #f8f9fa;
-    border-top: 1px solid #e9ecef;
+    background-color: #f3f4f6;
+    border-top: 1px solid #e5e7eb;
     padding-top: 2rem;
     padding-bottom: 1rem;
 }
@@ -19,7 +19,7 @@
     padding: 0 1rem;
 }
 
-/* === NAVIGATION === */
+/* Navigation */
 .footer-navigation {
     margin-bottom: 2rem;
 }
@@ -38,13 +38,13 @@
     padding: 0.5rem 1rem;
     border-radius: 6px;
     text-decoration: none;
-    color: #495057;
-    transition: all 0.3s ease;
+    color: #374151;
+    transition: all 0.15s ease;
 }
 
 .footer-link:hover {
-    background-color: #e9ecef;
-    color: #007bff;
+    background-color: #e5e7eb;
+    color: #3182ce;
     text-decoration: none;
 }
 
@@ -52,9 +52,9 @@
     font-size: 1.25rem;
 }
 
-/* === SECTION LÉGALE === */
+/* Section légale */
 .footer-legal {
-    background-color: #e9ecef;
+    background-color: #e5e7eb;
     padding: 1.5rem 0;
     margin-top: 2rem;
 }
@@ -78,19 +78,19 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    color: #495057;
+    color: #374151;
     text-decoration: none;
     font-size: 0.875rem;
 }
 
 .legal-link:hover {
-    color: #007bff;
+    color: #3182ce;
     text-decoration: underline;
 }
 
 .footer-info {
     font-size: 0.875rem;
-    color: #6c757d;
+    color: #4b5563;
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 2rem;
@@ -107,16 +107,16 @@
 }
 
 .company-info strong {
-    color: #007bff;
+    color: #3182ce;
 }
 
 .contact-email {
-    color: #007bff;
+    color: #3182ce;
     text-decoration: none;
 }
 
 .contact-email:hover {
-    color: #0056b3;
+    color: #2c5282;
     text-decoration: underline;
 }
 
@@ -126,20 +126,20 @@
 
 .version-info {
     font-size: 0.75rem;
-    color: #6c757d;
+    color: #6b7280;
     font-family: monospace;
 }
 
 .footer-dev-info {
     margin-top: 0.5rem;
     font-size: 0.75rem;
-    color: #6c757d;
-    background-color: #dee2e6;
+    color: #6b7280;
+    background-color: #d1d5db;
     padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    border-radius: 0.25rem;
 }
 
-/* === RESPONSIVE === */
+/* Responsive */
 @media (max-width: 768px) {
     .footer-links-grid {
         justify-content: flex-start;
