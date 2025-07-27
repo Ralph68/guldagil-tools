@@ -8,14 +8,17 @@
 // =====================================
 // CONFIGURATION ET SÉCURITÉ
 // =====================================
-define('ROOT_PATH', dirname(dirname(__DIR__)));
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', dirname(dirname(__DIR__)));
+}
 
-// Headers de sécurité
+// Headers de sécurité renforcés
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY'); 
 header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
-// Session sécurisée
+// Session sécurisée (éviter les doublons)
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_httponly', 1);
     ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
@@ -23,18 +26,29 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Chargement config avec gestion d'erreurs
+// Chargement config avec gestion d'erreurs robuste
+$db_connected = false;
+$config_error = null;
+
 try {
     require_once ROOT_PATH . '/config/config.php';
     require_once ROOT_PATH . '/config/version.php';
-    $db_connected = isset($db) && $db instanceof PDO;
+    
+    // Test connexion BDD
+    if (isset($db) && $db instanceof PDO) {
+        $db->query('SELECT 1');
+        $db_connected = true;
+    }
 } catch (Exception $e) {
     $db_connected = false;
     $config_error = $e->getMessage();
+    error_log("Erreur config admin: " . $e->getMessage());
 }
 
 // Variables globales pour templates
 $page_title = "Administration du Portail";
+$page_subtitle = "Tableau de bord système";
+$page_description = "Interface complète d'administration et monitoring";
 $current_module = 'admin';
 $module_css = true;
 
@@ -44,6 +58,10 @@ $module_css = true;
 $user_authenticated = false;
 $current_user = null;
 
+// TODO: Intégrer système de permissions granulaires
+// TODO: Ajouter audit trail des actions admin
+// TODO: Implémenter rate limiting pour sécurité
+
 // Essayer AuthManager en priorité
 if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
     try {
@@ -52,17 +70,17 @@ if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
         
         if ($auth->isAuthenticated()) {
             $current_user = $auth->getCurrentUser();
-            $user_authenticated = in_array($current_user['role'], ['admin', 'dev']);
+            $user_authenticated = in_array($current_user['role'], ['admin', 'dev', 'superadmin']);
         }
     } catch (Exception $e) {
         error_log("Erreur AuthManager admin: " . $e->getMessage());
     }
 }
 
-// Fallback authentification manuelle
+// Fallback authentification manuelle avec validation renforcée
 if (!$user_authenticated && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
     $session_user = $_SESSION['user'] ?? null;
-    if ($session_user && in_array($session_user['role'] ?? '', ['admin', 'dev'])) {
+    if (is_array($session_user) && in_array($session_user['role'] ?? '', ['admin', 'dev', 'superadmin'])) {
         $user_authenticated = true;
         $current_user = $session_user;
     }
@@ -76,65 +94,83 @@ if (!$user_authenticated) {
 }
 
 // =====================================
-// FONCTIONS ADMIN
+// FONCTIONS ADMIN AMÉLIORÉES
 // =====================================
 
 /**
- * Scanner dynamique des fichiers admin
+ * Scanner dynamique amélioré des fichiers admin
+ * TODO: Ajouter cache pour performance
+ * TODO: Scanner récursif des sous-modules
  */
 function scanAdminFiles() {
     $admin_path = ROOT_PATH . '/public/admin';
-    $files = ['pages' => [], 'folders' => []];
+    $files = ['pages' => [], 'folders' => [], 'stats' => ['total' => 0, 'folders' => 0, 'pages' => 0]];
     
-    if (!is_dir($admin_path)) return $files;
+    if (!is_dir($admin_path)) {
+        return $files;
+    }
     
-    foreach (scandir($admin_path) as $file) {
-        if ($file === '.' || $file === '..' || $file === 'index.php') continue;
-        
-        $full_path = $admin_path . '/' . $file;
-        $file_info = pathinfo($file);
-        
-        if ($file_info['extension'] === 'php') {
-            $files['pages'][] = [
-                'name' => $file_info['filename'],
-                'file' => $file,
-                'path' => '/admin/' . $file,
-                'title' => ucfirst(str_replace(['-', '_'], ' ', $file_info['filename'])),
-                'icon' => getFileIcon($file_info['filename']),
-                'description' => getFileDescription($file_info['filename'])
-            ];
-        } elseif (is_dir($full_path)) {
-            $php_files = array_filter(scandir($full_path), function($f) {
-                return pathinfo($f, PATHINFO_EXTENSION) === 'php';
-            });
+    try {
+        foreach (scandir($admin_path) as $file) {
+            if ($file === '.' || $file === '..' || $file === 'index.php') continue;
             
-            if (!empty($php_files)) {
-                $files['folders'][$file] = array_map(function($f) use ($file) {
-                    $name = pathinfo($f, PATHINFO_FILENAME);
-                    return [
-                        'name' => $name,
-                        'file' => $f,
-                        'path' => "/admin/{$file}/{$f}",
-                        'title' => ucfirst(str_replace(['-', '_'], ' ', $name)),
-                        'icon' => getFileIcon($name),
-                        'description' => getFileDescription($name)
-                    ];
-                }, $php_files);
+            $full_path = $admin_path . '/' . $file;
+            $file_info = pathinfo($file);
+            
+            if (isset($file_info['extension']) && $file_info['extension'] === 'php') {
+                $files['pages'][] = [
+                    'name' => $file_info['filename'],
+                    'file' => $file,
+                    'path' => '/admin/' . $file,
+                    'title' => ucfirst(str_replace(['-', '_'], ' ', $file_info['filename'])),
+                    'icon' => getFileIcon($file_info['filename']),
+                    'description' => getFileDescription($file_info['filename']),
+                    'size' => formatFileSize(filesize($full_path)),
+                    'modified' => date('d/m/Y H:i', filemtime($full_path))
+                ];
+                $files['stats']['pages']++;
+            } elseif (is_dir($full_path)) {
+                $php_files = array_filter(scandir($full_path), function($f) {
+                    return pathinfo($f, PATHINFO_EXTENSION) === 'php';
+                });
+                
+                if (!empty($php_files)) {
+                    $files['folders'][$file] = array_map(function($f) use ($file, $full_path) {
+                        $name = pathinfo($f, PATHINFO_FILENAME);
+                        $subfile_path = $full_path . '/' . $f;
+                        return [
+                            'name' => $name,
+                            'file' => $f,
+                            'path' => "/admin/{$file}/{$f}",
+                            'title' => ucfirst(str_replace(['-', '_'], ' ', $name)),
+                            'icon' => getFileIcon($name),
+                            'description' => getFileDescription($name),
+                            'size' => formatFileSize(filesize($subfile_path)),
+                            'modified' => date('d/m/Y H:i', filemtime($subfile_path))
+                        ];
+                    }, $php_files);
+                    $files['stats']['folders']++;
+                }
             }
+            $files['stats']['total']++;
         }
+    } catch (Exception $e) {
+        error_log("Erreur scan admin files: " . $e->getMessage());
     }
     
     return $files;
 }
 
 /**
- * Icônes par type de fichier
+ * Icônes par type de fichier - version étendue
  */
 function getFileIcon($filename) {
     $icons = [
         'scanner' => '🔍', 'audit' => '📊', 'logs' => '📝', 'config' => '⚙️',
         'users' => '👥', 'database' => '🗄️', 'modules' => '🧩', 'system' => '💻',
-        'backup' => '💾', 'security' => '🔐', 'monitoring' => '📈', 'reports' => '📋'
+        'backup' => '💾', 'security' => '🔐', 'monitoring' => '📈', 'reports' => '📋',
+        'analytics' => '📊', 'maintenance' => '🔧', 'cache' => '⚡', 'error' => '❌',
+        'debug' => '🐛', 'test' => '🧪', 'performance' => '⚡', 'stats' => '📈'
     ];
     
     foreach ($icons as $key => $icon) {
@@ -144,137 +180,226 @@ function getFileIcon($filename) {
 }
 
 /**
- * Descriptions par type de fichier
+ * Descriptions améliorées par type de fichier
  */
 function getFileDescription($filename) {
     $descriptions = [
-        'scanner' => 'Diagnostic et scan des erreurs du portail',
-        'audit' => 'Audit complet du système et sécurité',
-        'logs' => 'Visualisation et gestion des logs système',
-        'config' => 'Configuration avancée du portail',
-        'users' => 'Gestion complète des utilisateurs',
-        'database' => 'Administration de la base de données'
+        'scanner' => 'Diagnostic automatisé et scan des erreurs du portail',
+        'audit' => 'Audit complet sécurité et conformité système',
+        'logs' => 'Visualisation et analyse avancée des logs',
+        'config' => 'Configuration système et paramètres avancés',
+        'users' => 'Gestion complète utilisateurs et permissions',
+        'database' => 'Administration base de données et maintenance',
+        'modules' => 'Gestion des modules et dépendances',
+        'system' => 'Informations système et monitoring',
+        'backup' => 'Sauvegarde et restauration automatisée',
+        'security' => 'Sécurité, authentification et contrôles d\'accès',
+        'monitoring' => 'Surveillance temps réel et alertes',
+        'reports' => 'Génération de rapports et analytics',
+        'analytics' => 'Analyse des performances et statistiques',
+        'maintenance' => 'Maintenance préventive et optimisation',
+        'cache' => 'Gestion du cache et performance',
+        'debug' => 'Outils de debug et développement',
+        'test' => 'Tests automatisés et validation',
+        'performance' => 'Optimisation des performances'
     ];
     
     foreach ($descriptions as $key => $desc) {
         if (stripos($filename, $key) !== false) return $desc;
     }
-    return 'Outil d\'administration';
+    return 'Outil d\'administration système';
 }
 
 /**
- * Statistiques du portail
+ * Formatage de taille de fichier
+ * TODO: Ajouter localisation française
  */
-function getPortalStats() {
-    global $db, $db_connected;
+function formatFileSize($bytes) {
+    if ($bytes == 0) return '0 B';
+    $units = ['B', 'KB', 'MB', 'GB'];
+    $i = floor(log($bytes) / log(1024));
+    return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
+}
+
+/**
+ * Statistiques système améliorées
+ * TODO: Intégrer métriques de performance
+ * TODO: Ajouter alertes système automatiques
+ */
+function getSystemStats() {
+    global $db_connected;
     
-    $stats = ['tables' => 0, 'records' => 0, 'users' => 0, 'modules' => 0];
+    $stats = [
+        'system' => [
+            'php_version' => PHP_VERSION,
+            'memory_usage' => formatFileSize(memory_get_usage(true)),
+            'peak_memory' => formatFileSize(memory_get_peak_usage(true)),
+            'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Inconnu',
+            'disk_space' => formatFileSize(disk_free_space(ROOT_PATH))
+        ],
+        'database' => [
+            'connected' => $db_connected,
+            'tables_count' => 0,
+            'size' => 'N/A'
+        ],
+        'files' => [
+            'total_files' => 0,
+            'total_size' => 0
+        ]
+    ];
     
-    if (!$db_connected) return $stats;
-    
-    try {
-        $tables = $db->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-        $stats['tables'] = count($tables);
-        
-        $total_records = 0;
-        foreach ($tables as $table) {
-            $count = $db->query("SELECT COUNT(*) FROM `$table`")->fetchColumn();
-            $total_records += $count;
+    // Stats BDD si connectée
+    if ($db_connected) {
+        try {
+            global $db;
+            $stmt = $db->query("SHOW TABLES");
+            $stats['database']['tables_count'] = $stmt->rowCount();
+        } catch (Exception $e) {
+            error_log("Erreur stats BDD: " . $e->getMessage());
         }
-        $stats['records'] = $total_records;
-        
-        if (in_array('auth_users', $tables)) {
-            $stats['users'] = $db->query("SELECT COUNT(*) FROM auth_users")->fetchColumn();
-        }
-        
-        $modules_dir = ROOT_PATH . '/public';
-        if (is_dir($modules_dir)) {
-            $dirs = array_filter(scandir($modules_dir), function($d) use ($modules_dir) {
-                return is_dir($modules_dir . '/' . $d) && !in_array($d, ['.', '..', 'assets']);
-            });
-            $stats['modules'] = count($dirs);
-        }
-    } catch (Exception $e) {
-        // Stats par défaut en cas d'erreur
     }
+    
+    // TODO: Ajouter stats fichiers si performance acceptable
     
     return $stats;
 }
 
-// Charger les données
+// =====================================
+// DONNÉES POUR INTERFACE
+// =====================================
+
+// Scan des fichiers admin
 $admin_files = scanAdminFiles();
-$portal_stats = getPortalStats();
+
+// Statistiques système
+$system_stats = getSystemStats();
+
+// Actions rapides améliorées
+$quick_actions = [
+    [
+        'title' => 'Scanner système',
+        'desc' => 'Diagnostic complet du portail',
+        'icon' => '🔍',
+        'file' => 'scanner.php',
+        'class' => 'scanner',
+        'priority' => 1
+    ],
+    [
+        'title' => 'Analytics & maintenance',
+        'desc' => 'Monitoring et optimisation',
+        'icon' => '📊',
+        'file' => 'analytics_maintenance.php',
+        'class' => 'analytics',
+        'priority' => 2
+    ],
+    [
+        'title' => 'Gestion utilisateurs',
+        'desc' => 'Administration des comptes',
+        'icon' => '👥',
+        'file' => 'users.php',
+        'class' => 'users',
+        'priority' => 3
+    ],
+    [
+        'title' => 'Configuration',
+        'desc' => 'Paramètres système',
+        'icon' => '⚙️',
+        'file' => 'config.php', 
+        'class' => 'config',
+        'priority' => 4
+    ]
+];
+
+// Tri par priorité
+usort($quick_actions, function($a, $b) {
+    return $a['priority'] - $b['priority'];
+});
 
 // =====================================
-// INCLUSION HEADER
+// INCLUSION TEMPLATES
 // =====================================
-include ROOT_PATH . '/templates/header.php';
+
+// Header avec gestion d'erreur
+$header_path = ROOT_PATH . '/templates/header.php';
+if (file_exists($header_path)) {
+    include $header_path;
+} else {
+    // TODO: Créer header d'urgence minimal
+    echo "<!DOCTYPE html><html><head><title>Admin - Erreur Template</title></head><body>";
+    echo "<div style='color:red;padding:20px;'>Erreur: Template header introuvable</div>";
+}
 ?>
 
-<div class="admin-container">
-    <!-- En-tête admin -->
-    <div class="admin-header">
-        <div class="admin-header-content">
-            <div class="admin-title">
-                <h1>⚙️ Administration du Portail</h1>
-                <p class="admin-subtitle">Gestion et monitoring - Utilisateur: <?= htmlspecialchars($current_user['username']) ?></p>
+<!-- Dashboard admin principal -->
+<main class="admin-dashboard">
+    <!-- Alerte configuration si erreur -->
+    <?php if ($config_error): ?>
+    <div class="alert alert-error">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-content">
+            <h4>Problème de configuration détecté</h4>
+            <p><?= htmlspecialchars($config_error) ?></p>
+            <small>Vérifiez la configuration dans <code>/config/config.php</code></small>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- En-tête dashboard -->
+    <div class="dashboard-header">
+        <div class="header-info">
+            <h1>🛠️ Administration du portail</h1>
+            <p class="subtitle">Bienvenue <strong><?= htmlspecialchars($current_user['username'] ?? 'Admin') ?></strong> • Rôle: <span class="badge badge-<?= htmlspecialchars($current_user['role'] ?? 'admin') ?>"><?= htmlspecialchars($current_user['role'] ?? 'admin') ?></span></p>
+        </div>
+        <div class="header-stats">
+            <div class="stat-item">
+                <span class="stat-icon">📊</span>
+                <div class="stat-content">
+                    <div class="stat-value"><?= $admin_files['stats']['total'] ?></div>
+                    <div class="stat-label">Outils disponibles</div>
+                </div>
             </div>
-            <div class="admin-stats">
-                <div class="stat-badge">
-                    <span class="stat-number"><?= $portal_stats['tables'] ?></span>
-                    <span class="stat-label">Tables</span>
-                </div>
-                <div class="stat-badge">
-                    <span class="stat-number"><?= number_format($portal_stats['records']) ?></span>
-                    <span class="stat-label">Enregistrements</span>
-                </div>
-                <div class="stat-badge">
-                    <span class="stat-number"><?= $portal_stats['users'] ?></span>
-                    <span class="stat-label">Utilisateurs</span>
-                </div>
-                <div class="stat-badge">
-                    <span class="stat-number"><?= $portal_stats['modules'] ?></span>
-                    <span class="stat-label">Modules</span>
+            <div class="stat-item">
+                <span class="stat-icon <?= $db_connected ? '✅' : '❌' ?>"></span>
+                <div class="stat-content">
+                    <div class="stat-value"><?= $db_connected ? 'Connectée' : 'Erreur' ?></div>
+                    <div class="stat-label">Base de données</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Actions rapides -->
-    <div class="quick-actions">
+    <!-- Actions rapides prioritaires -->
+    <div class="quick-actions-section">
         <h2>⚡ Actions rapides</h2>
         <div class="quick-actions-grid">
-            <?php
-            $quick_actions = [
-                ['file' => 'scanner.php', 'icon' => '🔍', 'title' => 'Scanner', 'desc' => 'Diagnostic erreurs', 'class' => 'scanner'],
-                ['file' => 'audit.php', 'icon' => '📊', 'title' => 'Audit', 'desc' => 'Sécurité & performance', 'class' => 'audit'],
-                ['file' => 'logs.php', 'icon' => '📝', 'title' => 'Logs', 'desc' => 'Historique système', 'class' => 'logs'],
-                ['file' => 'config.php', 'icon' => '⚙️', 'title' => 'Configuration', 'desc' => 'Paramètres portail', 'class' => 'config']
-            ];
-            
-            foreach ($quick_actions as $action):
+            <?php foreach ($quick_actions as $action): 
                 $exists = file_exists(ROOT_PATH . '/public/admin/' . $action['file']);
             ?>
-            <a href="/admin/<?= $action['file'] ?>" class="quick-action <?= $action['class'] ?>" <?= !$exists ? 'style="opacity:0.5;pointer-events:none;"' : '' ?>>
+            <a href="/admin/<?= htmlspecialchars($action['file']) ?>" 
+               class="quick-action <?= htmlspecialchars($action['class']) ?>" 
+               <?= !$exists ? 'style="opacity:0.5;pointer-events:none;" title="Fichier manquant"' : '' ?>>
                 <div class="action-icon"><?= $action['icon'] ?></div>
                 <div class="action-content">
-                    <h3><?= $action['title'] ?></h3>
-                    <p><?= $action['desc'] ?></p>
+                    <h3><?= htmlspecialchars($action['title']) ?></h3>
+                    <p><?= htmlspecialchars($action['desc']) ?></p>
                 </div>
-                <div class="action-status <?= $exists ? 'ok' : 'error' ?>"><?= $exists ? 'Disponible' : 'Manquant' ?></div>
+                <div class="action-status <?= $exists ? 'ok' : 'error' ?>">
+                    <?= $exists ? 'Disponible' : 'Manquant' ?>
+                </div>
             </a>
             <?php endforeach; ?>
         </div>
     </div>
 
-    <!-- Outils d'administration -->
+    <!-- Outils d'administration détaillés -->
     <?php if (!empty($admin_files['pages']) || !empty($admin_files['folders'])): ?>
     <div class="admin-tools">
         <h2>🛠️ Outils d'administration</h2>
         
+        <!-- Pages directes -->
         <?php if (!empty($admin_files['pages'])): ?>
         <div class="tools-section">
-            <h3>📄 Pages disponibles</h3>
+            <h3>📄 Pages disponibles (<?= count($admin_files['pages']) ?>)</h3>
             <div class="tools-grid">
                 <?php foreach ($admin_files['pages'] as $page): ?>
                 <a href="<?= htmlspecialchars($page['path']) ?>" class="tool-card">
@@ -282,7 +407,11 @@ include ROOT_PATH . '/templates/header.php';
                     <div class="tool-content">
                         <h4><?= htmlspecialchars($page['title']) ?></h4>
                         <p><?= htmlspecialchars($page['description']) ?></p>
-                        <span class="tool-path"><?= htmlspecialchars($page['file']) ?></span>
+                        <div class="tool-meta">
+                            <span class="tool-path"><?= htmlspecialchars($page['file']) ?></span>
+                            <span class="tool-size"><?= htmlspecialchars($page['size']) ?></span>
+                            <span class="tool-date"><?= htmlspecialchars($page['modified']) ?></span>
+                        </div>
                     </div>
                     <div class="tool-arrow">→</div>
                 </a>
@@ -291,9 +420,10 @@ include ROOT_PATH . '/templates/header.php';
         </div>
         <?php endif; ?>
         
+        <!-- Dossiers organisés -->
         <?php foreach ($admin_files['folders'] as $folder_name => $folder_files): ?>
         <div class="tools-section">
-            <h3>📁 <?= ucfirst(str_replace(['-', '_'], ' ', $folder_name)) ?></h3>
+            <h3>📁 <?= ucfirst(str_replace(['-', '_'], ' ', htmlspecialchars($folder_name))) ?> (<?= count($folder_files) ?>)</h3>
             <div class="tools-grid">
                 <?php foreach ($folder_files as $file): ?>
                 <a href="<?= htmlspecialchars($file['path']) ?>" class="tool-card">
@@ -301,7 +431,11 @@ include ROOT_PATH . '/templates/header.php';
                     <div class="tool-content">
                         <h4><?= htmlspecialchars($file['title']) ?></h4>
                         <p><?= htmlspecialchars($file['description']) ?></p>
-                        <span class="tool-path"><?= htmlspecialchars($folder_name . '/' . $file['file']) ?></span>
+                        <div class="tool-meta">
+                            <span class="tool-path"><?= htmlspecialchars($folder_name . '/' . $file['file']) ?></span>
+                            <span class="tool-size"><?= htmlspecialchars($file['size']) ?></span>
+                            <span class="tool-date"><?= htmlspecialchars($file['modified']) ?></span>
+                        </div>
                     </div>
                     <div class="tool-arrow">→</div>
                 </a>
@@ -310,6 +444,13 @@ include ROOT_PATH . '/templates/header.php';
         </div>
         <?php endforeach; ?>
     </div>
+    <?php else: ?>
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <h3>Aucun outil d'administration trouvé</h3>
+        <p>Les outils d'administration seront disponibles une fois installés.</p>
+        <!-- TODO: Ajouter bouton installation/génération outils manquants -->
+    </div>
     <?php endif; ?>
 
     <!-- Modules du portail -->
@@ -317,32 +458,38 @@ include ROOT_PATH . '/templates/header.php';
         <h2>🧩 Modules du portail</h2>
         <div class="modules-overview">
             <?php
+            // TODO: Scanner automatique des modules installés
             $modules = [
                 ['id' => 'port', 'name' => 'Calculateur Frais de Port', 'icon' => '📦', 'desc' => 'Calcul automatisé des frais de livraison'],
                 ['id' => 'auth', 'name' => 'Authentification', 'icon' => '🔐', 'desc' => 'Système de connexion et gestion des comptes'],
                 ['id' => 'user', 'name' => 'Espace Utilisateur', 'icon' => '👤', 'desc' => 'Profils et paramètres utilisateurs'],
-                ['id' => 'admin', 'name' => 'Administration', 'icon' => '⚙️', 'desc' => 'Interface d\'administration système']
+                ['id' => 'admin', 'name' => 'Administration', 'icon' => '⚙️', 'desc' => 'Interface d\'administration système'],
+                ['id' => 'adr', 'name' => 'Module ADR', 'icon' => '⚠️', 'desc' => 'Gestion marchandises dangereuses']
             ];
             
             foreach ($modules as $module):
                 $module_exists = is_dir(ROOT_PATH . '/public/' . $module['id']);
+                $index_exists = file_exists(ROOT_PATH . '/public/' . $module['id'] . '/index.php');
             ?>
-            <div class="module-card <?= $module['id'] ?>">
+            <div class="module-card <?= htmlspecialchars($module['id']) ?>">
                 <div class="module-header">
                     <span class="module-icon"><?= $module['icon'] ?></span>
                     <h3><?= htmlspecialchars($module['name']) ?></h3>
-                    <span class="module-status <?= $module_exists ? 'active' : 'inactive' ?>"><?= $module_exists ? 'Actif' : 'Inactif' ?></span>
+                    <span class="module-status <?= $module_exists && $index_exists ? 'active' : ($module_exists ? 'incomplete' : 'inactive') ?>">
+                        <?= $module_exists && $index_exists ? 'Actif' : ($module_exists ? 'Incomplet' : 'Inactif') ?>
+                    </span>
                 </div>
                 <p><?= htmlspecialchars($module['desc']) ?></p>
                 <div class="module-actions">
-                    <?php if ($module_exists): ?>
-                        <?php if ($module['id'] === 'admin'): ?>
+                    <?php if ($module['id'] === 'admin'): ?>
                         <span class="btn btn-current">Actuel</span>
-                        <?php else: ?>
-                        <a href="/<?= $module['id'] ?>/" class="btn btn-primary">Ouvrir</a>
-                        <?php endif; ?>
+                    <?php elseif ($module_exists && $index_exists): ?>
+                        <a href="/<?= htmlspecialchars($module['id']) ?>/" class="btn btn-primary">Ouvrir</a>
+                    <?php elseif ($module_exists): ?>
+                        <span class="btn btn-warning">Configuration requise</span>
                     <?php else: ?>
                         <span class="btn btn-disabled">Non installé</span>
+                        <!-- TODO: Ajouter bouton installation module -->
                     <?php endif; ?>
                 </div>
             </div>
@@ -350,81 +497,174 @@ include ROOT_PATH . '/templates/header.php';
         </div>
     </div>
 
-    <!-- État système -->
+    <!-- État système détaillé -->
     <div class="system-status">
         <h2>💻 État du système</h2>
         <div class="status-grid">
+            <!-- Base de données -->
             <div class="status-item <?= $db_connected ? 'ok' : 'error' ?>">
                 <span class="status-icon"><?= $db_connected ? '✅' : '❌' ?></span>
                 <div class="status-content">
                     <h4>Base de données</h4>
                     <p><?= $db_connected ? 'Connectée' : 'Erreur de connexion' ?></p>
+                    <?php if ($db_connected): ?>
+                    <small><?= $system_stats['database']['tables_count'] ?> tables disponibles</small>
+                    <?php endif; ?>
                 </div>
             </div>
             
+            <!-- Configuration -->
             <div class="status-item <?= file_exists(ROOT_PATH . '/config/config.php') ? 'ok' : 'error' ?>">
                 <span class="status-icon"><?= file_exists(ROOT_PATH . '/config/config.php') ? '✅' : '❌' ?></span>
                 <div class="status-content">
                     <h4>Configuration</h4>
-                    <p><?= file_exists(ROOT_PATH . '/config/config.php') ? 'Chargée' : 'Manquante' ?></p>
+                    <p><?= file_exists(ROOT_PATH . '/config/config.php') ? 'Configuré' : 'Manquant' ?></p>
+                    <small>PHP <?= $system_stats['system']['php_version'] ?></small>
                 </div>
             </div>
             
-            <div class="status-item <?= is_writable(ROOT_PATH . '/storage') ? 'ok' : 'warning' ?>">
-                <span class="status-icon"><?= is_writable(ROOT_PATH . '/storage') ? '✅' : '⚠️' ?></span>
+            <!-- Mémoire -->
+            <div class="status-item <?= memory_get_usage(true) < 100*1024*1024 ? 'ok' : 'warning' ?>">
+                <span class="status-icon"><?= memory_get_usage(true) < 100*1024*1024 ? '✅' : '⚠️' ?></span>
                 <div class="status-content">
-                    <h4>Permissions</h4>
-                    <p><?= is_writable(ROOT_PATH . '/storage') ? 'Correctes' : 'À vérifier' ?></p>
+                    <h4>Mémoire PHP</h4>
+                    <p><?= $system_stats['system']['memory_usage'] ?> utilisés</p>
+                    <small>Pic: <?= $system_stats['system']['peak_memory'] ?></small>
                 </div>
             </div>
             
-            <div class="status-item info">
-                <span class="status-icon">📊</span>
+            <!-- Espace disque -->
+            <div class="status-item <?= disk_free_space(ROOT_PATH) > 1*1024*1024*1024 ? 'ok' : 'warning' ?>">
+                <span class="status-icon"><?= disk_free_space(ROOT_PATH) > 1*1024*1024*1024 ? '✅' : '⚠️' ?></span>
                 <div class="status-content">
-                    <h4>Version</h4>
-                    <p><?= defined('APP_VERSION') ? APP_VERSION : '0.5' ?> - Build <?= defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd') ?></p>
+                    <h4>Espace disque</h4>
+                    <p><?= $system_stats['system']['disk_space'] ?> libres</p>
+                    <small><?= htmlspecialchars($system_stats['system']['server_software']) ?></small>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Liens utiles -->
-    <div class="useful-links">
-        <h2>🔗 Accès rapide</h2>
-        <div class="links-grid">
-            <a href="/" class="link-card home" target="_blank">
-                <span class="link-icon">🏠</span>
-                <div class="link-content">
-                    <h4>Portail Principal</h4>
-                    <p>Retour à l'accueil</p>
-                </div>
-            </a>
-            
-            <a href="/admin/scanner.php?deep=1" class="link-card scanner">
-                <span class="link-icon">🔬</span>
-                <div class="link-content">
-                    <h4>Scan Approfondi</h4>
-                    <p>Diagnostic complet</p>
-                </div>
-            </a>
-            
-            <a href="/diagnostic_500.php" class="link-card emergency" target="_blank">
-                <span class="link-icon">🚨</span>
-                <div class="link-content">
-                    <h4>Diagnostic d'Urgence</h4>
-                    <p>En cas de problème</p>
-                </div>
-            </a>
-            
-            <a href="/auth/logout.php" class="link-card logout">
-                <span class="link-icon">🚪</span>
-                <div class="link-content">
-                    <h4>Déconnexion</h4>
-                    <p>Fin de session admin</p>
-                </div>
-            </a>
+    <!-- Actions système rapides -->
+    <div class="system-actions">
+        <h2>🔧 Actions système</h2>
+        <div class="actions-grid">
+            <button onclick="clearCache()" class="action-btn cache">
+                <span class="btn-icon">🗑️</span>
+                <span class="btn-text">Vider le cache</span>
+            </button>
+            <button onclick="viewLogs()" class="action-btn logs">
+                <span class="btn-icon">📝</span>
+                <span class="btn-text">Voir les logs</span>
+            </button>
+            <button onclick="runDiagnostic()" class="action-btn diagnostic">
+                <span class="btn-icon">🔍</span>
+                <span class="btn-text">Diagnostic complet</span>
+            </button>
+            <button onclick="exportConfig()" class="action-btn export">
+                <span class="btn-icon">📤</span>
+                <span class="btn-text">Exporter config</span>
+            </button>
         </div>
     </div>
-</div>
+</main>
 
-<?php include ROOT_PATH . '/templates/footer.php'; ?>
+<!-- Scripts spécifiques admin -->
+<script>
+// TODO: Migrer vers fichier externe /public/admin/assets/js/admin.js
+// TODO: Ajouter notifications temps réel
+// TODO: Intégrer WebSocket pour monitoring live
+
+// Actions système
+function clearCache() {
+    if (!confirm('Vider le cache système ?')) return;
+    
+    fetch('/admin/api/system.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'clear_cache'})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Cache vidé avec succès', 'success');
+        } else {
+            showNotification('Erreur: ' + data.message, 'error');
+        }
+    })
+    .catch(e => showNotification('Erreur réseau', 'error'));
+}
+
+function viewLogs() {
+    window.open('/admin/logs.php', '_blank');
+}
+
+function runDiagnostic() {
+    window.location.href = '/admin/scanner.php';
+}
+
+function exportConfig() {
+    window.location.href = '/admin/api/system.php?action=export_config';
+}
+
+// Système de notifications simple
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <span class="notification-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+        <span class="notification-text">${message}</span>
+        <button onclick="this.parentElement.remove()" class="notification-close">×</button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-suppression après 5 secondes
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Auto-refresh des stats système toutes les 30 secondes
+// TODO: Implémenter refresh intelligent avec WebSocket
+setInterval(() => {
+    fetch('/admin/api/system.php?action=stats')
+        .then(r => r.json())
+        .then(data => {
+            // Mise à jour des éléments de status
+            // TODO: Implémenter mise à jour UI dynamique
+        })
+        .catch(e => console.warn('Erreur refresh stats:', e));
+}, 30000);
+
+// Raccourcis clavier admin
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 's':
+                e.preventDefault();
+                runDiagnostic();
+                break;
+            case 'l':
+                e.preventDefault();
+                viewLogs();
+                break;
+        }
+    }
+});
+</script>
+
+<?php
+// Footer avec gestion d'erreur
+$footer_path = ROOT_PATH . '/templates/footer.php';
+if (file_exists($footer_path)) {
+    include $footer_path;
+} else {
+    // TODO: Créer footer d'urgence minimal
+    echo "<footer style='padding:20px;text-align:center;border-top:1px solid #ddd;margin-top:40px;'>";
+    echo "<p>&copy; " . date('Y') . " Portail Guldagil • Version " . htmlspecialchars($version ?? '0.5 beta') . " • Build " . htmlspecialchars($build_number ?? 'dev') . "</p>";
+    echo "</footer></body></html>";
+}
+?>
