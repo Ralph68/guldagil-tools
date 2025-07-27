@@ -103,6 +103,16 @@ if (!isset($breadcrumbs) || empty($breadcrumbs)) {
     <?php if (($module_css ?? true) && $current_module !== 'home' && file_exists(ROOT_PATH . "/public/{$current_module}/assets/css/{$current_module}.css")): ?>
         <link rel="stylesheet" href="/<?= $current_module ?>/assets/css/<?= $current_module ?>.css?v=<?= $build_number ?>">
     <?php endif; ?>
+
+    <?php
+    // Correction du chemin pour éviter la duplication du nom du module
+    if (
+        ($module_js ?? true)
+        && $current_module !== 'home'
+        && file_exists(ROOT_PATH . "/public/{$current_module}/assets/js/{$current_module}.js")
+    ): ?>
+        <script src="/<?= $current_module ?>/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
+    <?php endif; ?>
     <style>:root { --current-module-color: <?= $module_color ?>; }</style>
 </head>
 <body data-module="<?= $current_module ?>" class="<?= $user_authenticated ? 'authenticated' : 'guest' ?><?= defined('DEBUG') && DEBUG ? ' has-debug' : '' ?>">
