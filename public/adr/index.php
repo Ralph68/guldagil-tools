@@ -31,7 +31,7 @@ if (!isset($_SESSION['user']) || !is_array($_SESSION['user'])) {
 }
 
 // Correction de la gestion des requêtes
-$query = filter_input(INPUT_GET, 'q', FILTER_SANITIZE_STRING) ?? '';
+$query = filter_input(INPUT_GET, 'q', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
 
 $breadcrumbs = [
     ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => false],
