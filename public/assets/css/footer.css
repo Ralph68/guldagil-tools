@@ -1,13 +1,14 @@
 /**
- * Footer du portail - Style simplifié
- * Version: 1.0
+ * Titre: Footer du portail Guldagil - CSS corrigé
+ * Chemin: /assets/css/footer.css
+ * Version: 0.5 beta + build auto
  */
 
 /* === STRUCTURE DE BASE === */
 .portal-footer {
     margin-top: 2rem;
-    background-color: var(--gray-100);
-    border-top: 1px solid var(--gray-200);
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
     padding-top: 2rem;
     padding-bottom: 1rem;
 }
@@ -15,7 +16,7 @@
 .footer-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 var(--spacing-md);
+    padding: 0 1rem;
 }
 
 /* === NAVIGATION === */
@@ -35,15 +36,16 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    border-radius: var(--radius-md);
+    border-radius: 6px;
     text-decoration: none;
-    color: var(--gray-700);
-    transition: var(--transition-fast);
+    color: #495057;
+    transition: all 0.3s ease;
 }
 
 .footer-link:hover {
-    background-color: var(--gray-200);
-    color: var(--primary-color);
+    background-color: #e9ecef;
+    color: #007bff;
+    text-decoration: none;
 }
 
 .link-icon {
@@ -52,7 +54,7 @@
 
 /* === SECTION LÉGALE === */
 .footer-legal {
-    background-color: var(--gray-200);
+    background-color: #e9ecef;
     padding: 1.5rem 0;
     margin-top: 2rem;
 }
@@ -76,37 +78,65 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    color: var(--gray-700);
+    color: #495057;
     text-decoration: none;
     font-size: 0.875rem;
 }
 
 .legal-link:hover {
-    color: var(--primary-color);
+    color: #007bff;
     text-decoration: underline;
 }
 
 .footer-info {
     font-size: 0.875rem;
-    color: var(--gray-600);
+    color: #6c757d;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: center;
+    width: 100%;
 }
 
 .footer-info p {
     margin: 0.25rem 0;
 }
 
+.company-info {
+    line-height: 1.5;
+}
+
+.company-info strong {
+    color: #007bff;
+}
+
+.contact-email {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.contact-email:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.copyright-info {
+    text-align: right;
+}
+
 .version-info {
     font-size: 0.75rem;
-    color: var(--gray-500);
+    color: #6c757d;
+    font-family: monospace;
 }
 
 .footer-dev-info {
     margin-top: 0.5rem;
     font-size: 0.75rem;
-    color: var(--gray-500);
-    background-color: var(--gray-300);
+    color: #6c757d;
+    background-color: #dee2e6;
     padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-sm);
+    border-radius: 4px;
 }
 
 /* === RESPONSIVE === */
@@ -124,106 +154,14 @@
     .footer-legal-container {
         text-align: center;
     }
-}
-
-/* === STYLE ALTERNATIF FOOTER (OPTIONNEL) === */
-/* Peut être activé via une classe .footer-alt sur le footer */
-.footer-alt .footer-main {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-md);
-}
-
-.footer-alt .legal-links {
-    display: flex;
-    gap: var(--spacing-lg);
-    flex-wrap: wrap;
-}
-
-.footer-alt .legal-link {
-    color: rgba(255, 255, 255, 0.6);
-    text-decoration: none;
-    font-size: 0.75rem;
-    transition: color 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-}
-
-.footer-alt .legal-link:hover {
-    color: var(--primary-color-light);
-}
-
-.footer-alt .footer-bottom {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-lg);
-}
-
-.footer-alt .copyright {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.75rem;
-}
-
-.footer-alt .version-info {
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.4);
-    font-family: monospace;
-    letter-spacing: 0.03em;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 2px 6px;
-    border-radius: 3px;
-}
-
-/* Responsive Design pour le style alternatif */
-@media (max-width: 768px) {
-    .footer-alt .footer-main {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-lg);
-    }
     
-    .footer-alt .footer-navigation {
-        width: 100%;
-    }
-    
-    .footer-alt .footer-links-grid {
-        justify-content: flex-start;
-    }
-    
-    .footer-alt .footer-legal-container {
-        flex-direction: column;
-        gap: var(--spacing-md);
+    .footer-info {
+        grid-template-columns: 1fr;
+        gap: 1rem;
         text-align: center;
     }
     
-    .footer-alt .legal-links {
-        justify-content: center;
-    }
-    
-    .footer-alt .footer-bottom {
-        flex-direction: column;
-        gap: var(--spacing-xs);
-    }
-}
-
-@media (max-width: 480px) {
-    .footer-alt .footer-logo-section {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .footer-alt .footer-brand-info {
+    .copyright-info {
         text-align: center;
-    }
-    
-    .footer-alt .footer-links-grid {
-        justify-content: center;
-    }
-    
-    .footer-alt .legal-links {
-        flex-direction: column;
-        align-items: center;
-        gap: var(--spacing-sm);
     }
 }
