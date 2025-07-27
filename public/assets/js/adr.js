@@ -1,19 +1,27 @@
-// PHP code removed: this file should only contain JavaScript.
+/**
+ * Module JavaScript pour la fonctionnalité ADR
+ * Version: 1.0
+ */
 
-// (HTML and HTML-style comments removed. This file should only contain JavaScript code.)
-<script>
+// Configuration globale
 window.ADR_SEARCH_CONFIG = {
     apiEndpoint: '/adr/search/search.php',
     minChars: 2,
     maxResults: 100,
     searchDelay: 150
 };
-window.ADR_CURRENT_QUERY = <?= json_encode($query) ?>;
 
+// Initialiser avec une valeur vide, sera remplacée par la valeur PHP
+window.ADR_CURRENT_QUERY = '';
+
+// Variables pour la pagination
 let currentPage = 1;
 const itemsPerPage = 20;
 
-// Fonction de recherche principale
+/**
+ * Fonction de recherche principale
+ * @param {string} query - Requête de recherche optionnelle
+ */
 function performSearch(query) {
     const searchInput = document.getElementById('product-search');
     const searchQuery = query || searchInput.value.trim();
@@ -43,7 +51,10 @@ function performSearch(query) {
         });
 }
 
-// Affichage des résultats
+/**
+ * Affichage des résultats dans le tableau et la vue mobile
+ * @param {Array} results - Résultats de la recherche
+ */
 function displayResults(results) {
     const resultsSection = document.getElementById('search-results');
     const resultsContent = document.getElementById('results-content');
@@ -97,7 +108,9 @@ function displayResults(results) {
     `).join('');
 }
 
-// Suggestions dropdown
+/**
+ * Configuration du système de suggestions
+ */
 function setupSuggestions() {
     const searchInput = document.getElementById('product-search');
     const suggestionsContainer = document.getElementById('search-suggestions');
@@ -136,6 +149,10 @@ function setupSuggestions() {
     });
 }
 
+/**
+ * Affichage des suggestions de recherche
+ * @param {Array} suggestions - Liste des suggestions
+ */
 function displaySuggestions(suggestions) {
     const container = document.getElementById('search-suggestions');
     container.innerHTML = suggestions.map(item => `
@@ -148,13 +165,19 @@ function displaySuggestions(suggestions) {
     container.style.display = 'block';
 }
 
+/**
+ * Sélection d'une suggestion
+ * @param {string} code - Code produit sélectionné
+ */
 function selectSuggestion(code) {
     document.getElementById('product-search').value = code;
     document.getElementById('search-suggestions').style.display = 'none';
     performSearch(code);
 }
 
-// Charger données initiales
+/**
+ * Chargement des produits populaires
+ */
 function loadPopularProducts() {
     fetch('/adr/search/search.php?action=popular&limit=6')
         .then(response => response.json())
@@ -176,6 +199,9 @@ function loadPopularProducts() {
         });
 }
 
+/**
+ * Chargement des mises à jour récentes
+ */
 function loadRecentUpdates() {
     fetch('/adr/search/search.php?action=recent&limit=6')
         .then(response => response.json())
@@ -197,7 +223,9 @@ function loadRecentUpdates() {
         });
 }
 
-// Utilitaires
+/**
+ * Affiche un indicateur de chargement
+ */
 function showLoader() {
     let loader = document.getElementById('adr-loader');
     if (!loader) {
@@ -219,6 +247,9 @@ function showLoader() {
     loader.style.display = 'flex';
 }
 
+/**
+ * Masque l'indicateur de chargement
+ */
 function hideLoader() {
     const loader = document.getElementById('adr-loader');
     if (loader) {
@@ -226,30 +257,56 @@ function hideLoader() {
     }
 }
 
+/**
+ * Affichage de messages utilisateur
+ * @param {string} message - Message à afficher
+ * @param {string} type - Type de message (info, error, warning)
+ */
 function showMessage(message, type) {
-    // TODO: Système de notifications toast
+    // Pour l'instant, simple log console
     console.log(`${type.toUpperCase()}: ${message}`);
+    
+    // À implémenter : système de notifications toast
 }
 
+/**
+ * Réinitialisation de la recherche
+ */
 function clearResults() {
     document.getElementById('search-results').style.display = 'none';
     document.getElementById('product-search').value = '';
     document.getElementById('product-search').focus();
 }
 
+/**
+ * Export des résultats (à implémenter)
+ */
 function exportResults() {
-    // TODO: Export CSV/Excel des résultats
+    // Fonctionnalité à venir
     alert('Export en cours de développement');
 }
 
-// Initialisation
+/**
+ * Initialisation au chargement de la page
+ */
 document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.getElementById('adr-search-form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            performSearch();
+        });
+    }
+    
     setupSuggestions();
     loadPopularProducts();
     loadRecentUpdates();
     
     // Focus sur la barre de recherche
-    document.getElementById('product-search').focus();
+    const searchInput = document.getElementById('product-search');
+    if (searchInput) {
+        searchInput.focus();
+    }
     
     // Recherche si query en URL
     if (window.ADR_CURRENT_QUERY && window.ADR_CURRENT_QUERY.length >= 2) {
@@ -257,26 +314,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Gestion du formulaire
-document.getElementById('adr-search-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    performSearch();
-});
-
-// Remplacer `export` par une déclaration globale
+// API publique du module ADR
 window.ADR = {
     performSearch,
     displayResults,
     setupSuggestions,
     loadPopularProducts,
     loadRecentUpdates,
-    // ...autres fonctions exportées...
+    clearResults,
+    exportResults,
+    showMessage
 };
-</script>
-
-<?php
-$footer_path = ROOT_PATH . '/templates/footer.php';
-if (file_exists($footer_path)) {
-    include $footer_path;
-}
-?>// PHP code removed: this file should only contain JavaScript.
