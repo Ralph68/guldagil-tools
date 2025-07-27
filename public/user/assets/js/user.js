@@ -523,8 +523,6 @@ document.addEventListener('showUserNotification', function(e) {
 // Session storage init
 if (!sessionStorage.getItem('sessionStart')) {
     sessionStorage.setItem('sessionStart', Date.now());
-}
-    
     statCards.forEach(card => {
         observer.observe(card);
         

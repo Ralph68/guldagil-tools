@@ -1,146 +1,146 @@
 <?php
 /**
- * Titre: Dashboard utilisateur COMPLET - Toutes fonctionnalités restaurées
+ * Titre: Dashboard utilisateur
  * Chemin: /public/user/index.php
- * Version: 1.2 - Rôles centralisés
+ * Version: 1.3 - Simplifié
  */
 
 // Configuration
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 require_once ROOT_PATH . '/config/config.php';
-require_once ROOT_PATH . '/config/version.php';
 require_once ROOT_PATH . '/config/database.php';
 
-// Variables pour le template header
+// --- Définition des variables pour le template header ---
 $page_title = 'Mon Espace Utilisateur';
 $page_subtitle = 'Dashboard personnel et modules disponibles';
-$page_description = 'Espace personnel - Profil, modules disponibles et statistiques d\'activité';
 $current_module = 'user';
-$module_css = true;
-$module_js = true;
 
 $breadcrumbs = [
     ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => false],
     ['icon' => '👤', 'text' => 'Mon Espace', 'url' => '/user/', 'active' => true]
 ];
 
-// Définition des modules pour cette page (sans la clé 'roles')
+// Définition des modules pour l'affichage des cartes sur cette page
 $all_modules = [
-    'calculateur' => [
-        'name' => 'Calculateur Frais de Port',
-        'description' => 'Calcul intelligent des frais de transport selon différents transporteurs et types d\'envoi',
-        'icon' => '📦',
-        'url' => '/port/',
-        'status' => 'active',
-        'color' => '#0ea5e9',
-        'category' => 'Logistique & Transport',
-        'features' => [
-            'Calcul automatique selon transporteur',
-            'Tarifs Heppner France intégrés', 
-            'Gestion des frais additionnels',
-            'Export des résultats PDF/Excel',
-            'Historique des calculs'
-        ],
-        'priority' => 1,
-        'tables' => ['calculations', 'transport_rates']
-    ],
-    'adr' => [
-        'name' => 'Module ADR',
-        'description' => 'Gestion des marchandises dangereuses selon réglementation ADR/IMDG',
-        'icon' => '⚠️',
-        'url' => '/adr/',
-        'status' => 'development',
-        'color' => '#dc2626',
-        'category' => 'Sécurité & Conformité',
-        'features' => [
-            'Classification matières dangereuses',
-            'Documents de transport ADR',
-            'Étiquetage et signalisation',
-            'Contrôles de conformité',
-            'Formation personnel'
-        ],
-        'priority' => 2,
-        'coming_soon' => true
-    ],
-    'qualite' => [
-        'name' => 'Contrôle Qualité',
-        'description' => 'Suivi et contrôle qualité des processus et produits',
-        'icon' => '🔬',
-        'url' => '/qualite/',
-        'status' => 'development',
-        'color' => '#059669',
-        'category' => 'Qualité & Contrôles',
-        'features' => [
-            'Plans de contrôle qualité',
-            'Fiches de non-conformité',
-            'Statistiques qualité',
-            'Audits et certifications',
-            'Amélioration continue'
-        ],
-        'priority' => 3,
-        'coming_soon' => true
-    ],
-    'maintenance' => [
-        'name' => 'Maintenance & Outillages',
-        'description' => 'Gestion de la maintenance préventive et des outillages',
-        'icon' => '🔧',
-        'url' => '/maintenance/',
-        'status' => 'development',
-        'color' => '#6b7280',
-        'category' => 'Maintenance & Matériel',
-        'features' => [
-            'Inventaire détaillé du matériel',
-            'Planning de maintenance préventive',
-            'Suivi des réparations',
-            'Historique d\'utilisation',
-            'Gestion des prêts'
-        ],
-        'priority' => 4,
-        'coming_soon' => true
-    ],
-    'user' => [
-        'name' => 'Mon Espace Personnel',
-        'description' => 'Profil utilisateur, paramètres et historique d\'activité',
-        'icon' => '👤',
-        'url' => '/user/',
-        'status' => 'active',
-        'color' => '#9b59b6',
-        'category' => 'Personnel & Compte',
-        'features' => [
-            'Profil utilisateur complet',
-            'Historique d\'activité détaillé',
-            'Préférences personnalisées',
-            'Notifications et alertes',
-            'Raccourcis personnalisés'
-        ],
-        'priority' => 5
-    ],
-    'admin' => [
-        'name' => 'Administration Système',
-        'description' => 'Configuration avancée et gestion complète du portail',
-        'icon' => '⚙️',
-        'url' => '/admin/',
-        'status' => 'active',
-        'color' => '#34495e',
-        'category' => 'Système & Configuration',
-        'features' => [
-            'Gestion complète des utilisateurs',
-            'Configuration modules et permissions',
-            'Monitoring système temps réel',
-            'Logs d\'audit et sécurité',
-            'Sauvegarde et maintenance'
-        ],
-        'priority' => 6
-    ]
+    'calculateur' => ['name' => 'Calculateur Frais de Port', 'description' => 'Calcul intelligent des frais de transport.', 'icon' => '📦', 'url' => '/port/', 'status' => 'active', 'color' => '#0ea5e9', 'category' => 'Logistique & Transport', 'priority' => 1],
+    'adr' => ['name' => 'Module ADR', 'description' => 'Gestion des marchandises dangereuses.', 'icon' => '⚠️', 'url' => '/adr/', 'status' => 'development', 'color' => '#dc2626', 'category' => 'Sécurité & Conformité', 'priority' => 2],
+    'qualite' => ['name' => 'Contrôle Qualité', 'description' => 'Suivi et contrôle qualité des processus.', 'icon' => '🔬', 'url' => '/qualite/', 'status' => 'development', 'color' => '#059669', 'category' => 'Qualité & Contrôles', 'priority' => 3],
+    'maintenance' => ['name' => 'Maintenance & Outillages', 'description' => 'Gestion de la maintenance préventive.', 'icon' => '🔧', 'url' => '/maintenance/', 'status' => 'development', 'color' => '#6b7280', 'category' => 'Maintenance & Matériel', 'priority' => 4],
+    'user' => ['name' => 'Mon Espace Personnel', 'description' => 'Profil, paramètres et historique.', 'icon' => '👤', 'url' => '/user/', 'status' => 'active', 'color' => '#9b59b6', 'category' => 'Personnel & Compte', 'priority' => 5],
+    'admin' => ['name' => 'Administration', 'description' => 'Configuration avancée du portail.', 'icon' => '⚙️', 'url' => '/admin/', 'status' => 'active', 'color' => '#34495e', 'category' => 'Système & Configuration', 'priority' => 6]
 ];
 
-// Inclusion du header qui gère l'authentification et la logique des rôles
+// --- Inclusion du header ---
 include_once ROOT_PATH . '/templates/header.php';
 
-// À partir d'ici, $current_user et $roles_config sont disponibles et fiables.
+// --- Logique de la page (après que le header ait authentifié l'utilisateur) ---
+$user_role = $current_user['role'] ?? 'guest';
+$user_modules = getNavigationModules($user_role, $all_modules);
 
-// Filtrer les modules pour l'affichage des cartes sur cette page
-$user_role = $current_user['role'] ?? 'user';
+// Ajouter la logique d'accès pour l'affichage des cartes
+foreach ($user_modules as $id => &$module) {
+    $module['can_access'] = true;
+    if ($module['status'] === 'development' && !in_array($user_role, ['admin', 'dev'])) {
+        $module['can_access'] = false;
+    }
+}
+unset($module);
+
+uasort($user_modules, fn($a, $b) => ($a['priority'] ?? 999) <=> ($b['priority'] ?? 999));
+
+// Simuler des données pour l'affichage
+$portal_stats = ['modules_accessibles' => count($user_modules), 'calculs_aujourd_hui' => rand(25, 75)];
+$recent_activities = [['icon' => '📦', 'title' => 'Nouveau calcul de frais de port', 'details' => 'Destination: Lyon, Poids: 15kg', 'time' => 'Il y a 5 minutes', 'type' => 'calcul']];
+?>
+
+<!-- Le contenu de la page commence ici, après le <main> du header -->
+<div class="user-dashboard">
+    <section class="user-header">
+        <div class="user-avatar">
+            <div class="avatar-circle"><?= strtoupper(substr($current_user['username'] ?? 'U', 0, 1)) ?></div>
+            <div class="user-status"><span class="status-indicator online" title="En ligne"></span></div>
+        </div>
+        <div class="user-info">
+            <h1>Bonjour, <?= htmlspecialchars($current_user['name'] ?? $current_user['username'] ?? 'Utilisateur') ?> !</h1>
+            <p class="user-role"><?= RoleManager::getRoleBadge($user_role) ?></p>
+        </div>
+        <div class="user-quick-actions">
+            <a href="/user/profile.php" class="quick-btn" title="Mon profil">👤</a>
+            <a href="/user/settings.php" class="quick-btn" title="Paramètres">⚙️</a>
+            <a href="/auth/logout.php" class="quick-btn danger" title="Déconnexion">🚪</a>
+        </div>
+    </section>
+
+    <section class="portal-stats">
+        <h2>📊 Tableau de bord</h2>
+        <div class="stats-grid">
+            <?php foreach ($portal_stats as $key => $value): ?>
+            <div class="stat-card">
+                <div class="stat-icon"><?= $key === 'modules_accessibles' ? '📋' : '🧮' ?></div>
+                <div class="stat-content">
+                    <h3><?= $value ?></h3>
+                    <p><?= ucfirst(str_replace('_', ' ', $key)) ?></p>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
+    <?php
+    $categories = [];
+    foreach ($user_modules as $id => $module) {
+        $categories[$module['category'] ?? 'Général'][] = $module;
+    }
+    ?>
+
+    <?php foreach ($categories as $category_name => $modules_in_category): ?>
+    <section class="modules-category">
+        <h2 class="category-title"><?= htmlspecialchars($category_name) ?></h2>
+        <div class="modules-grid">
+            <?php foreach ($modules_in_category as $module): ?>
+            <div class="module-card <?= $module['status'] ?> <?= $module['can_access'] ? 'accessible' : 'restricted' ?>">
+                <div class="module-header" style="background-color: <?= $module['color'] ?>">
+                    <span class="module-icon"><?= $module['icon'] ?></span>
+                    <span class="module-status status-<?= $module['status'] ?>"><?= $module['status'] ?></span>
+                </div>
+                <div class="module-content">
+                    <h3 class="module-title"><?= htmlspecialchars($module['name']) ?></h3>
+                    <p class="module-description"><?= htmlspecialchars($module['description']) ?></p>
+                    <?php if ($module['can_access']): ?>
+                    <a href="<?= htmlspecialchars($module['url']) ?>" class="module-link">Accéder <span class="link-arrow">→</span></a>
+                    <?php else: ?>
+                    <div class="module-restricted"><span>🔒 Accès restreint</span></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    <?php endforeach; ?>
+
+    <section class="recent-activity">
+        <h2>📋 Activité récente</h2>
+        <div class="activity-timeline">
+            <?php foreach ($recent_activities as $activity): ?>
+            <div class="activity-item">
+                <div class="activity-icon"><?= $activity['icon'] ?></div>
+                <div class="activity-content">
+                    <h4><?= htmlspecialchars($activity['title']) ?></h4>
+                    <p class="activity-details"><?= htmlspecialchars($activity['details']) ?></p>
+                    <time><?= htmlspecialchars($activity['time']) ?></time>
+                </div>
+                <div class="activity-type type-<?= $activity['type'] ?>"></div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+</div>
+<!-- Le contenu de la page se termine ici, avant le footer -->
+
+<?php
+// --- Inclusion du footer ---
+include_once ROOT_PATH . '/templates/footer.php';
+?>
 $user_modules = getNavigationModules($user_role, $all_modules, $roles_config);
 
 // Ajouter la logique d'accès pour l'affichage des cartes
@@ -437,90 +437,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['preferences'])) {
                     
                     <div class="module-content">
                         <h3 class="module-title"><?= htmlspecialchars($module['name']) ?></h3>
-                        <p class="module-description"><?= htmlspecialchars($module['description']) ?></p>
-                        
-                        <?php if (!empty($module['features'])): ?>
-                        <div class="module-features">
-                            <h4>Fonctionnalités :</h4>
-                            <ul>
-                                <?php foreach (array_slice($module['features'], 0, 3) as $feature): ?>
-                                <li><?= htmlspecialchars($feature) ?></li>
-                                <?php endforeach; ?>
-                                <?php if (count($module['features']) > 3): ?>
-                                <li class="feature-more">... et <?= count($module['features']) - 3 ?> autres</li>
-                                <?php endif; ?>
-                            </ul>
-                        </div>
-                        <?php endif; ?>
-                        
-                        <?php if ($module['can_access']): ?>
-                        <a href="<?= htmlspecialchars($module['url']) ?>" class="module-link">
-                            Accéder au module
-                            <span class="link-arrow">→</span>
-                        </a>
-                        <?php else: ?>
-                        <div class="module-restricted">
-                            <span>🔒 Accès restreint</span>
-                            <small>Permissions insuffisantes</small>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </section>
-        <?php endforeach; ?>
-
-        <!-- Activité récente détaillée -->
-        <section class="recent-activity">
-            <h2>📋 Activité récente</h2>
-            <div class="activity-timeline">
-                <?php foreach ($recent_activities as $activity): ?>
-                <div class="activity-item">
-                    <div class="activity-icon"><?= $activity['icon'] ?></div>
-                    <div class="activity-content">
-                        <h4><?= htmlspecialchars($activity['title']) ?></h4>
-                        <p class="activity-details"><?= htmlspecialchars($activity['details']) ?></p>
-                        <time><?= htmlspecialchars($activity['time']) ?></time>
-                    </div>
-                    <div class="activity-type type-<?= $activity['type'] ?>"></div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="activity-footer">
-                <a href="profile.php?tab=activity" class="btn-secondary">Voir tout l'historique</a>
-            </div>
-        </section>
-
-        <!-- Debug panel conditionnel -->
-        <?php if (defined('DEBUG') && DEBUG === true): ?>
-        <section class="debug-section">
-            <h3>🔧 Debug Mode - Informations développeur</h3>
-            <div class="debug-info">
-                <p><strong>Méthode auth:</strong> <?= isset($auth) ? 'AuthManager' : 'Session PHP' ?></p>
-                <p><strong>Session ID:</strong> <?= htmlspecialchars(session_id()) ?></p>
-                <p><strong>Utilisateur:</strong> <?= htmlspecialchars($current_user['username'] ?? 'N/A') ?></p>
-                <p><strong>Rôle:</strong> <?= htmlspecialchars($current_user['role'] ?? 'N/A') ?></p>
-                <p><strong>Modules accessibles:</strong> <?= count($user_modules) ?>/<?= count($all_modules) ?></p>
-                <p><strong>Modules restreints:</strong> <?= count($restricted_modules) ?></p>
-                <p><strong>Catégories:</strong> <?= count($categories_stats) ?></p>
-            </div>
-        </section>
-        <?php endif; ?>
-
-    </main>
-
-    <?php 
-    // Inclusion footer sécurisée
-    if (file_exists(ROOT_PATH . '/templates/footer.php')) {
-        include ROOT_PATH . '/templates/footer.php';
-    }
-    ?>
-
-    <!-- JS module user -->
-    <script src="assets/js/user.js?v=<?= $build_number ?>"></script>
-</body>
-</html>
                         <p class="module-description"><?= htmlspecialchars($module['description']) ?></p>
                         
                         <?php if (!empty($module['features'])): ?>
