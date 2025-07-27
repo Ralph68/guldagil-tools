@@ -61,8 +61,8 @@ if ($user_authenticated) {
     <!-- CSS modulaire avec fallback intelligent et chemins CORRIGÉS -->
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
-        // 1. Priorité : nouveau système dans /public/module/assets/ - CHEMIN CORRIGÉ
-        $new_css_path = "/{$current_module}/assets/css/{$current_module}.css";
+        // 1. Priorité : nouveau système dans /public/module/assets/
+        $new_css_path = "{$current_module}/assets/css/{$current_module}.css";
         $module_css_loaded = false;
         
         // Vérification avec le chemin absolu pour file_exists
@@ -203,7 +203,7 @@ if ($user_authenticated) {
 <?php if ($module_js && $current_module !== 'home'): ?>
     <?php 
     // Priorité : nouveau système dans /public/module/assets/ - CHEMIN CORRIGÉ
-    $new_js_path = "/{$current_module}/assets/js/{$current_module}.js";
+    $new_js_path = "{$current_module}/assets/js/{$current_module}.js";
     $module_js_loaded = false;
     
     // Vérification avec le chemin absolu pour file_exists
