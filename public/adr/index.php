@@ -1,104 +1,112 @@
 <?php
-// Affichage des erreurs pour debug (à désactiver en prod)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 /**
- * Titre: Page de recherche ADR optimisée - Version finale
+ * Titre: Page principale recherche ADR - Version améliorée
  * Chemin: /public/adr/index.php
  * Version: 0.5 beta + build auto
  */
 
-// Définition du chemin racine si besoin
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(dirname(__DIR__)));
 }
 
-// Démarrage session si pas déjà active
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Vérification authentification portail
+session_start();
 if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
     header('Location: /auth/login.php');
     exit;
 }
 
-// Chargement de la configuration
 require_once ROOT_PATH . '/config/config.php';
 require_once ROOT_PATH . '/config/version.php';
 
-// Variables pour templates
 $page_title = 'Recherche produits ADR';
-$page_subtitle = 'Recherche avancée avec suggestions et liens FDS';
-$page_description = 'Module ADR - Recherche dynamique de produits et marchandises dangereuses avec accès aux fiches de données de sécurité';
+$page_subtitle = 'Centre de recherche et gestion des marchandises dangereuses';
+$page_description = 'Module ADR - Recherche avancée avec suggestions temps réel et accès FDS';
 $current_module = 'adr';
 $module_css = true;
 $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
-$user_authenticated = true;
 
-// Breadcrumbs
+// Vérification des données de session
+if (!isset($_SESSION['user']) || !is_array($_SESSION['user'])) {
+    $_SESSION['user'] = ['username' => 'Utilisateur', 'role' => 'user'];
+}
+
+// Correction de la gestion des requêtes
+$query = filter_input(INPUT_GET, 'q', FILTER_SANITIZE_STRING) ?? '';
+
 $breadcrumbs = [
     ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => false],
-    ['icon' => '⚠️', 'text' => 'Module ADR', 'url' => '/adr/', 'active' => false],
-    ['icon' => '🔍', 'text' => 'Recherche', 'url' => '/adr/', 'active' => true]
+    ['icon' => '⚠️', 'text' => 'Module ADR', 'url' => '/adr/', 'active' => true]
 ];
 
-// Paramètres de recherche
-$query = $_GET['q'] ?? '';
-
-// Inclusion du header (ne pas dupliquer le HTML)
 $header_path = ROOT_PATH . '/templates/header.php';
 if (file_exists($header_path)) {
     include $header_path;
 }
 ?>
 
-<main class="adr-container search-page">
-    <!-- Liens d'accès rapide ADR -->
-    <nav class="adr-nav-actions">
-        <a href="/adr/declaration.php" class="adr-action-btn">➕ Nouvelle déclaration ADR</a>
-        <a href="/adr/historique.php" class="adr-action-btn">📜 Historique des déclarations</a>
-        <a href="/adr/recap.php" class="adr-action-btn">📝 Récapitulatif journalier</a>
-        <a href="/adr/dashboard.php" class="adr-action-btn">📊 Dashboard & Statistiques</a>
+<main class="adr-main-container">
+    <!-- Navigation modules ADR -->
+    <nav class="adr-modules-nav">
+        <h2>📋 Modules de gestion ADR</h2>
+        <div class="modules-grid">
+            <a href="/adr/declaration.php" class="module-card declaration">
+                <div class="module-icon">➕</div>
+                <div class="module-info">
+                    <h3>Nouvelle déclaration</h3>
+                    <p>Créer une déclaration ADR</p>
+                </div>
+            </a>
+            <a href="/adr/historique.php" class="module-card history">
+                <div class="module-icon">📜</div>
+                <div class="module-info">
+                    <h3>Historique</h3>
+                    <p>Consulter les déclarations</p>
+                </div>
+            </a>
+            <a href="/adr/recap.php" class="module-card recap">
+                <div class="module-icon">📝</div>
+                <div class="module-info">
+                    <h3>Récapitulatif</h3>
+                    <p>Synthèse journalière</p>
+                </div>
+            </a>
+            <a href="/adr/dashboard.php" class="module-card dashboard">
+                <div class="module-icon">📊</div>
+                <div class="module-info">
+                    <h3>Dashboard</h3>
+                    <p>Statistiques & analyses</p>
+                </div>
+            </a>
+        </div>
     </nav>
 
-    <!-- Section recherche centrale -->
-    <section class="search-header">
-        <div class="search-intro">
+    <!-- Zone de recherche centrée et élargie -->
+    <section class="search-section-main">
+        <div class="search-header-centered">
             <h1>🔍 Recherche produits ADR</h1>
-            <p>Recherche dynamique avec suggestions temps réel et accès aux fiches FDS</p>
+            <p>Recherche dynamique avec suggestions temps réel et accès aux FDS</p>
         </div>
-        <div class="main-search-centered">
-            <form id="adr-search-form" autocomplete="off" onsubmit="performSearch(); return false;">
-                <div class="search-input-container">
+        
+        <div class="search-container-wide">
+            <form id="adr-search-form" class="search-form-main">
+                <div class="search-input-wrapper">
                     <input 
                         type="text" 
                         id="product-search" 
-                        class="search-input"
-                        placeholder="Tapez un code produit, nom, ou numéro UN... (min. 2 caractères)"
+                        class="search-input-large"
+                        placeholder="Rechercher un produit, code, nom commercial, numéro UN..."
                         value="<?= htmlspecialchars($query) ?>"
                         autocomplete="off"
-                        spellcheck="false"
-                        required
                     >
-                    <button class="search-btn" type="submit">
-                        🔍 Rechercher
+                    <button type="button" class="search-btn-main" onclick="performSearch()">
+                        <span class="search-icon">🔍</span>
+                        <span class="search-text">Rechercher</span>
                     </button>
                 </div>
-                <!-- Suggestions dynamiques -->
-                <div id="search-suggestions" class="search-suggestions"></div>
+                
+                <!-- Dropdown suggestions -->
+                <div id="search-suggestions" class="suggestions-dropdown"></div>
             </form>
-            <div id="search-hint" class="search-hint">
-                💡 Saisissez au moins 2 caractères pour voir les suggestions et lancer la recherche
-            </div>
-        </div>
-        <div class="search-stats">
-            <span class="stat-item">📊 <strong id="total-products">-</strong> produits</span>
-            <span class="stat-item">⚠️ <strong id="adr-products">-</strong> ADR</span>
-            <span class="stat-item">🌍 <strong id="env-products">-</strong> ENV</span>
         </div>
     </section>
 
@@ -107,115 +115,78 @@ if (file_exists($header_path)) {
         <div class="results-header">
             <h2 id="results-title">Résultats de recherche</h2>
             <div class="results-actions">
-                <button class="btn-export" onclick="exportResults()">
-                    📊 Exporter CSV
-                </button>
-                <button class="btn-clear" onclick="clearResults()">
-                    🗑️ Nouvelle recherche
-                </button>
+                <button class="btn-secondary" onclick="exportResults()">📊 Exporter</button>
+                <button class="btn-secondary" onclick="clearResults()">🗑️ Effacer</button>
             </div>
         </div>
-        <!-- Tableau responsive, sans ascenseur horizontal -->
-        <div id="results-content" class="results-content">
-            <div class="adr-results-table-responsive">
-                <table class="adr-results-table" id="adr-table">
-                    <thead>
-                        <tr>
-                            <th>Code produit</th>
-                            <th>Nom / Description</th>
-                            <th>UN</th>
-                            <th>Classe</th>
-                            <th>Groupe</th>
-                            <th>Cat.</th>
-                            <th>ENV</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="adr-table-body">
-                        <!-- Résultats injectés dynamiquement -->
-                    </tbody>
-                </table>
-            </div>
-            <div class="table-pagination" id="table-pagination">
-                <!-- Pagination JS -->
-            </div>
+        
+        <!-- Tableau desktop -->
+        <div class="results-table-container desktop-only">
+            <table id="results-table" class="results-table">
+                <thead>
+                    <tr>
+                        <th>Code produit</th>
+                        <th>Nom produit</th>
+                        <th>UN</th>
+                        <th>Classe</th>
+                        <th>Groupe</th>
+                        <th>Env.</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="results-content"></tbody>
+            </table>
         </div>
-    </section>
-
-    <!-- Section mobile-friendly : affichage en blocs si petit écran -->
-    <section id="search-results-mobile" class="results-section-mobile" style="display: none;">
-        <div id="results-mobile-content" class="results-mobile-content">
-            <!-- Résultats injectés dynamiquement en JS -->
+        
+        <!-- Vue mobile avec tuiles -->
+        <div class="results-mobile-container mobile-only" id="search-results-mobile">
         </div>
-        <div class="table-pagination" id="table-pagination-mobile"></div>
-    </section>
-
-    <!-- TODO: Ajouter les filtres avancés si besoin (masqués par défaut sur mobile) -->
-
-    <!-- Raccourcis et produits populaires -->
-    <section id="popular-products" class="popular-section">
-        <div class="section-header">
-            <h2>🔥 Raccourcis de recherche</h2>
-            <p>Produits fréquemment recherchés et raccourcis utiles</p>
-        </div>
-        <div class="shortcuts-grid">
-            <div class="shortcut-category">
-                <h3>⚡ Recherches rapides</h3>
-                <div class="shortcut-buttons">
-                    <button class="shortcut-btn" onclick="quickSearch('UN')">Tous les UN</button>
-                    <button class="shortcut-btn" onclick="quickSearch('classe:8')">Classe 8 (Corrosifs)</button>
-                    <button class="shortcut-btn" onclick="quickSearch('env:oui')">Dangereux ENV</button>
-                    <button class="shortcut-btn" onclick="quickSearch('cat:1')">Catégorie 1</button>
-                </div>
-            </div>
-            <div class="shortcut-category">
-                <h3>📈 Produits populaires</h3>
-                <div id="popular-content" class="popular-content">
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <p>Chargement des produits populaires...</p>
-                    </div>
-                </div>
-            </div>
+        
+        <!-- Pagination -->
+        <div class="pagination-container" id="pagination-container" style="display: none;">
+            <button id="prev-page" class="pagination-btn">« Précédent</button>
+            <span id="page-info" class="page-info">Page 1 sur 1</span>
+            <button id="next-page" class="pagination-btn">Suivant »</button>
         </div>
     </section>
 
-    <!-- Aide et informations -->
-    <section class="help-section">
-        <div class="help-content">
-            <h3>💡 Guide de recherche</h3>
-            <div class="help-grid">
-                <div class="help-item">
-                    <h4>🔤 Codes produits</h4>
-                    <p>Recherchez par code complet (SOL11) ou partiel (SOL). Les suggestions apparaissent dès 2 caractères.</p>
-                    <small>Exemple : SOL, DETARTRANT, 1001KN</small>
-                </div>
-                <div class="help-item">
-                    <h4>🚛 Numéros UN</h4>
-                    <p>Tapez le numéro UN avec ou sans préfixe "UN".</p>
-                    <small>Exemple : 1824, UN1824, 3412</small>
-                </div>
-                <div class="help-item">
-                    <h4>📋 Noms de produits</h4>
-                    <p>Recherche dans les noms commerciaux et descriptions techniques.</p>
-                    <small>Exemple : "acide", "hypochlorite", "détartrant"</small>
-                </div>
-                <div class="help-item">
-                    <h4>📄 Fiches FDS</h4>
-                    <p>Cliquez sur le bouton "FDS" pour accéder à la fiche de données de sécurité.</p>
-                    <small>Redirection vers QuickFDS avec le code produit</small>
-                </div>
+    <!-- Top recherchés et derniers mis à jour -->
+    <div class="stats-grid">
+        <!-- Produits populaires -->
+        <section class="popular-section">
+            <h2>🔥 Top des recherchés</h2>
+            <div id="popular-content" class="popular-content">
+                <div class="loading">Chargement...</div>
             </div>
-            <div class="help-legend">
-                <h4>🏷️ Légende des badges</h4>
-                <div class="legend-items">
-                    <span class="badge badge-un">UN1824</span> Numéro UN officiel
-                    <span class="badge badge-classe">8</span> Classe de danger ADR
-                    <span class="badge badge-groupe">II</span> Groupe d'emballage
-                    <span class="badge badge-cat">2</span> Catégorie de transport
-                    <span class="badge badge-env">ENV</span> Dangereux pour l'environnement
-                    <span class="badge badge-closed">Fermé</span> Article fermé au catalogue
-                </div>
+        </section>
+
+        <!-- Derniers mis à jour -->
+        <section class="recent-section">
+            <h2>🆕 Derniers mis à jour</h2>
+            <div id="recent-content" class="recent-content">
+                <div class="loading">Chargement...</div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Légende des badges -->
+    <section class="badges-legend">
+        <h3>🏷️ Légende des codes</h3>
+        <div class="legend-grid">
+            <div class="legend-item">
+                <span class="badge badge-un">UN1234</span> Numéro UN
+            </div>
+            <div class="legend-item">
+                <span class="badge badge-cat">3</span> Classe de transport
+            </div>
+            <div class="legend-item">
+                <span class="badge badge-group">II</span> Groupe d'emballage
+            </div>
+            <div class="legend-item">
+                <span class="badge badge-env">ENV</span> Dangereux environnement
+            </div>
+            <div class="legend-item">
+                <span class="badge badge-closed">Fermé</span> Article fermé
             </div>
         </div>
     </section>
@@ -223,415 +194,271 @@ if (file_exists($header_path)) {
 
 <!-- Configuration JavaScript -->
 <script>
-// Configuration pour la recherche ADR optimisée
 window.ADR_SEARCH_CONFIG = {
     apiEndpoint: '/adr/search/search.php',
     minChars: 2,
     maxResults: 100,
-    searchDelay: 200
+    searchDelay: 150
 };
 window.ADR_CURRENT_QUERY = <?= json_encode($query) ?>;
 
-// Focus automatique sur la barre de recherche à l'affichage
-document.addEventListener('DOMContentLoaded', function() {
-    var searchInput = document.getElementById('product-search');
-    if (searchInput) {
-        searchInput.focus();
-        searchInput.select();
-    }
-});
+let currentPage = 1;
+const itemsPerPage = 20;
 
-// TODO: Déplacer la logique de suggestion dans le JS du module si besoin
-// TODO: Gérer l'affichage mobile (affichage en blocs verticaux, voir CSS)
-// TODO: Utiliser les vraies données de la BDD côté /adr/search/search.php
-
-// Fonctions utilitaires
-function quickSearch(query) {
-    const searchInput = document.getElementById('product-search');
-    if (searchInput && window.ADR && ADR.Search) {
-        searchInput.value = query;
-        ADR.Search.performFullSearch(query);
-        searchInput.focus();
-        searchInput.select();
-    }
-}
-</script>
-
-<!-- JavaScript du module recherche -->
-<script src="/adr/assets/js/adr.js?v=<?= $build_number ?>"></script>
-<script src="/adr/assets/js/search.js?v=<?= $build_number ?>"></script>
-
-<script>
-// Initialisation complète
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialiser le module recherche
-    if (typeof ADR !== 'undefined' && ADR.Search) {
-        ADR.Search.init();
-
-        // Charger données initiales
-        if (typeof loadPopularProducts === 'function') loadPopularProducts();
-        if (typeof loadStats === 'function') loadStats();
-
-        // Lancer recherche si query dans URL
-        if (window.ADR_CURRENT_QUERY && window.ADR_CURRENT_QUERY.length >= 2) {
-            setTimeout(function() {
-                ADR.Search.performFullSearch(window.ADR_CURRENT_QUERY);
-            }, 500);
-        }
-    }
-});
-
-// Fonctions globales pour compatibilité
+// Fonction de recherche principale
 function performSearch(query) {
-    if (ADR.Search) {
-        ADR.Search.performFullSearch(query);
-    }
-}
-function clearResults() {
-    if (ADR.Search) {
-        ADR.Search.clearResults();
-    }
-}
-function exportResults() {
-    if (ADR.Search) {
-        ADR.Search.exportResults();
-    }
-}
-</script>
-
-<?php
-// Inclusion du footer (ne pas dupliquer le HTML)
-$footer_path = ROOT_PATH . '/templates/footer.php';
-if (file_exists($footer_path)) {
-    include $footer_path;
-}
-?>
-<script>
-// Configuration pour la recherche ADR optimisée
-window.ADR_SEARCH_CONFIG = {
-    apiEndpoint: '/adr/search/search.php',
-    minChars: 2,
-    maxResults: 100,
-    searchDelay: 200
-};
-
-// Variables globales
-window.ADR_CURRENT_QUERY = <?= json_encode($query) ?>;
-
-// État des filtres
-let filtersVisible = false;
-
-// Fonctions utilitaires
-function toggleFilters() {
-    const content = document.getElementById('filters-content');
-    const toggleText = document.getElementById('filter-toggle-text');
-    
-    filtersVisible = !filtersVisible;
-    content.style.display = filtersVisible ? 'block' : 'none';
-    toggleText.textContent = filtersVisible ? 'Masquer' : 'Afficher';
-}
-
-function clearFilters() {
-    document.getElementById('category-filter').value = '';
-    document.getElementById('transport-filter').value = '';
-    document.getElementById('adr-only').checked = false;
-    document.getElementById('env-danger').checked = false;
-    
-    // Relancer la recherche si une requête est active
-    if (ADR.Search && ADR.Search.state.lastQuery.length >= 2) {
-        ADR.Search.performFullSearch();
-    }
-}
-
-function quickSearch(query) {
     const searchInput = document.getElementById('product-search');
-    if (searchInput && ADR.Search) {
-        searchInput.value = query;
-        ADR.Search.performFullSearch(query);
-    }
-}
-
-function loadPopularProducts() {
-    fetch('/adr/search/search.php?action=popular&limit=8')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.products) {
-                displayPopularProducts(data.products);
-            } else {
-                document.getElementById('popular-content').innerHTML = 
-                    '<p class="error">Erreur chargement produits populaires</p>';
-            }
-        })
-        .catch(error => {
-            console.error('Erreur produits populaires:', error);
-            document.getElementById('popular-content').innerHTML = 
-                '<p class="error">Erreur de connexion</p>';
-        });
-}
-
-function displayPopularProducts(products) {
-    const container = document.getElementById('popular-content');
-    if (!products.length) {
-        container.innerHTML = '<p>Aucun produit populaire disponible</p>';
+    const searchQuery = query || searchInput.value.trim();
+    
+    if (searchQuery.length < 2) {
+        showMessage('Veuillez saisir au moins 2 caractères', 'warning');
         return;
     }
     
-    container.innerHTML = `
-        <div class="popular-grid">
-            ${products.map(product => `
-                <div class="popular-item" onclick="quickSearch('${product.code_produit}')">
-                    <div class="popular-header">
-                        <strong>${product.code_produit}</strong>
-                        ${product.numero_un ? `<span class="badge badge-un">UN${product.numero_un}</span>` : ''}
-                    </div>
-                    <p class="popular-name">${product.nom_produit || 'Nom non disponible'}</p>
-                    <div class="popular-meta">
-                        ${product.classe_adr ? `<span class="badge badge-classe">${product.classe_adr}</span>` : ''}
-                        ${product.danger_environnement === 'OUI' ? '<span class="badge badge-env">ENV</span>' : ''}
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-function loadStats() {
-    fetch('/adr/search/search.php?action=stats')
+    showLoader();
+    
+    fetch(`${window.ADR_SEARCH_CONFIG.apiEndpoint}?action=search&q=${encodeURIComponent(searchQuery)}`)
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.stats) {
-                document.getElementById('total-products').textContent = data.stats.total || '0';
-                document.getElementById('adr-products').textContent = data.stats.adr || '0';
-                document.getElementById('env-products').textContent = data.stats.env || '0';
+            hideLoader();
+            if (data.success && Array.isArray(data.results)) {
+                displayResults(data.results);
+            } else {
+                showMessage('Aucun résultat trouvé', 'info');
+                displayResults([]);
             }
         })
         .catch(error => {
-            console.error('Erreur statistiques:', error);
+            hideLoader();
+            showMessage('Erreur de recherche', 'error');
+            console.error('Erreur:', error);
         });
 }
-</script>
 
-<script>
-// --- Suggestions dynamiques sous la barre de recherche ---
-let suggestionSelected = -1;
-let suggestions = [];
-
-function showSuggestions(list) {
-    const container = document.getElementById('search-suggestions');
-    if (!container) return;
-    container.innerHTML = '';
-    if (!list.length) {
-        container.classList.remove('active');
+// Affichage des résultats
+function displayResults(results) {
+    const resultsSection = document.getElementById('search-results');
+    const resultsContent = document.getElementById('results-content');
+    const mobileContent = document.getElementById('search-results-mobile');
+    const resultsTitle = document.getElementById('results-title');
+    
+    if (results.length === 0) {
+        resultsSection.style.display = 'none';
         return;
     }
-    suggestions = list;
-    suggestionSelected = -1;
-    list.forEach((item, idx) => {
-        const div = document.createElement('div');
-        div.className = 'search-suggestion-item';
-        div.textContent = item.label;
-        div.tabIndex = 0;
-        div.onclick = () => selectSuggestion(idx);
-        div.onkeydown = (e) => {
-            if (e.key === 'Enter') selectSuggestion(idx);
-        };
-        container.appendChild(div);
-    });
-    container.classList.add('active');
-}
-
-function hideSuggestions() {
-    const container = document.getElementById('search-suggestions');
-    if (container) {
-        container.classList.remove('active');
-        container.innerHTML = '';
-    }
-}
-
-function selectSuggestion(idx) {
-    if (suggestions[idx]) {
-        document.getElementById('product-search').value = suggestions[idx].label;
-        hideSuggestions();
-        performSearch();
-    }
-}
-
-// Gestion clavier pour suggestions
-document.getElementById('product-search').addEventListener('keydown', function(e) {
-    const container = document.getElementById('search-suggestions');
-    const items = container ? container.querySelectorAll('.search-suggestion-item') : [];
-    if (!items.length) return;
-    if (e.key === 'ArrowDown') {
-        suggestionSelected = (suggestionSelected + 1) % items.length;
-        items.forEach((el, i) => el.classList.toggle('selected', i === suggestionSelected));
-        items[suggestionSelected].focus();
-        e.preventDefault();
-    } else if (e.key === 'ArrowUp') {
-        suggestionSelected = (suggestionSelected - 1 + items.length) % items.length;
-        items.forEach((el, i) => el.classList.toggle('selected', i === suggestionSelected));
-        items[suggestionSelected].focus();
-        e.preventDefault();
-    } else if (e.key === 'Escape') {
-        hideSuggestions();
-    }
-});
-
-// Appel AJAX pour suggestions
-document.getElementById('product-search').addEventListener('input', function(e) {
-    const val = this.value.trim();
-    if (val.length < 2) {
-        hideSuggestions();
-        return;
-    }
-    fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=suggest&q=' + encodeURIComponent(val))
-        .then(r => r.json())
-        .then(data => {
-            if (data.success && Array.isArray(data.suggestions)) {
-                showSuggestions(data.suggestions);
-            } else {
-                hideSuggestions();
-            }
-        })
-        .catch(() => hideSuggestions());
-});
-
-// --- Injection des résultats (tableau ou blocs mobile) ---
-function renderResults(results) {
-    // Desktop/tableau
-    const tableBody = document.getElementById('adr-table-body');
-    // Mobile/blocs
-    const mobileContent = document.getElementById('results-mobile-content');
-    if (!Array.isArray(results)) return;
-
-    // Table desktop
-    tableBody.innerHTML = '';
-    results.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${row.code_produit || ''}</td>
-            <td>${row.nom_produit || ''}</td>
-            <td>${row.numero_un ? 'UN' + row.numero_un : ''}</td>
-            <td>${row.classe_adr || ''}</td>
-            <td>${row.groupe_emballage || ''}</td>
-            <td>${row.categorie_transport || ''}</td>
-            <td>${row.danger_environnement === 'OUI' ? '<span class="badge badge-env">ENV</span>' : ''}</td>
-            <td>
-                <a href="${row.url_fds || '#'}" target="_blank" class="btn-fds">FDS</a>
+    
+    resultsTitle.textContent = `${results.length} résultat(s) trouvé(s)`;
+    resultsSection.style.display = 'block';
+    
+    // Tableau desktop
+    resultsContent.innerHTML = results.map(row => `
+        <tr class="result-row">
+            <td><strong>${row.code_produit || '-'}</strong></td>
+            <td>${row.nom_produit || row.nom_technique || '-'}</td>
+            <td>${row.numero_un ? `<span class="badge badge-un">UN${row.numero_un}</span>` : '-'}</td>
+            <td>${row.categorie_transport ? `<span class="badge badge-cat">${row.categorie_transport}</span>` : '-'}</td>
+            <td>${row.groupe_emballage ? `<span class="badge badge-group">${row.groupe_emballage}</span>` : '-'}</td>
+            <td>${row.danger_environnement === '1' ? '<span class="badge badge-env">ENV</span>' : '-'}</td>
+            <td class="actions-cell">
+                <a href="${row.url_fds || '#'}" target="_blank" class="btn-fds" title="Fiche de données de sécurité">
+                    📄 FDS
+                </a>
             </td>
-        `;
-        tableBody.appendChild(tr);
-    });
-
-    // Mobile blocs
-    mobileContent.innerHTML = '';
-    results.forEach(row => {
-        const block = document.createElement('div');
-        block.className = 'adr-result-mobile-block';
-        block.innerHTML = `
-            <div class="block-row"><span class="block-label">Code :</span> <span class="block-value">${row.code_produit || ''}</span></div>
-            <div class="block-row"><span class="block-label">Nom :</span> <span class="block-value">${row.nom_produit || ''}</span></div>
-            <div class="block-row"><span class="block-label">UN :</span> <span class="block-value">${row.numero_un ? 'UN' + row.numero_un : ''}</span></div>
-            <div class="block-row"><span class="block-label">Classe :</span> <span class="block-value">${row.classe_adr || ''}</span></div>
-            <div class="block-row"><span class="block-label">Groupe :</span> <span class="block-value">${row.groupe_emballage || ''}</span></div>
-            <div class="block-row"><span class="block-label">Cat. :</span> <span class="block-value">${row.categorie_transport || ''}</span></div>
-            <div class="block-row"><span class="block-label">ENV :</span> <span class="block-value">${row.danger_environnement === 'OUI' ? 'Oui' : 'Non'}</span></div>
-            <div class="block-actions">
-                <a href="${row.url_fds || '#'}" target="_blank" class="btn-fds">FDS</a>
-            </div>
-        `;
-        mobileContent.appendChild(block);
-    });
-
-    // Affichage des sections
-    document.getElementById('search-results').style.display = results.length ? '' : 'none';
-    document.getElementById('search-results-mobile').style.display = results.length ? '' : 'none';
-}
-
-// Surcharge la fonction ADR.Search.performFullSearch pour afficher les résultats correctement
-if (window.ADR && ADR.Search) {
-    ADR.Search._originalPerformFullSearch = ADR.Search.performFullSearch;
-    ADR.Search.performFullSearch = function(query) {
-        // TODO: Pagination, gestion erreurs, loader
-        const val = query || document.getElementById('product-search').value.trim();
-        if (val.length < 2) return;
-        fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=search&q=' + encodeURIComponent(val))
-            .then(r => r.json())
-            .then(data => {
-                if (data.success && Array.isArray(data.results)) {
-                    renderResults(data.results);
-                } else {
-                    renderResults([]);
-                    // TODO: Afficher un message "Aucun résultat"
-                }
-            })
-            .catch(() => {
-                renderResults([]);
-                // TODO: Afficher un message d'erreur réseau
-            });
-    };
-}
-
-// TODO: Vérifier que /adr/search/search.php retourne bien les données réelles (pas de démo)
-// TODO: Ajouter gestion accessibilité (focus, navigation clavier, aria-live)
-// TODO: Ajouter messages d'erreur ou de chargement si besoin
-</script>
-
-<!-- JavaScript du module recherche -->
-<script src="/adr/assets/js/adr.js?v=<?= $build_number ?>"></script>
-<script src="/adr/assets/js/search.js?v=<?= $build_number ?>"></script>
-
-<script>
-// Initialisation complète
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔍 Initialisation page recherche ADR optimisée');
+        </tr>
+    `).join('');
     
-    // Initialiser le module recherche
-    if (typeof ADR !== 'undefined' && ADR.Search) {
-        ADR.Search.init();
+    // Vue mobile avec tuiles
+    mobileContent.innerHTML = results.map(row => `
+        <div class="result-tile">
+            <div class="tile-header">
+                <strong>${row.code_produit || 'Code manquant'}</strong>
+                ${row.numero_un ? `<span class="badge badge-un">UN${row.numero_un}</span>` : ''}
+            </div>
+            <div class="tile-content">
+                <p class="product-name">${row.nom_produit || row.nom_technique || 'Nom non disponible'}</p>
+                <div class="tile-badges">
+                    ${row.categorie_transport ? `<span class="badge badge-cat">Classe ${row.categorie_transport}</span>` : ''}
+                    ${row.groupe_emballage ? `<span class="badge badge-group">Groupe ${row.groupe_emballage}</span>` : ''}
+                    ${row.danger_environnement === '1' ? '<span class="badge badge-env">ENV</span>' : ''}
+                </div>
+            </div>
+            <div class="tile-actions">
+                <a href="${row.url_fds || '#'}" target="_blank" class="btn-fds">📄 FDS</a>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Suggestions dropdown
+function setupSuggestions() {
+    const searchInput = document.getElementById('product-search');
+    const suggestionsContainer = document.getElementById('search-suggestions');
+    let suggestionsTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(suggestionsTimeout);
+        const query = this.value.trim();
         
-        // Charger données initiales
-        loadPopularProducts();
-        loadStats();
-        
-        // Lancer recherche si query dans URL
-        if (window.ADR_CURRENT_QUERY && window.ADR_CURRENT_QUERY.length >= 2) {
-            setTimeout(function() {
-                ADR.Search.performFullSearch(window.ADR_CURRENT_QUERY);
-            }, 500);
+        if (query.length < 2) {
+            suggestionsContainer.style.display = 'none';
+            return;
         }
         
-        console.log('✅ Recherche ADR optimisée initialisée');
-    } else {
-        console.error('❌ Module ADR.Search non disponible');
-    }
-});
+        suggestionsTimeout = setTimeout(() => {
+            fetch(`${window.ADR_SEARCH_CONFIG.apiEndpoint}?action=suggestions&q=${encodeURIComponent(query)}&limit=8`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.suggestions.length > 0) {
+                        displaySuggestions(data.suggestions);
+                    } else {
+                        suggestionsContainer.style.display = 'none';
+                    }
+                })
+                .catch(() => {
+                    suggestionsContainer.style.display = 'none';
+                });
+        }, 300);
+    });
+    
+    // Cacher suggestions au clic extérieur
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.style.display = 'none';
+        }
+    });
+}
 
-// Fonctions globales pour compatibilité
-function performSearch(query) {
-    if (ADR.Search) {
-        ADR.Search.performFullSearch(query);
+function displaySuggestions(suggestions) {
+    const container = document.getElementById('search-suggestions');
+    container.innerHTML = suggestions.map(item => `
+        <div class="suggestion-item" onclick="selectSuggestion('${item.code_produit}')">
+            <div class="suggestion-code">${item.code_produit}</div>
+            <div class="suggestion-name">${item.nom_produit || item.nom_technique || ''}</div>
+            ${item.numero_un ? `<div class="suggestion-un">UN${item.numero_un}</div>` : ''}
+        </div>
+    `).join('');
+    container.style.display = 'block';
+}
+
+function selectSuggestion(code) {
+    document.getElementById('product-search').value = code;
+    document.getElementById('search-suggestions').style.display = 'none';
+    performSearch(code);
+}
+
+// Charger données initiales
+function loadPopularProducts() {
+    fetch('/adr/search/search.php?action=popular&limit=6')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('popular-content');
+            if (data.success && data.products) {
+                container.innerHTML = data.products.map(product => `
+                    <div class="popular-item" onclick="performSearch('${product.code_produit}')">
+                        <strong>${product.code_produit}</strong>
+                        <span class="search-count">${product.search_count || 0} recherches</span>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<p class="no-data">Aucune donnée disponible</p>';
+            }
+        })
+        .catch(() => {
+            document.getElementById('popular-content').innerHTML = '<p class="error">Erreur de chargement</p>';
+        });
+}
+
+function loadRecentUpdates() {
+    fetch('/adr/search/search.php?action=recent&limit=6')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('recent-content');
+            if (data.success && data.products) {
+                container.innerHTML = data.products.map(product => `
+                    <div class="recent-item" onclick="performSearch('${product.code_produit}')">
+                        <strong>${product.code_produit}</strong>
+                        <span class="update-date">${product.date_maj || 'Date inconnue'}</span>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<p class="no-data">Aucune donnée disponible</p>';
+            }
+        })
+        .catch(() => {
+            document.getElementById('recent-content').innerHTML = '<p class="error">Erreur de chargement</p>';
+        });
+}
+
+// Utilitaires
+function showLoader() {
+    let loader = document.getElementById('adr-loader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'adr-loader';
+        loader.style.position = 'fixed';
+        loader.style.top = '0';
+        loader.style.left = '0';
+        loader.style.width = '100vw';
+        loader.style.height = '100vh';
+        loader.style.background = 'rgba(255,255,255,0.7)';
+        loader.style.display = 'flex';
+        loader.style.alignItems = 'center';
+        loader.style.justifyContent = 'center';
+        loader.style.zIndex = '9999';
+        loader.innerHTML = '<div class="loader-spinner" style="font-size:2rem;">⏳ Chargement...</div>';
+        document.body.appendChild(loader);
     }
+    loader.style.display = 'flex';
+}
+
+function hideLoader() {
+    const loader = document.getElementById('adr-loader');
+    if (loader) {
+        loader.style.display = 'none';
+    }
+}
+
+function showMessage(message, type) {
+    // TODO: Système de notifications toast
+    console.log(`${type.toUpperCase()}: ${message}`);
 }
 
 function clearResults() {
-    if (ADR.Search) {
-        ADR.Search.clearResults();
-    }
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('product-search').value = '';
+    document.getElementById('product-search').focus();
 }
 
 function exportResults() {
-    if (ADR.Search) {
-        ADR.Search.exportResults();
-    }
+    // TODO: Export CSV/Excel des résultats
+    alert('Export en cours de développement');
 }
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    setupSuggestions();
+    loadPopularProducts();
+    loadRecentUpdates();
+    
+    // Focus sur la barre de recherche
+    document.getElementById('product-search').focus();
+    
+    // Recherche si query en URL
+    if (window.ADR_CURRENT_QUERY && window.ADR_CURRENT_QUERY.length >= 2) {
+        setTimeout(() => performSearch(window.ADR_CURRENT_QUERY), 500);
+    }
+});
+
+// Gestion du formulaire
+document.getElementById('adr-search-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    performSearch();
+});
 </script>
 
 <?php
-// Inclure footer
 $footer_path = ROOT_PATH . '/templates/footer.php';
 if (file_exists($footer_path)) {
     include $footer_path;
-} else {
-    echo '</body></html>';
 }
 ?>

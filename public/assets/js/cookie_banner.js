@@ -16,10 +16,9 @@ class CookieBannerManager {
         // Vérifier si le consentement existe déjà
         if (!this.hasConsent()) {
             this.createBanner();
+        } else {
+            this.createManageButton(); // Toujours permettre la gestion des cookies
         }
-        
-        // Créer le bouton "Gérer mes cookies" fixe
-        this.createManageButton();
     }
 
     hasConsent() {
@@ -249,7 +248,7 @@ class CookieBannerManager {
     resetConsent() {
         // Supprimer le cookie de consentement
         document.cookie = `${this.cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-        
+
         // Supprimer autres cookies non-techniques
         const cookies = document.cookie.split(';');
         cookies.forEach(cookie => {
@@ -259,9 +258,9 @@ class CookieBannerManager {
                 document.cookie = `${cleanName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
             }
         });
-        
+
         this.showNotification('🗑️ Cookies supprimés - Préférences réinitialisées');
-        
+
         // Recréer la bannière après 1 seconde
         setTimeout(() => {
             this.createBanner();

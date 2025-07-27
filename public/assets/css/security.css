@@ -1,0 +1,500 @@
+/**
+ * Titre: Styles spécifiques pour la politique de sécurité
+ * Chemin: /public/assets/css/security.css
+ * Version: 0.5 beta + build auto
+ */
+
+/* =============================================================================
+   GRILLES SÉCURITÉ
+   ============================================================================= */
+
+.security-measures {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.measure-category {
+    background: var(--gray-50, #f9fafb);
+    padding: 1.5rem;
+    border-radius: var(--radius-md, 0.5rem);
+    border-left: 4px solid var(--blue-500, #3b82f6);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.measure-category:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+}
+
+.measure-category h4 {
+    color: var(--blue-700, #1d4ed8);
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+/* =============================================================================
+   CLASSIFICATION DES DONNÉES
+   ============================================================================= */
+
+.data-classification {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.data-level {
+    padding: 1.5rem;
+    border-radius: var(--radius-md, 0.5rem);
+    border: 2px solid;
+    transition: all 0.2s ease;
+}
+
+.data-level:hover {
+    transform: scale(1.02);
+}
+
+.data-critical {
+    background: #fef2f2;
+    border-color: #dc2626;
+    color: #991b1b;
+}
+
+.data-confidential {
+    background: #fff7ed;
+    border-color: #ea580c;
+    color: #9a3412;
+}
+
+.data-internal {
+    background: #fefce8;
+    border-color: #ca8a04;
+    color: #854d0e;
+}
+
+.data-public {
+    background: #f0fdf4;
+    border-color: #16a34a;
+    color: #166534;
+}
+
+.data-level h4 {
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+/* =============================================================================
+   RÔLES ET PERMISSIONS
+   ============================================================================= */
+
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.role-card {
+    padding: 1.5rem;
+    border-radius: var(--radius-md, 0.5rem);
+    border: 1px solid var(--gray-300, #d1d5db);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.role-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    transition: height 0.3s ease;
+}
+
+.role-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
+}
+
+.role-card:hover::before {
+    height: 8px;
+}
+
+.role-admin {
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    border-color: #dc2626;
+}
+
+.role-admin::before {
+    background: #dc2626;
+}
+
+.role-manager {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border-color: #2563eb;
+}
+
+.role-manager::before {
+    background: #2563eb;
+}
+
+.role-user {
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border-color: #16a34a;
+}
+
+.role-user::before {
+    background: #16a34a;
+}
+
+.role-readonly {
+    background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+    border-color: #6b7280;
+}
+
+.role-readonly::before {
+    background: #6b7280;
+}
+
+.role-card h4 {
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+/* =============================================================================
+   LOGS ET SURVEILLANCE
+   ============================================================================= */
+
+.logs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.log-category {
+    background: white;
+    border: 1px solid var(--gray-200, #e5e7eb);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+    transition: all 0.2s ease;
+}
+
+.log-category:hover {
+    border-color: var(--blue-300, #93c5fd);
+    box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+.log-category h4 {
+    color: var(--gray-900, #111827);
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+.log-category p {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--gray-600, #4b5563);
+    font-weight: 500;
+    margin-top: 1rem;
+}
+
+/* =============================================================================
+   SAUVEGARDE ET CONTINUITÉ
+   ============================================================================= */
+
+.backup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.backup-type {
+    background: var(--blue-50, #eff6ff);
+    border: 1px solid var(--blue-200, #bfdbfe);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.backup-type:hover {
+    background: var(--blue-100, #dbeafe);
+    border-color: var(--blue-300, #93c5fd);
+    transform: translateY(-2px);
+}
+
+.backup-type h4 {
+    color: var(--blue-700, #1d4ed8);
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+/* =============================================================================
+   GESTION DES INCIDENTS
+   ============================================================================= */
+
+.incident-flow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.flow-step {
+    background: white;
+    border: 2px solid var(--gray-200, #e5e7eb);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.flow-step:hover {
+    border-color: var(--blue-400, #60a5fa);
+    transform: scale(1.05);
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+}
+
+.flow-step h4 {
+    color: var(--gray-900, #111827);
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+.flow-step p {
+    color: var(--gray-600, #4b5563);
+    font-size: var(--font-size-sm, 0.875rem);
+    margin: 0;
+}
+
+.incident-levels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.incident-level {
+    padding: 1.5rem;
+    border-radius: var(--radius-md, 0.5rem);
+    border: 2px solid;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.incident-level:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+}
+
+.incident-critical {
+    background: #fef2f2;
+    border-color: #dc2626;
+    color: #991b1b;
+}
+
+.incident-major {
+    background: #fff7ed;
+    border-color: #ea580c;
+    color: #9a3412;
+}
+
+.incident-minor {
+    background: #fefce8;
+    border-color: #ca8a04;
+    color: #854d0e;
+}
+
+.incident-level h4 {
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+.incident-level p {
+    font-weight: 600;
+    margin: 0.5rem 0;
+}
+
+/* =============================================================================
+   FORMATION ET AMÉLIORATION
+   ============================================================================= */
+
+.training-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.training-module {
+    background: var(--green-50, #f0fdf4);
+    border: 1px solid var(--green-200, #bbf7d0);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+}
+
+.training-module:hover {
+    background: var(--green-100, #dcfce7);
+    border-color: var(--green-300, #86efac);
+    transform: translateY(-2px);
+}
+
+.training-module h4 {
+    color: var(--green-700, #15803d);
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+.improvement-cycle {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.cycle-step {
+    background: var(--purple-50, #faf5ff);
+    border: 1px solid var(--purple-200, #e9d5ff);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.cycle-step:hover {
+    background: var(--purple-100, #f3e8ff);
+    border-color: var(--purple-300, #d8b4fe);
+    transform: rotate(2deg) scale(1.05);
+}
+
+.cycle-step h4 {
+    color: var(--purple-700, #7c3aed);
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+.cycle-step p {
+    color: var(--purple-600, #9333ea);
+    font-size: var(--font-size-sm, 0.875rem);
+    margin: 0;
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================= */
+
+@media (max-width: 1024px) {
+    .security-measures {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+    
+    .roles-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .security-measures,
+    .data-classification,
+    .roles-grid,
+    .logs-grid,
+    .backup-grid,
+    .incident-flow,
+    .incident-levels,
+    .training-grid,
+    .improvement-cycle {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .measure-category,
+    .data-level,
+    .role-card,
+    .log-category,
+    .backup-type,
+    .flow-step,
+    .incident-level,
+    .training-module,
+    .cycle-step {
+        padding: 1rem;
+    }
+    
+    .flow-step:hover,
+    .cycle-step:hover {
+        transform: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .security-measures,
+    .data-classification,
+    .roles-grid,
+    .logs-grid,
+    .backup-grid,
+    .incident-flow,
+    .incident-levels,
+    .training-grid,
+    .improvement-cycle {
+        gap: 0.75rem;
+    }
+    
+    .measure-category h4,
+    .data-level h4,
+    .role-card h4,
+    .log-category h4,
+    .backup-type h4,
+    .flow-step h4,
+    .incident-level h4,
+    .training-module h4,
+    .cycle-step h4 {
+        font-size: var(--font-size-base, 1rem);
+    }
+}
+
+/* =============================================================================
+   ANIMATIONS POUR ACCESSIBILITÉ
+   ============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+    .measure-category,
+    .data-level,
+    .role-card,
+    .log-category,
+    .backup-type,
+    .flow-step,
+    .incident-level,
+    .training-module,
+    .cycle-step {
+        transition: none;
+    }
+    
+    .measure-category:hover,
+    .data-level:hover,
+    .role-card:hover,
+    .log-category:hover,
+    .backup-type:hover,
+    .flow-step:hover,
+    .incident-level:hover,
+    .training-module:hover,
+    .cycle-step:hover {
+        transform: none;
+    }
+}
