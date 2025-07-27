@@ -1,464 +1,464 @@
 /**
- * Titre: CSS Calculateur Port - Version corrigée accessibilité
+ * Titre: Styles du calculateur de frais de port
  * Chemin: /public/port/assets/css/port.css
- * Version: 0.5 beta + build auto
- * CORRECTIFS: Mode sombre désactivé + Contraste amélioré
+ * Version: 1.0
  */
 
-/* ============================= */
-/*        VARIABLES CSS          */
-/* ============================= */
 :root {
-    /* COULEURS PRINCIPALES - Thème clair UNIQUEMENT */
-    --port-primary: #0066cc;
-    --port-primary-hover: #0052a3;
-    --port-primary-light: #e6f3ff;
-    
-    /* Couleurs de surface - FOND CLAIR OBLIGATOIRE */
-    --port-background: #ffffff;
-    --port-surface: #ffffff;
-    --port-card-bg: #ffffff;
-    --port-border: #e5e7eb;
-    --port-shadow: rgba(0, 0, 0, 0.08);
-    
-    /* TEXTE - CONTRASTE MAXIMAL */
-    --port-text-primary: #111827;    /* Noir intense */
-    --port-text-secondary: #374151;  /* Gris très foncé */
-    --port-text-muted: #4b5563;      /* Gris foncé */
-    --port-text-inverse: #ffffff;    /* Blanc sur fond coloré */
-    
-    /* Couleurs d'état avec contraste amélioré */
-    --port-success: #059669;         /* Vert plus foncé */
-    --port-warning: #d97706;         /* Orange plus foncé */
-    --port-error: #dc2626;           /* Rouge plus foncé */
-    --port-info: #0284c7;            /* Bleu plus foncé */
-    
-    /* États interactifs */
-    --port-hover-bg: #f9fafb;
-    --port-active-bg: #f3f4f6;
-    --port-focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    
-    /* Dimensionnement */
-    --port-max-width: 1200px;
-    --port-form-width: 480px;
-    --port-results-width: 720px;
-    
-    /* Espacements cohérents */
-    --port-space-xs: 0.25rem;  /* 4px */
-    --port-space-sm: 0.5rem;   /* 8px */
-    --port-space-md: 1rem;     /* 16px */
-    --port-space-lg: 1.5rem;   /* 24px */
-    --port-space-xl: 2rem;     /* 32px */
-    --port-space-2xl: 3rem;    /* 48px */
-    
-    /* Rayons et ombres */
-    --port-radius-sm: 6px;
-    --port-radius-md: 8px;
-    --port-radius-lg: 12px;
-    --port-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-    --port-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-    --port-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    
-    /* Transitions fluides mais moins agressives */
-    --port-transition-fast: all 0.2s ease;
-    --port-transition-normal: all 0.3s ease;
-    --port-transition-slow: all 0.5s ease;
+    --port-primary: #2563eb;
+    --port-bg: #f8fafc;
+    --port-panel: #ffffff;
+    --port-border: #e2e8f0;
+    --port-text: #64748b;
+    --port-success: #10b981;
+    --port-warning: #f59e0b;
+    --port-danger: #ef4444;
 }
 
-/* ============================= */
-/*     STRUCTURE GÉNÉRALE        */
-/* ============================= */
+/* === STRUCTURE DE BASE === */
 .calc-container {
     min-height: 100vh;
-    background: var(--port-background);
-    color: var(--port-text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    line-height: 1.6;
-    padding: var(--port-space-lg);
+    background: var(--port-bg);
+    padding: 2rem 1rem;
+    /* Correction: ajout de padding-top pour éviter que le header ne masque le contenu */
+    padding-top: calc(var(--header-height) + var(--nav-height) + var(--breadcrumb-height) + 1rem);
 }
 
 .calc-main {
-    max-width: var(--port-max-width);
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--port-space-xl);
-    align-items: start;
-}
-
-/* ============================= */
-/*        EN-TÊTE CALCULATEUR     */
-/* ============================= */
-.calc-header {
-    max-width: var(--port-max-width);
-    margin: 0 auto var(--port-space-2xl);
-    text-align: center;
-}
-
-.calc-hero {
-    background: linear-gradient(135deg, var(--port-primary), var(--port-primary-hover));
-    color: var(--port-text-inverse);
-    padding: var(--port-space-2xl) var(--port-space-xl);
-    border-radius: var(--port-radius-lg);
-    box-shadow: var(--port-shadow-lg);
-}
-
-.calc-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin: 0 0 var(--port-space-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--port-space-md);
-}
-
-.calc-icon {
-    font-size: 3rem;
-}
-
-.calc-subtitle {
-    font-size: 1.25rem;
-    opacity: 0.95;
-    margin: 0 0 var(--port-space-lg);
-    font-weight: 400;
-}
-
-.calc-features {
-    display: flex;
-    justify-content: center;
-    gap: var(--port-space-md);
-    flex-wrap: wrap;
-}
-
-.feature-badge {
-    background: rgba(255, 255, 255, 0.15);
-    color: var(--port-text-inverse);
-    padding: var(--port-space-sm) var(--port-space-md);
-    border-radius: var(--port-radius-sm);
-    font-size: 0.875rem;
-    font-weight: 500;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* ============================= */
-/*     CARTE FORMULAIRE          */
-/* ============================= */
-.calc-form-section {
-    width: 100%;
-}
-
-.calc-form-card {
-    background: var(--port-card-bg);
-    border: 2px solid var(--port-border);
-    border-radius: var(--port-radius-lg);
-    padding: var(--port-space-xl);
-    box-shadow: var(--port-shadow-md);
-    position: sticky;
-    top: var(--port-space-lg);
-}
-
-.calc-form-title {
-    color: var(--port-text-primary);
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 0 0 var(--port-space-lg);
-    text-align: center;
-}
-
-/* ============================= */
-/*      PROGRESSION ÉTAPES       */
-/* ============================= */
-.calc-progress {
-    margin-bottom: var(--port-space-xl);
-}
-
-.calc-progress-bar {
-    background: var(--port-border);
-    height: 4px;
-    border-radius: 2px;
-    margin-bottom: var(--port-space-lg);
-    position: relative;
+    background: var(--port-panel);
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     overflow: hidden;
 }
 
-.calc-progress-fill {
-    background: linear-gradient(90deg, var(--port-primary), var(--port-primary-hover));
-    height: 100%;
-    width: 25%;
-    border-radius: 2px;
-    transition: width 0.4s ease;
-}
-
+/* === ÉTAPES DU FORMULAIRE === */
 .calc-steps {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--port-space-sm);
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--port-border);
+    margin: 0 2rem;
+    padding-bottom: 1rem;
 }
 
 .calc-step-btn {
-    background: var(--port-background);
-    border: 2px solid var(--port-border);
-    border-radius: var(--port-radius-md);
-    padding: var(--port-space-md);
+    flex: 1;
+    padding: 0.75rem;
+    margin: 0 0.5rem;
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 1rem;
     cursor: pointer;
-    transition: var(--port-transition-normal);
-    text-align: center;
-    font-family: inherit;
-    color: var(--port-text-secondary);
-}
-
-.calc-step-btn:hover {
-    background: var(--port-hover-bg);
-    border-color: var(--port-primary);
-    transform: translateY(-1px);
+    transition: all 0.3s;
 }
 
 .calc-step-btn.active {
-    background: var(--port-primary);
     border-color: var(--port-primary);
-    color: var(--port-text-inverse);
-    box-shadow: var(--port-shadow-md);
+    background: var(--port-primary);
+    color: white;
 }
 
 .calc-step-btn.completed {
-    background: var(--port-success);
     border-color: var(--port-success);
-    color: var(--port-text-inverse);
+    color: var(--port-success);
 }
 
-.step-number {
-    display: block;
-    font-weight: 700;
-    font-size: 1.125rem;
-    margin-bottom: var(--port-space-xs);
+/* === FORMULAIRE DE CALCUL === */
+.calc-form-panel {
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 0.75rem;
+    background: white;
+    margin: 1rem 2rem;
 }
 
-.step-label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-/* ============================= */
-/*       ÉTAPES DU FORMULAIRE    */
-/* ============================= */
-.calc-step-content {
-    display: none;
-    animation: fadeInUp 0.4s ease;
-}
-
-.calc-step-content.active {
-    display: block;
-}
-
-.calc-step-content h3 {
-    color: var(--port-text-primary);
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 var(--port-space-lg);
-    display: flex;
-    align-items: center;
-    gap: var(--port-space-sm);
-}
-
-/* ============================= */
-/*        CHAMPS DE SAISIE       */
-/* ============================= */
-.calc-field-group {
-    margin-bottom: var(--port-space-lg);
+.calc-form-group {
+    margin-bottom: 1.5rem;
 }
 
 .calc-label {
     display: block;
-    color: var(--port-text-primary);
-    font-weight: 600;
-    margin-bottom: var(--port-space-sm);
-    font-size: 0.975rem;
-}
-
-.required {
-    color: var(--port-error);
-    margin-left: var(--port-space-xs);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--port-text);
 }
 
 .calc-input,
 .calc-select {
     width: 100%;
-    padding: var(--port-space-md);
+    padding: 0.75rem;
     border: 2px solid var(--port-border);
-    border-radius: var(--port-radius-md);
+    border-radius: 0.5rem;
     font-size: 1rem;
-    font-family: inherit;
-    background: var(--port-background);
-    color: var(--port-text-primary);
-    transition: var(--port-transition-normal);
-    box-sizing: border-box;
+    transition: border-color 0.3s;
 }
 
 .calc-input:focus,
 .calc-select:focus {
+    border-color: var(--port-primary);
     outline: none;
-    border-color: var(--port-primary);
-    box-shadow: var(--port-focus-ring);
-    background: var(--port-background);
 }
 
-.calc-input:hover,
-.calc-select:hover {
-    border-color: var(--port-primary);
+.calc-help {
+    font-size: 0.875rem;
+    color: var(--port-text);
+    margin-top: 0.25rem;
 }
 
-.calc-input.error {
-    border-color: var(--port-error);
-    background: #fef2f2;
+/* === OPTIONS DE LIVRAISON EXCLUSIVES === */
+.delivery-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
 }
 
-.calc-input-with-unit {
+.delivery-option {
     position: relative;
+    flex: 1;
+    min-width: 120px;
+}
+
+.delivery-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.delivery-option label {
+    display: block;
+    padding: 0.75rem;
+    text-align: center;
+    border: 2px solid var(--port-border);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.delivery-option input[type="radio"]:checked + label {
+    border-color: var(--port-primary);
+    background-color: var(--port-primary);
+    color: white;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+}
+
+/* === CASE À COCHER POUR L'ENLÈVEMENT === */
+.checkbox-container {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid var(--port-border);
+    border-radius: 0.5rem;
+    background-color: var(--port-bg);
 }
 
-.calc-input-unit {
-    position: absolute;
-    right: var(--port-space-md);
-    color: var(--port-text-muted);
-    font-weight: 500;
-    pointer-events: none;
-}
-
-.calc-field-help {
-    font-size: 0.875rem;
-    color: var(--port-text-muted);
-    margin-top: var(--port-space-sm);
-}
-
-.calc-error {
-    color: var(--port-error);
-    font-size: 0.875rem;
-    font-weight: 500;
-    margin-top: var(--port-space-sm);
-    display: block;
-    min-height: 1.25rem;
-}
-
-/* ============================= */
-/*        OPTIONS ET TOGGLES     */
-/* ============================= */
-.calc-options-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--port-space-md);
-    margin-bottom: var(--port-space-lg);
-}
-
-.calc-option-card {
-    border: 2px solid var(--port-border);
-    border-radius: var(--port-radius-md);
-    padding: var(--port-space-md);
+.checkbox-container input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
     cursor: pointer;
-    transition: var(--port-transition-normal);
-    background: var(--port-background);
-    display: block;
 }
 
-.calc-option-card:hover {
+.checkbox-container label {
+    cursor: pointer;
+    margin: 0;
+    font-weight: 500;
+}
+
+/* === BOUTONS DE NAVIGATION === */
+.form-nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    gap: 1rem;
+}
+
+.btn-prev {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid var(--port-border);
+    background: white;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-prev:hover {
     border-color: var(--port-primary);
-    background: var(--port-hover-bg);
-    transform: translateY(-1px);
-}
-
-.calc-option-card input[type="radio"] {
-    display: none;
-}
-
-.calc-option-card input[type="radio"]:checked + .calc-option-content {
     color: var(--port-primary);
 }
 
-.calc-option-card:has(input[type="radio"]:checked) {
-    border-color: var(--port-primary);
-    background: var(--port-primary-light);
-    box-shadow: var(--port-shadow-md);
-}
-
-.calc-option-content {
-    display: flex;
-    align-items: center;
-    gap: var(--port-space-md);
-}
-
-.calc-option-icon {
-    font-size: 1.5rem;
-    flex-shrink: 0;
-}
-
-.calc-option-text strong {
-    display: block;
-    color: var(--port-text-primary);
+.btn-next, .btn-calculate {
+    padding: 0.75rem 1.5rem;
+    background: var(--port-primary);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
     font-weight: 600;
-    margin-bottom: var(--port-space-xs);
-}
-
-.calc-option-text span {
-    color: var(--port-text-muted);
-    font-size: 0.875rem;
-}
-
-/* Toggle amélioré */
-.calc-toggle-group {
-    margin-top: var(--port-space-lg);
-}
-
-.calc-toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--port-space-md);
     cursor: pointer;
-    padding: var(--port-space-md);
+    transition: all 0.3s;
+}
+
+.btn-next:hover, .btn-calculate:hover {
+    background-color: #1d4ed8; /* Version plus foncée */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btn-calculate {
+    background: linear-gradient(135deg, var(--port-primary), #1d4ed8);
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+}
+
+/* === RÉSULTATS === */
+.calc-results-panel {
+    padding: 2rem;
+    margin: 1rem 2rem;
+    border-radius: 0.75rem;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.calc-results-header {
+    padding: 1.5rem 2rem;
+    background: #f1f5f9;
+    border-bottom: 1px solid var(--port-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.calc-results-header h2 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--port-text);
+}
+
+.calc-status {
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    background: rgba(6, 182, 212, 0.1);
+    color: #0c5460;
+}
+
+.calc-welcome {
+    text-align: center;
+    color: var(--port-text);
+}
+
+.calc-welcome-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+}
+
+.calc-results-grid {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.calc-result-card {
     border: 2px solid var(--port-border);
-    border-radius: var(--port-radius-md);
-    background: var(--port-background);
-    transition: var(--port-transition-normal);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    transition: all 0.2s;
+    background: white;
+    position: relative;
+    overflow: hidden;
 }
 
-.calc-toggle:hover {
+.calc-result-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--port-primary);
+    transform: scaleY(0);
+    transition: all 0.3s;
+}
+
+.calc-result-card:hover {
     border-color: var(--port-primary);
-    background: var(--port-hover-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
-.calc-toggle input[type="checkbox"] {
+.calc-result-card:hover::before {
+    transform: scaleY(1);
+}
+
+/* === MESSAGES TEMPORAIRES === */
+.calc-temp-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    z-index: 9999;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    max-width: 300px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.calc-temp-message.show {
+    transform: translateX(0);
+}
+
+.calc-temp-message.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--port-success);
+    border-left: 4px solid var(--port-success);
+}
+
+.calc-temp-message.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--port-warning);
+    border-left: 4px solid var(--port-warning);
+}
+
+.calc-temp-message.info {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--port-primary);
+    border-left: 4px solid var(--port-primary);
+}
+
+/* === DEBUG PANEL === */
+.debug-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 350px;
+    background: white;
+    border: 1px solid var(--port-border);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    font-size: 12px;
+    max-height: 300px;
+    overflow: hidden;
+}
+
+.debug-header {
+    background: var(--port-primary);
+    color: white;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.debug-toggle {
+    transition: transform 0.2s;
+}
+
+.debug-panel.expanded .debug-toggle {
+    transform: rotate(180deg);
+}
+
+.debug-content {
+    padding: 10px;
+    max-height: 250px;
+    overflow-y: auto;
     display: none;
 }
 
-.calc-toggle-slider {
-    position: relative;
-    width: 48px;
-    height: 24px;
-    background: var(--port-border);
-    border-radius: 12px;
-    transition: var(--port-transition-normal);
-    flex-shrink: 0;
+.debug-panel.expanded .debug-content {
+    display: block;
 }
 
-.calc-toggle-slider::before {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 20px;
-    height: 20px;
-    background: var(--port-background);
-    border-radius: 50%;
-    transition: var(--port-transition-normal);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.debug-entry {
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    background: #f8f9fa;
+    border-radius: 3px;
+    border-left: 3px solid var(--port-primary);
+    font-family: monospace;
 }
 
-.calc-toggle input[type="checkbox"]:checked + .calc-toggle-slider {
-    background: var(--port-primary);
+.debug-entry pre {
+    margin: 4px 0;
+    font-size: 10px;
+    white-space: pre-wrap;
+    color: #666;
 }
 
+/* === RESPONSIVE === */
+@media (max-width: 1024px) {
+    .calc-main {
+        grid-template-columns: 1fr;
+    }
+    
+    .debug-panel {
+        bottom: 10px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+    }
+    
+    .calc-temp-message {
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .calc-steps {
+        flex-direction: column;
+    }
+    
+    .calc-step-btn {
+        border-bottom: 1px solid var(--port-border);
+        border-right: none;
+    }
+    
+    .calc-step-btn:last-child {
+        border-bottom: none;
+    }
+    
+    .delivery-options {
+        flex-direction: column;
+    }
+    
+    .calc-results-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+}
+
+/* === ANIMATIONS === */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.calc-results-wrapper {
+    animation: slideIn 0.3s ease-out;
+}
+
+.calc-form.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
 .calc-toggle input[type="checkbox"]:checked + .calc-toggle-slider::before {
     transform: translateX(24px);
 }
