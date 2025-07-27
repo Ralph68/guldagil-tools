@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Footer du portail Guldagil - Version mise à jour avec vrais liens
+ * Titre: Footer du portail Guldagil - Architecture complète
  * Chemin: /templates/footer.php
  * Version: 0.5 beta + build auto
  */
@@ -13,15 +13,13 @@ if (!defined('ROOT_PATH')) {
 
 // Variables avec fallbacks sécurisés
 $app_version = defined('APP_VERSION') ? APP_VERSION : '0.5-beta';
-$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : '00000000';
+$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : date('ymdHis');
 $app_name = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
 $app_author = defined('APP_AUTHOR') ? APP_AUTHOR : 'Jean-Thomas RUNSER';
 $current_module = $current_module ?? 'home';
-
-// Variables avec fallbacks pour éviter les erreurs
 $module_js = $module_js ?? true;
 
-// Récupérer rôle utilisateur pour personnalisation
+// Récupérer rôle utilisateur
 $user_role = 'user';
 if (isset($current_user['role'])) {
     $user_role = $current_user['role'];
@@ -30,98 +28,45 @@ if (isset($current_user['role'])) {
 }
 $is_admin_or_dev = in_array($user_role, ['admin', 'dev']);
 
-// NAVIGATION RAPIDE - VRAIS LIENS EXISTANTS VÉRIFIÉS
+// Navigation footer
 $nav_links = [
     'home' => ['🏠', 'Accueil', '/'],
-    'port' => ['📦', 'Frais de port', '/port/'], // Calculateur existant
-    'adr' => ['⚠️', 'Gestion ADR', '/adr/'], // Module ADR existant
-    'epi' => ['🦺', 'EPI', '/epi/'], // Module EPI existant
-    'qualite' => ['✅', 'Contrôle Qualité', '/qualite/'], // Module qualité existant
-    'materiel' => ['🔧', 'Matériels', '/materiel/'], // Module matériel existant
-    'user' => ['👤', 'Mon Espace', '/user/'], // Espace utilisateur existant
+    'port' => ['📦', 'Frais de port', '/port/'],
+    'adr' => ['⚠️', 'Gestion ADR', '/adr/'],
+    'epi' => ['🦺', 'EPI', '/epi/'],
+    'qualite' => ['✅', 'Qualité', '/qualite/'],
+    'materiel' => ['🔧', 'Matériels', '/materiel/'],
+    'user' => ['👤', 'Mon Espace', '/user/'],
 ];
 
-// Ajouter admin/dev selon le rôle
 if ($is_admin_or_dev) {
-    $nav_links['admin'] = ['⚙️', 'Administration', '/admin/']; // Module admin existant
+    $nav_links['admin'] = ['⚙️', 'Administration', '/admin/'];
 }
 
-// On retire le lien du module courant pour éviter la redondance
+// Supprimer module courant
 unset($nav_links[$current_module]);
 
-// LIENS LÉGAUX - VRAIS FICHIERS EXISTANTS VÉRIFIÉS
+// Liens légaux
 $legal_links = [
-    ['⚖️', 'Mentions légales', '/legal/mentions.php'], // Fichier existant vérifié
-    ['🔒', 'Confidentialité', '/legal/privacy.php'], // Fichier existant vérifié
-    ['📋', 'CGU', '/legal/terms.php'], // Fichier existant vérifié
-    ['🍪', 'Cookies', '/legal/cookies.php'], // Fichier existant vérifié
-    ['📚', 'Documentation légale', '/legal/'], // Index légal existant vérifié
+    ['⚖️', 'Mentions légales', '/legal/mentions.php'],
+    ['🔒', 'Confidentialité', '/legal/privacy.php'],
+    ['📋', 'CGU', '/legal/terms.php'],
+    ['🍪', 'Cookies', '/legal/cookies.php'],
+    ['✉️', 'Contact', '/contact.php'],
+    ['ℹ️', 'À propos', '/about.php'],
+    ['📝', 'Évolutions', '/channellog.php'],
 ];
-
-// LIENS ADDITIONNELS - PAGES EXISTANTES CONFIRMÉES
-$additional_links = [
-    ['✉️', 'Contact', '/contact.php'], // Formulaire existant (privilégier email)
-    ['ℹ️', 'À propos', '/about.php'], // Page existante confirmée
-    ['📝', 'Évolutions', '/channellog.php'], // Journal existant confirmé
-];
-
-// TODO: Ajouter ces pages manquantes pour compléter le portail
-$missing_pages_todo = [
-    'help/' => 'Centre d\'aide et documentation utilisateur',
-    'legal/security.php' => 'Politique de sécurité informatique',
-    // Scripts JS manquants pour modules :
-    'adr/assets/js/adr.js' => 'Script JavaScript pour module ADR',
-    'admin/assets/js/admin.js' => 'Script JavaScript pour module admin',
-    'epi/assets/js/epi.js' => 'Script JavaScript pour module EPI',
-    'materiel/assets/js/materiel.js' => 'Script JavaScript pour module matériel',
-    'qualite/assets/js/qualite.js' => 'Script JavaScript pour module qualité'
-];
-
-// Analytics simple (hors admin/dev pour éviter pollution des stats)
-if ($is_admin_or_dev === false) {
-    try {
-        // Préparation des données analytics anonymisées
-        $analytics_data = [
-            'page' => $_SERVER['REQUEST_URI'] ?? '',
-            'module' => $current_module,
-            'user_id' => $_SESSION['user_id'] ?? 0,
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            'ip_hash' => md5($_SERVER['REMOTE_ADDR'] ?? 'unknown'),
-            'referer' => $_SERVER['HTTP_REFERER'] ?? '',
-            'timestamp' => date('Y-m-d H:i:s')
-        ];
-        $analytics_dir = ROOT_PATH . '/storage/analytics/';
-        
-        // Vérifier existence du dossier analytics
-        if (!file_exists($analytics_dir)) {
-            mkdir($analytics_dir, 0755, true);
-        }
-        
-        // Fichier journalier pour limiter la taille
-        $log_file = $analytics_dir . 'visits_' . date('Y-m-d') . '.log';
-        
-        // Enregistrer l'entrée analytics (une ligne JSON par visite)
-        file_put_contents(
-            $log_file,
-            json_encode($analytics_data) . PHP_EOL,
-            FILE_APPEND
-        );
-    } catch (Exception $e) {
-        // Silencieux : ne pas perturber l'expérience utilisateur en cas d'erreur d'analytics
-        // TODO: Ajouter un système de log d'erreur si besoin
-    }
-}
 ?>
 
-    </main> <!-- Fermeture du main ouvert dans header -->
+    </main>
 
     <footer class="portal-footer">
         <div class="footer-container">
-            <!-- Navigation rapide vers les modules existants -->
+            <!-- Navigation rapide -->
             <nav class="footer-navigation" aria-label="Navigation rapide">
                 <div class="footer-links-grid">
                     <?php foreach ($nav_links as $key => $link): ?>
-                        <a href="<?= htmlspecialchars($link[2]) ?>" class="footer-link" data-module="<?= htmlspecialchars($key) ?>">
+                        <a href="<?= htmlspecialchars($link[2]) ?>" class="footer-link">
                             <span class="link-icon"><?= $link[0] ?></span>
                             <?= htmlspecialchars($link[1]) ?>
                         </a>
@@ -130,10 +75,10 @@ if ($is_admin_or_dev === false) {
             </nav>
         </div>
 
-        <!-- Section légale et informations -->
+        <!-- Section légale -->
         <div class="footer-legal">
             <div class="footer-container footer-legal-container">
-                <!-- Liens légaux conformes à la réglementation française -->
+                <!-- Liens légaux -->
                 <nav class="legal-links" aria-label="Liens légaux">
                     <?php foreach ($legal_links as $legal_link): ?>
                         <a href="<?= htmlspecialchars($legal_link[2]) ?>" class="legal-link">
@@ -141,17 +86,9 @@ if ($is_admin_or_dev === false) {
                             <?= htmlspecialchars($legal_link[1]) ?>
                         </a>
                     <?php endforeach; ?>
-                    
-                    <!-- Liens additionnels existants -->
-                    <?php foreach ($additional_links as $add_link): ?>
-                        <a href="<?= htmlspecialchars($add_link[2]) ?>" class="legal-link">
-                            <span class="legal-icon"><?= $add_link[0] ?></span>
-                            <?= htmlspecialchars($add_link[1]) ?>
-                        </a>
-                    <?php endforeach; ?>
                 </nav>
 
-                <!-- Informations légales obligatoires -->
+                <!-- Informations légales -->
                 <div class="footer-info">
                     <div class="company-info">
                         <strong>Guldagil SAS</strong> - Solutions professionnelles traitement de l'eau<br>
@@ -165,68 +102,191 @@ if ($is_admin_or_dev === false) {
                         <p>&copy; <?= date('Y') ?> <?= htmlspecialchars($app_author) ?> - <?= htmlspecialchars($app_name) ?></p>
                         <p class="version-info">
                             Version <?= htmlspecialchars($app_version) ?> - Build <?= htmlspecialchars($build_number) ?> 
-                            (<?= date('d/m/Y H:i', BUILD_TIMESTAMP ?? time()) ?>)
+                            (<?= date('d/m/Y H:i') ?>)
                         </p>
                     </div>
                 </div>
 
-                <!-- Status système pour admin/dev -->
+                <!-- Status dev -->
                 <?php if ($is_admin_or_dev): ?>
                 <div class="footer-dev-info">
-                    <small>
-                        🔧 Mode <?= htmlspecialchars($user_role) ?> | 
-                        Module : <?= htmlspecialchars($current_module) ?> | 
-                        <?php
-                        // Vérification rapide BDD
-                        $db_status = '❌';
-                        try {
-                            if (isset($db) && $db instanceof PDO) {
-                                $db->query('SELECT 1');
-                                $db_status = '✅';
-                            }
-                        } catch (Exception $e) {
-                            $db_status = '⚠️';
-                        }
-                        ?>
-                        BDD : <?= $db_status ?>
-                    </small>
+                    🔧 Mode <?= htmlspecialchars($user_role) ?> | Module : <?= htmlspecialchars($current_module) ?>
                 </div>
                 <?php endif; ?>
             </div>
         </div>
     </footer>
 
-    <!-- Scripts nécessaires -->
+    <!-- Scripts -->
     <script src="/assets/js/header.js?v=<?= htmlspecialchars($build_number) ?>"></script>
     
-    <!-- JS modulaire avec chemins conformes aux instructions -->
     <?php if ($module_js && $current_module !== 'home'): ?>
         <?php 
-        // Chemins JS selon architecture modulaire définie dans les instructions
         $module_js_paths = [
             "{$current_module}/assets/js/{$current_module}.js",
-            "/{$current_module}/assets/js/{$current_module}.js",
             "/assets/js/modules/{$current_module}.js"
         ];
         
-        $js_loaded = false;
         foreach ($module_js_paths as $js_path):
             if (file_exists(ROOT_PATH . "/public/" . ltrim($js_path, '/'))): ?>
                 <script src="<?= htmlspecialchars($js_path) ?>?v=<?= htmlspecialchars($build_number) ?>"></script>
-                <?php 
-                $js_loaded = true;
-                break;
-            endif;
-        endforeach;
-        
-        // TODO: Développer les scripts JS manquants pour les modules
-        if (!$js_loaded): ?>
-            <!-- TODO: Créer <?= htmlspecialchars($current_module) ?>.js pour ce module -->
-        <?php endif; ?>
+                <?php break; ?>
+            <?php endif;
+        endforeach; ?>
     <?php endif; ?>
 
-    <!-- Cookie banner RGPD -->
     <script src="/assets/js/cookie_banner.js?v=<?= htmlspecialchars($build_number) ?>"></script>
+    
+    <!-- CSS footer intégré -->
+    <style>
+    .portal-footer {
+        margin-top: 2rem;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+        padding: 2rem 0 1rem;
+    }
+    
+    .footer-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+    
+    .footer-navigation {
+        margin-bottom: 2rem;
+    }
+    
+    .footer-links-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+    }
+    
+    .footer-link {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        text-decoration: none;
+        color: #495057;
+        transition: all 0.3s ease;
+    }
+    
+    .footer-link:hover {
+        background: #e9ecef;
+        color: #007bff;
+        text-decoration: none;
+    }
+    
+    .link-icon {
+        font-size: 1.2rem;
+    }
+    
+    .footer-legal {
+        background: #e9ecef;
+        padding: 1.5rem 0;
+        margin-top: 2rem;
+    }
+    
+    .footer-legal-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .legal-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+    }
+    
+    .legal-link {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: #495057;
+        text-decoration: none;
+        font-size: 0.875rem;
+    }
+    
+    .legal-link:hover {
+        color: #007bff;
+        text-decoration: underline;
+    }
+    
+    .footer-info {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 2rem;
+        align-items: center;
+        width: 100%;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .company-info {
+        line-height: 1.5;
+    }
+    
+    .company-info strong {
+        color: #007bff;
+    }
+    
+    .contact-email {
+        color: #007bff;
+        text-decoration: none;
+    }
+    
+    .contact-email:hover {
+        text-decoration: underline;
+    }
+    
+    .copyright-info {
+        text-align: right;
+    }
+    
+    .version-info {
+        font-size: 0.75rem;
+        font-family: monospace;
+        margin-top: 0.25rem;
+    }
+    
+    .footer-dev-info {
+        margin-top: 1rem;
+        font-size: 0.75rem;
+        color: #6c757d;
+        background: #dee2e6;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+    
+    @media (max-width: 768px) {
+        .footer-links-grid {
+            justify-content: flex-start;
+        }
+        
+        .legal-links {
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .footer-info {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            text-align: center;
+        }
+        
+        .copyright-info {
+            text-align: center;
+        }
+    }
+    </style>
     
 </body>
 </html>
