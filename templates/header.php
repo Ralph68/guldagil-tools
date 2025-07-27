@@ -867,7 +867,7 @@ if ($user_authenticated) {
     <?php endif; ?>
 </main>
 
-<!-- Footer simplifié -->
+<!-- Footer simplifié avec liens corrigés -->
 <footer class="portal-footer">
     <div class="footer-container">
         <div class="footer-logo">
@@ -878,19 +878,16 @@ if ($user_authenticated) {
             <?php endif; ?>
         </div>
         <div class="footer-links">
-            <a href="/about.php">À propos</a>
+            <a href="/legal/">Mentions légales</a>
+            <a href="/legal/privacy.php">Politique de confidentialité</a>
             <a href="/contact.php">Contact</a>
-            <a href="/legal.php">Mentions légales</a>
-            <a href="/privacy.php">Politique de confidentialité</a>
         </div>
     </div>
 </footer>
-
 <!-- Scripts nécessaires -->
 <script src="/assets/js/header.js?v=<?= $build_number ?>"></script>
 <?php if ($module_js && $current_module !== 'home'): ?>
     <script src="/<?= $current_module ?>/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
 <?php endif; ?>
-
 </body>
 </html>
