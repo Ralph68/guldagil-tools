@@ -790,63 +790,19 @@
 }
 
 /* Sélecteur de thème */
+/* Suppression des styles liés au mode sombre */
 .theme-selector {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: var(--spacing-md);
-}
-
-.theme-option {
-    text-align: center;
-    cursor: pointer;
-}
-
-.theme-option input[type="radio"] {
-    display: none;
+    display: none; /* Désactiver le choix de thème */
 }
 
 .theme-preview {
-    width: 100%;
-    height: 80px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--user-gray-300);
-    margin-bottom: var(--spacing-sm);
-    position: relative;
-    overflow: hidden;
-    transition: all var(--transition-fast);
+    display: none; /* Désactiver les aperçus de thème */
 }
 
-.theme-option input[type="radio"]:checked + .theme-preview {
-    border-color: var(--user-primary);
-    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
-}
-
-.theme-preview.light {
-    background: linear-gradient(to bottom, #f8f9fa 30%, #ffffff 30%);
-}
-
-.theme-preview.dark {
-    background: linear-gradient(to bottom, #2d3748 30%, #1a202c 30%);
-}
-
-.preview-header {
-    height: 30%;
-    background: var(--user-primary);
-}
-
+/* Suppression des styles inutiles */
+.preview-header,
 .preview-content {
-    height: 70%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.preview-content::before {
-    content: '';
-    width: 60%;
-    height: 4px;
-    background: var(--user-gray-300);
-    border-radius: 2px;
+    display: none;
 }
 
 /* ==============================================
@@ -1426,6 +1382,50 @@
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: var(--spacing-sm);
     font-size: 0.875rem;
+    font-family: 'Courier New', monospace;
+}
+
+.debug-info p {
+    margin: 0;
+    padding: var(--spacing-xs);
+    background: white;
+    border-radius: var(--radius-sm);
+    border: 1px solid #e2e8f0;
+}
+
+/* Responsive pour les nouveaux éléments */
+@media (max-width: 768px) {
+    .user-meta {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .category-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+    
+    .modules-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .debug-info {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .user-quick-actions {
+        margin-left: 0;
+        margin-top: var(--spacing-md);
+    }
+    
+    .alert {
+        flex-direction: column;
+        text-align: center;
+    }
+}
     font-family: 'Courier New', monospace;
 }
 

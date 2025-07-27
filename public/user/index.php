@@ -12,6 +12,9 @@ define('ROOT_PATH', dirname(dirname(__DIR__)));
 require_once ROOT_PATH . '/config/config.php';
 require_once ROOT_PATH . '/config/version.php';
 
+// Connexion à la base de données
+require_once ROOT_PATH . '/config/database.php';
+
 // Gestion session sécurisée
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -319,6 +322,44 @@ $user_stats = [
     'temps_session' => '2h 15min',
     'derniere_ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
 ];
+
+// Fonction pour charger les préférences utilisateur depuis la table auth_users
+function loadUserPreferences($userId, $db) {
+    $stmt = $db->prepare("SELECT preferences FROM auth_users WHERE id = :id");
+    $stmt->execute(['id' => $userId]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $result ? json_decode($result['preferences'], true) : [];
+}
+
+// Fonction pour sauvegarder les préférences utilisateur dans la table auth_users
+function saveUserPreferences($userId, $preferences, $db) {
+    $stmt = $db->prepare("UPDATE auth_users SET preferences = :preferences WHERE id = :id");
+    $stmt->execute([
+        'preferences' => json_encode($preferences),
+        'id' => $userId
+    ]);
+}
+
+// Charger les préférences utilisateur
+if ($user_authenticated) {
+    $userId = $current_user['id'] ?? null;
+    if ($userId) {
+        $current_user['preferences'] = loadUserPreferences($userId, $db);
+    }
+}
+
+// Sauvegarder les préférences utilisateur si une requête POST est reçue
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['preferences'])) {
+    $preferences = json_decode($_POST['preferences'], true);
+    if ($user_authenticated && $userId) {
+        saveUserPreferences($userId, $preferences, $db);
+        $current_user['preferences'] = $preferences;
+        echo json_encode(['success' => true]);
+        exit;
+    }
+    echo json_encode(['success' => false, 'error' => 'Non authentifié']);
+    exit;
+}
 
 ?>
 <!DOCTYPE html>

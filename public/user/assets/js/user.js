@@ -1,91 +1,91 @@
 /**
  * Titre: JavaScript pour dashboard utilisateur
  * Chemin: /public/user/assets/js/user.js
- * Version: 0.5 beta + build auto
+ * Version: 0.6
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('👤 Dashboard utilisateur JavaScript initialisé');
-    
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('👤 Dashboard utilisateur initialisé');
+
     // ==============================================
-    // ANIMATIONS D'ENTRÉE
+    // GESTION DES PRÉFÉRENCES UTILISATEUR
     // ==============================================
-    
-    function initAnimations() {
-        const animatedElements = document.querySelectorAll(
-            '.action-card, .stat-card, .module-item, .activity-item, .security-item, .link-card'
-        );
-        
-        // Observer pour animations au scroll
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-        
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry, index) => {
-                if (entry.isIntersecting) {
-                    setTimeout(() => {
-                        entry.target.style.opacity = '1';
-                        entry.target.style.transform = 'translateY(0)';
-                    }, index * 50);
-                    observer.unobserve(entry.target);
-                }
+    const savePreferencesButton = document.getElementById('save-preferences-btn');
+    const preferencesForm = document.getElementById('preferences-form');
+
+    if (savePreferencesButton && preferencesForm) {
+        savePreferencesButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const formData = new FormData(preferencesForm);
+            const preferences = {};
+            formData.forEach((value, key) => {
+                preferences[key] = value;
             });
-        }, observerOptions);
-        
+
+            fetch('/user/index.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ preferences })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Préférences sauvegardées avec succès.');
+                    } else {
+                        alert('Erreur lors de la sauvegarde des préférences.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur réseau.');
+                });
+        });
+    }
+
+    // ==============================================
+    // ANIMATIONS ET INTERACTIONS
+    // ==============================================
+    function initAnimations() {
+        const animatedElements = document.querySelectorAll('.action-card, .stat-card, .module-item, .activity-item');
         animatedElements.forEach(element => {
             element.style.opacity = '0';
             element.style.transform = 'translateY(20px)';
             element.style.transition = 'all 0.5s ease';
-            observer.observe(element);
         });
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                    observer.unobserve(entry.target);
+                }
+            });
+        });
+
+        animatedElements.forEach(element => observer.observe(element));
     }
-    
-    // ==============================================
-    // INTERACTIONS CARTES D'ACTION
-    // ==============================================
-    
+
     function initActionCards() {
         const actionCards = document.querySelectorAll('.action-card');
-        
         actionCards.forEach(card => {
-            // Effet hover avec parallax léger
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-5px) scale(1.02)';
-                this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-5px) scale(1.02)';
             });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) scale(1)';
-            });
-            
-            // Effet de clic
-            card.addEventListener('mousedown', function() {
-                this.style.transform = 'translateY(-2px) scale(0.98)';
-            });
-            
-            card.addEventListener('mouseup', function() {
-                this.style.transform = 'translateY(-5px) scale(1.02)';
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0) scale(1)';
             });
         });
     }
-    
+
     // ==============================================
-    // STATISTIQUES ANIMÉES
+    // INITIALISATION
     // ==============================================
-    
-    function initStatCounters() {
-        const statValues = document.querySelectorAll('.stat-value');
-        
-        statValues.forEach(stat => {
-            const finalValue = stat.textContent;
-            
-            // Si c'est un nombre, animer le compteur
-            if (!isNaN(finalValue) && finalValue !== '') {
-                animateCounter(stat, 0, parseInt(finalValue), 1000);
-            }
-        });
+    initAnimations();
+    initActionCards();
+
+    console.log('✅ Dashboard utilisateur entièrement initialisé');
+});
     }
     
     function animateCounter(element, start, end, duration) {
