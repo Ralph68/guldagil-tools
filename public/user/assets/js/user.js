@@ -1,7 +1,7 @@
 /**
- * Titre: JavaScript pour dashboard utilisateur
+ * Titre: JavaScript pour le module utilisateur
  * Chemin: /public/user/assets/js/user.js
- * Version: 0.6
+ * Version: 1.0
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -30,14 +30,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('Préférences sauvegardées avec succès.');
+                        showNotification('Préférences sauvegardées avec succès', 'success');
                     } else {
-                        alert('Erreur lors de la sauvegarde des préférences.');
+                        showNotification('Erreur lors de la sauvegarde des préférences', 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Erreur:', error);
-                    alert('Erreur réseau.');
+                    showNotification('Erreur réseau', 'error');
                 });
         });
     }
@@ -46,13 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // ANIMATIONS ET INTERACTIONS
     // ==============================================
     function initAnimations() {
-        const animatedElements = document.querySelectorAll('.action-card, .stat-card, .module-item, .activity-item');
-        animatedElements.forEach(element => {
-            element.style.opacity = '0';
-            element.style.transform = 'translateY(20px)';
-            element.style.transition = 'all 0.5s ease';
-        });
-
+        const animatedElements = document.querySelectorAll('.module-card, .stat-card, .activity-item');
+        
+        if (!animatedElements.length) return;
+        
         const observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
@@ -61,31 +58,84 @@ document.addEventListener('DOMContentLoaded', () => {
                     observer.unobserve(entry.target);
                 }
             });
-        });
+        }, { threshold: 0.1 });
 
-        animatedElements.forEach(element => observer.observe(element));
-    }
-
-    function initActionCards() {
-        const actionCards = document.querySelectorAll('.action-card');
-        actionCards.forEach(card => {
-            card.addEventListener('mouseenter', () => {
-                card.style.transform = 'translateY(-5px) scale(1.02)';
-            });
-            card.addEventListener('mouseleave', () => {
-                card.style.transform = 'translateY(0) scale(1)';
-            });
+        animatedElements.forEach((element, index) => {
+            // Configuration initiale
+            element.style.opacity = '0';
+            element.style.transform = 'translateY(20px)';
+            element.style.transition = `all 0.5s ease ${index * 0.05}s`;
+            
+            // Observer l'élément
+            observer.observe(element);
         });
     }
-
-    // ==============================================
-    // INITIALISATION
-    // ==============================================
-    initAnimations();
-    initActionCards();
-
-    console.log('✅ Dashboard utilisateur entièrement initialisé');
-});
+    
+    function initModuleCards() {
+        const moduleCards = document.querySelectorAll('.module-card');
+        
+        moduleCards.forEach(card => {
+            // Animation hover
+            card.addEventListener('mouseenter', function() {
+                if (!this.classList.contains('restricted')) {
+                    this.style.transform = 'translateY(-5px)';
+                    this.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)';
+                }
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = '';
+                this.style.boxShadow = '';
+            });
+            
+            // Traitement des modules restreints
+            if (card.classList.contains('restricted')) {
+                const moduleLink = card.querySelector('.module-link');
+                if (moduleLink) {
+                    moduleLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showNotification('Accès restreint - Permissions insuffisantes', 'warning');
+                    });
+                }
+            }
+            
+            // Tracking des clics sur modules accessibles
+            const moduleId = card.dataset.module;
+            if (moduleId && !card.classList.contains('restricted')) {
+                const moduleLink = card.querySelector('.module-link');
+                if (moduleLink) {
+                    moduleLink.addEventListener('click', function() {
+                        trackModuleAccess(moduleId);
+                    });
+                }
+            }
+        });
+    }
+    
+    function initStatCounters() {
+        const statCards = document.querySelectorAll('.stat-card');
+        
+        statCards.forEach(card => {
+            const statValue = card.querySelector('.stat-content h3');
+            if (!statValue) return;
+            
+            const finalValue = parseInt(statValue.textContent);
+            if (isNaN(finalValue)) return;
+            
+            // Animation du compteur
+            animateCounter(statValue, 0, finalValue, 1500);
+            
+            // Hover effects
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-3px)';
+                this.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = '';
+                this.style.boxShadow = '';
+            });
+        });
     }
     
     function animateCounter(element, start, end, duration) {
@@ -113,78 +163,106 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ==============================================
-    // MISE À JOUR TEMPS RÉEL
+    // GESTION DE LA TIMELINE D'ACTIVITÉ
     // ==============================================
-    
-    function initRealTimeUpdates() {
-        // Mise à jour de l'heure de dernière connexion
-        const lastLoginElement = document.querySelector('.last-login');
-        if (lastLoginElement) {
-            setInterval(() => {
-                const now = new Date();
-                const timeString = now.toLocaleString('fr-FR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                // Note: En production, cette valeur viendrait du serveur
-            }, 60000); // Mise à jour chaque minute
-        }
+    function initActivityTimeline() {
+        const activityItems = document.querySelectorAll('.activity-item');
         
-        // Mise à jour des temps relatifs dans l'activité
-        updateRelativeTimes();
-        setInterval(updateRelativeTimes, 60000);
+        activityItems.forEach((item, index) => {
+            // Animation d'entrée échelonnée
+            item.style.opacity = '0';
+            item.style.transform = 'translateX(-20px)';
+            
+            setTimeout(() => {
+                item.style.transition = 'all 0.5s ease-out';
+                item.style.opacity = '1';
+                item.style.transform = 'translateX(0)';
+            }, index * 100);
+            
+            // Interaction hover
+            item.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f8fafc';
+                const typeIndicator = this.querySelector('.activity-type');
+                if (typeIndicator) {
+                    typeIndicator.style.transform = 'translateY(-50%) scale(1.1)';
+                }
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+                const typeIndicator = this.querySelector('.activity-type');
+                if (typeIndicator) {
+                    typeIndicator.style.transform = '';
+                }
+            });
+        });
     }
     
-    function updateRelativeTimes() {
-        const timeElements = document.querySelectorAll('.activity-time');
-        timeElements.forEach(element => {
-            const text = element.textContent;
+    // ==============================================
+    // INDICATEUR DE STATUT UTILISATEUR
+    // ==============================================
+    function initUserStatus() {
+        const statusIndicator = document.querySelector('.status-indicator.online');
+        if (statusIndicator) {
+            // Animation pulse
+            statusIndicator.style.animation = 'pulse-online 2s infinite';
             
-            // Mise à jour basique des temps relatifs
-            if (text.includes('Il y a')) {
-                // Logique de mise à jour des temps relatifs
-                // En production, cela serait plus sophistiqué
+            // Mise à jour de l'heure de dernière activité
+            updateLastActivity();
+            setInterval(updateLastActivity, 60000); // Toutes les minutes
+        }
+    }
+    
+    function updateLastActivity() {
+        const sessionTime = document.querySelector('.user-meta span:nth-child(2)');
+        if (sessionTime) {
+            // Récupérer le temps de début de session ou utiliser le timestamp actuel
+            const sessionStart = sessionStorage.getItem('sessionStart') || Date.now();
+            if (!sessionStorage.getItem('sessionStart')) {
+                sessionStorage.setItem('sessionStart', Date.now());
+            }
+            
+            const elapsed = Math.floor((Date.now() - sessionStart) / 1000 / 60);
+            sessionTime.textContent = `⏱️ Session: ${elapsed}min`;
+        }
+    }
+    
+    // ==============================================
+    // ACTIONS RAPIDES
+    // ==============================================
+    function initQuickActions() {
+        const quickBtns = document.querySelectorAll('.quick-btn');
+        
+        quickBtns.forEach(btn => {
+            // Animation au hover
+            btn.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.1)';
+                this.style.backgroundColor = 'rgba(255, 255, 255, 0.25)';
+            });
+            
+            btn.addEventListener('mouseleave', function() {
+                this.style.transform = '';
+                this.style.backgroundColor = '';
+            });
+            
+            // Confirmation pour déconnexion
+            if (btn.classList.contains('danger')) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+                        window.location.href = this.getAttribute('href');
+                    }
+                });
             }
         });
     }
     
     // ==============================================
-    // NOTIFICATIONS ET ALERTES
+    // NOTIFICATIONS
     // ==============================================
-    
-    function initNotifications() {
-        // Vérifier les notifications en attente
-        checkPendingNotifications();
-        
-        // Vérifier périodiquement
-        setInterval(checkPendingNotifications, 30000); // Toutes les 30 secondes
-    }
-    
-    function checkPendingNotifications() {
-        // Simulation de vérification de notifications
-        // En production, cela ferait un appel AJAX au serveur
-        
-        const notifications = getStoredNotifications();
-        notifications.forEach(notification => {
-            showNotification(notification.message, notification.type);
-        });
-        
-        clearStoredNotifications();
-    }
-    
-    function getStoredNotifications() {
-        // Simulation - en production, récupérer depuis sessionStorage ou serveur
-        return [];
-    }
-    
-    function clearStoredNotifications() {
-        // Nettoyer les notifications affichées
-    }
-    
     function showNotification(message, type = 'info') {
+        // Créer l'élément de notification
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
@@ -195,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="notification-close">×</button>
         `;
         
-        // Styles
+        // Styles inline pour éviter dépendance CSS
         Object.assign(notification.style, {
             position: 'fixed',
             top: '20px',
@@ -209,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            justifyContent: 'space-between',
             maxWidth: '400px',
             opacity: '0',
             transform: 'translateX(100%)',
@@ -222,19 +300,23 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             notification.style.opacity = '1';
             notification.style.transform = 'translateX(0)';
-        }, 100);
+        }, 10);
         
         // Gestionnaire de fermeture
         const closeBtn = notification.querySelector('.notification-close');
         closeBtn.addEventListener('click', () => {
             notification.style.opacity = '0';
             notification.style.transform = 'translateX(100%)';
-            setTimeout(() => notification.remove(), 300);
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
         });
         
         // Fermeture automatique
         setTimeout(() => {
-            if (notification.parentElement) {
+            if (notification.parentNode) {
                 closeBtn.click();
             }
         }, 5000);
@@ -254,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const colors = {
             success: { bg: '#f0fff4', border: '#48bb78', text: '#22543d' },
             error: { bg: '#fed7d7', border: '#e53e3e', text: '#742a2a' },
-            warning: { bg: '#ffeaa7', border: '#ed8936', text: '#744210' },
+            warning: { bg: '#fef3c7', border: '#ed8936', text: '#744210' },
             info: { bg: '#ebf8ff', border: '#3182ce', text: '#2c5282' }
         };
         return colors[type] || colors.info;
@@ -263,9 +345,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==============================================
     // RACCOURCIS CLAVIER
     // ==============================================
-    
     function initKeyboardShortcuts() {
         document.addEventListener('keydown', function(e) {
+            // Ne pas activer les raccourcis dans les champs de saisie
+            if (e.target.matches('input, textarea, select, [contenteditable]')) {
+                return;
+            }
+            
             // Alt + H = Accueil
             if (e.altKey && e.key === 'h') {
                 e.preventDefault();
@@ -284,66 +370,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = '/user/settings.php';
             }
             
-            // Alt + C = Calculateur
-            if (e.altKey && e.key === 'c') {
-                e.preventDefault();
-                window.location.href = '/port/';
-            }
-            
             // Échap = Fermer notifications
             if (e.key === 'Escape') {
                 const notifications = document.querySelectorAll('.notification');
                 notifications.forEach(notif => {
-                    notif.querySelector('.notification-close').click();
+                    const closeBtn = notif.querySelector('.notification-close');
+                    if (closeBtn) closeBtn.click();
                 });
             }
         });
     }
     
     // ==============================================
-    // GESTION RESPONSIVE
+    // TRACKING ANALYTIQUE
     // ==============================================
-    
-    function initResponsiveFeatures() {
-        // Détection de la taille d'écran
-        function handleResize() {
-            const isMobile = window.innerWidth <= 768;
-            const isTablet = window.innerWidth <= 1024 && window.innerWidth > 768;
-            
-            // Ajustements pour mobile
-            if (isMobile) {
-                // Réduire les animations sur mobile pour les performances
-                document.documentElement.style.setProperty('--transition-duration', '0.2s');
-            } else {
-                document.documentElement.style.setProperty('--transition-duration', '0.3s');
-            }
-            
-            // Ajustements pour tablette
-            if (isTablet) {
-                // Ajustements spécifiques tablette
-            }
-        }
+    function trackModuleAccess(moduleId) {
+        console.log(`📊 Module accédé: ${moduleId}`);
         
-        window.addEventListener('resize', debounce(handleResize, 250));
-        handleResize(); // Appel initial
+        // Stocker localement pour statistiques
+        const accessLog = JSON.parse(localStorage.getItem('moduleAccess') || '{}');
+        accessLog[moduleId] = (accessLog[moduleId] || 0) + 1;
+        localStorage.setItem('moduleAccess', JSON.stringify(accessLog));
+        
+        // Dans un environnement réel, envoi à un service d'analytics
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'module_access', {
+                'module_id': moduleId,
+                'user_role': getUserRole()
+            });
+        }
+    }
+    
+    function getUserRole() {
+        const roleBadge = document.querySelector('.role-badge');
+        return roleBadge ? roleBadge.textContent.toLowerCase() : 'user';
     }
     
     // ==============================================
-    // UTILITAIRES
+    // MONITORING PERFORMANCE
     // ==============================================
-    
-    function debounce(func, delay) {
-        let timeoutId;
-        return function (...args) {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => func.apply(this, args), delay);
-        };
-    }
-    
-    // ==============================================
-    // MONITORING DES PERFORMANCES
-    // ==============================================
-    
     function initPerformanceMonitoring() {
         // Mesurer le temps de chargement
         window.addEventListener('load', function() {
@@ -364,43 +429,83 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ==============================================
+    // UTILITAIRES
+    // ==============================================
+    function debounce(func, delay) {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+    
+    function throttle(func, limit) {
+        let inThrottle;
+        return function(...args) {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    }
+    
+    // ==============================================
     // INITIALISATION
     // ==============================================
-    
-    // Initialiser tous les modules
-    initAnimations();
-    initActionCards();
-    initStatCounters();
-    initRealTimeUpdates();
-    initNotifications();
-    initKeyboardShortcuts();
-    initResponsiveFeatures();
-    initPerformanceMonitoring();
-    
-    // Message de confirmation du chargement
-    console.log('✅ Dashboard utilisateur entièrement initialisé');
-    
-    // Notification de bienvenue (optionnelle)
-    setTimeout(() => {
-        const user = document.querySelector('.user-info h1')?.textContent || 'Utilisateur';
-        // showNotification(`Bienvenue ${user} !`, 'success');
-    }, 1000);
+    try {
+        // Fonctionnalités de base
+        initAnimations();
+        initModuleCards();
+        
+        // Fonctionnalités avancées (si éléments présents)
+        if (document.querySelector('.stat-card')) {
+            initStatCounters();
+        }
+        
+        if (document.querySelector('.activity-item')) {
+            initActivityTimeline();
+        }
+        
+        if (document.querySelector('.status-indicator')) {
+            initUserStatus();
+        }
+        
+        if (document.querySelector('.quick-btn')) {
+            initQuickActions();
+        }
+        
+        // Raccourcis clavier
+        initKeyboardShortcuts();
+        
+        // Monitoring performances
+        initPerformanceMonitoring();
+        
+        console.log('✅ Dashboard utilisateur entièrement initialisé');
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'initialisation du dashboard:', error);
+    }
 });
 
 // ==============================================
 // API PUBLIQUE
 // ==============================================
-
-// Fonctions exposées globalement
 window.UserDashboard = {
-    showNotification: function(message, type) {
-        showNotification(message, type);
+    showNotification: function(message, type = 'info') {
+        const event = new CustomEvent('showUserNotification', {
+            detail: { message, type }
+        });
+        document.dispatchEvent(event);
     },
     
-    refreshStats: function() {
-        // Rafraîchir les statistiques
-        console.log('🔄 Rafraîchissement des statistiques...');
-        // En production, faire un appel AJAX
+    refreshData: function() {
+        console.log('🔄 Rafraîchissement des données utilisateur...');
+        location.reload();
+    },
+    
+    trackModuleAccess: function(moduleId) {
+        console.log(`📊 Module accédé: ${moduleId}`);
+        // Dans un vrai système, envoyer à analytics
     },
     
     navigateTo: function(url) {
@@ -408,127 +513,17 @@ window.UserDashboard = {
     }
 };
 
-console.log('👤 Module UserDashboard prêt');
-
-// ========================================
-// 🔄 AJOUTS POUR VERSION COMPLÈTE
-// Ajouter après le code existant
-// ========================================
-
-// Variables globales
-let dashboardInitialized = false;
-
-// Initialisation enrichie
-document.addEventListener('DOMContentLoaded', function() {
-    if (dashboardInitialized) return; // Éviter double init
-    
-    console.log('🚀 Dashboard User v2 - Initialisation...');
-    
-    // Fonctionnalités existantes préservées
-    initializeExistingFeatures();
-    
-    // Nouvelles fonctionnalités
-    initializeModuleCards();
-    initializeActivityTimeline();
-    initializeUserStatus();
-    initializePortalStats();
-    initializeQuickActions();
-    
-    dashboardInitialized = true;
-    console.log('✅ Dashboard User complet initialisé');
+// Écouteur d'événement pour les notifications
+document.addEventListener('showUserNotification', function(e) {
+    if (typeof showNotification === 'function') {
+        showNotification(e.detail.message, e.detail.type);
+    }
 });
 
-// ========================================
-// 🃏 CARTES MODULES INTERACTIVES
-// ========================================
-function initializeModuleCards() {
-    const moduleCards = document.querySelectorAll('.module-card');
-    
-    moduleCards.forEach(card => {
-        const moduleId = card.dataset.module;
-        
-        // Animation au survol
-        card.addEventListener('mouseenter', function() {
-            if (!this.classList.contains('restricted')) {
-                this.style.transform = 'translateY(-4px) scale(1.02)';
-                this.style.boxShadow = '0 12px 24px rgba(0,0,0,0.15)';
-            }
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = '';
-            this.style.boxShadow = '';
-        });
-        
-        // Click sur module restreint
-        if (card.classList.contains('restricted')) {
-            card.addEventListener('click', function(e) {
-                e.preventDefault();
-                showRestrictedModuleMessage(moduleId);
-            });
-        }
-        
-        // Tracking des clics
-        const moduleLink = card.querySelector('.module-link');
-        if (moduleLink) {
-            moduleLink.addEventListener('click', function() {
-                trackModuleAccess(moduleId);
-            });
-        }
-    });
+// Session storage init
+if (!sessionStorage.getItem('sessionStart')) {
+    sessionStorage.setItem('sessionStart', Date.now());
 }
-
-function showRestrictedModuleMessage(moduleId) {
-    // Notification élégante sans alert()
-    const notification = document.createElement('div');
-    notification.className = 'notification notification-warning';
-    notification.innerHTML = `
-        <span class="notification-icon">🔒</span>
-        <span>Module "${moduleId}" : Permissions insuffisantes</span>
-        <button class="notification-close">&times;</button>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 100);
-    
-    // Auto-fermeture
-    setTimeout(() => {
-        removeNotification(notification);
-    }, 4000);
-    
-    // Fermeture manuelle
-    notification.querySelector('.notification-close').onclick = () => {
-        removeNotification(notification);
-    };
-}
-
-function removeNotification(notification) {
-    notification.classList.remove('show');
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-        }
-    }, 300);
-}
-
-// ========================================
-// 📊 STATISTIQUES PORTAIL ANIMÉES
-// ========================================
-function initializePortalStats() {
-    const statCards = document.querySelectorAll('.portal-stats .stat-card');
-    
-    // Observer pour animation au scroll
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                animateStatCard(entry.target);
-                observer.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.2 });
     
     statCards.forEach(card => {
         observer.observe(card);

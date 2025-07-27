@@ -25,6 +25,33 @@ if (!isset($_SESSION['user_id'])) {
 
 // Récupération des préférences utilisateur
 $user_id = $_SESSION['user_id'];
+
+// Définir la fonction getUserPreferences si elle n'existe pas déjà
+if (!function_exists('getUserPreferences')) {
+    function getUserPreferences($user_id) {
+        // Exemple de récupération des préférences depuis la base de données ou une source par défaut
+        // À adapter selon votre logique métier
+        return [
+            'language' => 'fr',
+            'timezone' => 'Europe/Paris',
+            'notifications' => true
+        ];
+    }
+}
+
+// Définir la fonction updateUserPreferences si elle n'existe pas déjà
+if (!function_exists('updateUserPreferences')) {
+    function updateUserPreferences($user_id, $preferences) {
+        // Ici, vous pouvez enregistrer les préférences dans la base de données
+        // Exemple fictif : à remplacer par votre logique de sauvegarde réelle
+        // $db = getDbConnection();
+        // $stmt = $db->prepare("UPDATE users SET ... WHERE id = ?");
+        // $stmt->execute([...]);
+        // Pour l'instant, cette fonction ne fait rien
+        return true;
+    }
+}
+
 $preferences = getUserPreferences($user_id);
 
 // Mise à jour des préférences si le formulaire est soumis

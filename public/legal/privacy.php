@@ -170,7 +170,7 @@ $page_type = "legal";
     <footer class="portal-footer">
         <div class="footer-container">
             <div class="footer-info">
-                <p>&copy; <?= COPYRIGHT_YEAR ?> <?= APP_AUTHOR ?> - <?= APP_NAME ?></p>
+                <p>&copy; <?= date('Y') ?> <?= APP_AUTHOR ?> - <?= APP_NAME ?></p>
                 <p>Version <?= APP_VERSION ?> - Build <?= BUILD_NUMBER ?> (<?= date('d/m/Y H:i', BUILD_TIMESTAMP) ?>)</p>
             </div>
             <div class="footer-links">

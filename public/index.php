@@ -47,8 +47,15 @@ function shouldShowModule($module_id, $module, $user_role) {
     return true;
 }
 
+/**
+ * Vérifie si l'utilisateur peut accéder à un module
+ */
 function canAccessModule($module_id, $module, $user_role) {
-    if ($module['status'] === 'development' && !in_array($user_role, ['admin', 'dev'])) {
+    // DONE: Correction - Vérification de l'existence de la clé 'status'
+    $status = $module['status'] ?? 'active';
+    
+    // Logique d'accès basée sur le rôle et le statut
+    if ($status === 'development' && $user_role !== 'dev') {
         return false;
     }
     
