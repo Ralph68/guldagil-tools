@@ -1,64 +1,64 @@
 <?php
 /**
- * Titre: Système de gestion des rôles et permissions - VERSION COMPLÈTE CORRIGÉE
- * Chemin: /config/roles.php
- * Version: 0.5 beta + build auto
+ * Fichier de configuration des rôles et permissions du portail.
+ * C'est la source de vérité pour tous les droits d'accès.
  */
 
-if (!defined('ROOT_PATH')) {
-    exit('Accès direct interdit');
-}
-
-/**
- * Gestionnaire centralisé des rôles et permissions
- * Architecture robuste pour la gestion des accès modulaires
- */
-class RoleManager 
-{
-    /**
-     * Définition complète des rôles système
-     */
-    private static $roles = [
-        'dev' => [
-            'name' => 'Développeur',
-            'description' => 'Accès complet développement',
-            'level' => 100,
-            'color' => '#7c3aed',
-            'icon' => '💻',
-            'capabilities' => [
-                'access_dev', 'view_debug', 'manage_system',
-                'view_logs', 'edit_modules', 'manage_users',
-                'edit_config', 'view_admin', 'manage_shipping',
-                'view_quality', 'manage_adr', 'view_materiel',
-                'manage_epi', 'quality_control', 'quality_analysis'
-            ],
-            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'materiel', 'user', 'admin']
-        ],
-        'admin' => [
-            'name' => 'Administrateur',
-            'description' => 'Administration complète',
-            'level' => 95,
-            'color' => '#dc2626',
-            'icon' => '👑',
-            'capabilities' => [
-                'manage_users', 'manage_system', 'view_admin',
-                'edit_config', 'view_logs', 'manage_shipping',
-                'view_quality', 'manage_adr', 'view_materiel',
-                'manage_epi', 'quality_control'
-            ],
-            'modules' => ['home', 'port', 'adr', 'epi', 'qualite', 'materiel', 'user', 'admin']
+return [
+    // Définition des rôles et de leurs permissions
+    'roles' => [
+        'user' => [
+            'name' => 'Utilisateur',
+            'permissions' => [
+                'module_port_access',
+                'module_user_access',
+            ]
         ],
         'logistique' => [
             'name' => 'Logistique',
-            'description' => 'Gestion transport et qualité',
-            'level' => 60,
-            'color' => '#059669',
-            'icon' => '🚛',
-            'capabilities' => [
-                'manage_shipping', 'view_quality', 'manage_adr',
-                'view_materiel', 'view_shipping'
-            ],
-            'modules' => ['home', 'port', 'qualite', 'adr', 'materiel']
+            'permissions' => [
+                'module_port_access',
+                'module_adr_access',
+                'module_user_access',
+            ]
+        ],
+        'qualite' => [
+            'name' => 'Qualité',
+            'permissions' => [
+                'module_qualite_access',
+                'module_user_access',
+            ]
+        ],
+        'maintenance' => [
+            'name' => 'Maintenance',
+            'permissions' => [
+                'module_maintenance_access',
+                'module_user_access',
+            ]
+        ],
+        'admin' => [
+            'name' => 'Administrateur',
+            'permissions' => ['*'] // Le joker '*' donne accès à tout
+        ],
+        'dev' => [
+            'name' => 'Développeur',
+            'permissions' => ['*'] // Le joker '*' donne accès à tout
+        ]
+    ],
+
+    // Association d'une permission à chaque module
+    'modules_permissions' => [
+        'home'        => null, // null = accessible à tout utilisateur connecté
+        'port'        => 'module_port_access',
+        'calculateur' => 'module_port_access', // Alias pour 'port'
+        'adr'         => 'module_adr_access',
+        'qualite'     => 'module_qualite_access',
+        'maintenance' => 'module_maintenance_access',
+        'user'        => 'module_user_access',
+        'profile'     => 'module_user_access', // Alias pour 'user'
+        'admin'       => 'module_admin_access'
+    ]
+];
         ],
         'qhse' => [
             'name' => 'QHSE',

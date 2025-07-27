@@ -1,27 +1,44 @@
 /**
  * Titre: Gestionnaire de bannière cookie RGPD pour Portail Guldagil
  * Chemin: /assets/js/cookie_banner.js
- * Version: 0.5 beta + build auto
+ * Version: 1.0 - Optimisé pour persistance permanente
  * RGPD 2025 compliant - Cookies techniques uniquement
  */
 
 class CookieBannerManager {
     constructor() {
         this.cookieName = 'guldagil_cookie_consent';
-        this.consentExpiry = 365; // 1 an
+        this.consentExpiry = 730; // 2 ans - très long pour éviter les réapparitions
+        this.localStorageKey = 'guldagil_cookie_consent_permanent';
         this.init();
     }
 
     init() {
-        // Vérifier si le consentement existe déjà
-        if (!this.hasConsent()) {
-            this.createBanner();
+        // Vérifier toutes les sources de consentement possibles
+        if (this.hasAnyConsent()) {
+            // Juste créer le bouton de gestion discret, sans bannière
+            this.createManageButton();
         } else {
-            this.createManageButton(); // Toujours permettre la gestion des cookies
+            // Premier passage - afficher la bannière une seule fois
+            this.createBanner();
         }
     }
 
-    hasConsent() {
+    hasAnyConsent() {
+        // Vérifier dans l'ordre: localStorage (plus permanent), puis cookie
+        return this.hasLocalStorageConsent() || this.hasCookieConsent();
+    }
+
+    hasLocalStorageConsent() {
+        try {
+            return localStorage.getItem(this.localStorageKey) === 'accepted' || 
+                   localStorage.getItem(this.localStorageKey) === 'minimal';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    hasCookieConsent() {
         const consent = this.getCookie(this.cookieName);
         return consent === 'accepted' || consent === 'minimal';
     }
@@ -37,10 +54,42 @@ class CookieBannerManager {
         const date = new Date();
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
         const expires = `expires=${date.toUTCString()}`;
-        document.cookie = `${name}=${value};${expires};path=/;SameSite=Strict;Secure`;
+        // Définir pour TOUT le domaine principal
+        document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
+        
+        // Stocker aussi dans localStorage pour persistance maximale
+        try {
+            localStorage.setItem(this.localStorageKey, value);
+        } catch (e) {
+            console.log('LocalStorage non disponible, utilisation des cookies uniquement');
+        }
+        
+        // Si utilisateur connecté, envoyer aussi à la base de données
+        this.saveToDatabase(value);
+    }
+
+    saveToDatabase(value) {
+        // Vérifier si l'utilisateur est connecté
+        const userLoggedIn = document.body.classList.contains('authenticated');
+        
+        if (userLoggedIn) {
+            // Envoyer le choix à un endpoint spécial pour enregistrement BDD
+            fetch('/api/save_cookie_preference.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    preference: value
+                })
+            }).catch(err => console.log('Impossible de sauvegarder en BDD, utilisation locale uniquement'));
+        }
     }
 
     createBanner() {
+        // Vérifier si la bannière existe déjà
+        if (document.getElementById('cookie-banner')) return;
+        
         const banner = document.createElement('div');
         banner.id = 'cookie-banner';
         banner.className = 'cookie-banner';
@@ -66,9 +115,6 @@ class CookieBannerManager {
                     <button class="cookie-btn cookie-btn-minimal" onclick="cookieBanner.acceptMinimal()">
                         ⚙️ Cookies techniques uniquement
                     </button>
-                    <button class="cookie-btn cookie-btn-details" onclick="cookieBanner.showDetails()">
-                        ℹ️ Détails
-                    </button>
                 </div>
             </div>
         `;
@@ -82,6 +128,9 @@ class CookieBannerManager {
     }
 
     createManageButton() {
+        // Vérifier si le bouton existe déjà
+        if (document.getElementById('cookie-manage-btn')) return;
+        
         const button = document.createElement('button');
         button.id = 'cookie-manage-btn';
         button.className = 'cookie-manage-btn';
@@ -89,19 +138,25 @@ class CookieBannerManager {
         button.title = 'Gérer mes cookies';
         button.onclick = () => this.showManageModal();
         
+        // Rendre le bouton très discret
+        button.style.opacity = '0.6';
+        button.style.transform = 'scale(0.8)';
+        
         document.body.appendChild(button);
     }
 
     acceptAll() {
         this.setCookie(this.cookieName, 'accepted', this.consentExpiry);
         this.removeBanner();
-        this.showNotification('✅ Cookies acceptés - Fonctionnalités complètes activées');
+        this.showNotification('✅ Préférences sauvegardées pour tout le site');
+        this.createManageButton();
     }
 
     acceptMinimal() {
         this.setCookie(this.cookieName, 'minimal', this.consentExpiry);
         this.removeBanner();
-        this.showNotification('⚙️ Cookies techniques uniquement - Fonctionnalités de base');
+        this.showNotification('⚙️ Préférences sauvegardées pour tout le site');
+        this.createManageButton();
     }
 
     removeBanner() {
@@ -285,13 +340,45 @@ class CookieBannerManager {
     }
 }
 
-// Initialisation automatique quand le DOM est chargé
+// Initialisation automatique mais avec un délai et uniquement si nécessaire
 document.addEventListener('DOMContentLoaded', () => {
-    window.cookieBanner = new CookieBannerManager();
+    // Vérifier si le consentement existe déjà dans localStorage ou cookie
+    const hasLocalConsent = localStorage.getItem('guldagil_cookie_consent_permanent') === 'accepted' || 
+                          localStorage.getItem('guldagil_cookie_consent_permanent') === 'minimal';
+    
+    const hasCookieConsent = document.cookie
+        .split('; ')
+        .some(row => row.startsWith('guldagil_cookie_consent=accepted') || 
+                      row.startsWith('guldagil_cookie_consent=minimal'));
+    
+    // Initialiser uniquement si aucun consentement n'est trouvé
+    if (!hasLocalConsent && !hasCookieConsent) {
+        // Délai avant d'afficher pour ne pas interrompre immédiatement l'expérience utilisateur
+        setTimeout(() => {
+            window.cookieBanner = new CookieBannerManager();
+        }, 2000);
+    } else {
+        // Consentement déjà donné, juste initialiser sans bannière
+        window.cookieBanner = new CookieBannerManager();
+    }
 });
 
-// Fonction globale pour vérifier le consentement (utilisable par d'autres scripts)
+// Fonction globale simplifiée
 window.hasCookieConsent = function(level = 'minimal') {
+    // Vérifier localStorage en priorité (plus persistant)
+    try {
+        const localConsent = localStorage.getItem('guldagil_cookie_consent_permanent');
+        if (localConsent) {
+            if (level === 'minimal') {
+                return localConsent === 'accepted' || localConsent === 'minimal';
+            }
+            return localConsent === 'accepted';
+        }
+    } catch (e) {
+        // Fallback sur cookie si localStorage non disponible
+    }
+    
+    // Vérifier cookie
     const consent = document.cookie
         .split('; ')
         .find(row => row.startsWith('guldagil_cookie_consent='));

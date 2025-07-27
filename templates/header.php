@@ -2,7 +2,7 @@
 /**
  * Titre: Header moderne du portail Guldagil
  * Chemin: /templates/header.php
- * Version: 1.0 - Refonte complète
+ * Version: 1.2 - Gestion des rôles centralisée
  */
 
 // Protection contre l'accès direct
@@ -10,47 +10,51 @@ if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(__DIR__));
 }
 
-// DONE: Ajout des fonctions manquantes et correction des erreurs
+// --- Chargement des configurations ---
+$roles_config = [];
+if (file_exists(ROOT_PATH . '/config/roles.php')) {
+    $roles_config = require ROOT_PATH . '/config/roles.php';
+}
+
+// --- Fonctions utilitaires de permissions ---
+
+if (!function_exists('hasPermission')) {
+    function hasPermission($user_role, $permission, $config) {
+        if (empty($config['roles']) || !isset($config['roles'][$user_role])) {
+            return false; // Rôle inconnu ou config vide
+        }
+        
+        $user_permissions = $config['roles'][$user_role]['permissions'];
+        
+        // Le joker '*' donne toutes les permissions
+        if (in_array('*', $user_permissions)) {
+            return true;
+        }
+        
+        return in_array($permission, $user_permissions);
+    }
+}
+
 if (!function_exists('getNavigationModules')) {
-    function getNavigationModules($user_role, $all_modules) {
-        // Filtrer les modules selon le rôle utilisateur
+    function getNavigationModules($user_role, $all_modules, $config) {
         $filtered_modules = [];
+        if (empty($config['modules_permissions'])) return [];
+
+        $modules_permissions = $config['modules_permissions'];
+
         foreach ($all_modules as $id => $module) {
-            // Vérification basique des permissions (à remplacer par votre logique)
-            $filtered_modules[$id] = $module;
+            $required_permission = $modules_permissions[$id] ?? null;
+            
+            // Module accessible si pas de permission requise ou si l'utilisateur a la permission
+            if ($required_permission === null || hasPermission($user_role, $required_permission, $config)) {
+                $filtered_modules[$id] = $module;
+            }
         }
         return $filtered_modules;
     }
 }
 
-if (!function_exists('getRoleBadgeClass')) {
-    function getRoleBadgeClass($role) {
-        switch ($role) {
-            case 'admin': return 'role-admin';
-            case 'manager': return 'role-manager';
-            case 'moderator': return 'role-moderator';
-            default: return 'role-user';
-        }
-    }
-}
-
-if (!function_exists('hasAdminPermission')) {
-    function hasAdminPermission($role, $permission) {
-        // Implémentation simple pour éviter les erreurs
-        if ($role === 'admin' || $role === 'dev') {
-            return true;
-        }
-        return false;
-    }
-}
-
-// Chargement des configurations
-if (file_exists(ROOT_PATH . '/config/roles.php')) {
-    require_once ROOT_PATH . '/config/roles.php';
-}
-if (file_exists(ROOT_PATH . '/config/debug.php')) {
-    require_once ROOT_PATH . '/config/debug.php';
-}
+// --- Initialisation et Authentification ---
 
 // Initialisation session sécurisée
 if (session_status() === PHP_SESSION_NONE) {
@@ -59,15 +63,22 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Variables par défaut
+// Authentification via AuthManager
 $user_authenticated = false;
 $current_user = null;
+if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
+    require_once ROOT_PATH . '/core/auth/AuthManager.php';
+    $auth = new AuthManager();
+    if ($auth->isAuthenticated()) {
+        $user_authenticated = true;
+        $current_user = $auth->getCurrentUser();
+    }
+}
 
-// Pages publiques (sans authentification)
-$public_pages = ['/auth/login.php', '/auth/logout.php', '/error.php', '/maintenance.php'];
+// Redirection si la page n'est pas publique et que l'utilisateur n'est pas connecté
+$public_pages = ['/auth/login.php', '/auth/logout.php', '/error.php'];
 $current_script = $_SERVER['SCRIPT_NAME'] ?? '';
 $is_public_page = false;
-
 foreach ($public_pages as $page) {
     if (strpos($current_script, $page) !== false) {
         $is_public_page = true;
@@ -75,123 +86,65 @@ foreach ($public_pages as $page) {
     }
 }
 
-// Authentification
-if (!$is_public_page) {
-    $auth_success = false;
-    
-    // Tentative AuthManager
-    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-        try {
-            require_once ROOT_PATH . '/core/auth/AuthManager.php';
-            $auth = new AuthManager();
-            
-            if ($auth->isAuthenticated()) {
-                $current_user = $auth->getCurrentUser();
-                $auth_success = true;
-                $_SESSION['authenticated'] = true;
-                $_SESSION['user'] = $current_user;
-            }
-        } catch (Exception $e) {
-            error_log("Erreur AuthManager: " . $e->getMessage());
-        }
-    }
-    
-    // Fallback session
-    if (!$auth_success && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-        $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
-        $auth_success = true;
-    }
-    
-    // Redirection si non authentifié
-    if (!$auth_success) {
-        $redirect_url = $_SERVER['REQUEST_URI'] ?? '/';
-        header('Location: /auth/login.php?redirect=' . urlencode($redirect_url));
-        exit;
-    }
-    
-    $user_authenticated = true;
-} else {
-    // Page publique : vérification optionnelle
-    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-        try {
-            require_once ROOT_PATH . '/core/auth/AuthManager.php';
-            $auth = new AuthManager();
-            if ($auth->isAuthenticated()) {
-                $user_authenticated = true;
-                $current_user = $auth->getCurrentUser();
-            }
-        } catch (Exception $e) {
-            error_log("Erreur AuthManager: " . $e->getMessage());
-        }
-    }
-    
-    if (!$user_authenticated && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-        $user_authenticated = true;
-        $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
-    }
+if (!$is_public_page && !$user_authenticated) {
+    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI'] ?? '/'));
+    exit;
 }
 
-// Configuration variables avec valeurs par défaut
+// --- Variables de Page et Module ---
 $page_title = htmlspecialchars($page_title ?? 'Portail Guldagil');
 $page_subtitle = htmlspecialchars($page_subtitle ?? 'Solutions professionnelles');
 $page_description = htmlspecialchars($page_description ?? 'Portail de gestion');
-$current_module = htmlspecialchars($current_module ?? 'home');
+$current_module = $current_module ?? 'home';
 
-// DONE: Ajout de l'initialisation des variables module_css et module_js
 $module_css = $module_css ?? true;
 $module_js = $module_js ?? true;
 
-$app_version = defined('APP_VERSION') ? APP_VERSION : '1.0';
-$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd') . '001';
 $app_name = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
+$app_version = defined('APP_VERSION') ? APP_VERSION : '1.2';
+$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd');
 
-// Configuration modules avec status par défaut
-$all_modules = [
-    'home' => ['icon' => '🏠', 'color' => '#3182ce', 'status' => 'active', 'name' => 'Accueil', 'routes' => ['', 'home']],
-    'port' => ['icon' => '📦', 'color' => '#059669', 'status' => 'active', 'name' => 'Frais de port', 'routes' => ['port', 'calculateur']],
-    'adr' => ['icon' => '⚠️', 'color' => '#dc2626', 'status' => 'active', 'name' => 'ADR', 'routes' => ['adr']],
-    'user' => ['icon' => '👤', 'color' => '#7c2d12', 'status' => 'active', 'name' => 'Mon compte', 'routes' => ['user', 'profile']],
-    'admin' => ['icon' => '⚙️', 'color' => '#1f2937', 'status' => 'active', 'name' => 'Administration', 'routes' => ['admin']],
-];
+// --- Définition des modules (sans la clé 'roles') ---
+if (!isset($all_modules)) {
+    $all_modules = [
+        'home' => ['name' => 'Accueil', 'icon' => '🏠', 'color' => '#0ea5e9', 'routes' => ['', 'home']],
+        'port' => ['name' => 'Frais de port', 'icon' => '📦', 'color' => '#06b6d4', 'routes' => ['port', 'calculateur']],
+        'adr' => ['name' => 'ADR', 'icon' => '⚠️', 'color' => '#0284c7', 'routes' => ['adr']],
+        'user' => ['name' => 'Mon compte', 'icon' => '👤', 'color' => '#3b82f6', 'routes' => ['user', 'profile']],
+        'admin' => ['name' => 'Administration', 'icon' => '⚙️', 'color' => '#64748b', 'routes' => ['admin']],
+    ];
+}
 
-// Détection module actuel
-if ($current_module === 'home') {
-    $request_uri = $_SERVER['REQUEST_URI'] ?? '/';
-    $path_parts = explode('/', trim($request_uri, '/'));
-    $first_segment = $path_parts[0] ?? '';
-    
-    foreach ($all_modules as $module_key => $module_data) {
-        if (in_array($first_segment, $module_data['routes'])) {
-            $current_module = $module_key;
-            break;
-        }
+// Détection et propriétés du module actuel
+$request_uri = $_SERVER['REQUEST_URI'] ?? '/';
+$path_parts = explode('/', trim($request_uri, '/'));
+$first_segment = $path_parts[0] ?? 'home';
+
+foreach ($all_modules as $module_key => $module_data) {
+    if (isset($module_data['routes']) && in_array($first_segment, $module_data['routes'])) {
+        $current_module = $module_key;
+        break;
     }
 }
 
-// Propriétés du module actuel avec valeurs par défaut
-$module_icon = $all_modules[$current_module]['icon'] ?? '🏠';
-$module_color = $all_modules[$current_module]['color'] ?? '#3182ce';
-$module_name = $all_modules[$current_module]['name'] ?? 'Accueil';
-$module_status = $all_modules[$current_module]['status'] ?? 'active';
+$module_icon = $all_modules[$current_module]['icon'] ?? '💧';
+$module_color = $all_modules[$current_module]['color'] ?? '#3b82f6';
+$module_name = $all_modules[$current_module]['name'] ?? 'Guldagil';
 
-// Navigation modules pour utilisateur connecté
+// Navigation et fil d'ariane
 $navigation_modules = [];
 if ($user_authenticated) {
     $user_role = $current_user['role'] ?? 'user';
-    $navigation_modules = getNavigationModules($user_role, $all_modules);
+    $navigation_modules = getNavigationModules($user_role, $all_modules, $roles_config);
 }
-
-// Fil d'ariane par défaut
-$breadcrumbs = $breadcrumbs ?? [
-    ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => true]
-];
+$breadcrumbs = $breadcrumbs ?? [['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => true]];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="<?= htmlspecialchars($page_description ?? '') ?>">
+    <meta name="description" content="<?= $page_description ?>">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="<?= $module_color ?>">
     <meta name="version" content="<?= $app_version ?>">
@@ -199,37 +152,107 @@ $breadcrumbs = $breadcrumbs ?? [
     
     <title><?= $page_title ?> - <?= $app_name ?></title>
 
-    <!-- Favicon -->
     <link rel="icon" type="image/png" href="/assets/img/favicon.png">
     
-    <!-- CSS principal -->
-    <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="/assets/css/footer.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
-    
-    <!-- CSS modulaire -->
-    <?php if ($module_css && $current_module !== 'home'): ?>
+    <?php if ($module_css && $current_module !== 'home' && file_exists(ROOT_PATH . "/public/{$current_module}/assets/css/{$current_module}.css")): ?>
         <link rel="stylesheet" href="/<?= $current_module ?>/assets/css/<?= $current_module ?>.css?v=<?= $build_number ?>">
     <?php endif; ?>
 
-    <!-- Variables CSS dynamiques -->
     <style>
         :root {
             --current-module-color: <?= $module_color ?>;
-            --current-module-color-light: <?= $module_color ?>20;
         }
     </style>
 </head>
 <body data-module="<?= $current_module ?>" class="<?= $user_authenticated ? 'authenticated' : 'auth-page' ?>">
 
-    <!-- Debug banner -->
     <?php if (defined('DEBUG') && DEBUG === true): ?>
-    <div class="debug-banner" id="debugBanner">
-        🔒 MODE DEBUG - <?= htmlspecialchars($current_user['username'] ?? 'non connecté') ?> 
-        (<?= htmlspecialchars($current_user['role'] ?? 'guest') ?>) | 
-        Module: <?= $current_module ?> | Build: <?= $build_number ?>
-    </div>
+    <div class="debug-banner">MODE DEBUG ACTIVÉ</div>
+    <?php endif; ?>
+
+    <header class="portal-header" id="mainHeader">
+        <div class="header-container">
+            <a href="/" class="header-brand">
+                <span class="brand-logo">💧</span>
+                <span class="brand-text"><?= $app_name ?></span>
+            </a>
+
+            <div class="page-title-section">
+                <h1 class="page-title"><?= $page_title ?></h1>
+                <?php if (!empty($page_subtitle)): ?>
+                    <p class="page-subtitle"><?= $page_subtitle ?></p>
+                <?php endif; ?>
+            </div>
+
+            <?php if ($user_authenticated && $current_user): ?>
+            <div class="user-nav">
+                <button class="user-trigger" id="userTrigger" aria-expanded="false">
+                    <div class="user-avatar"><?= strtoupper(substr($current_user['username'] ?? 'U', 0, 1)) ?></div>
+                    <div class="user-info">
+                        <span class="user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></span>
+                        <span class="user-role"><?= ucfirst($current_user['role'] ?? 'user') ?></span>
+                    </div>
+                    <span class="dropdown-arrow">▼</span>
+                </button>
+                <div class="user-dropdown" id="userDropdown" aria-hidden="true">
+                    <a href="/user/" class="dropdown-item">👤 Mon profil</a>
+                    <a href="/user/settings.php" class="dropdown-item">⚙️ Paramètres</a>
+                    <?php if (hasPermission($current_user['role'] ?? 'user', 'module_admin_access', $roles_config)): ?>
+                        <div class="dropdown-divider"></div>
+                        <a href="/admin/" class="dropdown-item">🔧 Administration</a>
+                    <?php endif; ?>
+                    <div class="dropdown-divider"></div>
+                    <a href="/auth/logout.php" class="dropdown-item logout">🚪 Déconnexion</a>
+                </div>
+            </div>
+            <?php else: ?>
+            <a href="/auth/login.php" class="login-btn">🔑 Connexion</a>
+            <?php endif; ?>
+        </div>
+    </header>
+
+    <?php if ($user_authenticated && !empty($navigation_modules)): ?>
+    <nav class="modules-nav" id="mainNav">
+        <div class="nav-container">
+            <div class="nav-items">
+                <?php foreach ($navigation_modules as $module_key => $module_data): ?>
+                    <a href="/<?= $module_key ?>/" 
+                       class="nav-item <?= $current_module === $module_key ? 'active' : '' ?>"
+                       style="--module-color: <?= $module_data['color'] ?? '#3b82f6' ?>">
+                        <span class="nav-icon"><?= $module_data['icon'] ?? '📁' ?></span>
+                        <span class="nav-text"><?= htmlspecialchars($module_data['name']) ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+            <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Menu principal">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+    <?php endif; ?>
+
+    <?php if (count($breadcrumbs) > 1): ?>
+    <nav class="breadcrumb-nav" id="breadcrumbNav">
+        <div class="breadcrumb-container">
+            <?php foreach ($breadcrumbs as $index => $crumb): ?>
+                <?php if ($index > 0) echo '<span class="breadcrumb-separator">›</span>'; ?>
+                <?php if (!empty($crumb['url']) && !($crumb['active'] ?? false)): ?>
+                    <a href="<?= htmlspecialchars($crumb['url']) ?>" class="breadcrumb-item">
+                        <?= $crumb['icon'] ?? '' ?> <?= htmlspecialchars($crumb['text']) ?>
+                    </a>
+                <?php else: ?>
+                    <span class="breadcrumb-item active">
+                        <?= $crumb['icon'] ?? '' ?> <?= htmlspecialchars($crumb['text']) ?>
+                    </span>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+    </nav>
+    <?php endif; ?>
+
+    <main class="main-content">
+    <!-- Le contenu de la page commence ici -->
     <?php endif; ?>
 
     <!-- Header principal -->
@@ -291,7 +314,7 @@ $breadcrumbs = $breadcrumbs ?? [
                                     <span>⚙️</span> Paramètres
                                 </a>
                                 
-                                <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'view_admin')): ?>
+                                <?php if (hasPermission($current_user['role'] ?? 'user', 'module_admin_access', $roles_config)): ?>
                                     <div class="dropdown-divider"></div>
                                     <a href="/admin/" class="dropdown-item">
                                         <span>🔧</span> Administration

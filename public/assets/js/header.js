@@ -1,44 +1,26 @@
 /**
  * JavaScript pour header moderne
  * Version: 1.0 - Refonte complète
- * Projet: Guldagil Tools
  */
 
-// Attendre que le DOM soit prêt
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Header moderne initialisé');
 
-    // ====================================================
-    // INITIALISATION ET SÉLECTION DES ÉLÉMENTS
-    // ====================================================
-    
-    // Éléments principaux
+    // === ÉLÉMENTS DOM ===
     const mainHeader = document.getElementById('mainHeader');
     const compactHeader = document.getElementById('compactHeader');
     const mainNav = document.getElementById('mainNav');
     const breadcrumbNav = document.getElementById('breadcrumbNav');
-    
-    // Éléments menu utilisateur
     const userTrigger = document.getElementById('userTrigger');
     const userDropdown = document.getElementById('userDropdown');
-    
-    // Éléments navigation mobile
     const mobileNavToggle = document.getElementById('mobileNavToggle');
-    
-    // Menu utilisateur compact
     const compactUserBtn = document.getElementById('compactUserBtn');
-    
-    // Bannière debug
-    const debugBanner = document.getElementById('debugBanner');
 
     // Vérification des éléments essentiels
     if (!mainHeader) console.warn('Header: élément #mainHeader non trouvé');
     if (!compactHeader) console.warn('Header: élément #compactHeader non trouvé');
 
-    // ====================================================
-    // GESTION DU SCROLL ET HEADER COMPACT
-    // ====================================================
-    
+    // === GESTION DU SCROLL ET HEADER COMPACT ===
     let lastScrollTop = 0;
     const scrollThreshold = 100;
     let scrollTimeout;
@@ -84,10 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, { passive: true });
 
-    // ====================================================
-    // GESTION MENU UTILISATEUR
-    // ====================================================
-    
+    // === GESTION MENU UTILISATEUR ===
     if (userTrigger && userDropdown) {
         userTrigger.addEventListener('click', function(e) {
             e.preventDefault();
@@ -97,9 +76,6 @@ document.addEventListener('DOMContentLoaded', function() {
             userTrigger.setAttribute('aria-expanded', !isExpanded);
             userDropdown.setAttribute('aria-hidden', isExpanded);
             userDropdown.classList.toggle('show');
-            
-            // Repositionner le dropdown si nécessaire
-            adjustDropdownPosition(userDropdown);
         });
 
         // Fermer le menu si clic ailleurs
@@ -107,72 +83,24 @@ document.addEventListener('DOMContentLoaded', function() {
             if (userTrigger && userDropdown && 
                 !userTrigger.contains(e.target) && 
                 !userDropdown.contains(e.target)) {
-                closeUserMenu();
-            }
-        });
-
-        // Gestion clavier (Échap)
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeUserMenu();
+                userTrigger.setAttribute('aria-expanded', 'false');
+                userDropdown.setAttribute('aria-hidden', 'true');
+                userDropdown.classList.remove('show');
             }
         });
     }
 
-    function closeUserMenu() {
-        if (userTrigger && userDropdown) {
-            userTrigger.setAttribute('aria-expanded', 'false');
-            userDropdown.setAttribute('aria-hidden', 'true');
-            userDropdown.classList.remove('show');
-        }
-    }
-
-    // ====================================================
-    // GESTION MENU MOBILE
-    // ====================================================
-    
+    // === GESTION MENU MOBILE ===
     if (mobileNavToggle && mainNav) {
         mobileNavToggle.addEventListener('click', function() {
             const isExpanded = mobileNavToggle.getAttribute('aria-expanded') === 'true';
             mobileNavToggle.setAttribute('aria-expanded', !isExpanded);
             mainNav.classList.toggle('mobile-open');
             mobileNavToggle.classList.toggle('open');
-            
-            // Gestion du focus pour accessibilité
-            if (!isExpanded) {
-                const firstNavItem = mainNav.querySelector('.nav-item');
-                if (firstNavItem) {
-                    setTimeout(function() {
-                        firstNavItem.focus();
-                    }, 100);
-                }
-            }
-        });
-        
-        // Fermer le menu mobile au clic sur un item
-        const navItems = mainNav.querySelectorAll('.nav-item');
-        navItems.forEach(function(item) {
-            item.addEventListener('click', function() {
-                mobileNavToggle.setAttribute('aria-expanded', 'false');
-                mainNav.classList.remove('mobile-open');
-                mobileNavToggle.classList.remove('open');
-            });
-        });
-        
-        // Fermer au redimensionnement
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
-                mobileNavToggle.setAttribute('aria-expanded', 'false');
-                mainNav.classList.remove('mobile-open');
-                mobileNavToggle.classList.remove('open');
-            }
         });
     }
 
-    // ====================================================
-    // GESTION MENU UTILISATEUR COMPACT
-    // ====================================================
-    
+    // === GESTION MENU UTILISATEUR COMPACT ===
     if (compactUserBtn && userDropdown) {
         compactUserBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -182,40 +110,12 @@ document.addEventListener('DOMContentLoaded', function() {
             userDropdown.setAttribute('aria-hidden', !isHidden);
             userDropdown.classList.toggle('show');
             
-            // Positionner le dropdown sous le bouton compact
+            // Position sous le bouton compact
             if (isHidden) {
                 const btnRect = compactUserBtn.getBoundingClientRect();
                 userDropdown.style.top = (btnRect.bottom + 10) + 'px';
                 userDropdown.style.right = '10px';
             }
-        });
-    }
-
-    // ====================================================
-    // GESTION BANNIÈRE DEBUG
-    // ====================================================
-    
-    if (debugBanner) {
-        // Auto-masquer après 5 secondes
-        setTimeout(function() {
-            debugBanner.style.opacity = '0';
-            debugBanner.style.transform = 'translateY(-100%)';
-            setTimeout(function() {
-                if (debugBanner.parentNode) {
-                    debugBanner.style.display = 'none';
-                }
-            }, 500);
-        }, 5000);
-        
-        // Masquer immédiatement au clic
-        debugBanner.addEventListener('click', function() {
-            debugBanner.style.opacity = '0';
-            debugBanner.style.transform = 'translateY(-100%)';
-            setTimeout(function() {
-                if (debugBanner.parentNode) {
-                    debugBanner.style.display = 'none';
-                }
-            }, 500);
         });
     }
 
@@ -341,6 +241,106 @@ window.HeaderAPI = {
             position: 'fixed',
             top: '20px',
             right: '20px',
+            backgroundColor: type === 'error' ? '#fee2e2' : 
+                             type === 'warning' ? '#fef3c7' : '#e0f2fe',
+            color: type === 'error' ? '#b91c1c' : 
+                   type === 'warning' ? '#92400e' : '#1e40af',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            zIndex: '9999',
+            maxWidth: '300px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+        });
+        
+        document.body.appendChild(notification);
+        
+        // Auto-fermeture
+        setTimeout(function() {
+            notification.style.opacity = '0';
+            setTimeout(function() {
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, 4000);
+        
+        // Fermeture manuelle
+        const closeButton = notification.querySelector('.close');
+        if (closeButton) {
+            closeButton.addEventListener('click', function() {
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
+            });
+        }
+    },
+    
+    // Met à jour le fil d'ariane dynamiquement
+    updateBreadcrumb: function(items) {
+        if (!Array.isArray(items) || items.length === 0) return;
+        
+        const breadcrumbContainer = document.querySelector('.breadcrumb-container');
+        if (!breadcrumbContainer) return;
+        
+        // Vider le conteneur
+        breadcrumbContainer.innerHTML = '';
+        
+        // Ajouter les nouveaux items
+        items.forEach(function(item, index) {
+            // Ajouter séparateur si pas le premier
+            if (index > 0) {
+                const separator = document.createElement('span');
+                separator.className = 'breadcrumb-separator';
+                separator.textContent = '›';
+                breadcrumbContainer.appendChild(separator);
+            }
+            
+            // Créer l'élément (lien ou span)
+            const element = document.createElement(
+                item.url && !item.active ? 'a' : 'span'
+            );
+            
+            // Ajouter classes et contenu
+            element.className = `breadcrumb-item${item.active ? ' active' : ''}`;
+            element.innerHTML = `${item.icon || ''} ${item.text}`;
+            
+            // Ajouter l'URL si lien
+            if (item.url && !item.active) {
+                element.href = item.url;
+            }
+            
+            breadcrumbContainer.appendChild(element);
+        });
+    }
+};
+
+// ====================================================
+// FONCTIONS GLOBALES
+// ====================================================
+
+/**
+ * Affiche l'aide contextuelle pour le module actuel
+ */
+function showHelp() {
+    const module = document.body.dataset.module || 'inconnu';
+    const version = document.querySelector('meta[name="version"]')?.content || 'inconnu';
+    const build = document.querySelector('meta[name="build"]')?.content || 'inconnu';
+    
+    const message = `Aide contextuelle - Module: ${module}\nVersion: ${version}\nBuild: ${build}\n\nRaccourcis clavier:\n• Alt+H: Accueil\n• Alt+A: Administration\n• Échap: Fermer les menus`;
+    
+    // Utiliser l'API de notification si disponible, sinon alert
+    if (window.HeaderAPI && window.HeaderAPI.showNotification) {
+        window.HeaderAPI.showNotification('Aide contextuelle affichée', 'info');
+        console.info(message);
+    } else {
+        alert(message);
+    }
+}
+
+console.log('🎯 Header API disponible globalement');
             backgroundColor: type === 'error' ? '#fee2e2' : 
                              type === 'warning' ? '#fef3c7' : '#e0f2fe',
             color: type === 'error' ? '#b91c1c' : 

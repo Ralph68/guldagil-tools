@@ -2,25 +2,16 @@
 /**
  * Titre: Dashboard utilisateur COMPLET - Toutes fonctionnalités restaurées
  * Chemin: /public/user/index.php
- * Version: 0.5 beta + build auto
+ * Version: 1.2 - Rôles centralisés
  */
 
-// Configuration ROOT_PATH corrigée
+// Configuration
 define('ROOT_PATH', dirname(dirname(__DIR__)));
-
-// Chargement configuration
 require_once ROOT_PATH . '/config/config.php';
 require_once ROOT_PATH . '/config/version.php';
-
-// Connexion à la base de données
 require_once ROOT_PATH . '/config/database.php';
 
-// Gestion session sécurisée
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Variables pour template
+// Variables pour le template header
 $page_title = 'Mon Espace Utilisateur';
 $page_subtitle = 'Dashboard personnel et modules disponibles';
 $page_description = 'Espace personnel - Profil, modules disponibles et statistiques d\'activité';
@@ -28,64 +19,12 @@ $current_module = 'user';
 $module_css = true;
 $module_js = true;
 
-// Breadcrumbs
 $breadcrumbs = [
     ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => false],
     ['icon' => '👤', 'text' => 'Mon Espace', 'url' => '/user/', 'active' => true]
 ];
 
-// Variables globales
-$app_name = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
-$app_version = defined('APP_VERSION') ? APP_VERSION : '0.5-beta';
-$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : '00000000';
-
-// ========================================
-// AUTHENTIFICATION ROBUSTE AVEC FALLBACK
-// ========================================
-$user_authenticated = false;
-$current_user = null;
-
-try {
-    // 1. Tentative AuthManager
-    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-        require_once ROOT_PATH . '/core/auth/AuthManager.php';
-        $auth = new AuthManager();
-        
-        if ($auth->isAuthenticated()) {
-            $user_authenticated = true;
-            $current_user = $auth->getCurrentUser();
-        }
-    }
-    
-    // 2. Fallback session simple
-    if (!$user_authenticated && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-        $user_authenticated = true;
-        $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
-    }
-    
-    // 3. Session temporaire pour développement
-    if (!$user_authenticated) {
-        $user_authenticated = true;
-        $current_user = [
-            'id' => 1,
-            'username' => 'DevUser',
-            'role' => 'user',
-            'email' => 'dev@guldagil.com',
-            'name' => 'Utilisateur Développement',
-            'last_login' => date('Y-m-d H:i:s'),
-            'modules' => ['calculateur', 'user', 'adr']
-        ];
-    }
-    
-} catch (Exception $e) {
-    error_log("Erreur auth user: " . $e->getMessage());
-    $user_authenticated = true;
-    $current_user = ['username' => 'Anonyme', 'role' => 'user'];
-}
-
-// ========================================
-// DÉFINITION MODULES COMPLETS - RESTAURÉ
-// ========================================
+// Définition des modules pour cette page (sans la clé 'roles')
 $all_modules = [
     'calculateur' => [
         'name' => 'Calculateur Frais de Port',
@@ -95,7 +34,6 @@ $all_modules = [
         'status' => 'active',
         'color' => '#0ea5e9',
         'category' => 'Logistique & Transport',
-        'roles' => ['user', 'admin', 'dev', 'logistique'],
         'features' => [
             'Calcul automatique selon transporteur',
             'Tarifs Heppner France intégrés', 
@@ -114,7 +52,6 @@ $all_modules = [
         'status' => 'development',
         'color' => '#dc2626',
         'category' => 'Sécurité & Conformité',
-        'roles' => ['admin', 'dev', 'logistique'],
         'features' => [
             'Classification matières dangereuses',
             'Documents de transport ADR',
@@ -133,7 +70,6 @@ $all_modules = [
         'status' => 'development',
         'color' => '#059669',
         'category' => 'Qualité & Contrôles',
-        'roles' => ['admin', 'dev', 'qualite'],
         'features' => [
             'Plans de contrôle qualité',
             'Fiches de non-conformité',
@@ -152,7 +88,6 @@ $all_modules = [
         'status' => 'development',
         'color' => '#6b7280',
         'category' => 'Maintenance & Matériel',
-        'roles' => ['admin', 'dev', 'maintenance'],
         'features' => [
             'Inventaire détaillé du matériel',
             'Planning de maintenance préventive',
@@ -171,7 +106,6 @@ $all_modules = [
         'status' => 'active',
         'color' => '#9b59b6',
         'category' => 'Personnel & Compte',
-        'roles' => ['user', 'admin', 'dev', 'logistique'],
         'features' => [
             'Profil utilisateur complet',
             'Historique d\'activité détaillé',
@@ -189,7 +123,6 @@ $all_modules = [
         'status' => 'active',
         'color' => '#34495e',
         'category' => 'Système & Configuration',
-        'roles' => ['admin', 'dev'],
         'features' => [
             'Gestion complète des utilisateurs',
             'Configuration modules et permissions',
@@ -197,46 +130,30 @@ $all_modules = [
             'Logs d\'audit et sécurité',
             'Sauvegarde et maintenance'
         ],
-        'priority' => 6,
-        'admin_only' => true
+        'priority' => 6
     ]
 ];
 
-// Fonctions utilitaires restaurées
-function shouldShowModule($module_id, $module, $user_role) {
-    if (isset($module['admin_only']) && $module['admin_only'] && $user_role !== 'admin') {
-        return false;
-    }
-    
-    if (isset($module['roles']) && !in_array($user_role, $module['roles'])) {
-        return false;
-    }
-    
-    return true;
-}
+// Inclusion du header qui gère l'authentification et la logique des rôles
+include_once ROOT_PATH . '/templates/header.php';
 
-function canAccessModule($module_id, $module, $user_role) {
-    if ($module['status'] === 'development' && !in_array($user_role, ['admin', 'dev'])) {
-        return false;
-    }
-    
-    if (isset($module['coming_soon']) && $module['coming_soon']) {
-        return false;
-    }
-    
-    return shouldShowModule($module_id, $module, $user_role);
-}
+// À partir d'ici, $current_user et $roles_config sont disponibles et fiables.
 
-// Filtrer modules selon rôle utilisateur
+// Filtrer les modules pour l'affichage des cartes sur cette page
 $user_role = $current_user['role'] ?? 'user';
-$user_modules = [];
+$user_modules = getNavigationModules($user_role, $all_modules, $roles_config);
 
-foreach ($all_modules as $id => $module) {
-    if (shouldShowModule($id, $module, $user_role)) {
-        $module['can_access'] = canAccessModule($id, $module, $user_role);
-        $user_modules[$id] = $module;
+// Ajouter la logique d'accès pour l'affichage des cartes
+foreach ($user_modules as $id => &$module) {
+    $module['can_access'] = true;
+    if ($module['status'] === 'development' && !in_array($user_role, ['admin', 'dev'])) {
+        $module['can_access'] = false;
+    }
+    if (isset($module['coming_soon']) && $module['coming_soon']) {
+        $module['can_access'] = false;
     }
 }
+unset($module); // Bonne pratique
 
 // Trier par priorité
 uasort($user_modules, function($a, $b) {
@@ -368,7 +285,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['preferences'])) {
     echo json_encode(['success' => false, 'error' => 'Non authentifié']);
     exit;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -521,6 +437,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['preferences'])) {
                     
                     <div class="module-content">
                         <h3 class="module-title"><?= htmlspecialchars($module['name']) ?></h3>
+                        <p class="module-description"><?= htmlspecialchars($module['description']) ?></p>
+                        
+                        <?php if (!empty($module['features'])): ?>
+                        <div class="module-features">
+                            <h4>Fonctionnalités :</h4>
+                            <ul>
+                                <?php foreach (array_slice($module['features'], 0, 3) as $feature): ?>
+                                <li><?= htmlspecialchars($feature) ?></li>
+                                <?php endforeach; ?>
+                                <?php if (count($module['features']) > 3): ?>
+                                <li class="feature-more">... et <?= count($module['features']) - 3 ?> autres</li>
+                                <?php endif; ?>
+                            </ul>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if ($module['can_access']): ?>
+                        <a href="<?= htmlspecialchars($module['url']) ?>" class="module-link">
+                            Accéder au module
+                            <span class="link-arrow">→</span>
+                        </a>
+                        <?php else: ?>
+                        <div class="module-restricted">
+                            <span>🔒 Accès restreint</span>
+                            <small>Permissions insuffisantes</small>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php endforeach; ?>
+
+        <!-- Activité récente détaillée -->
+        <section class="recent-activity">
+            <h2>📋 Activité récente</h2>
+            <div class="activity-timeline">
+                <?php foreach ($recent_activities as $activity): ?>
+                <div class="activity-item">
+                    <div class="activity-icon"><?= $activity['icon'] ?></div>
+                    <div class="activity-content">
+                        <h4><?= htmlspecialchars($activity['title']) ?></h4>
+                        <p class="activity-details"><?= htmlspecialchars($activity['details']) ?></p>
+                        <time><?= htmlspecialchars($activity['time']) ?></time>
+                    </div>
+                    <div class="activity-type type-<?= $activity['type'] ?>"></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="activity-footer">
+                <a href="profile.php?tab=activity" class="btn-secondary">Voir tout l'historique</a>
+            </div>
+        </section>
+
+        <!-- Debug panel conditionnel -->
+        <?php if (defined('DEBUG') && DEBUG === true): ?>
+        <section class="debug-section">
+            <h3>🔧 Debug Mode - Informations développeur</h3>
+            <div class="debug-info">
+                <p><strong>Méthode auth:</strong> <?= isset($auth) ? 'AuthManager' : 'Session PHP' ?></p>
+                <p><strong>Session ID:</strong> <?= htmlspecialchars(session_id()) ?></p>
+                <p><strong>Utilisateur:</strong> <?= htmlspecialchars($current_user['username'] ?? 'N/A') ?></p>
+                <p><strong>Rôle:</strong> <?= htmlspecialchars($current_user['role'] ?? 'N/A') ?></p>
+                <p><strong>Modules accessibles:</strong> <?= count($user_modules) ?>/<?= count($all_modules) ?></p>
+                <p><strong>Modules restreints:</strong> <?= count($restricted_modules) ?></p>
+                <p><strong>Catégories:</strong> <?= count($categories_stats) ?></p>
+            </div>
+        </section>
+        <?php endif; ?>
+
+    </main>
+
+    <?php 
+    // Inclusion footer sécurisée
+    if (file_exists(ROOT_PATH . '/templates/footer.php')) {
+        include ROOT_PATH . '/templates/footer.php';
+    }
+    ?>
+
+    <!-- JS module user -->
+    <script src="assets/js/user.js?v=<?= $build_number ?>"></script>
+</body>
+</html>
                         <p class="module-description"><?= htmlspecialchars($module['description']) ?></p>
                         
                         <?php if (!empty($module['features'])): ?>

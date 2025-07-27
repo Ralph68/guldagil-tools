@@ -159,7 +159,32 @@ class AuthManager
             return null;
         }
         
-        return $_SESSION['user'] ?? null;
+        $user = $_SESSION['user'] ?? null;
+        
+        // Ajouter les préférences de cookies si elles existent
+        if ($user && isset($user['id'])) {
+            try {
+                $stmt = $this->db->prepare("SELECT cookie_preference FROM auth_users WHERE id = :id");
+                $stmt->execute(['id' => $user['id']]);
+                $cookiePref = $stmt->fetchColumn();
+                
+                if ($cookiePref) {
+                    // Définir un cookie côté client pour maintenir la préférence
+                    setcookie('guldagil_cookie_consent', $cookiePref, [
+                        'expires' => time() + 60*60*24*730, // 2 ans
+                        'path' => '/',
+                        'samesite' => 'Lax'
+                    ]);
+                    
+                    // Ajouter au tableau utilisateur
+                    $user['cookie_preference'] = $cookiePref;
+                }
+            } catch (Exception $e) {
+                // Silencieux - la colonne n'existe peut-être pas encore
+            }
+        }
+        
+        return $user;
     }
 
     /**

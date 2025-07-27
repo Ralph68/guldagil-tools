@@ -145,21 +145,60 @@ $page_type = "legal";
                         📞 Délégué à la Protection des Données
                     </p>
                 </section>
+
+                <!-- Ajouter cette section à la page privacy.php -->
+                <section id="cookie-management" class="privacy-section">
+                    <h2>Gérer vos préférences de cookies</h2>
+                    
+                    <p>Vous pouvez à tout moment modifier vos préférences concernant l'utilisation des cookies sur notre portail.</p>
+                    
+                    <div class="cookie-management-box">
+                        <h3>État actuel de vos préférences</h3>
+                        
+                        <div id="current-cookie-status">
+                            <?php if (isset($_SESSION['user']) && isset($_SESSION['user']['cookie_preference'])): ?>
+                                <p class="status">
+                                    <strong>Préférence enregistrée:</strong> 
+                                    <?php if ($_SESSION['user']['cookie_preference'] === 'accepted'): ?>
+                                        <span class="badge badge-success">Tous les cookies acceptés</span>
+                                    <?php elseif ($_SESSION['user']['cookie_preference'] === 'minimal'): ?>
+                                        <span class="badge badge-warning">Cookies techniques uniquement</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-secondary">Non définie</span>
+                                    <?php endif; ?>
+                                </p>
+                            <?php else: ?>
+                                <p class="status">
+                                    <span class="badge badge-secondary">Connexion requise pour le stockage permanent des préférences</span>
+                                </p>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <div class="cookie-actions">
+                            <button type="button" class="btn btn-primary" onclick="cookieBanner.showManageModal()">
+                                Modifier mes préférences
+                            </button>
+                            
+                            <button type="button" class="btn btn-outline-danger" onclick="cookieBanner.resetConsent()">
+                                Réinitialiser mes préférences
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <script>
+                // S'assurer que le gestionnaire de cookies est initialisé sur cette page
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (!window.cookieBanner) {
+                        window.cookieBanner = new CookieBannerManager();
+                    }
+                });
+                </script>
             </div>
 
             <div class="legal-footer">
                 <div class="legal-actions">
                     <a href="/index.php" class="btn btn-primary">🏠 Retour à l'accueil</a>
-                    <a href="/terms.php" class="btn btn-secondary">📋 Conditions d'utilisation</a>
-                    <a href="/security.php" class="btn btn-secondary">🔐 Sécurité</a>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <?php include ROOT_PATH . '/templates/footer.php'; ?>
-</body>
-</html>
                     <a href="/terms.php" class="btn btn-secondary">📋 Conditions d'utilisation</a>
                     <a href="/security.php" class="btn btn-secondary">🔐 Sécurité</a>
                 </div>
