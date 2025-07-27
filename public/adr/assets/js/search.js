@@ -905,10 +905,8 @@ ADR.Search = {
             `;
         }
         
-        if (this.elements.resultsSection) {
             this.elements.resultsSection.style.display = 'block';
-        }
-    },
+        },
     
     showError: function(message) {
         const tbody = document.getElementById('adr-table-body');
@@ -1001,6 +999,57 @@ ADR.Search = {
         return [headers, ...rows]
             .map(row => row.map(field => `"${(field || '').toString().replace(/"/g, '""')}"`).join(','))
             .join('\n');
+    },
+    
+    renderResults: function(results) {
+        // Desktop/tableau
+        const tableBody = document.getElementById('adr-table-body');
+        // Mobile/blocs
+        const mobileContent = document.getElementById('results-mobile-content');
+        if (!Array.isArray(results)) return;
+
+        // Table desktop
+        tableBody.innerHTML = '';
+        results.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.code_produit || ''}</td>
+                <td>${row.nom_produit || ''}</td>
+                <td>${row.numero_un ? 'UN' + row.numero_un : ''}</td>
+                <td>${row.classe_adr || ''}</td>
+                <td>${row.groupe_emballage || ''}</td>
+                <td>${row.categorie_transport || ''}</td>
+                <td>${row.danger_environnement === 'OUI' ? '<span class="badge badge-env">ENV</span>' : ''}</td>
+                <td>
+                    <a href="${row.url_fds || '#'}" target="_blank" class="btn-fds">FDS</a>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+        });
+
+        // Mobile blocs
+        mobileContent.innerHTML = '';
+        results.forEach(row => {
+            const block = document.createElement('div');
+            block.className = 'adr-result-mobile-block';
+            block.innerHTML = `
+                <div class="block-row"><span class="block-label">Code :</span> <span class="block-value">${row.code_produit || ''}</span></div>
+                <div class="block-row"><span class="block-label">Nom :</span> <span class="block-value">${row.nom_produit || ''}</span></div>
+                <div class="block-row"><span class="block-label">UN :</span> <span class="block-value">${row.numero_un ? 'UN' + row.numero_un : ''}</span></div>
+                <div class="block-row"><span class="block-label">Classe :</span> <span class="block-value">${row.classe_adr || ''}</span></div>
+                <div class="block-row"><span class="block-label">Groupe :</span> <span class="block-value">${row.groupe_emballage || ''}</span></div>
+                <div class="block-row"><span class="block-label">Cat. :</span> <span class="block-value">${row.categorie_transport || ''}</span></div>
+                <div class="block-row"><span class="block-label">ENV :</span> <span class="block-value">${row.danger_environnement === 'OUI' ? 'Oui' : 'Non'}</span></div>
+                <div class="block-actions">
+                    <a href="${row.url_fds || '#'}" target="_blank" class="btn-fds">FDS</a>
+                </div>
+            `;
+            mobileContent.appendChild(block);
+        });
+
+        // Affichage des sections
+        document.getElementById('search-results').style.display = results.length ? '' : 'none';
+        document.getElementById('search-results-mobile').style.display = results.length ? '' : 'none';
     }
 };
 

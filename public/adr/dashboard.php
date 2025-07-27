@@ -5,14 +5,18 @@
  * Version: 0.5 beta + build auto
  */
 
+// Protection et initialisation
+if (!defined('ROOT_PATH')) define('ROOT_PATH', dirname(dirname(__DIR__)));
 session_start();
-
-// Vérification authentification ADR
-if (!isset($_SESSION['adr_logged_in']) || $_SESSION['adr_logged_in'] !== true) {
-    $_SESSION['adr_logged_in'] = true;
-    $_SESSION['adr_user'] = 'demo.user';
-    $_SESSION['adr_login_time'] = time();
+if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
+    header('Location: /auth/login.php');
+    exit;
 }
+
+$page_title = "Dashboard ADR";
+$current_module = "adr";
+$module_css = true;
+include ROOT_PATH . '/templates/header.php';
 
 require __DIR__ . '/../../config.php';
 

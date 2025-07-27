@@ -450,3 +450,84 @@ modal.querySelector('.modal-content').style.cssText = `
         }
     }
 }; // <-- fin de ADR.Search
+ 
+// Gestion navigation clavier suggestions (accessibilité)
+export function setupAdrSuggestions() {
+    let suggestionSelected = -1;
+    let suggestions = [];
+    const input = document.getElementById('product-search');
+    const container = document.getElementById('search-suggestions');
+
+    if (!input || !container) return;
+
+    input.addEventListener('keydown', function(e) {
+        const items = container.querySelectorAll('.search-suggestion-item');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+            suggestionSelected = (suggestionSelected + 1) % items.length;
+            items.forEach((el, i) => el.classList.toggle('selected', i === suggestionSelected));
+            items[suggestionSelected].focus();
+            e.preventDefault();
+        } else if (e.key === 'ArrowUp') {
+            suggestionSelected = (suggestionSelected - 1 + items.length) % items.length;
+            items.forEach((el, i) => el.classList.toggle('selected', i === suggestionSelected));
+            items[suggestionSelected].focus();
+            e.preventDefault();
+        } else if (e.key === 'Escape') {
+            container.classList.remove('active');
+            container.innerHTML = '';
+        }
+    });
+
+    input.addEventListener('input', function() {
+        const val = this.value.trim();
+        if (val.length < 2) {
+            container.classList.remove('active');
+            container.innerHTML = '';
+            return;
+        }
+        fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=suggest&q=' + encodeURIComponent(val))
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && Array.isArray(data.suggestions)) {
+                    container.innerHTML = '';
+                    suggestions = data.suggestions;
+                    suggestionSelected = -1;
+                    data.suggestions.forEach((item, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'search-suggestion-item';
+                        div.textContent = item.label;
+                        div.tabIndex = 0;
+                        div.onclick = () => {
+                            input.value = item.label;
+                            container.classList.remove('active');
+                            container.innerHTML = '';
+                            window.ADR.Search.performFullSearch();
+                        };
+                        div.onkeydown = (e) => {
+                            if (e.key === 'Enter') {
+                                input.value = item.label;
+                                container.classList.remove('active');
+                                container.innerHTML = '';
+                                window.ADR.Search.performFullSearch();
+                            }
+                        };
+                        container.appendChild(div);
+                    });
+                    container.classList.add('active');
+                } else {
+                    container.classList.remove('active');
+                    container.innerHTML = '';
+                }
+            })
+            .catch(() => {
+                container.classList.remove('active');
+                container.innerHTML = '';
+            });
+    });
+}
+
+// Appel à l'init
+document.addEventListener('DOMContentLoaded', setupAdrSuggestions);
+
+// TODO: Ajouter dashboard, stats, navigation, etc.

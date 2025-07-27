@@ -1,20 +1,19 @@
 <?php
-// Affichage des erreurs
+// Affichage des erreurs pour debug (à désactiver en prod)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 /**
  * Titre: Page de recherche ADR optimisée - Version finale
- * Chemin: /public/adr/search/index.php
+ * Chemin: /public/adr/index.php
  * Version: 0.5 beta + build auto
  */
 
-// Configuration de base
+// Définition du chemin racine si besoin
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(dirname(__DIR__)));
 }
-
 
 // Démarrage session si pas déjà active
 if (session_status() === PHP_SESSION_NONE) {
@@ -27,7 +26,7 @@ if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
     exit;
 }
 
-// Configuration
+// Chargement de la configuration
 require_once ROOT_PATH . '/config/config.php';
 require_once ROOT_PATH . '/config/version.php';
 
@@ -44,133 +43,66 @@ $user_authenticated = true;
 $breadcrumbs = [
     ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => false],
     ['icon' => '⚠️', 'text' => 'Module ADR', 'url' => '/adr/', 'active' => false],
-    ['icon' => '🔍', 'text' => 'Recherche', 'url' => '/adr/search/', 'active' => true]
+    ['icon' => '🔍', 'text' => 'Recherche', 'url' => '/adr/', 'active' => true]
 ];
-
-$nav_info = 'Recherche de produits ADR avec suggestions et FDS';
 
 // Paramètres de recherche
 $query = $_GET['q'] ?? '';
 
-// Inclure header
+// Inclusion du header (ne pas dupliquer le HTML)
 $header_path = ROOT_PATH . '/templates/header.php';
 if (file_exists($header_path)) {
     include $header_path;
-} else {
-    echo '<!DOCTYPE html><html><head>';
-    echo '<title>Recherche ADR</title>';
-    echo '<meta charset="utf-8">';
-    echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
-    echo '</head><body>';
 }
 ?>
 
 <main class="adr-container search-page">
-    
-    <!-- Header de recherche -->
+    <!-- Liens d'accès rapide ADR -->
+    <nav class="adr-nav-actions">
+        <a href="/adr/declaration.php" class="adr-action-btn">➕ Nouvelle déclaration ADR</a>
+        <a href="/adr/historique.php" class="adr-action-btn">📜 Historique des déclarations</a>
+        <a href="/adr/recap.php" class="adr-action-btn">📝 Récapitulatif journalier</a>
+        <a href="/adr/dashboard.php" class="adr-action-btn">📊 Dashboard & Statistiques</a>
+    </nav>
+
+    <!-- Section recherche centrale -->
     <section class="search-header">
         <div class="search-intro">
             <h1>🔍 Recherche produits ADR</h1>
             <p>Recherche dynamique avec suggestions temps réel et accès aux fiches FDS</p>
-            <div class="search-stats">
-                <span class="stat-item">📊 <strong id="total-products">-</strong> produits</span>
-                <span class="stat-item">⚠️ <strong id="adr-products">-</strong> ADR</span>
-                <span class="stat-item">🌍 <strong id="env-products">-</strong> ENV</span>
-            </div>
         </div>
-    </section>
-
-    <!-- Zone de recherche principale -->
-    <section class="search-section">
-        <div class="search-container">
-            <!-- Barre de recherche avec suggestions -->
-            <div class="main-search">
+        <div class="main-search-centered">
+            <form id="adr-search-form" autocomplete="off" onsubmit="performSearch(); return false;">
                 <div class="search-input-container">
                     <input 
                         type="text" 
                         id="product-search" 
-                        class="search-input" 
+                        class="search-input"
                         placeholder="Tapez un code produit, nom, ou numéro UN... (min. 2 caractères)"
                         value="<?= htmlspecialchars($query) ?>"
                         autocomplete="off"
                         spellcheck="false"
+                        required
                     >
-                    <button class="search-btn" type="button" onclick="performSearch()">
+                    <button class="search-btn" type="submit">
                         🔍 Rechercher
                     </button>
                 </div>
-                
-                <!-- Conteneur des suggestions -->
-                <div id="search-suggestions" class="search-suggestions" style="display: none;"></div>
-            </div>
-            
-            <!-- Message d'aide -->
+                <!-- Suggestions dynamiques -->
+                <div id="search-suggestions" class="search-suggestions"></div>
+            </form>
             <div id="search-hint" class="search-hint">
                 💡 Saisissez au moins 2 caractères pour voir les suggestions et lancer la recherche
             </div>
-
-            <!-- Filtres avancés -->
-            <div class="advanced-filters" id="advanced-filters">
-                <div class="filters-header">
-                    <h3>🎛️ Filtres avancés</h3>
-                    <button class="btn-toggle-filters" onclick="toggleFilters()">
-                        <span id="filter-toggle-text">Afficher</span>
-                    </button>
-                </div>
-                
-                <div class="filters-content" id="filters-content" style="display: none;">
-                    <div class="filters-row">
-                        <div class="filter-group">
-                            <label for="category-filter">Catégorie transport :</label>
-                            <select id="category-filter" class="filter-select">
-                                <option value="">Toutes les catégories</option>
-                                <option value="0">Catégorie 0 - Pas de restrictions</option>
-                                <option value="1">Catégorie 1 - Très dangereux</option>
-                                <option value="2">Catégorie 2 - Dangereux</option>
-                                <option value="3">Catégorie 3 - Moyennement dangereux</option>
-                                <option value="4">Catégorie 4 - Peu dangereux</option>
-                            </select>
-                        </div>
-                        
-                        <div class="filter-group">
-                            <label for="transport-filter">Type transport :</label>
-                            <select id="transport-filter" class="filter-select">
-                                <option value="">Tous les types</option>
-                                <option value="route">Route</option>
-                                <option value="mer">Mer</option>
-                                <option value="air">Air</option>
-                                <option value="rail">Rail</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="filters-row">
-                        <div class="filter-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="adr-only">
-                                <span>🚚 Produits ADR uniquement</span>
-                            </label>
-                        </div>
-                        
-                        <div class="filter-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="env-danger">
-                                <span>🌍 Dangereux pour l'environnement</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="filters-actions">
-                        <button class="btn-clear-filters" onclick="clearFilters()">
-                            🗑️ Effacer filtres
-                        </button>
-                    </div>
-                </div>
-            </div>
+        </div>
+        <div class="search-stats">
+            <span class="stat-item">📊 <strong id="total-products">-</strong> produits</span>
+            <span class="stat-item">⚠️ <strong id="adr-products">-</strong> ADR</span>
+            <span class="stat-item">🌍 <strong id="env-products">-</strong> ENV</span>
         </div>
     </section>
 
-    <!-- Résultats de recherche en tableau -->
+    <!-- Résultats de recherche -->
     <section id="search-results" class="results-section" style="display: none;">
         <div class="results-header">
             <h2 id="results-title">Résultats de recherche</h2>
@@ -183,33 +115,42 @@ if (file_exists($header_path)) {
                 </button>
             </div>
         </div>
-        
-        <!-- Tableau des résultats -->
+        <!-- Tableau responsive, sans ascenseur horizontal -->
         <div id="results-content" class="results-content">
-            <div class="table-responsive">
+            <div class="adr-results-table-responsive">
                 <table class="adr-results-table" id="adr-table">
                     <thead>
                         <tr>
-                            <th class="col-code">Code produit</th>
-                            <th class="col-name">Nom et description</th>
-                            <th class="col-un">UN</th>
-                            <th class="col-classe">Classe</th>
-                            <th class="col-groupe">Groupe</th>
-                            <th class="col-cat">Cat.</th>
-                            <th class="col-env">ENV</th>
-                            <th class="col-actions">Actions</th>
+                            <th>Code produit</th>
+                            <th>Nom / Description</th>
+                            <th>UN</th>
+                            <th>Classe</th>
+                            <th>Groupe</th>
+                            <th>Cat.</th>
+                            <th>ENV</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="adr-table-body">
-                        <!-- Résultats seront injectés ici -->
+                        <!-- Résultats injectés dynamiquement -->
                     </tbody>
                 </table>
             </div>
             <div class="table-pagination" id="table-pagination">
-                <!-- Pagination sera générée ici -->
+                <!-- Pagination JS -->
             </div>
         </div>
     </section>
+
+    <!-- Section mobile-friendly : affichage en blocs si petit écran -->
+    <section id="search-results-mobile" class="results-section-mobile" style="display: none;">
+        <div id="results-mobile-content" class="results-mobile-content">
+            <!-- Résultats injectés dynamiquement en JS -->
+        </div>
+        <div class="table-pagination" id="table-pagination-mobile"></div>
+    </section>
+
+    <!-- TODO: Ajouter les filtres avancés si besoin (masqués par défaut sur mobile) -->
 
     <!-- Raccourcis et produits populaires -->
     <section id="popular-products" class="popular-section">
@@ -217,28 +158,16 @@ if (file_exists($header_path)) {
             <h2>🔥 Raccourcis de recherche</h2>
             <p>Produits fréquemment recherchés et raccourcis utiles</p>
         </div>
-        
         <div class="shortcuts-grid">
-            <!-- Recherches rapides -->
             <div class="shortcut-category">
                 <h3>⚡ Recherches rapides</h3>
                 <div class="shortcut-buttons">
-                    <button class="shortcut-btn" onclick="quickSearch('UN')">
-                        Tous les UN
-                    </button>
-                    <button class="shortcut-btn" onclick="quickSearch('classe:8')">
-                        Classe 8 (Corrosifs)
-                    </button>
-                    <button class="shortcut-btn" onclick="quickSearch('env:oui')">
-                        Dangereux ENV
-                    </button>
-                    <button class="shortcut-btn" onclick="quickSearch('cat:1')">
-                        Catégorie 1
-                    </button>
+                    <button class="shortcut-btn" onclick="quickSearch('UN')">Tous les UN</button>
+                    <button class="shortcut-btn" onclick="quickSearch('classe:8')">Classe 8 (Corrosifs)</button>
+                    <button class="shortcut-btn" onclick="quickSearch('env:oui')">Dangereux ENV</button>
+                    <button class="shortcut-btn" onclick="quickSearch('cat:1')">Catégorie 1</button>
                 </div>
             </div>
-            
-            <!-- Produits populaires -->
             <div class="shortcut-category">
                 <h3>📈 Produits populaires</h3>
                 <div id="popular-content" class="popular-content">
@@ -261,26 +190,22 @@ if (file_exists($header_path)) {
                     <p>Recherchez par code complet (SOL11) ou partiel (SOL). Les suggestions apparaissent dès 2 caractères.</p>
                     <small>Exemple : SOL, DETARTRANT, 1001KN</small>
                 </div>
-                
                 <div class="help-item">
                     <h4>🚛 Numéros UN</h4>
                     <p>Tapez le numéro UN avec ou sans préfixe "UN".</p>
                     <small>Exemple : 1824, UN1824, 3412</small>
                 </div>
-                
                 <div class="help-item">
                     <h4>📋 Noms de produits</h4>
                     <p>Recherche dans les noms commerciaux et descriptions techniques.</p>
                     <small>Exemple : "acide", "hypochlorite", "détartrant"</small>
                 </div>
-                
                 <div class="help-item">
                     <h4>📄 Fiches FDS</h4>
                     <p>Cliquez sur le bouton "FDS" pour accéder à la fiche de données de sécurité.</p>
                     <small>Redirection vers QuickFDS avec le code produit</small>
                 </div>
             </div>
-            
             <div class="help-legend">
                 <h4>🏷️ Légende des badges</h4>
                 <div class="legend-items">
@@ -294,10 +219,93 @@ if (file_exists($header_path)) {
             </div>
         </div>
     </section>
-
 </main>
 
 <!-- Configuration JavaScript -->
+<script>
+// Configuration pour la recherche ADR optimisée
+window.ADR_SEARCH_CONFIG = {
+    apiEndpoint: '/adr/search/search.php',
+    minChars: 2,
+    maxResults: 100,
+    searchDelay: 200
+};
+window.ADR_CURRENT_QUERY = <?= json_encode($query) ?>;
+
+// Focus automatique sur la barre de recherche à l'affichage
+document.addEventListener('DOMContentLoaded', function() {
+    var searchInput = document.getElementById('product-search');
+    if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+    }
+});
+
+// TODO: Déplacer la logique de suggestion dans le JS du module si besoin
+// TODO: Gérer l'affichage mobile (affichage en blocs verticaux, voir CSS)
+// TODO: Utiliser les vraies données de la BDD côté /adr/search/search.php
+
+// Fonctions utilitaires
+function quickSearch(query) {
+    const searchInput = document.getElementById('product-search');
+    if (searchInput && window.ADR && ADR.Search) {
+        searchInput.value = query;
+        ADR.Search.performFullSearch(query);
+        searchInput.focus();
+        searchInput.select();
+    }
+}
+</script>
+
+<!-- JavaScript du module recherche -->
+<script src="/adr/assets/js/adr.js?v=<?= $build_number ?>"></script>
+<script src="/adr/assets/js/search.js?v=<?= $build_number ?>"></script>
+
+<script>
+// Initialisation complète
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser le module recherche
+    if (typeof ADR !== 'undefined' && ADR.Search) {
+        ADR.Search.init();
+
+        // Charger données initiales
+        if (typeof loadPopularProducts === 'function') loadPopularProducts();
+        if (typeof loadStats === 'function') loadStats();
+
+        // Lancer recherche si query dans URL
+        if (window.ADR_CURRENT_QUERY && window.ADR_CURRENT_QUERY.length >= 2) {
+            setTimeout(function() {
+                ADR.Search.performFullSearch(window.ADR_CURRENT_QUERY);
+            }, 500);
+        }
+    }
+});
+
+// Fonctions globales pour compatibilité
+function performSearch(query) {
+    if (ADR.Search) {
+        ADR.Search.performFullSearch(query);
+    }
+}
+function clearResults() {
+    if (ADR.Search) {
+        ADR.Search.clearResults();
+    }
+}
+function exportResults() {
+    if (ADR.Search) {
+        ADR.Search.exportResults();
+    }
+}
+</script>
+
+<?php
+// Inclusion du footer (ne pas dupliquer le HTML)
+$footer_path = ROOT_PATH . '/templates/footer.php';
+if (file_exists($footer_path)) {
+    include $footer_path;
+}
+?>
 <script>
 // Configuration pour la recherche ADR optimisée
 window.ADR_SEARCH_CONFIG = {
@@ -401,6 +409,171 @@ function loadStats() {
             console.error('Erreur statistiques:', error);
         });
 }
+</script>
+
+<script>
+// --- Suggestions dynamiques sous la barre de recherche ---
+let suggestionSelected = -1;
+let suggestions = [];
+
+function showSuggestions(list) {
+    const container = document.getElementById('search-suggestions');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!list.length) {
+        container.classList.remove('active');
+        return;
+    }
+    suggestions = list;
+    suggestionSelected = -1;
+    list.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'search-suggestion-item';
+        div.textContent = item.label;
+        div.tabIndex = 0;
+        div.onclick = () => selectSuggestion(idx);
+        div.onkeydown = (e) => {
+            if (e.key === 'Enter') selectSuggestion(idx);
+        };
+        container.appendChild(div);
+    });
+    container.classList.add('active');
+}
+
+function hideSuggestions() {
+    const container = document.getElementById('search-suggestions');
+    if (container) {
+        container.classList.remove('active');
+        container.innerHTML = '';
+    }
+}
+
+function selectSuggestion(idx) {
+    if (suggestions[idx]) {
+        document.getElementById('product-search').value = suggestions[idx].label;
+        hideSuggestions();
+        performSearch();
+    }
+}
+
+// Gestion clavier pour suggestions
+document.getElementById('product-search').addEventListener('keydown', function(e) {
+    const container = document.getElementById('search-suggestions');
+    const items = container ? container.querySelectorAll('.search-suggestion-item') : [];
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+        suggestionSelected = (suggestionSelected + 1) % items.length;
+        items.forEach((el, i) => el.classList.toggle('selected', i === suggestionSelected));
+        items[suggestionSelected].focus();
+        e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+        suggestionSelected = (suggestionSelected - 1 + items.length) % items.length;
+        items.forEach((el, i) => el.classList.toggle('selected', i === suggestionSelected));
+        items[suggestionSelected].focus();
+        e.preventDefault();
+    } else if (e.key === 'Escape') {
+        hideSuggestions();
+    }
+});
+
+// Appel AJAX pour suggestions
+document.getElementById('product-search').addEventListener('input', function(e) {
+    const val = this.value.trim();
+    if (val.length < 2) {
+        hideSuggestions();
+        return;
+    }
+    fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=suggest&q=' + encodeURIComponent(val))
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.suggestions)) {
+                showSuggestions(data.suggestions);
+            } else {
+                hideSuggestions();
+            }
+        })
+        .catch(() => hideSuggestions());
+});
+
+// --- Injection des résultats (tableau ou blocs mobile) ---
+function renderResults(results) {
+    // Desktop/tableau
+    const tableBody = document.getElementById('adr-table-body');
+    // Mobile/blocs
+    const mobileContent = document.getElementById('results-mobile-content');
+    if (!Array.isArray(results)) return;
+
+    // Table desktop
+    tableBody.innerHTML = '';
+    results.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${row.code_produit || ''}</td>
+            <td>${row.nom_produit || ''}</td>
+            <td>${row.numero_un ? 'UN' + row.numero_un : ''}</td>
+            <td>${row.classe_adr || ''}</td>
+            <td>${row.groupe_emballage || ''}</td>
+            <td>${row.categorie_transport || ''}</td>
+            <td>${row.danger_environnement === 'OUI' ? '<span class="badge badge-env">ENV</span>' : ''}</td>
+            <td>
+                <a href="${row.url_fds || '#'}" target="_blank" class="btn-fds">FDS</a>
+            </td>
+        `;
+        tableBody.appendChild(tr);
+    });
+
+    // Mobile blocs
+    mobileContent.innerHTML = '';
+    results.forEach(row => {
+        const block = document.createElement('div');
+        block.className = 'adr-result-mobile-block';
+        block.innerHTML = `
+            <div class="block-row"><span class="block-label">Code :</span> <span class="block-value">${row.code_produit || ''}</span></div>
+            <div class="block-row"><span class="block-label">Nom :</span> <span class="block-value">${row.nom_produit || ''}</span></div>
+            <div class="block-row"><span class="block-label">UN :</span> <span class="block-value">${row.numero_un ? 'UN' + row.numero_un : ''}</span></div>
+            <div class="block-row"><span class="block-label">Classe :</span> <span class="block-value">${row.classe_adr || ''}</span></div>
+            <div class="block-row"><span class="block-label">Groupe :</span> <span class="block-value">${row.groupe_emballage || ''}</span></div>
+            <div class="block-row"><span class="block-label">Cat. :</span> <span class="block-value">${row.categorie_transport || ''}</span></div>
+            <div class="block-row"><span class="block-label">ENV :</span> <span class="block-value">${row.danger_environnement === 'OUI' ? 'Oui' : 'Non'}</span></div>
+            <div class="block-actions">
+                <a href="${row.url_fds || '#'}" target="_blank" class="btn-fds">FDS</a>
+            </div>
+        `;
+        mobileContent.appendChild(block);
+    });
+
+    // Affichage des sections
+    document.getElementById('search-results').style.display = results.length ? '' : 'none';
+    document.getElementById('search-results-mobile').style.display = results.length ? '' : 'none';
+}
+
+// Surcharge la fonction ADR.Search.performFullSearch pour afficher les résultats correctement
+if (window.ADR && ADR.Search) {
+    ADR.Search._originalPerformFullSearch = ADR.Search.performFullSearch;
+    ADR.Search.performFullSearch = function(query) {
+        // TODO: Pagination, gestion erreurs, loader
+        const val = query || document.getElementById('product-search').value.trim();
+        if (val.length < 2) return;
+        fetch(window.ADR_SEARCH_CONFIG.apiEndpoint + '?action=search&q=' + encodeURIComponent(val))
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && Array.isArray(data.results)) {
+                    renderResults(data.results);
+                } else {
+                    renderResults([]);
+                    // TODO: Afficher un message "Aucun résultat"
+                }
+            })
+            .catch(() => {
+                renderResults([]);
+                // TODO: Afficher un message d'erreur réseau
+            });
+    };
+}
+
+// TODO: Vérifier que /adr/search/search.php retourne bien les données réelles (pas de démo)
+// TODO: Ajouter gestion accessibilité (focus, navigation clavier, aria-live)
+// TODO: Ajouter messages d'erreur ou de chargement si besoin
 </script>
 
 <!-- JavaScript du module recherche -->

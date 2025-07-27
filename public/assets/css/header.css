@@ -106,6 +106,12 @@
   z-index: var(--z-header);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.portal-header.header-compact {
+  padding: 0.5rem 0;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
 }
 
 .header-container {
@@ -117,6 +123,57 @@
   align-items: center;
   gap: var(--spacing-lg);
   min-height: 64px;
+}
+
+/* Logo plus grand pour header */
+.header-logo {
+  font-size: 2rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-logo img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+/* Nom du module ou portail */
+.header-brand-text {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  white-space: nowrap;
+  transition: font-size 0.3s;
+}
+.portal-header.header-compact .header-brand-text {
+  font-size: var(--text-base);
+}
+
+/* Breadcrumbs centré dans le header */
+.header-breadcrumbs {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+.portal-header.header-compact .header-breadcrumbs {
+  justify-content: center;
+}
+
+/* Masquer le titre/sous-titre en compact */
+.header-page-info {
+  text-align: center;
+  justify-self: center;
+  transition: opacity 0.3s, height 0.3s;
+}
+.portal-header.header-compact .header-page-info {
+  display: none !important;
 }
 
 /* === BRANDING === */
@@ -139,29 +196,6 @@
   transform: translateY(-1px);
   outline: 2px solid rgba(255, 255, 255, 0.3);
   outline-offset: 2px;
-}
-
-.header-logo {
-  font-size: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-}
-
-.header-logo img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: var(--radius-sm);
-}
-
-.header-brand-text {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  white-space: nowrap;
 }
 
 /* === INFORMATIONS PAGE === */
@@ -480,7 +514,7 @@
 }
 
 .modules-nav-items {
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: var(--spacing-xs);
   overflow-x: auto;
@@ -559,11 +593,6 @@
 .module-nav-icon {
   font-size: var(--text-lg);
   flex-shrink: 0;
-}
-
-.module-nav-name {
-  font-size: var(--text-sm);
-  font-weight: 500;
 }
 
 /* === MOBILE MENU TOGGLE === */
@@ -718,8 +747,12 @@
 /* === RESPONSIVE === */
 @media (max-width: 768px) {
   .header-container {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr;
     gap: var(--spacing-md);
+  }
+  
+  .header-brand-text {
+    font-size: var(--text-base);
   }
   
   .header-page-info {
