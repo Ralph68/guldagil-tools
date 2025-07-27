@@ -1,9 +1,9 @@
 <?php
 /**
- * Titre: Portail Guldagil - Plateforme collaborative logistique, achats, qualité, EPI, ADR, matériels, etc.
+ * Titre: Header du portail Guldagil - VERSION AVEC SYSTÈME DE RÔLES CENTRALISÉ
  * Chemin: /templates/header.php
  * Version: 0.5 beta + build auto
- * Description: Portail interne Guldagil pour tous les collaborateurs, accès multi-modules selon rôles (logistique, achats, qualité, EPI, ADR, matériels, etc).
+ * file 250724.bak
  */
 
 // Protection contre l'accès direct
@@ -136,8 +136,8 @@ if (!$is_public_page) {
 
 // Variables avec fallbacks sécurisés
 $page_title = htmlspecialchars($page_title ?? 'Portail Guldagil');
-$page_subtitle = htmlspecialchars($page_subtitle ?? 'Plateforme collaborative multi-métiers (logistique, achats, qualité, EPI, ADR, matériels...)');
-$page_description = htmlspecialchars($page_description ?? 'Portail interne Guldagil pour tous les collaborateurs. Accès centralisé à la logistique, achats, qualité, EPI, ADR, matériels, etc. selon les rôles.');
+$page_subtitle = htmlspecialchars($page_subtitle ?? 'Solutions professionnelles');
+$page_description = htmlspecialchars($page_description ?? 'Portail de gestion');
 $current_module = htmlspecialchars($current_module ?? 'home');
 
 // Utilisation des nouvelles variables de config
@@ -210,8 +210,8 @@ if ($user_authenticated) {
     <title><?= $full_title ?></title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/assets/img/favicon_32x32.png">
-    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon_180x180.png">
+    <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 
     <!-- CSS principal OBLIGATOIRE - chemins critiques à préserver -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
@@ -224,7 +224,7 @@ if ($user_authenticated) {
     <!-- CSS modulaire avec fallback intelligent -->
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
-        // 1. Priorité : nouveau système dans module/assets/
+        // 1. Priorité : nouveau système dans /public/module/assets/
         $new_css_path = "{$current_module}/assets/css/{$current_module}.css";
         $module_css_loaded = false;
         
@@ -238,7 +238,7 @@ if ($user_authenticated) {
             // 2. Fallback : ancien système
             $legacy_paths = [
                 "/{$current_module}/assets/css/{$current_module}.css",
-                "/assets/css/modules/{$current_module}.css"
+                "assets/css/modules/{$current_module}.css"
             ];
             
             foreach ($legacy_paths as $css_path):
@@ -256,250 +256,6 @@ if ($user_authenticated) {
             --current-module-color: <?= $module_color ?>;
             --current-module-color-light: <?= $module_color ?>20;
             --current-module-color-dark: <?= $module_color ?>dd;
-        }
-        
-        /* CSS Header adaptatif intégré */
-        .portal-header {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            padding: 1.5rem 0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .portal-header.header-compact {
-            padding: 0.5rem 0;
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .header-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1.5rem;
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            align-items: center;
-            gap: 1.5rem;
-            min-height: 64px;
-        }
-
-        .header-brand {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-            color: white;
-            font-weight: 600;
-            transition: all 0.15s ease;
-            padding: 0.5rem;
-            border-radius: 0.375rem;
-        }
-
-        .header-brand:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateY(-1px);
-        }
-
-        .header-logo {
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-        }
-
-        .header-brand-text {
-            font-size: 1rem;
-        }
-
-        .portal-header.header-compact .header-brand-text {
-            font-size: 0.9rem;
-        }
-
-        .header-page-info {
-            text-align: center;
-            justify-self: center;
-        }
-
-        .page-main-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin: 0;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .portal-header.header-compact .page-main-title {
-            font-size: 1.1rem;
-        }
-
-        .page-subtitle {
-            margin-top: 0.25rem;
-            opacity: 0.9;
-            font-size: 0.875rem;
-            transition: all 0.3s ease;
-        }
-
-        .portal-header.header-compact .page-subtitle {
-            opacity: 0;
-            height: 0;
-            overflow: hidden;
-        }
-
-        .header-user-nav {
-            position: relative;
-        }
-
-        .user-menu-trigger {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .user-menu-trigger:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
-        }
-
-        .user-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.9);
-            color: #1f2937;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-
-        .portal-header.header-compact .user-avatar {
-            width: 32px;
-            height: 32px;
-            font-size: 0.8rem;
-        }
-
-        .user-details {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .portal-header.header-compact .user-details {
-            display: none;
-        }
-
-        .user-name {
-            color: white;
-            font-weight: 500;
-            font-size: 0.875rem;
-            max-width: 120px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .user-role {
-            font-size: 0.75rem;
-            opacity: 0.8;
-        }
-
-        .dropdown-icon {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.75rem;
-            transition: transform 0.2s ease;
-        }
-
-        .user-menu-trigger[aria-expanded="true"] .dropdown-icon {
-            transform: rotate(180deg);
-        }
-
-        .user-dropdown {
-            position: absolute;
-            top: calc(100% + 0.5rem);
-            right: 0;
-            min-width: 220px;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            z-index: 1001;
-            overflow: hidden;
-            display: none;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .btn-primary {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
-        }
-
-        .portal-main {
-            margin-top: 120px;
-            transition: margin-top 0.3s ease;
-        }
-
-        body.header-compact .portal-main {
-            margin-top: 100px;
-        }
-
-        /* Navigation modules sticky */
-        .modules-nav {
-            position: sticky;
-            top: 0;
-            z-index: 998;
-            background: white;
-            transition: transform 0.3s ease;
-        }
-
-        .modules-nav.hide-modules-nav {
-            transform: translateY(-100%);
-        }
-
-        /* Fil d'Ariane sticky */
-        .breadcrumb-nav {
-            position: sticky;
-            top: 0;
-            z-index: 999;
-            background: white;
-            transition: padding 0.3s ease;
-        }
-
-        .breadcrumb-nav-minimal {
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
         }
     </style>
     <!-- JavaScript bannière cookie RGPD -->
@@ -524,49 +280,39 @@ if ($user_authenticated) {
     <?php endif; ?>
 
     <!-- Header principal -->
-    <header class="portal-header" id="mainHeader">
-        <div class="header-container" id="headerContainer">
-            <!-- Logo et nom du module (toujours visible, compact si scroll) -->
-            <a href="/" class="header-brand" id="headerBrand">
-                <div class="header-logo" id="headerLogo">
+    <header class="portal-header">
+        <div class="header-container">
+            <!-- Logo et branding -->
+            <a href="/" class="header-brand">
+                <div class="header-logo">
                     <?php if (file_exists(ROOT_PATH . '/assets/img/logo.png')): ?>
-                        <img src="/assets/img/logo.png" alt="Logo" width="36" height="36" style="object-fit:contain;max-width:36px;max-height:36px;">
+                        <img src="/assets/img/logo.png" alt="Logo" width="32" height="32">
                     <?php else: ?>
-                        💧
+                        🌊
                     <?php endif; ?>
                 </div>
-                <div class="header-brand-text" id="headerBrandText">
-                    <?= $all_modules[$current_module]['name'] ?? $app_name ?>
-                </div>
+                <div class="header-brand-text"><?= $app_name ?></div>
             </a>
 
-            <!-- Fil d'Ariane (au centre/droite dans le header compact) -->
-            <div class="header-breadcrumbs" id="headerBreadcrumbs" style="flex:1;display:flex;justify-content:center;">
-                <?php if (count($breadcrumbs) > 0): ?>
-                <nav class="breadcrumb-nav" style="background:none;box-shadow:none;padding:0;margin:0;">
-                    <div class="breadcrumb-container" style="padding:0;">
-                        <?php foreach ($breadcrumbs as $index => $crumb): ?>
-                            <?php if ($index > 0): ?>
-                                <span class="breadcrumb-separator">›</span>
-                            <?php endif; ?>
-                            <?php if (!empty($crumb['url']) && !($crumb['active'] ?? false)): ?>
-                                <a href="<?= htmlspecialchars($crumb['url']) ?>" class="breadcrumb-item">
-                                    <span><?= $crumb['icon'] ?? '' ?></span>
-                                    <span><?= htmlspecialchars($crumb['text']) ?></span>
-                                </a>
-                            <?php else: ?>
-                                <span class="breadcrumb-item active">
-                                    <span><?= $crumb['icon'] ?? '' ?></span>
-                                    <span><?= htmlspecialchars($crumb['text']) ?></span>
-                                </span>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </div>
-                </nav>
+            <!-- Informations page courante -->
+            <div class="header-page-info">
+                <h1 class="page-main-title">
+                    <span class="module-icon" style="color: <?= $module_color ?>"><?= $module_icon ?></span>
+                    <?= $page_title ?>
+                    <?php if ($module_status === 'development'): ?>
+                        <span class="status-badge development">DEV</span>
+                    <?php elseif ($module_status === 'beta'): ?>
+                        <span class="status-badge beta">BETA</span>
+                    <?php endif; ?>
+                </h1>
+                <?php if (!empty($page_subtitle)): ?>
+                <div class="page-subtitle">
+                    <span class="page-subtitle-text"><?= $page_subtitle ?></span>
+                </div>
                 <?php endif; ?>
             </div>
 
-            <!-- Navigation utilisateur (inchangé) -->
+            <!-- Navigation utilisateur -->
             <?php if ($user_authenticated && $current_user): ?>
             <div class="header-user-nav">
                 <div class="user-menu-trigger" id="userMenuTrigger" aria-haspopup="true" aria-expanded="false">
@@ -681,33 +427,18 @@ if ($user_authenticated) {
             </div>
             <?php endif; ?>
         </div>
-        <!-- Informations page courante (titre, sous-titre) : visible uniquement hors mode compact -->
-        <div class="header-page-info" id="headerPageInfo">
-            <h1 class="page-main-title">
-                <span class="module-icon" style="color: <?= $module_color ?>"><?= $module_icon ?></span>
-                <?= $page_title ?>
-                <?php if ($module_status === 'development'): ?>
-                    <span class="status-badge development">DEV</span>
-                <?php elseif ($module_status === 'beta'): ?>
-                    <span class="status-badge beta">BETA</span>
-                <?php endif; ?>
-            </h1>
-            <?php if (!empty($page_subtitle)): ?>
-            <div class="page-subtitle">
-                <span class="page-subtitle-text"><?= $page_subtitle ?></span>
-            </div>
-            <?php endif; ?>
-        </div>
     </header>
 
-    <!-- Navigation modules (toujours visible, même au premier affichage) -->
-    <nav class="modules-nav" id="modulesNav">
+    <!-- Navigation modules (si utilisateur connecté) -->
+    <?php if ($user_authenticated && !empty($navigation_modules)): ?>
+    <nav class="modules-nav">
         <div class="modules-nav-container">
             <div class="modules-nav-items" style="justify-content: center;">
                 <?php foreach ($navigation_modules as $module_key => $module_data): 
                     $is_active = $current_module === $module_key;
                     $css_classes = ['module-nav-item'];
                     if ($is_active) $css_classes[] = 'active';
+                    
                     $href = "/{$module_key}/";
                 ?>
                     <a href="<?= $href ?>" 
@@ -723,6 +454,8 @@ if ($user_authenticated) {
                     </a>
                 <?php endforeach; ?>
             </div>
+            
+            <!-- Menu burger mobile -->
             <button class="mobile-menu-toggle" aria-label="Menu modules" id="mobileMenuToggle">
                 <span></span>
                 <span></span>
@@ -730,14 +463,17 @@ if ($user_authenticated) {
             </button>
         </div>
     </nav>
+    <?php endif; ?>
 
     <!-- Fil d'Ariane -->
-    <nav class="breadcrumb-nav" id="breadcrumbNav" style="position:sticky;top:0;z-index:999;">
+    <?php if (count($breadcrumbs) > 1): ?>
+    <nav class="breadcrumb-nav">
         <div class="breadcrumb-container">
             <?php foreach ($breadcrumbs as $index => $crumb): ?>
                 <?php if ($index > 0): ?>
                     <span class="breadcrumb-separator">›</span>
                 <?php endif; ?>
+                
                 <?php if (!empty($crumb['url']) && !($crumb['active'] ?? false)): ?>
                     <a href="<?= htmlspecialchars($crumb['url']) ?>" class="breadcrumb-item">
                         <span><?= $crumb['icon'] ?? '' ?></span>
@@ -752,56 +488,14 @@ if ($user_authenticated) {
             <?php endforeach; ?>
         </div>
     </nav>
+    <?php endif; ?>
 
     <!-- Contenu principal -->
     <main class="portal-main">
 
-    <!-- JavaScript pour interactions header et menu sticky -->
+    <!-- JavaScript pour interactions header -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const header = document.getElementById('mainHeader');
-            const headerPageInfo = document.getElementById('headerPageInfo');
-            const headerBrandText = document.getElementById('headerBrandText');
-            const headerBreadcrumbs = document.getElementById('headerBreadcrumbs');
-            const modulesNav = document.getElementById('modulesNav');
-            const breadcrumbNav = document.getElementById('breadcrumbNav');
-            let isHeaderCompact = false;
-            let isMenuHidden = false;
-
-            function handleScroll() {
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                const shouldBeCompact = scrollTop > 100;
-
-                // Header compact
-                if (shouldBeCompact !== isHeaderCompact) {
-                    isHeaderCompact = shouldBeCompact;
-                    if (isHeaderCompact) {
-                        header.classList.add('header-compact');
-                        document.body.classList.add('header-compact');
-                        if(headerPageInfo) headerPageInfo.style.display = 'none';
-                        if(headerBrandText) headerBrandText.textContent = "<?= $all_modules[$current_module]['name'] ?? $app_name ?>";
-                        if(headerBreadcrumbs) headerBreadcrumbs.style.justifyContent = "center";
-                    } else {
-                        header.classList.remove('header-compact');
-                        document.body.classList.remove('header-compact');
-                        if(headerPageInfo) headerPageInfo.style.display = '';
-                        if(headerBrandText) headerBrandText.textContent = "<?= $app_name ?>";
-                        if(headerBreadcrumbs) headerBreadcrumbs.style.justifyContent = "center";
-                    }
-                }
-
-                // Affichage/masquage du menu modules
-                if (scrollTop > 100 && !isMenuHidden) {
-                    modulesNav.classList.add('hide-modules-nav');
-                    breadcrumbNav.classList.add('breadcrumb-nav-minimal');
-                    isMenuHidden = true;
-                } else if (scrollTop <= 100 && isMenuHidden) {
-                    modulesNav.classList.remove('hide-modules-nav');
-                    breadcrumbNav.classList.remove('breadcrumb-nav-minimal');
-                    isMenuHidden = false;
-                }
-            }
-
             // Gestion menu utilisateur
             const userMenuTrigger = document.getElementById('userMenuTrigger');
             const userDropdown = document.getElementById('userDropdown');
@@ -815,7 +509,7 @@ if ($user_authenticated) {
                     const isExpanded = userMenuTrigger.getAttribute('aria-expanded') === 'true';
                     userMenuTrigger.setAttribute('aria-expanded', !isExpanded);
                     userDropdown.setAttribute('aria-hidden', isExpanded);
-                    userDropdown.style.display = !isExpanded ? 'block' : 'none';
+                    userDropdown.classList.toggle('show');
                 });
                 
                 // Fermer menu si clic ailleurs
@@ -823,7 +517,7 @@ if ($user_authenticated) {
                     if (!userMenuTrigger.contains(e.target) && !userDropdown.contains(e.target)) {
                         userMenuTrigger.setAttribute('aria-expanded', 'false');
                         userDropdown.setAttribute('aria-hidden', 'true');
-                        userDropdown.style.display = 'none';
+                        userDropdown.classList.remove('show');
                     }
                 });
                 
@@ -832,27 +526,21 @@ if ($user_authenticated) {
                     if (e.key === 'Escape') {
                         userMenuTrigger.setAttribute('aria-expanded', 'false');
                         userDropdown.setAttribute('aria-hidden', 'true');
-                        userDropdown.style.display = 'none';
+                        userDropdown.classList.remove('show');
                     }
                 });
             }
             
             // Gestion menu mobile
             const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-            const modulesNavMobile = document.querySelector('.modules-nav');
+            const modulesNav = document.querySelector('.modules-nav');
             
-            if (mobileMenuToggle && modulesNavMobile) {
+            if (mobileMenuToggle && modulesNav) {
                 mobileMenuToggle.addEventListener('click', function() {
-                    modulesNavMobile.classList.toggle('mobile-open');
+                    modulesNav.classList.toggle('mobile-open');
                     mobileMenuToggle.classList.toggle('open');
                 });
             }
-
-            // Event listener scroll
-            window.addEventListener('scroll', handleScroll, { passive: true });
-            
-            // Initialisation
-            handleScroll();
         });
         
         // Fonction helper pour aide
@@ -863,31 +551,5 @@ if ($user_authenticated) {
 
     <!-- JavaScript spécifique au module -->
     <?php if ($module_js && $current_module !== 'home'): ?>
-    <script src="<?= $current_module ?>/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
-    <?php endif; ?>
-</main>
-
-<!-- Footer simplifié avec liens corrigés -->
-<footer class="portal-footer">
-    <div class="footer-container">
-        <div class="footer-logo">
-            <?php if (file_exists(ROOT_PATH . '/assets/img/logo_footer.png')): ?>
-                <img src="/assets/img/logo_footer.png" alt="Logo Guldagil" width="120">
-            <?php else: ?>
-                💧
-            <?php endif; ?>
-        </div>
-        <div class="footer-links">
-            <a href="/legal/">Mentions légales</a>
-            <a href="/legal/privacy.php">Politique de confidentialité</a>
-            <a href="/contact.php">Contact</a>
-        </div>
-    </div>
-</footer>
-<!-- Scripts nécessaires -->
-<script src="/assets/js/header.js?v=<?= $build_number ?>"></script>
-<?php if ($module_js && $current_module !== 'home'): ?>
     <script src="/<?= $current_module ?>/assets/js/<?= $current_module ?>.js?v=<?= $build_number ?>"></script>
 <?php endif; ?>
-</body>
-</html>
