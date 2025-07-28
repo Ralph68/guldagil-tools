@@ -387,7 +387,13 @@ if (!function_exists('autoloadCoreClasses')) {
             'Database' => ROOT_PATH . '/core/db/Database.php',
             'RouteManager' => ROOT_PATH . '/core/routing/RouteManager.php',
             'TemplateManager' => ROOT_PATH . '/core/templates/TemplateManager.php',
-            'MiddlewareManager' => ROOT_PATH . '/core/middleware/MiddlewareManager.php'
+            'MiddlewareManager' => ROOT_PATH . '/core/middleware/MiddlewareManager.php',
+            'MenuManager' => ROOT_PATH . '/core/navigation/MenuManager.php',
+            'RoleManager' => ROOT_PATH . '/core/auth/RoleManager.php',
+            'IpGeolocationSecurity' => ROOT_PATH . '/core/security/IpGeolocationSecurity.php',
+            'StealthBlockMethods' => ROOT_PATH . '/core/security/StealthBlockMethods.php',
+            'AuthManager' => ROOT_PATH . '/core/auth/AuthManager.php',
+            'AssetManager' => ROOT_PATH . '/core/assets/AssetManager.php',            
         ];
         
         // Charger la classe si elle existe dans notre mapping
