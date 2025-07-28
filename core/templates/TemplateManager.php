@@ -226,7 +226,159 @@ class TemplateManager
             echo "<script src=\"{$js}?v={$buildNumber}\"></script>\n";
         }
         
-                echo "</body>\n";
-                echo "</html>\n";
+        echo "</body>\n";
+        echo "</html>\n";
+    }
+    
+    /**
+     * Génération automatique des chemins CSS/JS par module
+     */
+    public function getModuleAssets(string $module): array {
+        $buildNumber = $this->getVar('build_number', 'dev');
+        $assets = ['css' => [], 'js' => []];
+        
+        // CSS du module
+        $moduleCssPaths = [
+            "/public/{$module}/assets/css/{$module}.css",
+            "/{$module}/assets/css/{$module}.css"
+        ];
+        
+        foreach ($moduleCssPaths as $path) {
+            if (file_exists(ROOT_PATH . $path)) {
+                $assets['css'][] = $path . "?v=" . $buildNumber;
+                break;
             }
         }
+        
+        // JS du module
+        $moduleJsPaths = [
+            "/public/{$module}/assets/js/{$module}.js",
+            "/{$module}/assets/js/{$module}.js",
+            "/assets/js/modules/{$module}.js"
+        ];
+        
+        foreach ($moduleJsPaths as $path) {
+            if (file_exists(ROOT_PATH . $path)) {
+                $assets['js'][] = $path . "?v=" . $buildNumber;
+                break;
+            }
+        }
+        
+        return $assets;
+    }
+    
+    /**
+     * Rendu complet d'une page avec layout
+     */
+    public function renderPage(string $content, array $config = []): void {
+        $this->initLayout($config);
+        
+        // Header
+        $this->renderHeader();
+        
+        // Breadcrumbs si activés
+        if ($this->getVar('show_breadcrumbs') && !empty($this->getVar('breadcrumbs'))) {
+            $this->renderBreadcrumbs();
+        }
+        
+        // Contenu principal
+        echo "<main class=\"main-content\">\n";
+        echo $content;
+        echo "</main>\n";
+        
+        // Footer
+        $this->renderFooter();
+    }
+    
+    /**
+     * Rendu des breadcrumbs
+     */
+    private function renderBreadcrumbs(): void {
+        $breadcrumbs = $this->getVar('breadcrumbs', []);
+        
+        if (!empty($breadcrumbs)) {
+            echo "<div class=\"breadcrumb-container\">\n";
+            echo "    <nav aria-label=\"breadcrumb\">\n";
+            echo "        <ol class=\"breadcrumb\">\n";
+            
+            foreach ($breadcrumbs as $crumb) {
+                if (isset($crumb['active']) && $crumb['active']) {
+                    echo "            <li class=\"breadcrumb-item active\">\n";
+                    echo "                {$crumb['icon']} " . htmlspecialchars($crumb['text']) . "\n";
+                    echo "            </li>\n";
+                } else {
+                    echo "            <li class=\"breadcrumb-item\">\n";
+                    echo "                <a href=\"" . htmlspecialchars($crumb['url']) . "\">\n";
+                    echo "                    {$crumb['icon']} " . htmlspecialchars($crumb['text']) . "\n";
+                    echo "                </a>\n";
+                    echo "            </li>\n";
+                }
+            }
+            
+            echo "        </ol>\n";
+            echo "    </nav>\n";
+            echo "</div>\n";
+        }
+    }
+    
+    /**
+     * Utilitaire: injecter les assets CSS/JS dans le header existant
+     */
+    public function injectAssets(string $module): void {
+        $assets = $this->getModuleAssets($module);
+        
+        $existingCss = $this->getVar('custom_css', []);
+        $existingJs = $this->getVar('custom_js', []);
+        
+        $this->setVar('custom_css', array_merge($existingCss, $assets['css']));
+        $this->setVar('custom_js', array_merge($existingJs, $assets['js']));
+    }
+    
+    /**
+     * Helper: obtenir la configuration de couleur par module
+     */
+    public function getModuleColor(string $module): string {
+        $colors = [
+            'home' => '#3b82f6',
+            'admin' => '#374151', 
+            'user' => '#6b7280',
+            'port' => '#059669',
+            'materiel' => '#dc2626',
+            'qualite' => '#7c3aed',
+            'epi' => '#ea580c',
+            'adr' => '#d97706'
+        ];
+        
+        return $colors[$module] ?? '#6b7280';
+    }
+    
+    /**
+     * Helper: obtenir l'icône par module
+     */
+    public function getModuleIcon(string $module): string {
+        $icons = [
+            'home' => '🏠',
+            'admin' => '⚙️',
+            'user' => '👤', 
+            'port' => '🚚',
+            'materiel' => '🔧',
+            'qualite' => '🔬',
+            'epi' => '🦺',
+            'adr' => '⚠️'
+        ];
+        
+        return $icons[$module] ?? '📄';
+    }
+    
+    /**
+     * Empêcher le clonage
+     */
+    private function __clone() {}
+    
+    /**
+     * Empêcher la désérialisation  
+     */
+    public function __wakeup() {
+        throw new Exception("Cannot unserialize singleton");
+    }
+}

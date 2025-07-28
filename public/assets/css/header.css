@@ -1,258 +1,1182 @@
-<?php
 /**
- * Titre: Header principal du portail avec chemins CSS/JS corrigés
- * Chemin: /templates/header.php
- * Version: 0.5 beta + build auto
+ * Header moderne et professionnel
+ * Version: 1.0 - Refonte complète
+ * CORRECTION CRITIQUE: Position Fixed → Padding Body
  */
 
-// Variables par défaut si non définies
-$current_module = $current_module ?? 'home';
-$app_name = $app_name ?? 'Guldagil';
-$app_version = $app_version ?? '0.5 beta';
-$build_number = $build_number ?? date('Ymd') . '001';
-$page_title = $page_title ?? 'Accueil';
-$page_description = $page_description ?? 'Portail de gestion';
-$app_author = $app_author ?? 'Guldagil';
-$user_authenticated = $user_authenticated ?? false;
-$current_user = $current_user ?? null;
-$all_modules = $all_modules ?? [];
-$module_css = $module_css ?? true;
-$module_js = $module_js ?? true;
-
-// Titre complet de la page
-$full_title = $page_title . ' - ' . $app_name . ' v' . $app_version;
-
-// Icône, couleur et statut du module actuel
-$module_icon = $all_modules[$current_module]['icon'] ?? '🏠';
-$module_color = $all_modules[$current_module]['color'] ?? '#3182ce';
-$module_status = $all_modules[$current_module]['status'] ?? 'active';
-
-// Navigation modules avec système de rôles centralisé
-$navigation_modules = [];
-if ($user_authenticated) {
-    $user_role = $current_user['role'] ?? 'user';
-    $navigation_modules = getNavigationModules($user_role, $all_modules);
+/* === VARIABLES === */
+:root {
+    /* Structure - HAUTEURS CORRIGÉES */
+    --header-height: 80px;
+    --nav-height: 60px;
+    --breadcrumb-height: 40px;
+    --total-header-height: calc(var(--header-height) + var(--nav-height) + var(--breadcrumb-height));
+    --compact-height: 50px;
+    --touch-target: 44px;
+    
+    /* Couleurs */
+    --primary-color: #3182ce;
+    --primary-light: #63b3ed;
+    --primary-dark: #2c5282;
+    
+    /* Nuances de gris */
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    
+    /* Ombres */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    
+    /* Typographie */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    
+    /* Espacements */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    
+    /* Rayons */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-full: 9999px;
+    
+    /* Transitions */
+    --transition: all 0.3s ease;
+    --transition-fast: all 0.15s ease;
+    
+    /* Z-index */
+    --z-dropdown: 1001;
+    --z-header: 1000;
+    --z-nav: 999;
+    --z-breadcrumb: 998;
+    --z-debug: 9999;
 }
-?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="<?= $page_description ?>">
-    <meta name="author" content="<?= $app_author ?>">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="<?= $module_color ?>">
-    
-    <title><?= $full_title ?></title>
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/assets/img/favicon.png">
-    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+/* === DEBUG BANNER === */
+.debug-banner {
+    background: #dc2626;
+    color: white;
+    padding: 0.5rem;
+    text-align: center;
+    font-size: var(--text-sm);
+    z-index: var(--z-debug);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+}
 
-    <!-- CSS principal OBLIGATOIRE - chemins critiques à préserver -->
-    <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="/assets/css/footer.css?v=<?= $build_number ?>">
-    <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
-    <!-- CSS bannière cookie RGPD -->
-    <link rel="stylesheet" href="/assets/css/cookie_banner.css?v=<?= $build_number ?>">
+/* === STRUCTURE DE BASE - CORRECTION CRITIQUE === */
+body {
+    margin: 0;
+    padding: 0;
+    /* CORRECTION: Padding-top pour compenser le header fixed */
+    padding-top: var(--total-header-height);
+}
 
-    <!-- CSS modulaire avec fallback intelligent et chemins CORRIGÉS -->
-    <?php if ($module_css && $current_module !== 'home'): ?>
-        <?php 
-        // 1. Priorité : nouveau système dans /public/module/assets/ - CHEMIN CORRIGÉ
-        $new_css_path = "/{$current_module}/assets/css/{$current_module}.css";
-        $module_css_loaded = false;
-        
-        // Vérification avec le chemin absolu pour file_exists
-        if (file_exists(ROOT_PATH . "/public{$new_css_path}")): ?>
-            <link rel="stylesheet" href="<?= $new_css_path ?>?v=<?= $build_number ?>">
-            <?php $module_css_loaded = true; ?>
-        <?php endif; ?>
-        
-        <?php if (!$module_css_loaded): ?>
-            <?php 
-            // 2. Fallback : ancien système
-            $legacy_paths = [
-                "/assets/css/modules/{$current_module}.css",
-                "/{$current_module}/css/{$current_module}.css"
-            ];
-            
-            foreach ($legacy_paths as $css_path):
-                if (file_exists(ROOT_PATH . "/public" . $css_path)): ?>
-                    <link rel="stylesheet" href="<?= $css_path ?>?v=<?= $build_number ?>">
-                    <?php break; ?>
-                <?php endif;
-            endforeach; ?>
-        <?php endif; ?>
-    <?php endif; ?>
+/* Avec debug banner, ajouter son espace */
+body.has-debug {
+    padding-top: calc(var(--total-header-height) + 2rem);
+}
 
-    <!-- Variable CSS pour la couleur du module -->
-    <style>
-        :root {
-            --current-module-color: <?= $module_color ?>;
-            --current-module-color-light: <?= $module_color ?>20;
-            --current-module-color-dark: <?= $module_color ?>dd;
-        }
-    </style>
-</head>
-<body data-module="<?= $current_module ?>" data-module-status="<?= $module_status ?>" 
-      class="<?= $user_authenticated ? 'authenticated' : 'auth-page' ?>">
+/* === HEADER PRINCIPAL === */
+.portal-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    height: var(--header-height);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    border: none;
+    z-index: var(--z-header);
+    box-shadow: var(--shadow-lg);
+}
 
-    <!-- Bannière de debug (masquée en production) -->
-    <?php if (defined('DEBUG') && DEBUG === true): ?>
-    <div class="debug-banner" style="background: #dc2626; color: white; padding: 0.5rem; text-align: center; font-size: 0.875rem;">
-        🔒 MODE DEBUG - <?= htmlspecialchars($current_user['username'] ?? 'non connecté') ?> 
-        <?php if ($current_user): ?>(<?= htmlspecialchars($current_user['role'] ?? 'User') ?>)<?php endif; ?> | 
-        <?= date('H:i:s') ?> | 
-        IP: <?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'unknown') ?> |
-        Module: <?= $current_module ?> |
-        Build: <?= $build_number ?>
-    </div>
-    <?php endif; ?>
+/* Avec debug banner, décaler le header */
+.debug-banner + .portal-header,
+body.has-debug .portal-header {
+    top: 2rem;
+}
 
-    <!-- Header principal -->
-    <header class="portal-header">
-        <div class="header-container">
-            <!-- Logo et branding -->
-            <a href="/" class="header-brand">
-                <div class="header-logo">
-                    <?php if (file_exists(ROOT_PATH . '/public/assets/img/logo.png')): ?>
-                        <img src="/assets/img/logo.png" alt="<?= $app_name ?>" width="32" height="32">
-                    <?php else: ?>
-                        <div class="logo-placeholder"><?= $module_icon ?></div>
-                    <?php endif; ?>
-                </div>
-                <div class="header-brand-text">
-                    <span class="brand-name"><?= $app_name ?></span>
-                    <span class="brand-version">v<?= $app_version ?></span>
-                </div>
-            </a>
+/* Le header principal ne disparaît jamais */
+.portal-header.hidden {
+    transform: none; /* Supprime la transformation qui le cache */
+}
 
-            <!-- Titre de page/module -->
-            <div class="header-page-info">
-                <h1 class="page-title"><?= $page_title ?></h1>
-                <?php if ($current_module !== 'home'): ?>
-                    <div class="module-indicator">
-                        <span class="module-icon"><?= $module_icon ?></span>
-                        <span class="module-name"><?= $all_modules[$current_module]['name'] ?? ucfirst($current_module) ?></span>
-                    </div>
-                <?php endif; ?>
-            </div>
+.header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+    height: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
 
-            <!-- Zone utilisateur -->
-            <?php if ($user_authenticated): ?>
-                <div class="header-user">
-                    <div class="user-dropdown">
-                        <button class="user-menu-trigger" id="userMenuTrigger">
-                            <div class="user-avatar">
-                                <?= strtoupper(substr($current_user['username'] ?? 'U', 0, 1)) ?>
-                            </div>
-                            <div class="user-info">
-                                <span class="user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></span>
-                                <span class="user-role"><?= htmlspecialchars($current_user['role'] ?? 'User') ?></span>
-                            </div>
-                            <span class="dropdown-arrow">▼</span>
-                        </button>
-                        
-                        <div class="dropdown-menu" id="userDropdownMenu">
-                            <a href="/user/profile.php" class="dropdown-item">
-                                👤 Mon profil
-                            </a>
-                            <a href="/user/settings.php" class="dropdown-item">
-                                ⚙️ Paramètres
-                            </a>
-                            <div class="dropdown-divider"></div>
-                            <a href="/auth/logout.php" class="dropdown-item logout">
-                                🚪 Déconnexion
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            <?php else: ?>
-                <div class="header-auth">
-                    <a href="/auth/login.php" class="btn btn-primary">Se connecter</a>
-                </div>
-            <?php endif; ?>
-        </div>
-    </header>
+/* === BRANDING === */
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    text-decoration: none;
+    color: white;
+    font-weight: 600;
+    transition: var(--transition-fast);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    min-height: var(--touch-target);
+}
 
-    <!-- Navigation modules -->
-    <?php if ($user_authenticated && !empty($navigation_modules)): ?>
-    <nav class="modules-nav">
-        <div class="nav-container">
-            <div class="nav-items">
-                <?php foreach ($navigation_modules as $module => $module_info): ?>
-                    <a href="/<?= $module ?>/" 
-                       class="nav-item <?= $current_module === $module ? 'active' : '' ?>"
-                       title="<?= htmlspecialchars($module_info['description'] ?? '') ?>">
-                        <span class="nav-icon"><?= $module_info['icon'] ?? '📁' ?></span>
-                        <span class="nav-text"><?= htmlspecialchars($module_info['name']) ?></span>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </nav>
-    <?php endif; ?>
+.header-brand:hover,
+.header-brand:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+    outline: 2px solid rgba(255, 255, 255, 0.3);
+    outline-offset: 2px;
+}
 
-    <!-- Contenu principal commence ici -->
-    <main class="portal-main">
+.header-logo {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
 
-<!-- JavaScript CORRIGÉ pour éviter duplication du nom du module -->
-<?php if ($module_js && $current_module !== 'home'): ?>
-    <?php 
-    // Priorité : nouveau système dans /public/module/assets/ - CHEMIN CORRIGÉ
-    $new_js_path = "/{$current_module}/assets/js/{$current_module}.js";
-    $module_js_loaded = false;
-    
-    // Vérification avec le chemin absolu pour file_exists
-    if (file_exists(ROOT_PATH . "/public{$new_js_path}")): ?>
-        <script src="<?= $new_js_path ?>?v=<?= $build_number ?>"></script>
-        <?php $module_js_loaded = true; ?>
-    <?php endif; ?>
-    
-    <?php if (!$module_js_loaded): ?>
-        <?php 
-        // Fallback : ancien système
-        $legacy_js_paths = [
-            "/assets/js/modules/{$current_module}.js",
-            "/{$current_module}/js/{$current_module}.js"
-        ];
-        
-        foreach ($legacy_js_paths as $js_path):
-            if (file_exists(ROOT_PATH . "/public" . $js_path)): ?>
-                <script src="<?= $js_path ?>?v=<?= $build_number ?>"></script>
-                <?php break; ?>
-            <?php endif;
-        endforeach; ?>
-    <?php endif; ?>
-<?php endif; ?>
+.header-logo img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+}
 
-<!-- JavaScript bannière cookie RGPD -->
-<script src="/assets/js/cookie_banner.js?v=<?= $build_number ?>"></script>
-<script src="/assets/js/cookie_config.js?v=<?= $build_number ?>"></script>
-<!-- Analytics -->
-<script src="/assets/js/analytics.js?v=<?= $build_number ?>"></script>
+.brand-text {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    white-space: nowrap;
+}
 
-<!-- JavaScript pour dropdown utilisateur -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const userMenuTrigger = document.getElementById('userMenuTrigger');
-    const userDropdownMenu = document.getElementById('userDropdownMenu');
-    
-    if (userMenuTrigger && userDropdownMenu) {
-        userMenuTrigger.addEventListener('click', function(e) {
-            e.preventDefault();
-            userDropdownMenu.classList.toggle('show');
-        });
-        
-        // Fermer au clic extérieur
-        document.addEventListener('click', function(e) {
-            if (!userMenuTrigger.contains(e.target) && !userDropdownMenu.contains(e.target)) {
-                userDropdownMenu.classList.remove('show');
-            }
-        });
+/* === TITRE DE PAGE === */
+.page-title-section {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    justify-self: center;
+}
+
+.page-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.page-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.page-title {
+    margin: 0;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    line-height: 1.2;
+    transition: font-size 0.3s ease;
+}
+
+.page-subtitle {
+    font-size: var(--text-sm);
+    opacity: 0.9;
+    transition: opacity 0.3s ease, height 0.3s ease;
+}
+
+.status-badge {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: var(--spacing-sm);
+}
+
+.status-badge.beta {
+    background: rgba(245, 158, 11, 0.9);
+    color: white;
+}
+
+.status-badge.dev {
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* === NAVIGATION UTILISATEUR === */
+.user-nav {
+    position: relative;
+}
+
+.user-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.user-trigger:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    background: white;
+    color: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: var(--text-sm);
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: var(--text-sm);
+}
+
+.user-role {
+    font-size: var(--text-xs);
+    opacity: 0.8;
+}
+
+.dropdown-arrow {
+    font-size: var(--text-xs);
+    transition: var(--transition);
+    margin-left: var(--spacing-xs);
+}
+
+.user-trigger[aria-expanded="true"] .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+/* === DROPDOWN UTILISATEUR === */
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + var(--spacing-sm));
+    right: 0;
+    min-width: 250px;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--gray-200);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: var(--transition);
+    z-index: var(--z-dropdown);
+}
+
+.user-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-header {
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.user-details strong {
+    display: block;
+    color: var(--gray-900);
+    font-weight: 600;
+}
+
+.user-details small {
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+}
+
+.dropdown-menu {
+    padding: var(--spacing-sm);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    color: var(--gray-700);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.dropdown-item:hover {
+    background: var(--gray-100);
+    color: var(--gray-900);
+}
+
+.dropdown-item.logout:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--gray-200);
+    margin: var(--spacing-sm) 0;
+}
+
+/* === NAVIGATION PRINCIPALE === */
+.modules-nav {
+    background: white;
+    height: var(--nav-height);
+    border-bottom: 1px solid var(--gray-200);
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    border: none;
+    position: fixed;
+    top: var(--header-height);
+    z-index: var(--z-nav);
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+/* Avec debug banner, décaler la nav */
+body.has-debug .modules-nav {
+    top: calc(var(--header-height) + 2rem);
+}
+
+/* Comportement quand le corps de page a la classe 'scrolled' */
+body.scrolled .modules-nav {
+    transform: translateY(-100%); /* Cache le menu vers le haut */
+    opacity: 0;
+}
+
+/* Exception si aucun fil d'ariane n'est présent */
+body.scrolled.no-breadcrumb .modules-nav {
+    transform: none; /* Ne cache pas le menu */
+    opacity: 1;
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-items {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    color: var(--gray-600);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    position: relative;
+}
+
+.nav-item:hover {
+    color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+}
+
+.nav-item.active {
+    color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+    font-weight: 600;
+}
+
+.nav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 1px;
+}
+
+.nav-icon {
+    font-size: var(--text-lg);
+}
+
+.nav-text {
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+/* === FIL D'ARIANE === */
+.breadcrumb-nav {
+    background: var(--gray-50);
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--gray-200);
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    border: none;
+    position: fixed;
+    top: calc(var(--header-height) + var(--nav-height));
+    left: 0;
+    right: 0;
+    z-index: var(--z-breadcrumb);
+    transition: top 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+/* Avec debug banner, décaler les breadcrumbs */
+body.has-debug .breadcrumb-nav {
+    top: calc(var(--header-height) + var(--nav-height) + 2rem);
+}
+
+.breadcrumb-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+    display: flex;
+    align-items: center;
+    height: var(--breadcrumb-height);
+}
+
+.breadcrumb-item {
+    color: var(--gray-600);
+    text-decoration: none;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    white-space: nowrap;
+    font-size: var(--text-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.breadcrumb-item:hover {
+    color: var(--primary-color);
+    background-color: rgba(49, 130, 206, 0.05);
+}
+
+.breadcrumb-item.active {
+    color: var(--gray-900);
+    font-weight: 600;
+}
+
+.breadcrumb-separator {
+    color: var(--gray-400);
+    font-size: var(--text-xs);
+    margin: 0 var(--spacing-xs);
+    user-select: none;
+}
+
+body.scrolled .breadcrumb-nav {
+    top: var(--header-height);
+    box-shadow: var(--shadow-sm);
+    background-color: rgba(249, 250, 251, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: breadcrumb-slide-up 0.3s ease-out forwards;
+}
+
+/* Avec debug banner en mode scrolled */
+body.scrolled.has-debug .breadcrumb-nav {
+    top: calc(var(--header-height) + 2rem);
+}
+
+@keyframes breadcrumb-slide-up {
+    from {
+        transform: translateY(10px);
+        opacity: 0.7;
     }
-});
-</script>
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.home-page .breadcrumb-nav {
+    display: none;
+}
+
+body.no-breadcrumb .main-content {
+    padding-top: calc(var(--header-height) + var(--nav-height));
+}
+
+body.scrolled.no-breadcrumb .modules-nav {
+    top: var(--header-height);
+    transform: none;
+    opacity: 1;
+}
+
+/* === HEADER COMPACT === */
+.compact-header {
+    background: white;
+    height: var(--compact-height);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-header);
+    box-shadow: var(--shadow-md);
+    border-bottom: 1px solid var(--gray-200);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-100%);
+    transition: var(--transition);
+}
+
+.compact-header.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.compact-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+    height: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.module-home-link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.module-home-link:hover {
+    background: var(--gray-100);
+}
+
+.compact-breadcrumb {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    text-align: center;
+}
+
+.compact-breadcrumb a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.compact-user {
+    position: relative;
+}
+
+.compact-user-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+}
+
+.compact-avatar {
+    width: 32px;
+    height: 32px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: var(--text-xs);
+}
+
+/* === MOBILE MENU === */
+.mobile-nav-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    background: none;
+    border: none;
+    padding: var(--spacing-sm);
+    cursor: pointer;
+}
+
+.mobile-nav-toggle span {
+    width: 20px;
+    height: 2px;
+    background: var(--gray-600);
+    border-radius: 1px;
+    transition: var(--transition);
+}
+
+.mobile-nav-toggle.open span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.mobile-nav-toggle.open span:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-nav-toggle.open span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
+}
+
+.login-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: white;
+    color: var(--primary-color);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.login-btn:hover {
+    background: var(--gray-100);
+}
+
+/* === HEADER SCROLL TRANSFORMATION === */
+.scroll-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+    z-index: 5;
+}
+
+body.scrolled .scroll-header {
+    opacity: 1;
+    visibility: visible;
+}
+
+.scroll-header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+    height: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+.module-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: white;
+    font-weight: 600;
+}
+
+.module-icon {
+    font-size: 1.5rem;
+}
+
+.module-name {
+    font-size: var(--text-lg);
+}
+
+.current-page-title {
+    color: white;
+    font-size: var(--text-lg);
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Ajustements pour la transformation au scroll */
+body.scrolled .header-container {
+    opacity: 0;
+    visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+}
+
+/* === MAIN CONTENT === */
+.main-content {
+    /* CORRECTION: Position relative pour s'assurer qu'il commence après le header */
+    position: relative;
+    z-index: 1;
+    margin-top: 1rem; /* Espace supplémentaire pour la séparation visuelle */
+    min-height: calc(100vh - var(--total-header-height));
+}
+
+/* Ajustements conditionnels selon la présence ou non du fil d'ariane */
+body:not(.no-breadcrumb) .main-content {
+    padding-top: 0; /* Reset car déjà géré par le padding-top sur body */
+}
+
+body.no-breadcrumb .main-content {
+    padding-top: 1rem; /* Espace supplémentaire quand il n'y a pas de fil d'ariane */
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+    :root {
+        --header-height: 60px;
+        --nav-height: 50px;
+        --breadcrumb-height: 35px;
+        --total-header-height: calc(var(--header-height) + var(--nav-height) + var(--breadcrumb-height));
+    }
+    
+    .header-container {
+        grid-template-columns: auto 1fr;
+        gap: var(--spacing-md);
+    }
+    
+    .page-title-section {
+        order: 3;
+        justify-self: start;
+    }
+    
+    .user-nav {
+        order: 2;
+        justify-self: end;
+    }
+    
+    .page-title {
+        font-size: 1rem;
+    }
+    
+    .page-subtitle {
+        display: none;
+    }
+    
+    .user-info {
+        display: none;
+    }
+    
+    .mobile-nav-toggle {
+        display: flex;
+    }
+    
+    .nav-items {
+        display: none;
+    }
+    
+    .main-navigation.mobile-open .nav-items {
+        display: flex;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        flex-direction: column;
+        padding: var(--spacing-md);
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .nav-item {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .compact-container {
+        grid-template-columns: auto 1fr auto;
+        gap: var(--spacing-sm);
+    }
+    
+    .module-name {
+        display: none; /* Cacher le nom du module en mobile */
+    }
+    
+    .current-page-title {
+        font-size: var(--text-base);
+        text-align: left;
+    }
+    
+    .breadcrumb-nav {
+        padding: 0.25rem 0;
+    }
+    
+    .breadcrumb-container {
+        padding: 0 var(--spacing-sm);
+    }
+    
+    .breadcrumb-item {
+        font-size: var(--text-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    .modules-nav.mobile-open .modules-nav-items {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        flex-direction: column;
+        padding: var(--spacing-md);
+        box-shadow: var(--shadow-lg);
+        border-top: 1px solid var(--gray-200);
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --header-height: 50px;
+        --nav-height: 45px;
+        --breadcrumb-height: 30px;
+        --total-header-height: calc(var(--header-height) + var(--nav-height) + var(--breadcrumb-height));
+    }
+    
+    .header-container {
+        padding: 0 var(--spacing-sm);
+    }
+    
+    .brand-text {
+        display: none;
+    }
+    
+    .page-icon {
+        font-size: 1.5rem;
+    }
+    
+    .page-title {
+        font-size: 0.875rem;
+    }
+    
+    .modules-nav-container {
+        padding: 0 var(--spacing-sm);
+    }
+    
+    .breadcrumb-container {
+        padding: 0 var(--spacing-sm);
+    }
+    
+    .user-dropdown {
+        min-width: 260px;
+        right: var(--spacing-sm);
+    }
+}
+
+/* === ACCESSIBILITÉ === */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (prefers-contrast: high) {
+    :root {
+        --gray-200: #d1d5db;
+        --gray-300: #9ca3af;
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+    }
+}
+
+.nav-item:focus-visible,
+.user-trigger:focus-visible,
+.breadcrumb-item:focus-visible,
+.dropdown-item:focus-visible,
+.login-btn:focus-visible,
+.compact-user-btn:focus-visible,
+.user-menu-trigger:focus-visible,
+.module-nav-item:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.portal-main {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* === BANNIÈRE COOKIE === */
+.cookie-banner {
+    background: #f8f9fa;
+    color: #212529;
+    padding: 1rem;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.cookie-banner-hidden {
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cookie-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.cookie-banner-text {
+    max-width: 600px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.cookie-banner-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.cookie-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.cookie-btn-accept {
+    background: #28a745;
+    color: white;
+}
+
+.cookie-btn-accept:hover {
+    background: #218838;
+}
+
+.cookie-btn-minimal {
+    background: #ffc107;
+    color: #212529;
+}
+
+.cookie-btn-minimal:hover {
+    background: #e0a800;
+}
+
+.cookie-btn-details {
+    background: #007bff;
+    color: white;
+}
+
+.cookie-btn-details:hover {
+    background: #0056b3;
+}
+
+.cookie-manage-btn {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease;
+}
+
+.cookie-manage-btn:hover {
+    background: #0056b3;
+}
+
+/* === CORRECTIONS SUPPLÉMENTAIRES POUR COMPATIBILITÉ === */
+
+/* Support pour anciennes classes existantes */
+.header-brand-text {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.brand-logo {
+    font-size: 1.5rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ajustements pour les pages avec navigation spécifique */
+body.no-breadcrumb {
+    padding-top: calc(var(--header-height) + var(--nav-height));
+}
+
+body.no-breadcrumb.has-debug {
+    padding-top: calc(var(--header-height) + var(--nav-height) + 2rem);
+}
+
+/* Cas spéciaux pour les modules */
+.adr-main-container,
+.calc-main-container,
+.admin-main-container {
+    margin-top: 0; /* Reset des marges automatiques */
+}
+
+/* Compatibilité avec les anciens selectors */
+.portal-main {
+    margin-top: 0;
+}
+
+/* === FIX URGENT - ESPACEMENT PADDING === */
+/* Si pas de navigation secondaire */
+body.no-nav {
+    padding-top: var(--header-height);
+}
+
+body.no-nav.has-debug {
+    padding-top: calc(var(--header-height) + 2rem);
+}
+
+/* === DEBUG CSS EN LIVE === */
+.debug-info {
+    position: fixed;
+    top: 50%;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 10000;
+    transform: translateY(-50%);
+    max-width: 200px;
+}
+
+.debug-info::before {
+    content: "Header Height: " var(--total-header-height);
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* === STYLES POUR TEMPLATES EXISTANTS === */
+.page-main-title {
+    margin: 0;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.header-page-info {
+    text-align: center;
+    justify-self: center;
+}
+
+.user-menu-trigger {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+/* === FALLBACKS POUR NAVIGATEURS ANCIENS === */
+@supports not (padding-top: calc(80px + 60px + 40px)) {
+    body {
+        padding-top: 180px; /* 80 + 60 + 40 */
+    }
+    
+    body.has-debug {
+        padding-top: 212px; /* 180 + 32 */
+    }
+}
+
+/* === CORRECTION FINALE - OVERRIDE CRITIQUE === */
+body {
+    padding-top: var(--total-header-height) !important;
+}
+
+body.has-debug {
+    padding-top: calc(var(--total-header-height) + 2rem) !important;
+}
+
+body.no-breadcrumb {
+    padding-top: calc(var(--header-height) + var(--nav-height)) !important;
+}
+
+body.no-breadcrumb.has-debug {
+    padding-top: calc(var(--header-height) + var(--nav-height) + 2rem) !important;
+}

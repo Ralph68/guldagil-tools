@@ -296,3 +296,7 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* TODO: Vérifier que toutes les variables CSS sont utilisées */
+/* TODO: Ajouter un système de minification automatique pour les fichiers CSS */
+/* TODO: Vérifier la compatibilité avec les navigateurs récents */

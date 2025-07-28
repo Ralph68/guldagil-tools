@@ -372,4 +372,166 @@ function getIpSecurityAlert() {
         🛡️ <strong>Sécurité IP active</strong> - Accès limité à la France
     </div>';
 }
+// =====================================
+// AUTOLOAD DES CLASSES CORE (NOUVEAU)
+// =====================================
+
+/**
+ * Autoload des nouvelles classes core/ - Compatible avec l'existant
+ * Cette fonction charge automatiquement les classes sans impacter le code existant
+ */
+if (!function_exists('autoloadCoreClasses')) {
+    function autoloadCoreClasses($class) {
+        // Définition des classes core et leurs chemins
+        $coreClasses = [
+            'Database' => ROOT_PATH . '/core/db/Database.php',
+            'RouteManager' => ROOT_PATH . '/core/routing/RouteManager.php',
+            'TemplateManager' => ROOT_PATH . '/core/templates/TemplateManager.php',
+            'MiddlewareManager' => ROOT_PATH . '/core/middleware/MiddlewareManager.php'
+        ];
+        
+        // Charger la classe si elle existe dans notre mapping
+        if (isset($coreClasses[$class]) && file_exists($coreClasses[$class])) {
+            require_once $coreClasses[$class];
+            return true;
+        }
+        
+        return false;
+    }
+
+    // Enregistrer l'autoloader (ne remplace pas les existants)
+    spl_autoload_register('autoloadCoreClasses');
+}
+
+// =====================================
+// INITIALISATION OPTIONNELLE DES NOUVEAUX GESTIONNAIRES
+// =====================================
+
+/**
+ * Fonction d'initialisation des gestionnaires core (optionnelle)
+ * Peut être appelée pour pré-charger les gestionnaires
+ */
+if (!function_exists('initCoreManagers')) {
+    function initCoreManagers() {
+        try {
+            // Initialisation Database (wrapper autour de getDB() existant)
+            if (class_exists('Database') && function_exists('getDB')) {
+                // Test de compatibilité
+                $oldDb = getDB();
+                $newDb = Database::getDB();
+                
+                if ($oldDb && $newDb) {
+                    // Les deux méthodes fonctionnent - OK
+                    error_log("✅ Database manager initialisé - Compatible avec getDB()");
+                }
+            }
+            
+            // Initialisation RouteManager
+            if (class_exists('RouteManager')) {
+                $routeManager = RouteManager::getInstance();
+                $currentModule = $routeManager->getCurrentModule();
+                error_log("✅ RouteManager initialisé - Module détecté: {$currentModule}");
+            }
+            
+            // Initialisation TemplateManager
+            if (class_exists('TemplateManager')) {
+                $templateManager = TemplateManager::getInstance();
+                error_log("✅ TemplateManager initialisé");
+            }
+            
+            // Initialisation MiddlewareManager
+            if (class_exists('MiddlewareManager')) {
+                $middlewareManager = MiddlewareManager::getInstance();
+                error_log("✅ MiddlewareManager initialisé");
+            }
+            
+        } catch (Exception $e) {
+            error_log("⚠️ Erreur initialisation core managers: " . $e->getMessage());
+        }
+    }
+}
+
+// =====================================
+// FONCTIONS DE COMPATIBILITÉ
+// =====================================
+
+/**
+ * Fonction de fallback pour maintenir la compatibilité avec getDB()
+ * Si Database n'est pas disponible, utilise l'ancienne méthode
+ */
+if (!function_exists('getDatabaseConnection')) {
+    function getDatabaseConnection() {
+        // Priorité à la nouvelle méthode
+        if (class_exists('Database')) {
+            try {
+                return Database::getDB();
+            } catch (Exception $e) {
+                error_log("Fallback vers getDB() - Erreur Database: " . $e->getMessage());
+            }
+        }
+        
+        // Fallback vers l'ancienne méthode
+        if (function_exists('getDB')) {
+            return getDB();
+        }
+        
+        throw new Exception("Aucune méthode de connexion DB disponible");
+    }
+}
+
+/**
+ * Détection automatique du module courant (compatible avec l'existant)
+ */
+if (!function_exists('getCurrentModuleAuto')) {
+    function getCurrentModuleAuto($fallback = 'home') {
+        // Méthode moderne
+        if (class_exists('RouteManager')) {
+            try {
+                return RouteManager::getInstance()->getCurrentModule();
+            } catch (Exception $e) {
+                error_log("Erreur RouteManager: " . $e->getMessage());
+            }
+        }
+        
+        // Méthode traditionnelle (analyse de l'URL)
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        $path = parse_url($uri, PHP_URL_PATH);
+        
+        if (preg_match('#^/admin#', $path)) return 'admin';
+        if (preg_match('#^/user#', $path)) return 'user';
+        if (preg_match('#^/auth#', $path)) return 'auth';
+        if (preg_match('#^/(port|calculateur)#', $path)) return 'port';
+        if (preg_match('#^/materiel#', $path)) return 'materiel';
+        if (preg_match('#^/qualite#', $path)) return 'qualite';
+        if (preg_match('#^/epi#', $path)) return 'epi';
+        if (preg_match('#^/adr#', $path)) return 'adr';
+        
+        return $fallback;
+    }
+}
+
+// =====================================
+// INITIALISATION AUTOMATIQUE (EN MODE DEBUG)
+// =====================================
+
+// Initialiser automatiquement en mode debug pour tester
+if (defined('DEBUG') && DEBUG && php_sapi_name() !== 'cli') {
+    // Initialisation silencieuse (pas de sortie)
+    try {
+        initCoreManagers();
+    } catch (Exception $e) {
+        // Log uniquement, pas d'interruption
+        error_log("Initialisation core silencieuse échouée: " . $e->getMessage());
+    }
+}
+
+// =====================================
+// CONSTANTES POUR LES NOUVELLES CAPACITÉS
+// =====================================
+
+// Indicateur que les nouvelles classes sont disponibles
+define('CORE_MANAGERS_AVAILABLE', true);
+define('CORE_AUTOLOAD_REGISTERED', true);
+
+// Fin du bloc à ajouter à config/config.php
 ?>

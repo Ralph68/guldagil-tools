@@ -22,6 +22,8 @@ $breadcrumbs = [
 ];
 
 // Définition des modules pour l'affichage des cartes sur cette page
+// TODO: Vérifier que tous les modules ont leur CSS dans /assets/css/
+// TODO: Créer les JS manquants dans /assets/js/ si nécessaire
 $all_modules = [
     'port' => ['name' => 'Calculateur Frais de Port', 'description' => 'Calcul intelligent des frais de transport.', 'icon' => '📦', 'url' => '/port/', 'status' => 'active', 'color' => '#0ea5e9', 'category' => 'Logistique & Transport', 'priority' => 1, 'alias' => 'calculateur'],
     'adr' => ['name' => 'Module ADR', 'description' => 'Gestion des marchandises dangereuses.', 'icon' => '⚠️', 'url' => '/adr/', 'status' => 'development', 'color' => '#dc2626', 'category' => 'Sécurité & Conformité', 'priority' => 2],
@@ -54,8 +56,12 @@ uasort($user_modules, fn($a, $b) => ($a['priority'] ?? 999) <=> ($b['priority'] 
 $portal_stats = ['modules_accessibles' => count($user_modules), 'calculs_aujourd_hui' => rand(25, 75)];
 $recent_activities = [['icon' => '📦', 'title' => 'Nouveau calcul de frais de port', 'details' => 'Destination: Lyon, Poids: 15kg', 'time' => 'Il y a 5 minutes', 'type' => 'calcul']];
 
+// TODO: Ajouter une vérification pour les fichiers CSS/JS des modules avant inclusion
 $module_css_path = "/user/assets/css/user.css";
 $module_js_path = "/user/assets/js/user.js";
+
+// TODO: Standardiser les fichiers JS pour tous les modules
+// TODO: Créer /public/admin/assets/js/admin.js et /public/auth/assets/js/auth.js si manquants
 ?>
 
 <!-- Le contenu de la page commence ici, après le <main> du header -->

@@ -761,3 +761,7 @@ window.addEventListener('load', function() {
 if (!sessionStorage.getItem('sessionStart')) {
     sessionStorage.setItem('sessionStart', Date.now());
 }
+
+// TODO: Standardiser les fichiers JS pour tous les modules
+// TODO: Ajouter des tests unitaires pour les fonctions critiques
+// TODO: Ajouter un système de minification automatique pour les fichiers JS
