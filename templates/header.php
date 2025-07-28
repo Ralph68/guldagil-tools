@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Header principal du portail - Version nettoyée
+ * Titre: Header principal du portail - Version corrigée
  * Chemin: /templates/header.php
  * Version: 0.5 beta + build auto
  */
@@ -15,9 +15,14 @@ $page_description = $page_description ?? 'Portail de gestion';
 $app_author = $app_author ?? 'Guldagil';
 $user_authenticated = $user_authenticated ?? false;
 $current_user = $current_user ?? null;
-$all_modules = $all_modules ?? []; // TODO: Remplacer par une inclusion depuis config/modules.php
+$all_modules = $all_modules ?? []; 
 $module_css = $module_css ?? true;
 $module_js = $module_js ?? true;
+
+// Charger les modules depuis config si vide
+if (empty($all_modules) && file_exists(ROOT_PATH . '/config/modules.php')) {
+    $all_modules = require ROOT_PATH . '/config/modules.php';
+}
 
 // Titre complet de la page
 $full_title = $page_title . ' - ' . $app_name . ' v' . $app_version;
@@ -32,6 +37,23 @@ $navigation_modules = [];
 if ($user_authenticated) {
     $user_role = $current_user['role'] ?? 'user';
     $navigation_modules = getNavigationModules($user_role, $all_modules);
+}
+
+// Breadcrumb par défaut
+if (!isset($breadcrumbs)) {
+    $breadcrumbs = [
+        ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => ($current_module === 'home')]
+    ];
+    
+    if ($current_module !== 'home' && isset($all_modules[$current_module])) {
+        $breadcrumbs[] = [
+            'icon' => $module_icon,
+            'text' => $all_modules[$current_module]['name'] ?? ucfirst($current_module),
+            'url' => "/{$current_module}/",
+            'active' => true
+        ];
+        $breadcrumbs[0]['active'] = false;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -57,7 +79,7 @@ if ($user_authenticated) {
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/cookie_banner.css?v=<?= $build_number ?>">
 
-    <!-- CSS modulaire - Architecture standardisée -->
+    <!-- CSS modulaire - CORRECTION DU CHEMIN SIMPLE -->
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
         $module_css_path = "/{$current_module}/assets/css/{$current_module}.css";
@@ -92,7 +114,7 @@ if ($user_authenticated) {
     </div>
     <?php endif; ?>
 
-    <!-- Header principal -->
+    <!-- Header principal TOUJOURS visible -->
     <header class="portal-header">
         <div class="header-container">
             <!-- Logo et branding -->
@@ -110,192 +132,185 @@ if ($user_authenticated) {
                 </div>
             </a>
 
-            <!-- Navigation module ou titre page -->
-            <div class="header-center">
-                <?php if (!empty($navigation_modules)): ?>
-                    <!-- Navigation horizontale -->
-                    <nav class="header-nav" role="navigation" aria-label="Navigation principale">
+            <!-- MENU NAVIGATION TOUJOURS VISIBLE (si connecté) -->
+            <?php if ($user_authenticated && !empty($navigation_modules)): ?>
+                <nav class="header-nav" role="navigation" aria-label="Navigation principale">
+                    <div class="nav-items">
                         <?php foreach ($navigation_modules as $mod_key => $module): ?>
-                            <?php if ($module['status'] !== 'disabled'): ?>
+                            <?php if (($module['status'] ?? 'active') !== 'disabled'): ?>
                                 <a href="/<?= $mod_key ?>/" 
                                    class="nav-item <?= $mod_key === $current_module ? 'active' : '' ?>"
+                                   style="--module-color: <?= $module['color'] ?? '#3182ce' ?>"
                                    title="<?= htmlspecialchars($module['description'] ?? $module['name']) ?>"
                                    <?php if ($mod_key === $current_module): ?>aria-current="page"<?php endif; ?>>
-                                    <span class="nav-icon"><?= $module['icon'] ?></span>
-                                    <span class="nav-text"><?= htmlspecialchars($module['name']) ?></span>
-                                    <?php if ($module['status'] === 'beta'): ?>
+                                    <span class="nav-icon"><?= $module['icon'] ?? '📄' ?></span>
+                                    <span class="nav-text"><?= htmlspecialchars($module['name'] ?? ucfirst($mod_key)) ?></span>
+                                    <?php if (($module['status'] ?? 'active') === 'beta'): ?>
                                         <span class="badge-beta">β</span>
+                                    <?php endif; ?>
+                                    <?php if (($module['status'] ?? 'active') === 'development'): ?>
+                                        <span class="badge-dev">DEV</span>
                                     <?php endif; ?>
                                 </a>
                             <?php endif; ?>
                         <?php endforeach; ?>
-                    </nav>
-                <?php else: ?>
-                    <!-- Titre de la page actuelle -->
-                    <div class="header-page-info">
-                        <h1 class="page-title">
-                            <span class="module-icon"><?= $module_icon ?></span>
-                            <?= htmlspecialchars($page_title) ?>
-                        </h1>
-                        <?php if (!empty($page_subtitle)): ?>
-                            <p class="page-subtitle"><?= htmlspecialchars($page_subtitle) ?></p>
-                        <?php endif; ?>
+                    </div>
+                </nav>
+            <?php endif; ?>
+
+            <!-- Informations page courante -->
+            <div class="header-page-info">
+                <h1 class="page-main-title">
+                    <span class="module-icon"><?= $module_icon ?></span>
+                    <?= htmlspecialchars($page_title) ?>
+                    <?php if ($module_status === 'development'): ?>
+                        <span class="status-badge development">DEV</span>
+                    <?php elseif ($module_status === 'beta'): ?>
+                        <span class="status-badge beta">BETA</span>
+                    <?php endif; ?>
+                </h1>
+                <?php if (!empty($page_subtitle)): ?>
+                    <div class="page-subtitle">
+                        <span class="page-subtitle-text"><?= htmlspecialchars($page_subtitle) ?></span>
                     </div>
                 <?php endif; ?>
             </div>
 
             <!-- Zone utilisateur -->
-            <div class="header-user">
-                <?php if ($user_authenticated): ?>
-                    <!-- Utilisateur connecté -->
-                    <div class="user-info" role="banner">
-                        <div class="user-menu">
-                            <button class="user-button" aria-expanded="false" aria-haspopup="true">
-                                <div class="user-avatar">
-                                    <?php if (!empty($current_user['avatar'])): ?>
-                                        <img src="<?= htmlspecialchars($current_user['avatar']) ?>" alt="Avatar">
-                                    <?php else: ?>
-                                        <span class="avatar-initials"><?= strtoupper(substr($current_user['username'] ?? 'U', 0, 2)) ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="user-details">
-                                    <span class="user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></span>
-                                    <span class="user-role"><?= htmlspecialchars(ucfirst($current_user['role'] ?? 'user')) ?></span>
-                                </div>
-                                <span class="dropdown-arrow">▼</span>
-                            </button>
-                            
-                            <div class="user-dropdown" role="menu">
-                                <a href="/user/profile.php" class="dropdown-item" role="menuitem">
-                                    <span class="item-icon">👤</span>
-                                    Mon profil
-                                </a>
-                                <a href="/user/settings.php" class="dropdown-item" role="menuitem">
-                                    <span class="item-icon">⚙️</span>
-                                    Paramètres
-                                </a>
-                                <?php if (in_array($current_user['role'] ?? '', ['admin', 'dev'])): ?>
-                                    <hr class="dropdown-divider">
-                                    <a href="/admin/" class="dropdown-item" role="menuitem">
-                                        <span class="item-icon">🔧</span>
-                                        Administration
-                                    </a>
+            <?php if ($user_authenticated): ?>
+                <div class="header-user-nav">
+                    <div class="user-menu" role="group">
+                        <button class="user-menu-trigger" 
+                                aria-expanded="false" 
+                                aria-haspopup="true"
+                                onclick="toggleUserMenu()">
+                            <div class="user-avatar">
+                                <?php if (!empty($current_user['avatar'])): ?>
+                                    <img src="<?= htmlspecialchars($current_user['avatar']) ?>" alt="Avatar">
+                                <?php else: ?>
+                                    <?= strtoupper(substr($current_user['username'] ?? 'U', 0, 2)) ?>
                                 <?php endif; ?>
-                                <hr class="dropdown-divider">
-                                <a href="/auth/logout.php" class="dropdown-item logout" role="menuitem">
-                                    <span class="item-icon">🚪</span>
-                                    Se déconnecter
-                                </a>
                             </div>
+                            <div class="user-details">
+                                <span class="user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></span>
+                                <span class="user-role">
+                                    <span class="role-badge role-<?= $current_user['role'] ?? 'user' ?>">
+                                        <?= htmlspecialchars(ucfirst($current_user['role'] ?? 'user')) ?>
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="dropdown-icon">▼</div>
+                        </button>
+
+                        <!-- Menu utilisateur -->
+                        <div class="user-dropdown-menu" id="userDropdownMenu" aria-hidden="true">
+                            <div class="dropdown-header">
+                                <div class="dropdown-user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></div>
+                                <div class="dropdown-user-email"><?= htmlspecialchars($current_user['email'] ?? '') ?></div>
+                            </div>
+                            
+                            <div class="dropdown-divider"></div>
+                            
+                            <a href="/user/profile.php" class="dropdown-item">
+                                <span class="dropdown-icon">👤</span>
+                                <span class="dropdown-text">Mon profil</span>
+                            </a>
+                            <a href="/user/" class="dropdown-item">
+                                <span class="dropdown-icon">⚙️</span>
+                                <span class="dropdown-text">Paramètres</span>
+                            </a>
+                            
+                            <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'view_admin')): ?>
+                            <div class="dropdown-divider"></div>
+                            <a href="/admin/" class="dropdown-item">
+                                <span class="dropdown-icon">🔧</span>
+                                <span class="dropdown-text">Administration</span>
+                            </a>
+                            <?php endif; ?>
+                            
+                            <div class="dropdown-divider"></div>
+                            <a href="/auth/logout.php" class="dropdown-item logout">
+                                <span class="dropdown-icon">🚪</span>
+                                <span class="dropdown-text">Déconnexion</span>
+                            </a>
                         </div>
                     </div>
-                <?php else: ?>
-                    <!-- Utilisateur non connecté -->
-                    <div class="auth-actions">
-                        <a href="/auth/login.php" class="btn-login">Se connecter</a>
-                    </div>
-                <?php endif; ?>
-            </div>
+                </div>
+            <?php else: ?>
+                <!-- Navigation pour utilisateur non connecté -->
+                <div class="header-auth-nav">
+                    <a href="/auth/login.php" class="btn btn-primary">
+                        <span class="btn-icon">🔑</span>
+                        Connexion
+                    </a>
+                </div>
+            <?php endif; ?>
         </div>
     </header>
 
-    <!-- Zone de contenu principal -->
-    <div class="page-wrapper">
-        <?php 
-        // Affichage des messages flash s'ils existent
-        if (isset($_SESSION['flash_messages'])): 
-            foreach ($_SESSION['flash_messages'] as $type => $messages):
-                foreach ($messages as $message): ?>
-                    <div class="alert alert-<?= $type ?>" role="alert">
-                        <?= htmlspecialchars($message) ?>
-                        <button type="button" class="alert-close" aria-label="Fermer">&times;</button>
-                    </div>
-                <?php endforeach;
-            endforeach;
-            unset($_SESSION['flash_messages']);
-        endif; ?>
-
-    <!-- JavaScript RGPD et global -->
-    <script src="/assets/js/cookie_banner.js?v=<?= $build_number ?>"></script>
-    <script src="/assets/js/cookie_config.js?v=<?= $build_number ?>"></script>
-    <script src="/assets/js/analytics.js?v=<?= $build_number ?>"></script>
-
-    <!-- JavaScript modulaire -->
-    <?php if ($module_js && $current_module !== 'home'): ?>
-        <?php 
-        $module_js_path = "/{$current_module}/assets/js/{$current_module}.js";
-        $module_js_file = ROOT_PATH . "/public{$module_js_path}";
-        
-        if (file_exists($module_js_file)): ?>
-            <script src="<?= $module_js_path ?>?v=<?= $build_number ?>"></script>
-        <?php endif; ?>
+    <!-- BREADCRUMB STICKY FULL WIDTH -->
+    <?php if ($user_authenticated && !empty($breadcrumbs)): ?>
+    <nav class="breadcrumb-nav sticky" role="navigation" aria-label="Fil d'Ariane">
+        <div class="breadcrumb-container">
+            <ol class="breadcrumb">
+                <?php foreach ($breadcrumbs as $index => $crumb): ?>
+                    <li class="breadcrumb-item <?= $crumb['active'] ? 'active' : '' ?>">
+                        <?php if (!$crumb['active'] && !empty($crumb['url'])): ?>
+                            <a href="<?= htmlspecialchars($crumb['url']) ?>">
+                                <span class="breadcrumb-icon"><?= $crumb['icon'] ?></span>
+                                <span class="breadcrumb-text"><?= htmlspecialchars($crumb['text']) ?></span>
+                            </a>
+                        <?php else: ?>
+                            <span class="breadcrumb-icon"><?= $crumb['icon'] ?></span>
+                            <span class="breadcrumb-text"><?= htmlspecialchars($crumb['text']) ?></span>
+                        <?php endif; ?>
+                        
+                        <?php if (!$crumb['active'] && $index < count($breadcrumbs) - 1): ?>
+                            <span class="breadcrumb-separator">›</span>
+                        <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ol>
+        </div>
+    </nav>
     <?php endif; ?>
 
-    <!-- JavaScript header interactif -->
+    <!-- JavaScript modulaire - CORRECTION DU CHEMIN DOUBLE -->
+    <?php if ($module_js && $current_module !== 'home'): ?>
+        <?php 
+        $js_path = "/{$current_module}/assets/js/{$current_module}.js";
+        $js_file = ROOT_PATH . "/public{$js_path}";
+        
+        if (file_exists($js_file)): ?>
+            <script src="<?= $js_path ?>?v=<?= $build_number ?>" defer></script>
+        <?php endif; ?>
+    <?php endif; ?>
+    
+    <!-- JavaScript global -->
+    <script src="/assets/js/portal.js?v=<?= $build_number ?>" defer></script>
+    
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Menu utilisateur dropdown
-        const userButton = document.querySelector('.user-button');
-        const userDropdown = document.querySelector('.user-dropdown');
+    // Menu utilisateur
+    function toggleUserMenu() {
+        const menu = document.getElementById('userDropdownMenu');
+        const trigger = document.querySelector('.user-menu-trigger');
+        const isOpen = menu.getAttribute('aria-hidden') === 'false';
         
-        if (userButton && userDropdown) {
-            userButton.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const isExpanded = userButton.getAttribute('aria-expanded') === 'true';
-                userButton.setAttribute('aria-expanded', !isExpanded);
-                userDropdown.style.display = isExpanded ? 'none' : 'block';
-            });
-            
-            document.addEventListener('click', function() {
-                userButton.setAttribute('aria-expanded', 'false');
-                userDropdown.style.display = 'none';
-            });
+        menu.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
+        trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        menu.style.display = isOpen ? 'none' : 'block';
+    }
+
+    // Fermer menu si clic extérieur
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.user-menu')) {
+            const menu = document.getElementById('userDropdownMenu');
+            const trigger = document.querySelector('.user-menu-trigger');
+            if (menu && trigger) {
+                menu.setAttribute('aria-hidden', 'true');
+                trigger.setAttribute('aria-expanded', 'false');
+                menu.style.display = 'none';
+            }
         }
-        
-        // Fermeture des alertes
-        document.querySelectorAll('.alert-close').forEach(function(closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                this.parentElement.style.display = 'none';
-            });
-        });
     });
     </script>
-
-<!-- TODO: Éléments à mettre à jour dans les modules -->
-<?php
-/**
- * TODO LIST:
- * 
- * 1. MODULES À VÉRIFIER:
- *    - Vérifier que tous les modules ont leur CSS dans /assets/css/
- *    - Créer les JS manquants dans /assets/js/ si nécessaire
- * 
- * 2. ASSETS MANQUANTS À CRÉER:
- *    - /public/auth/assets/css/auth.css (si n'existe pas)
- *    - /public/port/assets/css/port.css (si n'existe pas) 
- *    - Vérifier autres modules (adr, materiel, qualite)
- * 
- * 3. JAVASCRIPT À STANDARDISER:
- *    - Créer /public/admin/assets/js/admin.js
- *    - Créer /public/auth/assets/js/auth.js
- *    - Standardiser tous les JS modules
- * 
- * 4. CONFIGURATION À EXTERNALISER:
- *    - Créer config/modules.php avec définition des modules
- *    - Déplacer $all_modules vers un fichier de configuration centralisé
- * 
- * 5. FONCTIONS À MIGRER:
- *    - getNavigationModules() vers core/auth/ ou core/modules/
- *    - Fonctions helper vers core/helpers/
- * 
- * 6. OPTIMISATIONS:
- *    - Cache file_exists() dans une classe Assets
- *    - Minification CSS/JS automatique
- *    - Compression gzip assets
- * 
- * 7. SÉCURITÉ:
- *    - Validation des noms de modules
- *    - Protection contre path traversal
- *    - CSP headers pour assets
- */
-?>
