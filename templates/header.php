@@ -126,37 +126,31 @@ if (!isset($breadcrumbs)) {
                         <span class="logo-emoji">🏢</span>
                     <?php endif; ?>
                 </div>
+                <?php if ($current_module === 'home'): ?>
                 <div class="header-brand-text">
                     <span class="brand-name"><?= $app_name ?></span>
                     <span class="brand-version">v<?= $app_version ?></span>
                 </div>
+                <?php endif; ?>
             </a>
 
-            <!-- MENU NAVIGATION TOUJOURS VISIBLE (si connecté) -->
-            <?php if ($user_authenticated && !empty($navigation_modules)): ?>
-                <nav class="header-nav" role="navigation" aria-label="Navigation principale">
-                    <div class="nav-items">
-                        <?php foreach ($navigation_modules as $mod_key => $module): ?>
-                            <?php if (($module['status'] ?? 'active') !== 'disabled'): ?>
-                                <a href="/<?= $mod_key ?>/" 
-                                   class="nav-item <?= $mod_key === $current_module ? 'active' : '' ?>"
-                                   style="--module-color: <?= $module['color'] ?? '#3182ce' ?>"
-                                   title="<?= htmlspecialchars($module['description'] ?? $module['name']) ?>"
-                                   <?php if ($mod_key === $current_module): ?>aria-current="page"<?php endif; ?>>
-                                    <span class="nav-icon"><?= $module['icon'] ?? '📄' ?></span>
-                                    <span class="nav-text"><?= htmlspecialchars($module['name'] ?? ucfirst($mod_key)) ?></span>
-                                    <?php if (($module['status'] ?? 'active') === 'beta'): ?>
-                                        <span class="badge-beta">β</span>
-                                    <?php endif; ?>
-                                    <?php if (($module['status'] ?? 'active') === 'development'): ?>
-                                        <span class="badge-dev">DEV</span>
-                                    <?php endif; ?>
-                                </a>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
+            <!-- Informations page courante (remplace nav dans header) -->
+            <div class="header-page-info">
+                <h1 class="page-main-title">
+                    <span class="module-icon"><?= $module_icon ?></span>
+                    <?= htmlspecialchars($page_title) ?>
+                    <?php if ($module_status === 'development'): ?>
+                        <span class="status-badge development">DEV</span>
+                    <?php elseif ($module_status === 'beta'): ?>
+                        <span class="status-badge beta">BETA</span>
+                    <?php endif; ?>
+                </h1>
+                <?php if (!empty($page_subtitle)): ?>
+                    <div class="page-subtitle">
+                        <span class="page-subtitle-text"><?= htmlspecialchars($page_subtitle) ?></span>
                     </div>
-                </nav>
-            <?php endif; ?>
+                <?php endif; ?>
+            </div>
 
             <!-- Informations page courante -->
             <div class="header-page-info">
