@@ -1,51 +1,56 @@
 <?php
 /**
- * Titre: Fonctions helper pour gestion permissions modules
+ * Titre: Fonctions helper simplifiées pour menu dynamique
  * Chemin: /config/functions.php
  * Version: 0.5 beta + build auto
  */
 
-if (!function_exists('canAccessModule')) {
+if (!function_exists('getNavigationModules')) {
     /**
-     * Vérifie si un utilisateur peut accéder à un module
+     * Obtenir les modules de navigation - VERSION SIMPLIFIÉE
      */
-    function canAccessModule($module_key, $module_data, $user_role) {
-        // Modules toujours accessibles
-        if (in_array($module_key, ['home', 'user'])) {
-            return true;
+    function getNavigationModules(string $userRole, array $modules = null): array {
+        // Utiliser MenuManager si disponible
+        if (class_exists('MenuManager')) {
+            return MenuManager::getInstance()->getModulesForRole($userRole);
         }
         
-        // Admin et dev accèdent à tout
-        if (in_array($user_role, ['admin', 'dev'])) {
-            return true;
+        // Fallback : utiliser modules fournis ou charger config
+        if ($modules === null) {
+            $modulesFile = ROOT_PATH . '/config/modules.php';
+            $modules = file_exists($modulesFile) ? require $modulesFile : [];
         }
         
-        // Modules en développement : uniquement dev
-        if (($module_data['status'] ?? 'active') === 'development') {
-            return $user_role === 'dev';
+        $accessible = [];
+        
+        foreach ($modules as $key => $module) {
+            // Skip auth et modules cachés
+            if ($key === 'auth' || ($module['priority'] ?? 0) > 90) {
+                continue;
+            }
+            
+            // Vérifier accès
+            if (in_array('*', $module['roles'] ?? []) || in_array($userRole, $module['roles'] ?? [])) {
+                $accessible[$key] = $module;
+            }
         }
         
-        // Modules spécifiques par rôle
-        $role_permissions = [
-            'logistique' => ['port', 'adr', 'qualite'],
-            'user' => ['port']  // Utilisateur standard n'a accès qu'au calculateur
-        ];
-        
-        return in_array($module_key, $role_permissions[$user_role] ?? []);
+        return $accessible;
     }
 }
 
-if (!function_exists('shouldShowModule')) {
+if (!function_exists('getModuleConfig')) {
     /**
-     * Vérifie si un module doit être affiché dans le menu
+     * Obtenir la config d'un module spécifique
      */
-    function shouldShowModule($module_key, $module_data, $user_role) {
-        // Masquer complètement certains modules pour certains rôles
-        if ($user_role === 'user' && !in_array($module_key, ['port', 'user'])) {
-            return false;
+    function getModuleConfig(string $moduleKey): ?array {
+        static $modules = null;
+        
+        if ($modules === null) {
+            $modulesFile = ROOT_PATH . '/config/modules.php';
+            $modules = file_exists($modulesFile) ? require $modulesFile : [];
         }
         
-        return true;
+        return $modules[$moduleKey] ?? null;
     }
 }
-?>

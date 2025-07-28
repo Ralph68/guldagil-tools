@@ -264,4 +264,46 @@ class RouteManager
     public function getRoutes(): array {
         return $this->routes;
     }
+    // Ajouter ces méthodes à core/routing/RouteManager.php
+
+/**
+ * Obtenir l'URL d'un asset CSS/JS pour un module
+ */
+public function getAssetUrl(string $module, string $type, string $filename = null): string 
+{
+    if ($filename === null) {
+        $filename = $module;
+    }
+    
+    // Architecture standardisée: /assets/{type}/{module}.{ext}
+    return "/assets/{$type}/{$filename}." . ($type === 'css' ? 'css' : 'js');
 }
+
+/**
+ * Vérifier si un asset module existe
+ */
+public function hasModuleAsset(string $module, string $type): bool 
+{
+    $filename = $module;
+    $physicalPath = ROOT_PATH . "/public/{$module}/assets/{$type}/{$filename}." . ($type === 'css' ? 'css' : 'js');
+    
+    return file_exists($physicalPath) && is_readable($physicalPath);
+}
+
+/**
+ * Obtenir tous les assets d'un module
+ */
+public function getModuleAssets(string $module): array 
+{
+    $assets = ['css' => [], 'js' => []];
+    
+    foreach (['css', 'js'] as $type) {
+        if ($this->hasModuleAsset($module, $type)) {
+            $assets[$type][] = $this->getAssetUrl($module, $type);
+        }
+    }
+    
+    return $assets;
+}
+}
+?>

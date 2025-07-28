@@ -1,47 +1,88 @@
 <?php
 /**
- * Titre: Configuration des modules - MISE À JOUR RÔLES
+ * Titre: Configuration unifiée des modules du portail
  * Chemin: /config/modules.php
  * Version: 0.5 beta + build auto
  */
 
-$modules = [
+/**
+ * MODULES DU PORTAIL - SOURCE DE VÉRITÉ UNIQUE
+ * Cette configuration remplace tous les $all_modules dispersés
+ */
+return [
     'port' => [
-        'name' => 'Calculateur de frais',
-        'description' => 'Calcul et comparaison des tarifs de transport',
-        'class' => 'PortModule',
-        'status' => 'active', // ACTIVE - Accessible par user, logistique, admin, dev
+        'name' => 'Calculateur Port',
+        'description' => 'Calcul intelligent des frais de transport',
         'icon' => '📦',
-        'color' => '#3498db',
-        'routes' => ['port', 'calculateur', 'frais'],
+        'color' => '#0ea5e9',
+        'status' => 'active',
+        'category' => 'Logistique',
+        'priority' => 1,
+        'roles' => ['*'], // Tous les rôles
+        'routes' => ['port', 'calculateur'],
         'assets' => [
             'css' => ['port.css'],
-            'js' => ['port.js']
+            'js' => ['port.js', 'calcul.js']
         ]
     ],
     
     'adr' => [
-        'name' => 'Gestion ADR',
-        'description' => 'Transport de marchandises dangereuses',
-        'class' => 'ADRModule',
-        'status' => 'active', // ACTIVE - Accessible par logistique, admin, dev (pas user)
+        'name' => 'Module ADR',
+        'description' => 'Gestion des marchandises dangereuses',
         'icon' => '⚠️',
-        'color' => '#e74c3c',
+        'color' => '#dc2626',
+        'status' => 'active',
+        'category' => 'Sécurité',
+        'priority' => 2,
+        'roles' => ['admin', 'dev', 'logistique'], // Restriction par rôles
         'routes' => ['adr', 'dangereuses'],
-        'access_roles' => ['logistique', 'admin', 'dev'], // Restriction par rôles
         'assets' => [
-            'css' => ['adr.css'],
-            'js' => ['adr.js']
+            'css' => ['adr.css', 'search.css'],
+            'js' => ['adr.js', 'search.js']
+        ]
+    ],
+    
+    'qualite' => [
+        'name' => 'Contrôle Qualité',
+        'description' => 'Suivi et contrôle qualité',
+        'icon' => '🔬',
+        'color' => '#059669',
+        'status' => 'development',
+        'category' => 'Qualité',
+        'priority' => 3,
+        'roles' => ['admin', 'dev', 'logistique', 'qhse'],
+        'routes' => ['qualite', 'controle'],
+        'assets' => [
+            'css' => ['qualite.css'],
+            'js' => ['qualite.js']
+        ]
+    ],
+    
+    'materiel' => [
+        'name' => 'Gestion Matériel',
+        'description' => 'Inventaire et gestion du matériel',
+        'icon' => '🔧',
+        'color' => '#6b7280',
+        'status' => 'development',
+        'category' => 'Maintenance',
+        'priority' => 4,
+        'roles' => ['admin', 'dev', 'logistique'],
+        'routes' => ['materiel', 'outillage'],
+        'assets' => [
+            'css' => ['materiel.css'],
+            'js' => ['materiel.js']
         ]
     ],
     
     'epi' => [
         'name' => 'Équipements EPI',
-        'description' => 'Gestion des équipements de protection',
-        'class' => 'EPIModule',
-        'status' => 'development',
+        'description' => 'Gestion des EPI et équipements',
         'icon' => '🦺',
-        'color' => '#f39c12',
+        'color' => '#f59e0b',
+        'status' => 'development',
+        'category' => 'Sécurité',
+        'priority' => 5,
+        'roles' => ['admin', 'dev', 'qhse'],
         'routes' => ['epi', 'equipements'],
         'assets' => [
             'css' => ['epi.css'],
@@ -49,221 +90,51 @@ $modules = [
         ]
     ],
     
-    'materiel' => [
-    'name' => 'Gestion du Matériel',
-    'description' => 'Outillage et équipements',
-    'class' => 'MaterielModule',
-    'status' => 'development',
-    'icon' => '🔧',
-    'color' => '#95a5a6',
-    'routes' => ['materiel', 'outillages', 'outils'],
-    'assets' => [
-        'css' => ['materiel.css'],
-        'js' => ['materiel.js']
-    ]
-],
-    
-    'qualite' => [
-        'name' => 'Contrôle Qualité',
-        'description' => 'Suivi qualité des marchandises',
-        'class' => 'QualiteModule',
-        'status' => 'development',
-        'icon' => '✅',
-        'color' => '#2ecc71',
-        'routes' => ['qualite', 'controle-qualite'],
+    'user' => [
+        'name' => 'Mon Espace',
+        'description' => 'Profil et paramètres personnels',
+        'icon' => '👤',
+        'color' => '#9b59b6',
+        'status' => 'active',
+        'category' => 'Personnel',
+        'priority' => 6,
+        'roles' => ['*'], // Accessible à tous
+        'routes' => ['user', 'profile'],
         'assets' => [
-            'css' => ['qualite.css'],
-            'js' => ['qualite.js']
+            'css' => ['user.css', 'profile.css'],
+            'js' => ['user.js', 'profile.js']
         ]
     ],
     
     'admin' => [
         'name' => 'Administration',
-        'description' => 'Gestion et configuration du portail',
-        'class' => 'AdminModule',
-        'status' => 'active',
+        'description' => 'Configuration et gestion système',
         'icon' => '⚙️',
-        'color' => '#9b59b6',
+        'color' => '#2c3e50',
+        'status' => 'active',
+        'category' => 'Système',
+        'priority' => 7,
+        'roles' => ['admin', 'dev'], // Admin uniquement
         'routes' => ['admin', 'administration'],
-        'access_roles' => ['admin', 'dev'], // Restriction admin + dev uniquement
-        'auth_required' => true
+        'assets' => [
+            'css' => ['admin.css'],
+            'js' => ['admin.js']
+        ]
+    ],
+    
+    'auth' => [
+        'name' => 'Authentification',
+        'description' => 'Système de connexion',
+        'icon' => '🔐',
+        'color' => '#374151',
+        'status' => 'active',
+        'category' => 'Système',
+        'priority' => 99, // Hidden from main menu
+        'roles' => ['*'],
+        'routes' => ['auth', 'login'],
+        'assets' => [
+            'css' => ['login.css'],
+            'js' => ['login.js']
+        ]
     ]
 ];
-
-/**
- * DÉFINITION DES ACCÈS PAR RÔLE - MISE À JOUR COMPLÈTE
- * Cette fonction détermine quels modules sont accessibles selon le rôle utilisateur
- */
-function getModuleAccessByRole($user_role, $modules) {
-    $accessible_modules = [];
-    
-    foreach ($modules as $module_key => $module_data) {
-        $has_access = false;
-        $access_reason = '';
-        
-        switch ($user_role) {
-            case 'dev':
-                // DEV : Accès total sans restriction (y compris admin)
-                $has_access = true;
-                $access_reason = 'Développeur - Accès complet';
-                break;
-                
-            case 'admin':
-                // ADMIN : Accès à tous modules (active et beta) + module admin
-                if ($module_key === 'admin' || in_array($module_data['status'], ['active', 'beta'])) {
-                    $has_access = true;
-                    $access_reason = $module_key === 'admin' ? 'Admin - Module administration' : 'Admin - Module ' . $module_data['status'];
-                }
-                break;
-                
-            case 'logistique':
-                // LOGISTIQUE : Accès à port (beta) + voir adr, epi, outillages, qualité (dev mais pas d'accès)
-                if ($module_key === 'port' && $module_data['status'] === 'beta') {
-                    $has_access = true;
-                    $access_reason = 'Logistique - Module en bêta accessible';
-                } else if (in_array($module_key, ['adr', 'epi', 'outillages', 'qualite']) && $module_data['status'] === 'development') {
-                    $has_access = false; // Visible mais pas accessible
-                    $access_reason = 'Logistique - Module en développement (visible mais pas accessible)';
-                }
-                break;
-                
-            case 'user':
-                // USER : Accès uniquement aux modules actifs (aucun pour le moment)
-                $has_access = ($module_data['status'] === 'active' && $module_key !== 'admin');
-                $access_reason = $has_access ? 'Utilisateur - Module actif' : 'Utilisateur - Module non disponible';
-                break;
-                
-            default:
-                // GUEST : Aucun accès, redirection vers login
-                $has_access = false;
-                $access_reason = 'Non connecté - Authentification requise';
-        }
-        
-        if ($has_access || ($user_role === 'logistique' && in_array($module_key, ['adr', 'epi', 'outillages', 'qualite']))) {
-            $accessible_modules[$module_key] = array_merge($module_data, [
-                'access_granted' => $has_access,
-                'access_reason' => $access_reason,
-                'visible_only' => !$has_access && $user_role === 'logistique'
-            ]);
-        }
-    }
-    
-    return $accessible_modules;
-}
-
-/**
- * LOGIQUE D'AFFICHAGE MENU SELON RÔLE - MISE À JOUR COMPLÈTE
- * À utiliser dans templates/header.php
- */
-function shouldShowModuleInMenu($module_key, $module_data, $user_role) {
-    // Si utilisateur non connecté, ne rien afficher (redirection login)
-    if ($user_role === 'guest' || !$user_role) {
-        return false;
-    }
-    
-    // Logique d'affichage selon rôle
-    switch ($user_role) {
-        case 'dev':
-            return true; // Tout voir
-            
-        case 'admin':
-            // Voir tous modules active/beta + admin
-            return ($module_key === 'admin' || in_array($module_data['status'], ['active', 'beta']));
-            
-        case 'logistique':
-            // Voir port (beta) + adr, epi, outillages, qualité (dev)
-            return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite']);
-            
-        case 'user':
-            // Voir seulement les modules actifs (sauf admin)
-            return ($module_data['status'] === 'active' && $module_key !== 'admin');
-            
-        default:
-            return false;
-    }
-}
-
-/**
- * STYLES CSS SELON STATUT D'ACCÈS
- */
-function getModuleDisplayClass($module_key, $module_data, $user_role) {
-    if (!shouldShowModuleInMenu($module_key, $module_data, $user_role)) {
-        return 'hidden';
-    }
-    
-    $classes = ['module-nav-item'];
-    
-    // Module actuel
-    global $current_module;
-    if ($current_module === $module_key) {
-        $classes[] = 'active';
-    }
-    
-    // Statut d'accès
-    if ($user_role === 'logistique' && in_array($module_key, ['adr', 'qualite']) && $module_data['status'] === 'development') {
-        $classes[] = 'disabled'; // Visible mais non accessible
-    }
-    
-    return implode(' ', $classes);
-}
-/**
- * FONCTIONS COMMUNES D'ACCÈS AUX MODULES - VERSION UNIQUE
- * Centralisation pour éviter les redéclarations
- */
-
-if (!function_exists('canAccessModule')) {
-    /**
-     * Vérifie si un utilisateur peut accéder à un module
-     */
-    function canAccessModule($module_key, $module_data, $user_role) {
-        if (!$user_role || $user_role === 'guest') {
-            return false;
-        }
-        
-        switch ($user_role) {
-            case 'dev':
-                return true;
-                
-            case 'admin':
-                return ($module_key === 'admin' || in_array($module_data['status'] ?? 'active', ['active', 'beta']));
-                
-            case 'logistique':
-                return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite', 'user']);
-                
-            case 'user':
-                return (($module_data['status'] ?? 'active') === 'active');
-                
-            default:
-                return false;
-        }
-    }
-}
-
-if (!function_exists('shouldShowModule')) {
-    /**
-     * Détermine si un module doit être affiché dans le menu
-     */
-    function shouldShowModule($module_key, $module_data, $user_role) {
-        if (!$user_role || $user_role === 'guest') {
-            return false;
-        }
-        
-        switch ($user_role) {
-            case 'dev':
-                return true;
-                
-            case 'admin':
-                return ($module_key === 'admin' || in_array($module_data['status'] ?? 'active', ['active', 'beta']));
-                
-            case 'logistique':
-                return in_array($module_key, ['port', 'adr', 'epi', 'outillages', 'qualite', 'user']);
-                
-            case 'user':
-                return (($module_data['status'] ?? 'active') === 'active');
-                
-            default:
-                return false;
-        }
-    }
-}
-
