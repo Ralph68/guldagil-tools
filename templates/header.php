@@ -142,41 +142,13 @@ if (!function_exists('getRoleBadgeClass')) {
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/cookie_banner.css?v=<?= $build_number ?>">
 
-    <!-- CSS modulaire -->
+    <!-- CSS modulaire - AssetManager UNIQUEMENT -->
     <?php if ($module_css && $current_module !== 'home'): ?>
         <?php 
-        // Utiliser RouteManager si disponible, sinon fallback multiple
-        $css_loaded = false;
-        
-        if (class_exists('RouteManager')) {
-            $routeManager = RouteManager::getInstance();
-            if (method_exists($routeManager, 'hasModuleAsset') && $routeManager->hasModuleAsset($current_module, 'css')) {
-                $module_css_path = $routeManager->getAssetUrl($current_module, 'css');
-                echo '<link rel="stylesheet" href="' . htmlspecialchars($module_css_path) . '?v=' . $build_number . '">';
-                $css_loaded = true;
-            }
-        }
-        
-        if (!$css_loaded) {
-            // Fallback manuel avec essai multiple chemins
-            $css_paths = [
-                ROOT_PATH . "/public/{$current_module}/assets/css/{$current_module}.css",
-                ROOT_PATH . "/public/assets/css/{$current_module}.css",
-                ROOT_PATH . "/assets/css/modules/{$current_module}.css"
-            ];
-            
-            $url_paths = [
-                "/{$current_module}/assets/css/{$current_module}.css",
-                "/assets/css/{$current_module}.css",
-                "/assets/css/modules/{$current_module}.css"
-            ];
-            
-            foreach ($css_paths as $index => $css_file) {
-                if (file_exists($css_file)) {
-                    echo '<link rel="stylesheet" href="' . htmlspecialchars($url_paths[$index]) . '?v=' . $build_number . '">';
-                    break;
-                }
-            }
+        if (class_exists('AssetManager')) {
+            $assetManager = AssetManager::getInstance();
+            $assetManager->loadModuleAssets($current_module);
+            echo $assetManager->renderCss();
         }
         ?>
     <?php endif; ?>
@@ -412,41 +384,12 @@ if (!function_exists('getRoleBadgeClass')) {
     <script src="/assets/js/analytics.js?v=<?= $build_number ?>"></script>
     <script src="/assets/js/header.js?v=<?= $build_number ?>"></script>
 
-    <!-- JavaScript modulaire -->
+    <!-- JavaScript modulaire - AssetManager UNIQUEMENT -->
     <?php if ($module_js && $current_module !== 'home'): ?>
         <?php 
-        // Utiliser RouteManager si disponible, sinon fallback multiple
-        $js_loaded = false;
-        
-        if (class_exists('RouteManager')) {
-            $routeManager = RouteManager::getInstance();
-            if (method_exists($routeManager, 'hasModuleAsset') && $routeManager->hasModuleAsset($current_module, 'js')) {
-                $module_js_path = $routeManager->getAssetUrl($current_module, 'js');
-                echo '<script src="' . htmlspecialchars($module_js_path) . '?v=' . $build_number . '"></script>';
-                $js_loaded = true;
-            }
-        }
-        
-        if (!$js_loaded) {
-            // Fallback manuel avec essai multiple chemins
-            $js_paths = [
-                ROOT_PATH . "/public/{$current_module}/assets/js/{$current_module}.js",
-                ROOT_PATH . "/public/assets/js/{$current_module}.js",
-                ROOT_PATH . "/assets/js/modules/{$current_module}.js"
-            ];
-            
-            $url_paths = [
-                "/{$current_module}/assets/js/{$current_module}.js",
-                "/assets/js/{$current_module}.js",
-                "/assets/js/modules/{$current_module}.js"
-            ];
-            
-            foreach ($js_paths as $index => $js_file) {
-                if (file_exists($js_file)) {
-                    echo '<script src="' . htmlspecialchars($url_paths[$index]) . '?v=' . $build_number . '"></script>';
-                    break;
-                }
-            }
+        if (class_exists('AssetManager')) {
+            $assetManager = AssetManager::getInstance();
+            echo $assetManager->renderJs();
         }
         ?>
     <?php endif; ?>
