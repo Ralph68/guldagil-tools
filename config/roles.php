@@ -239,6 +239,14 @@ class RoleManager
     }
 }
 
+// Configuration de la durée des sessions (par défaut : 8 heures)
+if (!defined('SESSION_TIMEOUT')) {
+    define('SESSION_TIMEOUT', 8 * 60 * 60); // 8 heures en secondes
+}
+
+ini_set('session.gc_maxlifetime', SESSION_TIMEOUT);
+session_set_cookie_params(SESSION_TIMEOUT);
+
 /**
  * FONCTIONS UTILITAIRES GLOBALES POUR COMPATIBILITÉ
  * Ces fonctions agissent comme des wrappers pour la classe RoleManager

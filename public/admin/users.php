@@ -583,6 +583,26 @@ $allRoles = RoleManager::getAllRoles();
             </div>
         </div>
     </div>
+
+    <?php
+    // Gestion de la mise à jour de la durée des sessions
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['session_timeout'])) {
+        $new_timeout = intval($_POST['session_timeout']);
+        if ($new_timeout >= 3600 && $new_timeout <= 24 * 60 * 60) { // Entre 1 heure et 24 heures
+            file_put_contents(ROOT_PATH . '/config/session_timeout.php', "<?php\n define('SESSION_TIMEOUT', $new_timeout);");
+            echo '<div class="alert alert-success">Durée des sessions mise à jour avec succès.</div>';
+        } else {
+            echo '<div class="alert alert-danger">Durée invalide. Elle doit être comprise entre 1 heure et 24 heures.</div>';
+        }
+    }
+    ?>
+
+    <h2>⚙️ Configuration des sessions</h2>
+    <form method="POST" action="">
+        <label for="session_timeout">Durée des sessions (en secondes) :</label>
+        <input type="number" id="session_timeout" name="session_timeout" value="<?= SESSION_TIMEOUT ?>" min="3600" max="86400" required>
+        <button type="submit" class="btn btn-primary">Mettre à jour</button>
+    </form>
 </div>
 
 <div class="footer">
