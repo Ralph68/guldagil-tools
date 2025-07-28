@@ -1,7 +1,7 @@
 <?php
 /**
- * Titre: Script de test et diagnostic des assets
- * Chemin: /test_assets.php (à la racine, à supprimer après tests)
+ * Titre: Script de test et diagnostic des assets - CORRIGÉ
+ * Chemin: /test_assets_corrected.php (supprimer après tests)
  * Version: 0.5 beta + build auto
  */
 
@@ -12,10 +12,13 @@ if (!defined('ROOT_PATH')) {
 
 // Charger config si disponible
 if (file_exists(ROOT_PATH . '/config/config.php')) {
-    require_once ROOT_PATH . '/config/config.php';
+    try {
+        require_once ROOT_PATH . '/config/config.php';
+    } catch (Exception $e) {
+        // Config non chargée, continuer avec valeurs par défaut
+    }
 }
 
-// Activer l'affichage des erreurs pour les tests
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -24,7 +27,7 @@ echo "<!DOCTYPE html>
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>🔍 Test Assets - Portail Guldagil</title>
+    <title>🔍 Test Assets Corrigé - Portail Guldagil</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 2rem; background: #f8fafc; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -37,43 +40,56 @@ echo "<!DOCTYPE html>
         .status-warning { color: #d69e2e; font-weight: bold; }
         .path { font-family: 'Courier New', monospace; background: #edf2f7; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; }
         .summary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; }
-        .btn { display: inline-block; padding: 0.5rem 1rem; background: #4299e1; color: white; text-decoration: none; border-radius: 4px; margin: 0.25rem; }
-        .btn:hover { background: #3182ce; }
         table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
         th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
         th { background: #f7fafc; font-weight: 600; }
         .file-size { font-size: 0.875rem; color: #718096; }
+        .debug-info { background: #edf2f7; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.875rem; margin: 1rem 0; }
     </style>
 </head>
 <body>";
 
 echo "<div class='container'>";
-echo "<h1>🔍 Diagnostic complet des Assets - Portail Guldagil</h1>";
+echo "<h1>🔍 Diagnostic Assets CORRIGÉ - Portail Guldagil</h1>";
+
+// Debug ROOT_PATH
+echo "<div class='debug-info'>";
+echo "<strong>ROOT_PATH:</strong> " . ROOT_PATH . "<br>";
+echo "<strong>Fichier actuel:</strong> " . __FILE__ . "<br>";
+echo "<strong>Structure détectée:</strong><br>";
+echo "- /public/assets/css/ : " . (is_dir(ROOT_PATH . '/public/assets/css/') ? '✅' : '❌') . "<br>";
+echo "- /public/admin/assets/css/ : " . (is_dir(ROOT_PATH . '/public/admin/assets/css/') ? '✅' : '❌') . "<br>";
+echo "</div>";
 
 // ===========================================
-// SUMMARY SECTION
+// SUMMARY SECTION - CORRIGÉ
 // ===========================================
 echo "<div class='section summary'>";
 echo "<h2>📊 Résumé Exécutif</h2>";
 
-$modules = ['admin', 'user', 'auth', 'port', 'materiel', 'qualite'];
+// Modules selon la vraie structure
+$modules = ['admin', 'user', 'auth', 'port', 'adr', 'materiel', 'qualite', 'epi'];
+
+// CSS critiques - CHEMIN CORRIGÉ
 $criticalAssets = [
-    '/public/assets/css/portal.css',
-    '/public/assets/css/header.css', 
-    '/public/assets/css/footer.css',
-    '/public/assets/css/components.css'
+    'portal.css',
+    'header.css', 
+    'footer.css',
+    'components.css'
 ];
 
 $criticalOk = 0;
 $moduleAssetsOk = 0;
 $totalErrors = 0;
 
-// Vérification rapide
+// Vérification CSS critiques - CORRIGÉE
 foreach ($criticalAssets as $asset) {
-    if (file_exists(ROOT_PATH . $asset)) $criticalOk++;
+    $fullPath = ROOT_PATH . "/public/assets/css/{$asset}";
+    if (file_exists($fullPath)) $criticalOk++;
     else $totalErrors++;
 }
 
+// Vérification modules - CORRIGÉE
 foreach ($modules as $module) {
     $cssPath = ROOT_PATH . "/public/{$module}/assets/css/{$module}.css";
     if (file_exists($cssPath)) $moduleAssetsOk++;
@@ -81,25 +97,24 @@ foreach ($modules as $module) {
 
 echo "<div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;'>";
 echo "<div><strong>CSS Critiques:</strong><br><span class='" . ($criticalOk === 4 ? 'status-ok' : 'status-error') . "'>{$criticalOk}/4 OK</span></div>";
-echo "<div><strong>Assets Modules:</strong><br><span class='status-ok'>{$moduleAssetsOk}/{count($modules)} trouvés</span></div>";
+echo "<div><strong>Assets Modules:</strong><br><span class='status-ok'>{$moduleAssetsOk}/" . count($modules) . " trouvés</span></div>";
 echo "<div><strong>Erreurs Totales:</strong><br><span class='" . ($totalErrors === 0 ? 'status-ok' : 'status-error') . "'>{$totalErrors}</span></div>";
 echo "<div><strong>Statut Global:</strong><br><span class='" . ($totalErrors === 0 && $criticalOk === 4 ? 'status-ok' : 'status-warning') . "'>" . ($totalErrors === 0 && $criticalOk === 4 ? 'EXCELLENT' : 'À CORRIGER') . "</span></div>";
 echo "</div>";
 echo "</div>";
 
 // ===========================================
-// CSS CRITIQUES
+// CSS CRITIQUES - CORRIGÉ
 // ===========================================
 echo "<div class='section'>";
-echo "<h2>🚨 CSS Critiques (OBLIGATOIRES)</h2>";
-echo "<p>Ces fichiers <strong>NE DOIVENT JAMAIS</strong> être modifiés ou déplacés :</p>";
+echo "<h2>🚨 CSS Critiques dans /public/assets/css/</h2>";
 
 echo "<table>";
 echo "<thead><tr><th>Fichier</th><th>Statut</th><th>Taille</th><th>Modifié</th></tr></thead><tbody>";
 
 foreach ($criticalAssets as $asset) {
-    $fullPath = ROOT_PATH . $asset;
-    $webPath = str_replace('/public', '', $asset);
+    $fullPath = ROOT_PATH . "/public/assets/css/{$asset}";
+    $webPath = "/assets/css/{$asset}";
     
     if (file_exists($fullPath)) {
         $size = formatFileSize(filesize($fullPath));
@@ -123,11 +138,10 @@ echo "</tbody></table>";
 echo "</div>";
 
 // ===========================================
-// MODULES ASSETS
+// MODULES ASSETS - CORRIGÉ SELON VRAIE STRUCTURE
 // ===========================================
 echo "<div class='section'>";
-echo "<h2>🧩 Assets des Modules</h2>";
-echo "<p>Diagnostic de la nouvelle architecture <code>/public/module/assets/</code> :</p>";
+echo "<h2>🧩 Assets des Modules (Structure Réelle)</h2>";
 
 echo "<div class='grid'>";
 
@@ -167,7 +181,7 @@ foreach ($modules as $module) {
     if ($cssExists) {
         $webCssPath = "/{$module}/assets/css/{$module}.css";
         echo "<div style='margin-top: 0.5rem;'>";
-        echo "<code style='font-size: 0.75rem;'>{$webCssPath}</code>";
+        echo "<code style='font-size: 0.75rem; color: #38a169;'>{$webCssPath}</code>";
         echo "</div>";
     }
     
@@ -178,174 +192,145 @@ echo "</div>";
 echo "</div>";
 
 // ===========================================
-// TEST ASSETMANAGER
+// STRUCTURE DÉTAILLÉE
 // ===========================================
 echo "<div class='section'>";
-echo "<h2>🔧 Test AssetManager</h2>";
+echo "<h2>📋 Structure Détaillée Détectée</h2>";
 
-try {
-    // Tenter de charger AssetManager
-    if (class_exists('AssetManager')) {
-        echo "<p><span class='status-ok'>✅ AssetManager disponible</span></p>";
-        
-        $assetManager = AssetManager::getInstance();
-        
-        // Tester chaque module
-        echo "<h3>Test de chargement par module:</h3>";
-        echo "<table>";
-        echo "<thead><tr><th>Module</th><th>CSS Détectés</th><th>JS Détectés</th><th>Statut</th></tr></thead><tbody>";
-        
-        foreach ($modules as $module) {
-            $assetManager->reset(); // Reset pour test propre
-            $assetManager->loadModuleAssets($module, true, true);
-            
-            $debug = $assetManager->debug();
-            $cssCount = $debug['css_count'] - 5; // Enlever les 5 CSS critiques
-            $jsCount = $debug['js_count'];
-            
-            echo "<tr>";
-            echo "<td><strong>{$module}</strong></td>";
-            echo "<td>{$cssCount} CSS</td>";
-            echo "<td>{$jsCount} JS</td>";
-            echo "<td>" . ($cssCount > 0 || $jsCount > 0 ? "<span class='status-ok'>✅ OK</span>" : "<span class='status-warning'>⚠️ Aucun asset</span>") . "</td>";
-            echo "</tr>";
-        }
-        echo "</tbody></table>";
-        
-        // Debug complet pour admin
-        echo "<h3>Debug AssetManager (module admin):</h3>";
-        $assetManager->reset();
-        $assetManager->loadModuleAssets('admin', true, true);
-        $debug = $assetManager->debug();
-        
-        echo "<pre style='background: #f7fafc; padding: 1rem; border-radius: 4px; font-size: 0.875rem;'>";
-        echo json_encode($debug, JSON_PRETTY_PRINT);
-        echo "</pre>";
-        
-    } else {
-        echo "<p><span class='status-warning'>⚠️ AssetManager non chargé</span></p>";
-        echo "<p>Pour activer l'AssetManager, ajoutez ceci à <code>config/config.php</code> :</p>";
-        echo "<pre style='background: #f7fafc; padding: 1rem; border-radius: 4px;'>
-spl_autoload_register(function (\$class) {
-    \$coreClasses = [
-        'AssetManager' => ROOT_PATH . '/core/assets/AssetManager.php',
-    ];
-    
-    if (isset(\$coreClasses[\$class])) {
-        require_once \$coreClasses[\$class];
-    }
-});
-</pre>";
-    }
-    
-} catch (Exception $e) {
-    echo "<p><span class='status-error'>❌ Erreur AssetManager: " . htmlspecialchars($e->getMessage()) . "</span></p>";
-}
-
-echo "</div>";
-
-// ===========================================
-// ANCIEN SYSTÈME VS NOUVEAU  
-// ===========================================
-echo "<div class='section'>";
-echo "<h2>🔄 Comparaison Ancien vs Nouveau Système</h2>";
-
-echo "<div class='grid'>";
-
-// Ancien système
-echo "<div class='card'>";
-echo "<h3>❌ Ancien Système (Problématique)</h3>";
-echo "<ul>";
-echo "<li><strong>Logique dispersée</strong> dans header.php</li>";
-echo "<li><strong>Chemins hardcodés</strong> multiples</li>";
-echo "<li><strong>File_exists répétitifs</strong> sans cache</li>";
-echo "<li><strong>Fallbacks manuels</strong> dans chaque template</li>";
-echo "<li><strong>Debug difficile</strong> des assets manqués</li>";
-echo "</ul>";
-
-$problematicPaths = [
-    'ROOT_PATH . $new_css_path', // ❌ Chemin cassé
-    'ROOT_PATH . "/public" . $css_path', // ❌ Logique complexe
-];
-
-echo "<h4>Chemins problématiques détectés:</h4>";
-foreach ($problematicPaths as $path) {
-    echo "<div class='path' style='color: #e53e3e; margin: 0.25rem 0;'>{$path}</div>";
-}
-echo "</div>";
-
-// Nouveau système
-echo "<div class='card'>";
-echo "<h3>✅ Nouveau Système (AssetManager)</h3>";
-echo "<ul>";
-echo "<li><strong>Centralisation</strong> dans une classe</li>";
-echo "<li><strong>Fallbacks intelligents</strong> automatiques</li>";
-echo "<li><strong>Cache file_exists</strong> intégré</li>";
-echo "<li><strong>Debug complet</strong> des assets</li>";
-echo "<li><strong>Configuration</strong> externalisable</li>";
-echo "</ul>";
-
-$newPaths = [
-    'AssetManager::getInstance()',
-    'loadModuleAssets($module)',
-    'renderCss() / renderJs()',
-];
-
-echo "<h4>API simplifiée:</h4>";
-foreach ($newPaths as $path) {
-    echo "<div class='path' style='color: #38a169; margin: 0.25rem 0;'>{$path}</div>";
-}
-echo "</div>";
-
-echo "</div>";
-echo "</div>";
-
-// ===========================================
-// ACTIONS RECOMMANDÉES
-// ===========================================
-echo "<div class='section'>";
-echo "<h2>🎯 Actions Recommandées</h2>";
-
-$actions = [
-    'immediate' => [
-        'title' => '🚨 Actions Immédiates (Fix rapide)',
-        'items' => [
-            'Corriger le chemin ligne ~45 dans templates/header.php',
-            'Ajouter "/public" devant {$new_css_path} dans file_exists()',
-            'Tester tous les modules après correction',
-            'Vérifier dans navigateur que CSS se chargent'
-        ]
+$structureChecks = [
+    'CSS Globaux' => [
+        '/public/assets/css/portal.css',
+        '/public/assets/css/header.css',
+        '/public/assets/css/footer.css',
+        '/public/assets/css/components.css'
     ],
-    'migration' => [
-        'title' => '🔄 Migration AssetManager (Recommandée)',
-        'items' => [
-            'Créer /core/assets/AssetManager.php',
-            'Modifier config/config.php pour autoload',
-            'Remplacer templates/header.php par version AssetManager',
-            'Tester exhaustivement tous les modules',
-            'Documenter les changements'
-        ]
+    'CSS Modules' => [
+        '/public/admin/assets/css/admin.css',
+        '/public/user/assets/css/user.css',
+        '/public/auth/assets/css/login.css',
+        '/public/port/assets/css/port.css',
+        '/public/adr/assets/css/adr.css',
+        '/public/materiel/assets/css/materiel.css',
+        '/public/qualite/assets/css/qualite.css',
+        '/public/epi/assets/css/epi.css'
     ],
-    'optimization' => [
-        'title' => '⚡ Optimisations Futures',
-        'items' => [
-            'Configuration externalisée des assets',
-            'Minification automatique CSS/JS',
-            'Cache avancé avec invalidation',
-            'CDN pour assets statiques',
-            'Lazy loading des assets non critiques'
-        ]
+    'JavaScript Modules' => [
+        '/public/admin/assets/js/admin.js',
+        '/public/user/assets/js/user.js',
+        '/public/auth/assets/js/login.js',
+        '/public/port/assets/js/port.js',
+        '/public/adr/assets/js/adr.js',
+        '/public/materiel/assets/js/materiel.js',
+        '/public/qualite/assets/js/qualite.js',
+        '/public/epi/assets/js/epi.js'
     ]
 ];
 
-foreach ($actions as $category => $section) {
-    echo "<h3>{$section['title']}</h3>";
-    echo "<ul>";
-    foreach ($section['items'] as $item) {
-        echo "<li>{$item}</li>";
+foreach ($structureChecks as $category => $files) {
+    echo "<h3>{$category}</h3>";
+    echo "<table>";
+    echo "<thead><tr><th>Fichier</th><th>Statut</th><th>Taille</th></tr></thead><tbody>";
+    
+    foreach ($files as $file) {
+        $fullPath = ROOT_PATH . $file;
+        $exists = file_exists($fullPath);
+        
+        echo "<tr>";
+        echo "<td><span class='path'>{$file}</span></td>";
+        echo "<td>" . ($exists ? "<span class='status-ok'>✅</span>" : "<span class='status-error'>❌</span>") . "</td>";
+        echo "<td>" . ($exists ? "<span class='file-size'>" . formatFileSize(filesize($fullPath)) . "</span>" : "-") . "</td>";
+        echo "</tr>";
     }
-    echo "</ul>";
+    
+    echo "</tbody></table>";
 }
+
+echo "</div>";
+
+// ===========================================
+// ANALYSE HEADER ACTUEL
+// ===========================================
+echo "<div class='section'>";
+echo "<h2>🔧 Analyse du Header Actuel</h2>";
+
+$headerPath = ROOT_PATH . '/templates/header.php';
+if (file_exists($headerPath)) {
+    echo "<p><span class='status-ok'>✅ Header trouvé</span></p>";
+    
+    $headerContent = file_get_contents($headerPath);
+    
+    // Recherche des chemins CSS dans le header
+    preg_match_all('/href="([^"]*\.css[^"]*)"/', $headerContent, $cssMatches);
+    preg_match_all('/src="([^"]*\.js[^"]*)"/', $headerContent, $jsMatches);
+    
+    echo "<h3>CSS chargés par le header:</h3>";
+    if (!empty($cssMatches[1])) {
+        echo "<ul>";
+        foreach ($cssMatches[1] as $cssPath) {
+            echo "<li><code>{$cssPath}</code></li>";
+        }
+        echo "</ul>";
+    } else {
+        echo "<p>Aucun CSS trouvé dans le header</p>";
+    }
+    
+    echo "<h3>JS chargés par le header:</h3>";
+    if (!empty($jsMatches[1])) {
+        echo "<ul>";
+        foreach ($jsMatches[1] as $jsPath) {
+            echo "<li><code>{$jsPath}</code></li>";
+        }
+        echo "</ul>";
+    } else {
+        echo "<p>Aucun JS trouvé dans le header</p>";
+    }
+    
+} else {
+    echo "<p><span class='status-error'>❌ Header non trouvé</span></p>";
+}
+
+echo "</div>";
+
+// ===========================================
+// RECOMMANDATIONS
+// ===========================================
+echo "<div class='section'>";
+echo "<h2>🎯 Recommandations basées sur la structure réelle</h2>";
+
+echo "<h3>✅ Ce qui fonctionne déjà:</h3>";
+echo "<ul>";
+$workingModules = [];
+foreach ($modules as $module) {
+    $cssPath = ROOT_PATH . "/public/{$module}/assets/css/{$module}.css";
+    if (file_exists($cssPath)) {
+        $workingModules[] = $module;
+        echo "<li>Module <strong>{$module}</strong> : CSS présent</li>";
+    }
+}
+echo "</ul>";
+
+echo "<h3>⚠️ À corriger/créer:</h3>";
+echo "<ul>";
+foreach ($modules as $module) {
+    $cssPath = ROOT_PATH . "/public/{$module}/assets/css/{$module}.css";
+    if (!file_exists($cssPath)) {
+        echo "<li>Créer : <code>/public/{$module}/assets/css/{$module}.css</code></li>";
+    }
+    
+    $jsPath = ROOT_PATH . "/public/{$module}/assets/js/{$module}.js";
+    if (!file_exists($jsPath)) {
+        echo "<li>Créer : <code>/public/{$module}/assets/js/{$module}.js</code></li>";
+    }
+}
+echo "</ul>";
+
+echo "<h3>🔧 Header à corriger:</h3>";
+echo "<p>Le header dans <code>templates/header.php</code> doit utiliser ces chemins :</p>";
+echo "<ul>";
+echo "<li>CSS critiques : <code>/assets/css/{fichier}.css</code></li>";
+echo "<li>CSS modules : <code>/{module}/assets/css/{module}.css</code></li>";
+echo "<li>JS modules : <code>/{module}/assets/js/{module}.js</code></li>";
+echo "</ul>";
 
 echo "</div>";
 
@@ -353,25 +338,16 @@ echo "</div>";
 // FOOTER
 // ===========================================
 echo "<div class='section'>";
-echo "<h2>🔗 Liens Utiles</h2>";
-echo "<div>";
-echo "<a href='/admin/scanner.php' class='btn'>🔍 Scanner d'erreurs</a>";
-echo "<a href='/admin/' class='btn'>🔧 Administration</a>";
-echo "<a href='/' class='btn'>🏠 Retour Portail</a>";
-echo "</div>";
-
-echo "<hr style='margin: 2rem 0;'>";
 echo "<p style='text-align: center; color: #718096; font-size: 0.875rem;'>";
-echo "🔍 Diagnostic généré le " . date('d/m/Y à H:i:s') . " | Build: " . (defined('BUILD_NUMBER') ? BUILD_NUMBER : 'N/A');
-echo "<br><strong>⚠️ Supprimez ce fichier après diagnostic</strong>";
+echo "🔍 Diagnostic corrigé généré le " . date('d/m/Y à H:i:s') . "<br>";
+echo "<strong>⚠️ Supprimez ce fichier après diagnostic</strong>";
 echo "</p>";
-
 echo "</div>";
 
 echo "</div></body></html>";
 
 // ===========================================
-// FONCTIONS UTILITAIRES
+// FONCTION UTILITAIRE
 // ===========================================
 
 function formatFileSize($size) {
