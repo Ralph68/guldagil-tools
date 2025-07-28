@@ -1,219 +1,181 @@
 /**
- * Titre: Configuration avancée bannière cookie RGPD - VERSION CORRIGÉE
+ * Titre: Configuration globale cookies RGPD - Anti-conflit
  * Chemin: /assets/js/cookie_config.js
  * Version: 0.5 beta + build auto
- * Usage: Personnalisation entreprise et modules - BOUCLE INFINIE CORRIGÉE
+ * Anti-duplication: Évite la re-déclaration de CookieBannerManager
  */
 
-// ===============================================
-// 🎯 CONFIGURATION ENTREPRISE GULDAGIL
-// ===============================================
+// Protection contre les chargements multiples
+if (typeof window.GuldagilCookieConfigLoaded !== 'undefined') {
+    console.log('🍪 Cookie Config déjà chargé, arrêt pour éviter les doublons');
+    // Arrêter l'exécution du script
+    if (typeof module !== 'undefined') {
+        module.exports = {};
+    }
+} else {
+    // Marquer comme chargé IMMÉDIATEMENT
+    window.GuldagilCookieConfigLoaded = true;
+    console.log('🍪 Guldagil Cookie Config: Module chargé (version corrigée anti-boucle)');
+}
+
+/**
+ * Configuration centralisée des cookies pour tous les modules
+ * NE PAS redéfinir CookieBannerManager ici - utilise celui de cookie_banner.js
+ */
 window.GuldagilCookieConfig = {
-    // Informations entreprise
-    company: {
-        name: 'Guldagil',
-        sector: 'Traitement de l\'eau et logistique',
-        email: 'contact@guldagil.com',
-        dpo_email: 'dpo@guldagil.com',
-        phone: '+33 X XX XX XX XX'
+    // Configuration globale
+    version: '1.2',
+    debug: false,
+    
+    // Paramètres par défaut
+    defaults: {
+        consentExpiry: 730, // 2 ans
+        cookieName: 'guldagil_cookie_consent',
+        localStorageKey: 'guldagil_cookie_consent_permanent'
     },
-
-    // Configuration des cookies
-    cookies: {
-        // Durée de consentement (en jours)
-        consent_duration: 365,
-        
-        // Nom du cookie principal
-        consent_cookie: 'guldagil_cookie_consent',
-        
-        // Cookies techniques obligatoires
-        technical_cookies: [
-            {
-                name: 'PHPSESSID',
-                purpose: 'Session utilisateur active',
-                duration: 'Session (fermeture navigateur)',
-                category: 'Fonctionnement'
-            },
-            {
-                name: 'guldagil_preferences',
-                purpose: 'Préférences d\'affichage et langue',
-                duration: '1 an',
-                category: 'Confort d\'usage'
-            },
-            {
-                name: 'guldagil_cookie_consent',
-                purpose: 'Mémorisation de vos choix cookies',
-                duration: '1 an',
-                category: 'Consentement'
-            }
-        ]
-    },
-
+    
     // Messages personnalisés par module
     messages: {
         default: {
             title: 'Respect de votre vie privée',
-            description: 'Ce portail utilise uniquement des <strong>cookies techniques nécessaires</strong> au fonctionnement (session, préférences). Aucun tracking publicitaire.',
-            learn_more: 'En savoir plus sur notre approche transparente'
+            description: 'Ce portail utilise uniquement des <strong>cookies techniques nécessaires</strong> au fonctionnement (session, préférences). Aucun tracking publicitaire.'
         },
-        
         port: {
-            title: '🚛 Calculateur de frais de port',
-            description: 'Pour sauvegarder vos calculs récents, nous utilisons des cookies techniques.',
-            learn_more: 'Optimisez vos expéditions en toute confidentialité'
+            title: 'Calcul de frais de port',
+            description: 'Le module calcul frais de port utilise des cookies techniques pour sauvegarder vos préférences de calcul et historique.'
         },
-        
-        admin: {
-            title: '⚙️ Administration système',
-            description: 'Interface d\'administration sécurisée avec cookies de session obligatoires.',
-            learn_more: 'Sécurité et traçabilité des actions admin'
+        materiel: {
+            title: 'Gestion matériel',
+            description: 'Le module matériel utilise des cookies pour mémoriser vos filtres et préférences d\'affichage.'
+        },
+        adr: {
+            title: 'Transport ADR',
+            description: 'Le module ADR utilise des cookies pour mémoriser vos paramètres de sécurité et certifications.'
+        },
+        auth: {
+            title: 'Authentification',
+            description: 'La page de connexion utilise des cookies de session sécurisés nécessaires à l\'authentification.'
         }
     },
-
-    // Callbacks personnalisés
+    
+    // Configuration spécifique par module
+    modules: {
+        port: {
+            cookies_needed: ['session', 'preferences'],
+            fallback_message: 'Pour accéder au calcul de frais de port, veuillez accepter les cookies techniques.'
+        },
+        materiel: {
+            cookies_needed: ['session', 'filters'],
+            fallback_message: 'Pour gérer le matériel, veuillez accepter les cookies techniques.'
+        }
+    },
+    
+    // Callbacks personnalisables
     callbacks: {
         onAcceptAll: function() {
-            console.log('Guldagil: Tous les cookies acceptés');
-            // Activer les fonctionnalités avancées
-            if (window.analytics) window.analytics.enable();
-            if (window.userPreferences) window.userPreferences.enable();
+            console.log('✅ Tous les cookies acceptés');
+            // Ici on peut activer des fonctionnalités avancées
+            window.dispatchEvent(new CustomEvent('cookiesAccepted', { detail: 'all' }));
         },
         
         onAcceptMinimal: function() {
-            console.log('Guldagil: Cookies techniques uniquement');
-            // Désactiver les fonctionnalités optionnelles
-            if (window.analytics) window.analytics.disable();
+            console.log('⚙️ Cookies techniques uniquement');
+            // Juste les fonctionnalités de base
+            window.dispatchEvent(new CustomEvent('cookiesAccepted', { detail: 'minimal' }));
         },
         
         onReset: function() {
-            console.log('Guldagil: Consentement réinitialisé');
-            // Nettoyer les données optionnelles
-            if (window.userPreferences) window.userPreferences.reset();
+            console.log('🗑️ Préférences cookies réinitialisées');
+            window.dispatchEvent(new CustomEvent('cookiesReset'));
+            // Rediriger vers page d'accueil après reset
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
         }
     }
 };
 
-// ===============================================
-// 🔧 FONCTIONS D'INTÉGRATION AVANCÉES - CORRIGÉES
-// ===============================================
-
 /**
- * Variable de contrôle pour éviter la boucle infinie
+ * Gestionnaire de fallback UNIQUEMENT si le principal n'existe pas
+ * Ne redéfinit PAS CookieBannerManager pour éviter les conflits
  */
-let cookieConfigAttempts = 0;
-const MAX_ATTEMPTS = 5;
-let cookieConfigInitialized = false;
-
-/**
- * Initialise la configuration avancée - VERSION CORRIGÉE
- */
-function initAdvancedCookieConfig() {
-    // CORRECTION: Empêcher la boucle infinie
-    if (cookieConfigInitialized) {
-        console.log('Guldagil: Configuration cookies déjà initialisée');
-        return;
-    }
-    
-    if (cookieConfigAttempts >= MAX_ATTEMPTS) {
-        console.warn('Guldagil: Nombre maximum de tentatives atteint, arrêt des tentatives');
-        createFallbackCookieManager();
-        return;
-    }
-    
-    cookieConfigAttempts++;
-    
-    if (typeof window.cookieBanner !== 'undefined') {
-        // Fusionner la configuration personnalisée
-        Object.assign(window.cookieBanner, {
-            config: window.GuldagilCookieConfig
-        });
-        
-        // Appliquer les messages personnalisés selon le module
-        applyModuleSpecificMessages();
-        
-        // Configurer les callbacks
-        setupCallbacks();
-        
-        cookieConfigInitialized = true;
-        console.log('Guldagil: Configuration avancée cookies appliquée');
-        
-    } else {
-        console.warn(`Guldagil: Gestionnaire cookies non trouvé, tentative ${cookieConfigAttempts}/${MAX_ATTEMPTS}`);
-        
-        // CORRECTION: Augmenter le délai et limiter les tentatives
-        if (cookieConfigAttempts < MAX_ATTEMPTS) {
-            setTimeout(initAdvancedCookieConfig, 2000); // 2 secondes au lieu de 1
+function initFallbackCookieManager() {
+    // Attendre que le DOM soit chargé ET que cookie_banner.js soit potentiellement chargé
+    setTimeout(() => {
+        if (typeof window.CookieBannerManager === 'undefined' && typeof window.cookieBanner === 'undefined') {
+            console.log('⚠️ CookieBannerManager principal non trouvé, création du gestionnaire de secours');
+            
+            // Gestionnaire minimal sans redéfinir la classe
+            window.cookieBanner = {
+                acceptAll: function() {
+                    this.setCookie('guldagil_cookie_consent', 'accepted', 730);
+                    this.hideAllBanners();
+                    console.log('✅ Cookies acceptés (gestionnaire de secours)');
+                    if (window.GuldagilCookieConfig.callbacks.onAcceptAll) {
+                        window.GuldagilCookieConfig.callbacks.onAcceptAll();
+                    }
+                },
+                
+                acceptMinimal: function() {
+                    this.setCookie('guldagil_cookie_consent', 'minimal', 730);
+                    this.hideAllBanners();
+                    console.log('⚙️ Cookies techniques uniquement (gestionnaire de secours)');
+                    if (window.GuldagilCookieConfig.callbacks.onAcceptMinimal) {
+                        window.GuldagilCookieConfig.callbacks.onAcceptMinimal();
+                    }
+                },
+                
+                showDetails: function() {
+                    alert('Fonctionnalités limitées en mode de secours.\n\nCookies techniques :\n- Session utilisateur\n- Préférences interface\n- Fonctionnement modules\n\nAucun tracking publicitaire.');
+                },
+                
+                showManageModal: function() {
+                    console.log('⚙️ Gestion cookies demandée (gestionnaire de secours)');
+                    this.showDetails();
+                },
+                
+                resetConsent: function() {
+                    this.setCookie('guldagil_cookie_consent', '', -1);
+                    try {
+                        localStorage.removeItem('guldagil_cookie_consent_permanent');
+                    } catch (e) {}
+                    console.log('🗑️ Consentement réinitialisé (gestionnaire de secours)');
+                    if (window.GuldagilCookieConfig.callbacks.onReset) {
+                        window.GuldagilCookieConfig.callbacks.onReset();
+                    }
+                },
+                
+                setCookie: function(name, value, days) {
+                    const date = new Date();
+                    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                    const expires = days > 0 ? `expires=${date.toUTCString()}` : 'expires=Thu, 01 Jan 1970 00:00:00 UTC';
+                    document.cookie = `${name}=${value};${expires};path=/;SameSite=Strict`;
+                    
+                    // Aussi dans localStorage
+                    try {
+                        if (days > 0) {
+                            localStorage.setItem('guldagil_cookie_consent_permanent', value);
+                        } else {
+                            localStorage.removeItem('guldagil_cookie_consent_permanent');
+                        }
+                    } catch (e) {}
+                },
+                
+                hideAllBanners: function() {
+                    const banners = document.querySelectorAll('#cookie-banner, .cookie-banner, .module-cookie-info');
+                    banners.forEach(banner => {
+                        banner.style.display = 'none';
+                    });
+                },
+                
+                config: window.GuldagilCookieConfig
+            };
+            
+            console.log('✅ Gestionnaire de cookies de secours créé (sans conflit de classe)');
         } else {
-            console.error('Guldagil: Impossible de charger le gestionnaire de cookies, création d\'un gestionnaire de secours');
-            createFallbackCookieManager();
+            console.log('✅ CookieBannerManager principal détecté, pas de fallback nécessaire');
         }
-    }
-}
-
-/**
- * Crée un gestionnaire de cookies de secours si le principal échoue
- */
-function createFallbackCookieManager() {
-    if (typeof window.cookieBanner === 'undefined') {
-        console.log('Guldagil: Création du gestionnaire de cookies de secours');
-        
-        window.cookieBanner = {
-            acceptAll: function() {
-                this.setCookie('guldagil_cookie_consent', 'accepted', 365);
-                this.hideAllBanners();
-                console.log('✅ Cookies acceptés (gestionnaire de secours)');
-                if (window.GuldagilCookieConfig.callbacks.onAcceptAll) {
-                    window.GuldagilCookieConfig.callbacks.onAcceptAll();
-                }
-            },
-            
-            acceptMinimal: function() {
-                this.setCookie('guldagil_cookie_consent', 'minimal', 365);
-                this.hideAllBanners();
-                console.log('⚙️ Cookies techniques uniquement (gestionnaire de secours)');
-                if (window.GuldagilCookieConfig.callbacks.onAcceptMinimal) {
-                    window.GuldagilCookieConfig.callbacks.onAcceptMinimal();
-                }
-            },
-            
-            showDetails: function() {
-                console.log('ℹ️ Détails cookies demandés (gestionnaire de secours)');
-                alert('Gestionnaire de cookies simplifié activé. Fonctionnalités limitées.');
-            },
-            
-            showManageModal: function() {
-                console.log('⚙️ Gestion cookies demandée (gestionnaire de secours)');
-                this.showDetails();
-            },
-            
-            resetConsent: function() {
-                this.setCookie('guldagil_cookie_consent', '', -1);
-                console.log('🗑️ Consentement réinitialisé (gestionnaire de secours)');
-                if (window.GuldagilCookieConfig.callbacks.onReset) {
-                    window.GuldagilCookieConfig.callbacks.onReset();
-                }
-            },
-            
-            setCookie: function(name, value, days) {
-                const date = new Date();
-                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                const expires = days > 0 ? `expires=${date.toUTCString()}` : 'expires=Thu, 01 Jan 1970 00:00:00 UTC';
-                document.cookie = `${name}=${value};${expires};path=/;SameSite=Strict`;
-            },
-            
-            hideAllBanners: function() {
-                const banners = document.querySelectorAll('#cookie-banner, .cookie-banner, .module-cookie-info');
-                banners.forEach(banner => {
-                    banner.style.display = 'none';
-                });
-            },
-            
-            config: window.GuldagilCookieConfig
-        };
-        
-        cookieConfigInitialized = true;
-        console.log('✅ Gestionnaire de cookies de secours créé');
-    }
+    }, 100); // Petit délai pour laisser cookie_banner.js se charger
 }
 
 /**
@@ -224,50 +186,62 @@ function applyModuleSpecificMessages() {
     const config = window.GuldagilCookieConfig;
     
     if (config.messages[currentModule]) {
-        // Personnaliser la bannière selon le module
-        const banner = document.getElementById('cookie-banner');
-        if (banner) {
-            const messageEl = banner.querySelector('.cookie-message h3');
-            const descEl = banner.querySelector('.cookie-message p');
-            
-            if (messageEl && config.messages[currentModule].title) {
-                messageEl.textContent = config.messages[currentModule].title;
+        // Attendre que la bannière soit créée
+        setTimeout(() => {
+            const banner = document.getElementById('cookie-banner');
+            if (banner) {
+                const messageEl = banner.querySelector('.cookie-message h3');
+                const descEl = banner.querySelector('.cookie-message p');
+                
+                if (messageEl && config.messages[currentModule].title) {
+                    messageEl.textContent = config.messages[currentModule].title;
+                }
+                
+                if (descEl && config.messages[currentModule].description) {
+                    descEl.innerHTML = config.messages[currentModule].description;
+                }
             }
-            
-            if (descEl && config.messages[currentModule].description) {
-                descEl.innerHTML = config.messages[currentModule].description;
-            }
-        }
+        }, 500);
     }
 }
 
 /**
- * Configure les callbacks personnalisés
+ * Configure les callbacks personnalisés sur le gestionnaire existant
  */
 function setupCallbacks() {
-    const config = window.GuldagilCookieConfig;
-    
-    // Surcharger les méthodes du gestionnaire principal
-    if (window.cookieBanner) {
-        const originalAcceptAll = window.cookieBanner.acceptAll;
-        const originalAcceptMinimal = window.cookieBanner.acceptMinimal;
-        const originalReset = window.cookieBanner.resetConsent;
-        
-        window.cookieBanner.acceptAll = function() {
-            if (originalAcceptAll) originalAcceptAll.call(this);
-            config.callbacks.onAcceptAll();
-        };
-        
-        window.cookieBanner.acceptMinimal = function() {
-            if (originalAcceptMinimal) originalAcceptMinimal.call(this);
-            config.callbacks.onAcceptMinimal();
-        };
-        
-        window.cookieBanner.resetConsent = function() {
-            if (originalReset) originalReset.call(this);
-            config.callbacks.onReset();
-        };
-    }
+    setTimeout(() => {
+        if (window.cookieBanner && typeof window.cookieBanner === 'object') {
+            const config = window.GuldagilCookieConfig;
+            
+            // Surcharger les méthodes existantes pour ajouter nos callbacks
+            const originalAcceptAll = window.cookieBanner.acceptAll;
+            const originalAcceptMinimal = window.cookieBanner.acceptMinimal;
+            const originalReset = window.cookieBanner.resetConsent;
+            
+            if (originalAcceptAll) {
+                window.cookieBanner.acceptAll = function() {
+                    originalAcceptAll.call(this);
+                    config.callbacks.onAcceptAll();
+                };
+            }
+            
+            if (originalAcceptMinimal) {
+                window.cookieBanner.acceptMinimal = function() {
+                    originalAcceptMinimal.call(this);
+                    config.callbacks.onAcceptMinimal();
+                };
+            }
+            
+            if (originalReset) {
+                window.cookieBanner.resetConsent = function() {
+                    originalReset.call(this);
+                    config.callbacks.onReset();
+                };
+            }
+            
+            console.log('🔗 Callbacks cookies configurés sur le gestionnaire existant');
+        }
+    }, 200);
 }
 
 /**
@@ -279,10 +253,10 @@ function checkModuleCookieRequirements(moduleName) {
     
     if (!moduleConfig) return true; // Module sans restrictions
     
+    // Fonction hasCookieConsent globale
     const hasConsent = window.hasCookieConsent && window.hasCookieConsent('accepted');
     
     if (!hasConsent && moduleConfig.cookies_needed && moduleConfig.cookies_needed.length > 0) {
-        // Afficher message d'information
         showModuleCookieInfo(moduleName, moduleConfig.fallback_message);
         return false;
     }
@@ -294,6 +268,9 @@ function checkModuleCookieRequirements(moduleName) {
  * Affiche une information sur les cookies pour un module
  */
 function showModuleCookieInfo(moduleName, message) {
+    // Éviter les doublons
+    if (document.querySelector('.module-cookie-info')) return;
+    
     const notification = document.createElement('div');
     notification.className = 'module-cookie-info';
     notification.style.cssText = `
@@ -304,126 +281,47 @@ function showModuleCookieInfo(moduleName, message) {
         color: white;
         padding: 15px 20px;
         border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        z-index: 10000;
-        max-width: 300px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 9998;
+        max-width: 350px;
         font-size: 14px;
+        line-height: 1.4;
     `;
     
     notification.innerHTML = `
-        <div class="module-cookie-content">
-            <span class="module-icon">ℹ️</span>
-            <span class="module-message">${message || 'Ce module nécessite des cookies optionnels'}</span>
-            <button onclick="window.cookieBanner.showManageModal && window.cookieBanner.showManageModal(); this.parentElement.parentElement.remove();" 
-                    style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 5px; margin-top: 10px; cursor: pointer;">
-                Gérer les cookies
-            </button>
-        </div>
+        <div style="margin-bottom: 10px;">${message}</div>
+        <button onclick="this.parentNode.remove(); if(window.cookieBanner) window.cookieBanner.acceptMinimal();" 
+                style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 12px;">
+            Accepter les cookies techniques
+        </button>
     `;
     
     document.body.appendChild(notification);
     
-    // Auto-suppression après 5 secondes
+    // Auto-suppression après 10 secondes
     setTimeout(() => {
-        if (notification.parentElement) {
+        if (notification.parentNode) {
             notification.remove();
         }
-    }, 5000);
+    }, 10000);
 }
 
-/**
- * API publique pour les modules
- */
-window.GuldagilCookies = {
-    // Vérifier si un module peut utiliser ses cookies
-    canUseModuleCookies: function(moduleName) {
-        return checkModuleCookieRequirements(moduleName);
-    },
-    
-    // Obtenir la configuration d'un module
-    getModuleConfig: function(moduleName) {
-        return window.GuldagilCookieConfig.modules && window.GuldagilCookieConfig.modules[moduleName] || null;
-    },
-    
-    // Forcer l'affichage du gestionnaire
-    showManager: function() {
-        if (window.cookieBanner && window.cookieBanner.showManageModal) {
-            window.cookieBanner.showManageModal();
-        } else {
-            console.warn('Gestionnaire de cookies non disponible');
-        }
-    },
-    
-    // Obtenir le statut actuel
-    getConsentStatus: function() {
-        return {
-            hasMinimal: window.hasCookieConsent ? window.hasCookieConsent('minimal') : false,
-            hasAll: window.hasCookieConsent ? window.hasCookieConsent('accepted') : false,
-            timestamp: new Date().toISOString(),
-            attempts: cookieConfigAttempts,
-            initialized: cookieConfigInitialized
-        };
-    }
-};
-
-// ===============================================
-// 🚀 INITIALISATION AUTOMATIQUE - CORRIGÉE
-// ===============================================
-
-/**
- * Fonction de démarrage sécurisée
- */
-function startCookieConfig() {
-    // Réinitialiser les compteurs si nécessaire
-    if (cookieConfigAttempts >= MAX_ATTEMPTS && !cookieConfigInitialized) {
-        console.log('Guldagil: Réinitialisation des tentatives de configuration cookies');
-        cookieConfigAttempts = 0;
-    }
-    
-    // Lancer l'initialisation
-    setTimeout(initAdvancedCookieConfig, 500); // Délai initial de 500ms
-}
-
-// Attendre que le DOM soit chargé
+// Initialisation quand le DOM est prêt
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startCookieConfig);
+    document.addEventListener('DOMContentLoaded', function() {
+        initFallbackCookieManager();
+        applyModuleSpecificMessages();
+        setupCallbacks();
+    });
 } else {
-    startCookieConfig();
+    // DOM déjà prêt
+    initFallbackCookieManager();
+    applyModuleSpecificMessages();
+    setupCallbacks();
 }
 
-// ===============================================
-// 🛡️ PROTECTION CONTRE LES ERREURS
-// ===============================================
+// Exposer les fonctions utiles globalement
+window.checkModuleCookieRequirements = checkModuleCookieRequirements;
+window.showModuleCookieInfo = showModuleCookieInfo;
 
-/**
- * Gestionnaire d'erreurs pour les cookies
- */
-window.addEventListener('error', function(event) {
-    if (event.message && event.message.includes('cookie')) {
-        console.warn('Guldagil: Erreur liée aux cookies interceptée:', event.message);
-        // Ne pas laisser l'erreur se propager
-        event.preventDefault();
-        
-        // Essayer de créer le gestionnaire de secours si pas déjà fait
-        if (!cookieConfigInitialized) {
-            createFallbackCookieManager();
-        }
-    }
-});
-
-/**
- * Nettoyage des timeouts en cas de problème
- */
-window.addEventListener('beforeunload', function() {
-    // Nettoyer les tentatives en cours
-    cookieConfigAttempts = MAX_ATTEMPTS;
-    console.log('Guldagil: Nettoyage configuration cookies avant déchargement page');
-});
-
-// Export pour usage en module ES6 (si nécessaire)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = window.GuldagilCookieConfig;
-}
-
-// Debug: afficher le statut dans la console
-console.log('🍪 Guldagil Cookie Config: Module chargé (version corrigée anti-boucle)');
+console.log('✅ Guldagil: Configuration avancée cookies appliquée (sans conflit)');
