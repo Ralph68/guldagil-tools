@@ -58,62 +58,24 @@ class AssetManager
     }
     
     /**
-     * Charger CSS d'un module avec système de fallback intelligent
+     * Charger CSS d'un module - STRUCTURE UNIQUE /public/{module}/assets/css/
      */
     private function loadModuleCss(string $module): void {
-        // Priorité 1: Nouvelle architecture /public/module/assets/css/
-        $newCssPath = "/public/{$module}/assets/css/{$module}.css";
+        $cssPath = "/public/{$module}/assets/css/{$module}.css";
         
-        if ($this->fileExists($newCssPath)) {
+        if ($this->fileExists($cssPath)) {
             $this->cssFiles[] = "/{$module}/assets/css/{$module}.css";
-            return;
         }
-        
-        // Priorité 2: Ancien système - chemins de fallback
-        $fallbackPaths = [
-            "/public/{$module}/css/{$module}.css",
-            "/public/assets/css/modules/{$module}.css",
-            "/public/{$module}/{$module}.css"
-        ];
-        
-        foreach ($fallbackPaths as $path) {
-            if ($this->fileExists($path)) {
-                // Convertir le chemin absolu en chemin web
-                $webPath = str_replace('/public', '', $path);
-                $this->cssFiles[] = $webPath;
-                return;
-            }
-        }
-        
-        // Log si aucun CSS trouvé pour le module
-        error_log("AssetManager: Aucun CSS trouvé pour le module '{$module}'");
     }
     
     /**
-     * Charger JavaScript d'un module avec système de fallback
+     * Charger JavaScript d'un module - STRUCTURE UNIQUE /public/{module}/assets/js/
      */
     private function loadModuleJs(string $module): void {
-        // Priorité 1: Nouvelle architecture
-        $newJsPath = "/public/{$module}/assets/js/{$module}.js";
+        $jsPath = "/public/{$module}/assets/js/{$module}.js";
         
-        if ($this->fileExists($newJsPath)) {
+        if ($this->fileExists($jsPath)) {
             $this->jsFiles[] = "/{$module}/assets/js/{$module}.js";
-            return;
-        }
-        
-        // Priorité 2: Ancien système
-        $fallbackPaths = [
-            "/public/{$module}/js/{$module}.js",
-            "/public/assets/js/modules/{$module}.js",
-            "/public/{$module}/{$module}.js"
-        ];
-        
-        foreach ($fallbackPaths as $path) {
-            if ($this->fileExists($path)) {
-                $webPath = str_replace('/public', '', $path);
-                $this->jsFiles[] = $webPath;
-                return;
-            }
         }
     }
     
