@@ -365,6 +365,7 @@ include_once ROOT_PATH . '/templates/header.php';
         </section>
     </main>
 </div>
+
 <div class="debug-panel" id="debugPanel">
     <div class="debug-header" onclick="this.parentElement.classList.toggle('expanded')">
         <span>🔧 Debug</span>

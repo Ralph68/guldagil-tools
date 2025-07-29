@@ -77,15 +77,11 @@ if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
     }
 }
 
-// Fallback authentification manuelle avec validation renforcée
-if (!$user_authenticated && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-    $session_user = $_SESSION['user'] ?? null;
-    if (is_array($session_user) && in_array($session_user['role'] ?? '', ['admin', 'dev', 'superadmin'])) {
-        $user_authenticated = true;
-        $current_user = $session_user;
-    }
+if (!$user_authenticated) {
+    $_SESSION['error'] = 'Accès refusé - Administrateurs uniquement';
+    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+    exit;
 }
-
 // Redirection si non autorisé
 if (!$user_authenticated) {
     $_SESSION['error'] = 'Accès refusé - Administrateurs uniquement';

@@ -179,9 +179,7 @@ if (file_exists($header_path)) {
             <div class="legend-item">
                 <span class="badge badge-env">ENV</span> Dangereux environnement
             </div>
-            <div class="legend-item">
-                <span class="badge badge-closed">Fermé</span> Article fermé
-            </div>
+            <div class="badge badge-closed">Fermé</div> Article fermé
         </div>
     </section>
 </main>
@@ -202,15 +200,17 @@ const itemsPerPage = 20;
 // Fonction de recherche principale
 function performSearch(query) {
     const searchInput = document.getElementById('product-search');
-    const searchQuery = query || searchInput.value.trim();
+    const searchQuery = typeof query === 'string' ? query : searchInput.value.trim();
     const resultsSection = document.getElementById('search-results');
     const resultsTitle = document.getElementById('results-title');
     const resultsContent = document.getElementById('results-content');
     const mobileContent = document.getElementById('search-results-mobile');
 
+    resultsSection.style.display = 'block';
+
     if (searchQuery.length < 2) {
         resultsTitle.textContent = "Aucun résultat";
-        resultsContent.innerHTML = '';
+        resultsContent.innerHTML = '<tr><td colspan="7" style="text-align:center;">Aucun résultat trouvé</td></tr>';
         mobileContent.innerHTML = '';
         return;
     }
@@ -225,14 +225,14 @@ function performSearch(query) {
                 displayResults(data.results);
             } else {
                 resultsTitle.textContent = "Aucun résultat";
-                resultsContent.innerHTML = '';
+                resultsContent.innerHTML = '<tr><td colspan="7" style="text-align:center;">Aucun résultat trouvé</td></tr>';
                 mobileContent.innerHTML = '';
             }
         })
         .catch(error => {
             hideLoader();
             resultsTitle.textContent = "Erreur de recherche";
-            resultsContent.innerHTML = '';
+            resultsContent.innerHTML = '<tr><td colspan="7" style="text-align:center;">Erreur lors de la recherche</td></tr>';
             mobileContent.innerHTML = '';
             console.error('Erreur:', error);
         });
@@ -335,17 +335,33 @@ function setupSuggestions() {
 function displaySuggestions(suggestions) {
     const container = document.getElementById('search-suggestions');
     container.innerHTML = suggestions.map(item => `
-        <div class="suggestion-item" tabindex="0" onclick="selectSuggestion('${item.code_produit}')">
+        <div class="suggestion-item" tabindex="0" data-code="${item.code_produit}">
             <div class="suggestion-code">${item.code_produit}</div>
             <div class="suggestion-name">${item.nom_produit || item.nom_technique || ''}</div>
             ${item.numero_un ? `<div class="suggestion-un">UN${item.numero_un}</div>` : ''}
         </div>
     `).join('');
     container.style.display = 'block';
+
+    // Ajout du handler pour chaque suggestion (clic ou touche entrée)
+    container.querySelectorAll('.suggestion-item').forEach(item => {
+        item.addEventListener('mousedown', function(e) {
+            // Utiliser mousedown pour éviter le blur de l'input avant le click
+            e.preventDefault();
+            selectSuggestion(this.getAttribute('data-code'));
+        });
+        item.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectSuggestion(this.getAttribute('data-code'));
+            }
+        });
+    });
 }
 
 function selectSuggestion(code) {
-    document.getElementById('product-search').value = code;
+    const input = document.getElementById('product-search');
+    input.value = code;
     document.getElementById('search-suggestions').style.display = 'none';
     performSearch(code);
 }
@@ -443,10 +459,10 @@ document.addEventListener('DOMContentLoaded', function() {
     setupSuggestions();
     loadPopularProducts();
     loadRecentUpdates();
-    
+
     // Focus sur la barre de recherche
     document.getElementById('product-search').focus();
-    
+
     // Recherche si query en URL
     if (window.ADR_CURRENT_QUERY && window.ADR_CURRENT_QUERY.length >= 2) {
         setTimeout(() => performSearch(window.ADR_CURRENT_QUERY), 500);
