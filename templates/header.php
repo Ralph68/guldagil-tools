@@ -56,82 +56,26 @@ foreach ($public_pages as $page) {
 $user_authenticated = false;
 $current_user = null;
 
-// === VÉRIFICATION AUTHENTIFICATION ===
+// === AUTHENTIFICATION OBLIGATOIRE ===
 if (!$is_public_page) {
-    // Page protégée : authentification OBLIGATOIRE
+    require_once ROOT_PATH . '/core/auth/AuthManager.php';
+    $auth = AuthManager::getInstance();
     
-    $auth_success = false;
-    
-    // Méthode 1: Essayer AuthManager
-    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-        try {
-            require_once ROOT_PATH . '/core/auth/AuthManager.php';
-            $auth = new AuthManager();
-            
-            if ($auth->isAuthenticated()) {
-                $current_user = $auth->getCurrentUser();
-                $auth_success = true;
-                
-                // Synchroniser avec sessions pour compatibilité
-                $_SESSION['authenticated'] = true;
-                $_SESSION['user'] = $current_user;
-                $_SESSION['user_id'] = $current_user['id'] ?? 1;
-                $_SESSION['user_role'] = $current_user['role'] ?? 'user';
-                $_SESSION['username'] = $current_user['username'] ?? 'Utilisateur';
-            }
-        } catch (Exception $e) {
-            error_log("Erreur AuthManager: " . $e->getMessage());
-            // Continuer vers fallback
-        }
-    }
-    
-    // Méthode 2: Fallback session simple
-    if (!$auth_success) {
-        if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-            $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
-            $auth_success = true;
-            
-            // Synchroniser pour admin
-            $_SESSION['user_id'] = $current_user['id'] ?? 1;
-            $_SESSION['user_role'] = $current_user['role'] ?? 'user';
-        }
-    }
-    
-    // Si aucune authentification trouvée : REDIRECTION FORCÉE
-    if (!$auth_success) {
-        $redirect_url = $_SERVER['REQUEST_URI'] ?? '/';
-        $login_url = '/auth/login.php?redirect=' . urlencode($redirect_url);
-        header('Location: ' . $login_url);
+    // Vérification session + remember me
+    if (!$auth->isAuthenticated()) {
+        // Redirection avec nettoyage session
+        session_destroy();
+        header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
         exit;
     }
     
+    $current_user = $auth->getCurrentUser();
     $user_authenticated = true;
     
-} else {
-    // Page publique : juste vérifier le statut sans forcer
-    
-    // Méthode 1: AuthManager
-    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-        try {
-            require_once ROOT_PATH . '/core/auth/AuthManager.php';
-            $auth = new AuthManager();
-            
-            if ($auth->isAuthenticated()) {
-                $user_authenticated = true;
-                $current_user = $auth->getCurrentUser();
-            }
-        } catch (Exception $e) {
-            error_log("Erreur AuthManager: " . $e->getMessage());
-        }
-    }
-    
-    // Méthode 2: Fallback session
-    if (!$user_authenticated) {
-        if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-            $user_authenticated = true;
-            $current_user = $_SESSION['user'] ?? ['username' => 'Utilisateur', 'role' => 'user'];
-        }
-    }
+    // Variables compatibilité
+    $_SESSION['user'] = $current_user;
+    $_SESSION['authenticated'] = true;
+    $_SESSION['user_role'] = $current_user['role'];
 }
 
 // Variables avec fallbacks sécurisés
