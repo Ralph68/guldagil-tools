@@ -680,3 +680,62 @@ form {
     background: rgba(59, 130, 246, 0.1);
     text-align: center;
 }
+/* === CHECKBOX REMEMBER ME === */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--gray-700);
+    user-select: none;
+    margin-bottom: 1rem;
+}
+
+.checkbox-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.checkmark {
+    position: relative;
+    height: 18px;
+    width: 18px;
+    background-color: white;
+    border: 2px solid var(--gray-300);
+    border-radius: 4px;
+    margin-right: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.checkbox-label:hover .checkmark {
+    border-color: var(--primary-blue);
+    background-color: var(--gray-50);
+}
+
+.checkbox-label input:checked ~ .checkmark {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 5px;
+    top: 2px;
+    width: 6px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-label input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.checkbox-label:focus-within .checkmark {
+    outline: 2px solid var(--primary-blue-light);
+    outline-offset: 2px;
+}
