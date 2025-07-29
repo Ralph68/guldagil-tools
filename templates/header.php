@@ -221,6 +221,8 @@ if ($user_authenticated) {
     <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/footer.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
+    <!-- CSS corrections header navigation et menu utilisateur -->
+    <link rel="stylesheet" href="/assets/css/header_fixes.css?v=<?= $build_number ?>">
     <!-- CSS bannière cookie RGPD -->
     <link rel="stylesheet" href="/assets/css/cookie_banner.css?v=<?= $build_number ?>">
 
