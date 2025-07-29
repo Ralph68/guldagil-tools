@@ -32,7 +32,7 @@ ini_set('session.name', 'GULDAGIL_PORTAL_SESSION');
 session_start();
 
 // Chargement configuration
-require_once ROOT_PATH . '/config/config.php'; // Assure que DB_DSN, DB_USER, DB_PASS sont définis ici
+require_once ROOT_PATH . '/config/config.php';
 require_once ROOT_PATH . '/config/version.php';
 
 // =====================================
@@ -61,7 +61,7 @@ function authenticateUser($username, $password) {
         }
         
         // 2. Base de données directe en fallback
-        if (defined('DB_DSN') && defined('DB_USER') && defined('DB_PASS')) {
+        if (defined('DB_DSN')) {
             $db = new PDO(DB_DSN, DB_USER, DB_PASS, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
@@ -225,6 +225,9 @@ if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']) {
     
     if ($is_authenticated) {
         $redirect = $_GET['redirect'] ?? '/';
+        if ($redirect === $_SERVER['REQUEST_URI']) {
+            $redirect = '/'; // Éviter les redirections infinies
+        }
         header('Location: ' . $redirect);
         exit;
     }
@@ -308,118 +311,16 @@ $page_subtitle = 'Accès au portail Guldagil';
     <!-- CSS principal -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
-    
-    <!-- CSS spécifique login -->
-    <style>
-        .login-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 1rem;
-        }
-        
-        .login-card {
-            background: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .login-logo {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #374151;
-        }
-        
-        .form-input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            font-size: 1rem;
-            transition: all 0.15s ease;
-        }
-        
-        .form-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 0.75rem;
-            border: none;
-            border-radius: 0.375rem;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-        
-        .btn-primary {
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #2563eb;
-        }
-        
-        .alert {
-            padding: 0.75rem;
-            border-radius: 0.375rem;
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
-        }
-        
-        .alert-danger {
-            background: #fef2f2;
-            color: #b91c1c;
-            border: 1px solid #fecaca;
-        }
-        
-        .alert-success {
-            background: #f0f9ff;
-            color: #1e40af;
-            border: 1px solid #bfdbfe;
-        }
-        
-        .footer-info {
-            text-align: center;
-            margin-top: 2rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e5e7eb;
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-    </style>
+    <link rel="stylesheet" href="/assets/css/login.css?v=<?= $build_number ?>">
 </head>
 <body>
 
 <div class="login-container">
     <div class="login-card">
         <div class="login-header">
-            <div class="login-logo">🌊</div>
+            <div class="login-logo">
+                <img src="/assets/img/logo.png" alt="Logo Guldagil" width="80" height="80">
+            </div>
             <h1>Portail Guldagil</h1>
             <p>Connexion sécurisée</p>
         </div>

@@ -1,0 +1,151 @@
+/**
+ * Titre: CSS pour la page de connexion
+ * Chemin: /public/assets/css/login.css
+ * Version: 1.0
+ */
+
+/* === VARIABLES CSS === */
+:root {
+    --primary-color: #1e3a8a;
+    --primary-color-light: #3b82f6;
+    --primary-color-dark: #1e40af;
+    --background-gradient: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    --text-color: #ffffff;
+    --card-background: #ffffff;
+    --card-shadow: rgba(0, 0, 0, 0.1);
+    --input-border: #d1d5db;
+    --input-focus: #3b82f6;
+    --error-color: #dc2626;
+    --success-color: #16a34a;
+}
+
+/* === STRUCTURE GÉNÉRALE === */
+body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background: var(--background-gradient);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.login-card {
+    background: var(--card-background);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 20px var(--card-shadow);
+    padding: 2rem;
+    text-align: center;
+}
+
+.login-header {
+    margin-bottom: 2rem;
+}
+
+.login-logo img {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 1rem;
+}
+
+h1 {
+    font-size: 1.5rem;
+    color: var(--primary-color-dark);
+    margin: 0;
+}
+
+p {
+    font-size: 0.875rem;
+    color: var(--primary-color);
+}
+
+/* === FORMULAIRE === */
+.form-group {
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: var(--primary-color-dark);
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--input-border);
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-input:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    outline: none;
+}
+
+/* === BOUTON === */
+.btn {
+    display: inline-block;
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--text-color);
+    background: var(--primary-color);
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn:hover {
+    background: var(--primary-color-light);
+    transform: translateY(-2px);
+}
+
+.btn:active {
+    background: var(--primary-color-dark);
+    transform: translateY(0);
+}
+
+/* === ALERTES === */
+.alert {
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    text-align: left;
+}
+
+.alert-danger {
+    background: #fee2e2;
+    color: var(--error-color);
+    border: 1px solid #fecaca;
+}
+
+.alert-success {
+    background: #d1fae5;
+    color: var(--success-color);
+    border: 1px solid #a7f3d0;
+}
+
+/* === PIED DE PAGE === */
+.footer-info {
+    margin-top: 2rem;
+    font-size: 0.75rem;
+    color: var(--primary-color-dark);
+    border-top: 1px solid var(--input-border);
+    padding-top: 1rem;
+}
