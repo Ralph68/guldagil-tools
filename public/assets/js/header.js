@@ -1,15 +1,24 @@
 /**
- * JavaScript pour le header du portail - Version sticky
- * Chemin: /public/assets/js/header.js
+ * Titre: JavaScript pour le header du portail - Version complète
+ * Chemin: /assets/js/header.js
  * Version: 0.5 beta + build auto
+ * Description: Gestion complète des interactions header, navigation modules et menu utilisateur
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     // === ÉLÉMENTS DOM ===
-    const userMenuTrigger = document.querySelector('.user-menu-trigger');
+    const userMenuTrigger = document.getElementById('userMenuTrigger');
     const userDropdownMenu = document.getElementById('userDropdownMenu');
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
     const modulesNav = document.querySelector('.modules-nav');
     const breadcrumbNav = document.querySelector('.breadcrumb-nav');
+    const portalHeader = document.querySelector('.portal-header');
+    
+    // Variables d'état
+    let lastScrollY = window.scrollY;
+    let isScrollingDown = false;
+    let userMenuOpen = false;
+    let mobileMenuOpen = false;
     
     // === GESTION MENU UTILISATEUR ===
     if (userMenuTrigger && userDropdownMenu) {
@@ -18,333 +27,454 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
             
-            const isExpanded = userMenuTrigger.getAttribute('aria-expanded') === 'true';
-            toggleUserMenu(!isExpanded);
+            userMenuOpen = !userMenuOpen;
+            toggleUserMenu(userMenuOpen);
         });
         
         // Fermer menu si clic ailleurs
         document.addEventListener('click', function(e) {
-            if (!e.target.closest('.header-user-nav')) {
+            if (!e.target.closest('.header-user-nav') && userMenuOpen) {
+                userMenuOpen = false;
                 toggleUserMenu(false);
             }
         });
         
-        // Gestion clavier (ESC)
+        // Gestion clavier
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape' && userMenuOpen) {
+                userMenuOpen = false;
                 toggleUserMenu(false);
                 userMenuTrigger.focus();
             }
         });
         
-        // Fonction toggle
+        // Fonction toggle menu utilisateur
         function toggleUserMenu(show) {
             userMenuTrigger.setAttribute('aria-expanded', show);
             userDropdownMenu.setAttribute('aria-hidden', !show);
             userDropdownMenu.style.display = show ? 'block' : 'none';
+            
+            // Animation d'entrée/sortie
+            if (show) {
+                userDropdownMenu.style.opacity = '0';
+                userDropdownMenu.style.transform = 'translateY(-10px) scale(0.95)';
+                requestAnimationFrame(() => {
+                    userDropdownMenu.style.opacity = '1';
+                    userDropdownMenu.style.transform = 'translateY(0) scale(1)';
+                });
+            }
         }
     }
     
-    // === SCROLL BEHAVIOR INTELLIGENT ===
-    let lastScrollTop = 0;
-    let scrollTimeout;
+    // === GESTION MENU MOBILE ===
+    if (mobileMenuToggle && modulesNav) {
+        mobileMenuToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            mobileMenuOpen = !mobileMenuOpen;
+            toggleMobileMenu(mobileMenuOpen);
+        });
+        
+        // Fermer menu mobile si clic ailleurs
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.modules-nav') && mobileMenuOpen) {
+                mobileMenuOpen = false;
+                toggleMobileMenu(false);
+            }
+        });
+        
+        // Fonction toggle menu mobile
+        function toggleMobileMenu(show) {
+            modulesNav.classList.toggle('mobile-open', show);
+            mobileMenuToggle.classList.toggle('open', show);
+            mobileMenuToggle.setAttribute('aria-expanded', show);
+        }
+    }
+    
+    // === GESTION SCROLL INTELLIGENT ===
+    let ticking = false;
     
     function handleScroll() {
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollingDown = scrollTop > lastScrollTop;
-        const scrollThreshold = 100;
+        const currentScrollY = window.scrollY;
+        const scrollDelta = currentScrollY - lastScrollY;
         
-        // Gestion classe scrolled sur body
-        if (scrollTop > scrollThreshold) {
-            document.body.classList.add('scrolled');
-        } else {
-            document.body.classList.remove('scrolled');
+        // Déterminer direction du scroll
+        if (Math.abs(scrollDelta) > 5) { // Seuil minimum pour éviter les micro-mouvements
+            isScrollingDown = scrollDelta > 0;
+            lastScrollY = currentScrollY;
         }
         
-        // Navigation modules : cacher au scroll down, montrer au scroll up
-        if (modulesNav && scrollTop > scrollThreshold) {
-            if (scrollingDown) {
-                modulesNav.style.transform = 'translateY(-100%)';
-                modulesNav.style.opacity = '0';
+        // Gestion affichage navigation modules selon scroll
+        if (modulesNav) {
+            if (currentScrollY > 100 && isScrollingDown) {
+                modulesNav.classList.add('hide-modules-nav');
+            } else if (!isScrollingDown || currentScrollY <= 50) {
+                modulesNav.classList.remove('hide-modules-nav');
+            }
+        }
+        
+        // Adaptation header compact pour mobile
+        if (window.innerWidth <= 768) {
+            if (currentScrollY > 80) {
+                portalHeader?.classList.add('header-compact');
+                document.body.classList.add('header-compact');
             } else {
-                modulesNav.style.transform = 'translateY(0)';
-                modulesNav.style.opacity = '1';
+                portalHeader?.classList.remove('header-compact');
+                document.body.classList.remove('header-compact');
             }
-        } else if (modulesNav) {
-            modulesNav.style.transform = 'translateY(0)';
-            modulesNav.style.opacity = '1';
         }
         
-        // Breadcrumb sticky amélioré
-        if (breadcrumbNav && scrollTop > scrollThreshold) {
-            breadcrumbNav.style.top = 'var(--header-height)';
-            breadcrumbNav.style.background = 'rgba(248, 250, 252, 0.95)';
-            breadcrumbNav.style.backdropFilter = 'blur(8px)';
-            breadcrumbNav.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-        } else if (breadcrumbNav) {
-            breadcrumbNav.style.top = 'calc(var(--header-height) + var(--nav-height))';
-            breadcrumbNav.style.background = '#f9fafb';
-            breadcrumbNav.style.backdropFilter = 'none';
-            breadcrumbNav.style.boxShadow = 'none';
-        }
-        
-        lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+        ticking = false;
     }
     
-    // Optimisation scroll avec throttle
-    function throttledScroll() {
-        if (scrollTimeout) return;
-        
-        scrollTimeout = setTimeout(() => {
-            handleScroll();
-            scrollTimeout = null;
-        }, 16); // ~60fps
+    // Optimisation scroll avec requestAnimationFrame
+    function requestScrollUpdate() {
+        if (!ticking) {
+            requestAnimationFrame(handleScroll);
+            ticking = true;
+        }
     }
     
-    window.addEventListener('scroll', throttledScroll, { passive: true });
-    
-    // Initialiser au chargement
-    handleScroll();
-    
-    // === RACCOURCIS CLAVIER ===
-    document.addEventListener('keydown', function(e) {
-        // Alt + H : Accueil
-        if (e.altKey && e.key === 'h') {
-            e.preventDefault();
-            window.location.href = '/';
-        }
-        
-        // Alt + A : Administration (si accessible)
-        if (e.altKey && e.key === 'a') {
-            const adminLink = document.querySelector('a[href="/admin/"]');
-            if (adminLink) {
-                e.preventDefault();
-                window.location.href = '/admin/';
-            }
-        }
-        
-        // Alt + U : Menu utilisateur
-        if (e.altKey && e.key === 'u') {
-            e.preventDefault();
-            if (userMenuTrigger) {
-                userMenuTrigger.click();
-            }
-        }
-    });
+    window.addEventListener('scroll', requestScrollUpdate, { passive: true });
     
     // === GESTION RESPONSIVE ===
     function handleResize() {
         const isMobile = window.innerWidth <= 768;
         
-        if (isMobile && userDropdownMenu) {
-            userDropdownMenu.style.minWidth = '200px';
-        } else if (userDropdownMenu) {
-            userDropdownMenu.style.minWidth = '250px';
+        // Fermer menu mobile si passage en desktop
+        if (!isMobile && mobileMenuOpen) {
+            mobileMenuOpen = false;
+            toggleMobileMenu(false);
+        }
+        
+        // Ajuster navigation modules selon taille écran
+        if (modulesNav) {
+            const navItems = modulesNav.querySelector('.modules-nav-items');
+            if (navItems) {
+                if (isMobile) {
+                    navItems.style.justifyContent = 'flex-start';
+                } else {
+                    navItems.style.justifyContent = 'center';
+                }
+            }
         }
     }
     
-    window.addEventListener('resize', handleResize);
-    handleResize();
+    window.addEventListener('resize', handleResize, { passive: true });
     
-    // === PERFORMANCE OPTIMISATIONS ===
-    // Lazy load des avatars si présents
-    const avatarImages = document.querySelectorAll('.user-avatar img');
-    if (avatarImages.length > 0 && 'IntersectionObserver' in window) {
-        const imageObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    if (img.dataset.src) {
-                        img.src = img.dataset.src;
-                        img.removeAttribute('data-src');
-                        imageObserver.unobserve(img);
+    // === AMÉLIORATION ACCESSIBILITÉ ===
+    
+    // Focus management pour navigation clavier
+    function trapFocusInDropdown(dropdown) {
+        const focusableElements = dropdown.querySelectorAll(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        
+        if (focusableElements.length === 0) return;
+        
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+        
+        dropdown.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                if (e.shiftKey) {
+                    // Shift + Tab
+                    if (document.activeElement === firstElement) {
+                        e.preventDefault();
+                        lastElement.focus();
                     }
+                } else {
+                    // Tab
+                    if (document.activeElement === lastElement) {
+                        e.preventDefault();
+                        firstElement.focus();
+                    }
+                }
+            }
+        });
+    }
+    
+    // Appliquer trap focus au menu utilisateur
+    if (userDropdownMenu) {
+        trapFocusInDropdown(userDropdownMenu);
+    }
+    
+    // === INDICATEURS VISUELS MODULES ACTIFS ===
+    function highlightActiveModule() {
+        const currentPath = window.location.pathname;
+        const moduleItems = document.querySelectorAll('.module-nav-item');
+        
+        moduleItems.forEach(item => {
+            const href = item.getAttribute('href');
+            if (href && currentPath.startsWith(href) && href !== '/') {
+                item.classList.add('active');
+                
+                // Mise à jour couleur module
+                const moduleColor = item.style.getPropertyValue('--module-color');
+                if (moduleColor) {
+                    document.documentElement.style.setProperty('--current-module-color', moduleColor);
+                }
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+    
+    // === ANIMATIONS AVANCÉES ===
+    function addHoverEffects() {
+        // Animation hover pour modules nav
+        const moduleNavItems = document.querySelectorAll('.module-nav-item');
+        moduleNavItems.forEach(item => {
+            item.addEventListener('mouseenter', function() {
+                if (!this.classList.contains('active')) {
+                    this.style.transform = 'translateY(-2px)';
+                }
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                if (!this.classList.contains('active')) {
+                    this.style.transform = 'translateY(0)';
                 }
             });
         });
         
-        avatarImages.forEach(img => imageObserver.observe(img));
+        // Animation hover pour dropdown items
+        const dropdownItems = document.querySelectorAll('.dropdown-item');
+        dropdownItems.forEach(item => {
+            item.addEventListener('mouseenter', function() {
+                this.style.paddingLeft = 'calc(var(--spacing-lg) + 4px)';
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                this.style.paddingLeft = 'var(--spacing-lg)';
+            });
+        });
     }
     
-    // === DEBUG MODE ===
-    if (document.querySelector('.debug-banner')) {
-        console.log('🔧 Header JS chargé - Mode debug actif');
-        console.log('📊 Éléments détectés:', {
-            userMenu: !!userMenuTrigger,
-            modulesNav: !!modulesNav,
-            breadcrumb: !!breadcrumbNav
+    // === LAZY LOADING AVATAR ===
+    function initAvatarLazyLoad() {
+        const avatarImages = document.querySelectorAll('.user-avatar img');
+        avatarImages.forEach(img => {
+            img.addEventListener('error', function() {
+                // Fallback en cas d'erreur de chargement avatar
+                const parent = this.parentElement;
+                parent.innerHTML = parent.dataset.fallback || 'U';
+                parent.style.backgroundColor = 'white';
+                parent.style.color = 'var(--primary-blue)';
+            });
         });
+    }
+    
+    // === NOTIFICATIONS SYSTÈME ===
+    function checkSystemNotifications() {
+        // TODO: Implémentation future pour notifications temps réel
+        // Placeholder pour système de notifications
+        const userMenu = document.querySelector('.user-menu-trigger');
+        if (userMenu) {
+            // Ajouter badge notification si nécessaire
+            // Implementation future avec WebSocket ou polling
+        }
+    }
+    
+    // === SAUVEGARDE PRÉFÉRENCES UTILISATEUR ===
+    function saveUserPreferences() {
+        const preferences = {
+            menuState: userMenuOpen ? 'open' : 'closed',
+            lastModule: document.body.dataset.module,
+            timestamp: Date.now()
+        };
+        
+        try {
+            localStorage.setItem('portal_user_prefs', JSON.stringify(preferences));
+        } catch (e) {
+            console.warn('Impossible de sauvegarder les préférences utilisateur');
+        }
+    }
+    
+    function loadUserPreferences() {
+        try {
+            const prefs = JSON.parse(localStorage.getItem('portal_user_prefs') || '{}');
+            
+            // Restaurer état menu si récent (< 1 heure)
+            if (prefs.timestamp && (Date.now() - prefs.timestamp) < 3600000) {
+                // Logique de restauration si nécessaire
+            }
+        } catch (e) {
+            console.warn('Impossible de charger les préférences utilisateur');
+        }
+    }
+    
+    // === GESTION ERREURS ET FALLBACKS ===
+    function initErrorHandling() {
+        // Gestion erreurs JavaScript globales
+        window.addEventListener('error', function(e) {
+            console.error('Erreur JavaScript dans header:', e.error);
+            
+            // Fallback : s'assurer que navigation reste fonctionnelle
+            if (e.filename && e.filename.includes('header')) {
+                // Réinitialiser navigation en mode dégradé
+                const navItems = document.querySelectorAll('.module-nav-item');
+                navItems.forEach(item => {
+                    item.style.transform = '';
+                    item.style.transition = 'none';
+                });
+            }
+        });
+        
+        // Détection capacités navigateur
+        if (!('CSS' in window && CSS.supports && CSS.supports('color', 'color-mix(in srgb, red 50%, blue)'))) {
+            // Fallback pour navigateurs plus anciens
+            document.documentElement.classList.add('no-color-mix');
+        }
+    }
+    
+    // === OPTIMISATIONS PERFORMANCE ===
+    function initPerformanceOptimizations() {
+        // Préchargement images hover states
+        const moduleIcons = document.querySelectorAll('.module-nav-icon');
+        moduleIcons.forEach(icon => {
+            // Précharger assets si nécessaire
+        });
+        
+        // Intersection Observer pour animations lazy
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-in');
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            // Observer éléments navigation
+            document.querySelectorAll('.module-nav-item').forEach(item => {
+                observer.observe(item);
+            });
+        }
+    }
+    
+    // === INITIALISATION FINALE ===
+    function initialize() {
+        // Vérifications initiales
+        console.log('🚀 Initialisation header portail v0.5');
+        
+        // Charger préférences utilisateur
+        loadUserPreferences();
+        
+        // Activer effets visuels
+        addHoverEffects();
+        
+        // Initialiser gestion erreurs
+        initErrorHandling();
+        
+        // Initialiser optimisations
+        initPerformanceOptimizations();
+        
+        // Initialiser lazy loading avatars
+        initAvatarLazyLoad();
+        
+        // Mettre en évidence module actif
+        highlightActiveModule();
+        
+        // Vérifier notifications
+        checkSystemNotifications();
+        
+        // Ajustement initial responsive
+        handleResize();
+        
+        console.log('✅ Header portail initialisé avec succès');
+    }
+    
+    // === NETTOYAGE AU DÉCHARGEMENT ===
+    window.addEventListener('beforeunload', function() {
+        saveUserPreferences();
+    });
+    
+    // === DÉMARRAGE ===
+    initialize();
+    
+    // === EXPOSITION GLOBALE POUR DEBUG ===
+    if (window.DEBUG) {
+        window.PortalHeader = {
+            toggleUserMenu,
+            toggleMobileMenu,
+            highlightActiveModule,
+            saveUserPreferences,
+            loadUserPreferences
+        };
     }
 });
 
-// === FONCTIONS GLOBALES ===
+// === FONCTIONS UTILITAIRES GLOBALES ===
 
 /**
- * Fonction d'aide contextuelle
+ * Fonction d'aide globale
  */
 function showHelp() {
-    const module = document.body.dataset.module || 'inconnu';
-    const version = document.querySelector('meta[name="generator"]')?.content || 'inconnu';
+    const moduleInfo = document.body.dataset.module || 'unknown';
+    const version = document.querySelector('meta[name="version"]')?.content || '0.5-beta';
     
-    const helpText = `Aide contextuelle - Module: ${module}
-Version: 0.5 beta
-Build: ${new Date().toISOString().slice(0,10).replace(/-/g,'')}
+    const helpContent = `
+🔧 Aide Portail Guldagil
 
-Raccourcis clavier:
-• Alt+H: Accueil
-• Alt+A: Administration
-• Alt+U: Menu utilisateur
-• Échap: Fermer les menus
+📍 Module actuel: ${moduleInfo}
+🏷️ Version: ${version}
+🕒 Dernière build: ${new Date().toLocaleString('fr-FR')}
 
-Support: contact@guldagil.fr`;
+🎯 Navigation:
+• Utilisez les onglets modules pour naviguer
+• Le fil d'Ariane montre votre position
+• Menu utilisateur en haut à droite
+
+⚙️ Raccourcis clavier:
+• ESC: Fermer menus ouverts
+• Tab: Navigation clavier dans menus
+
+📞 Support:
+• Contact: support@guldagil.com
+• Documentation: /docs/
+    `;
     
-    // Notification moderne ou fallback alert
-    if (window.Notification && Notification.permission === 'granted') {
-        new Notification('Aide Portail Guldagil', {
-            body: `Module ${module} - Raccourcis disponibles`,
-            icon: '/assets/img/favicon.png'
-        });
+    // Utiliser modal si disponible, sinon alert
+    if (typeof showModal === 'function') {
+        showModal('Aide', helpContent);
     } else {
-        alert(helpText);
+        alert(helpContent);
     }
 }
 
 /**
- * Navigation rapide vers module
+ * Fonction de debug pour le développement
  */
-function navigateToModule(moduleKey) {
-    if (moduleKey && typeof moduleKey === 'string') {
-        window.location.href = `/${moduleKey}/`;
+function debugHeader() {
+    if (!window.DEBUG) {
+        console.warn('Mode debug non activé');
+        return;
     }
-}
-
-/**
- * API Header pour modules externes
- */
-window.HeaderAPI = {
-    toggleUserMenu: function(show) {
-        const trigger = document.querySelector('.user-menu-trigger');
-        const menu = document.getElementById('userDropdownMenu');
-        
-        if (trigger && menu) {
-            trigger.setAttribute('aria-expanded', show);
-            menu.setAttribute('aria-hidden', !show);
-            menu.style.display = show ? 'block' : 'none';
+    
+    const debugInfo = {
+        userAuthenticated: document.body.classList.contains('authenticated'),
+        currentModule: document.body.dataset.module,
+        moduleStatus: document.body.dataset.moduleStatus,
+        screenSize: `${window.innerWidth}x${window.innerHeight}`,
+        userAgent: navigator.userAgent,
+        menuStates: {
+            userMenu: document.getElementById('userMenuTrigger')?.getAttribute('aria-expanded'),
+            mobileMenu: document.getElementById('mobileMenuToggle')?.classList.contains('open')
+        },
+        performance: {
+            domContentLoaded: performance.getEntriesByType('navigation')[0]?.domContentLoadedEventEnd,
+            loadComplete: performance.getEntriesByType('navigation')[0]?.loadEventEnd
         }
-    },
+    };
     
-    showNotification: function(message, type = 'info') {
-        console.log(`[${type.toUpperCase()}] ${message}`);
-        
-        // Toast notification simple
-        const toast = document.createElement('div');
-        toast.className = `notification notification-${type}`;
-        toast.textContent = message;
-        toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            background: ${type === 'error' ? '#dc2626' : type === 'warning' ? '#d97706' : '#059669'};
-            color: white;
-            border-radius: 8px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            z-index: 10000;
-            font-size: 14px;
-            font-weight: 500;
-            max-width: 300px;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease;
-        `;
-        
-        document.body.appendChild(toast);
-        
-        // Animation d'entrée
-        setTimeout(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateX(0)';
-        }, 10);
-        
-        // Auto-suppression
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
-        }, 3000);
-    },
-    
-    getCurrentModule: function() {
-        return document.body.dataset.module || 'home';
-    },
-    
-    isUserAuthenticated: function() {
-        return document.body.classList.contains('authenticated');
-    },
-    
-    refreshBreadcrumb: function(breadcrumbs) {
-        const container = document.querySelector('.breadcrumb-container');
-        if (!container || !Array.isArray(breadcrumbs)) return;
-        
-        container.innerHTML = '';
-        
-        breadcrumbs.forEach((item, index) => {
-            if (index > 0) {
-                const separator = document.createElement('span');
-                separator.className = 'breadcrumb-separator';
-                separator.textContent = '›';
-                container.appendChild(separator);
-            }
-            
-            const element = document.createElement(item.url && !item.active ? 'a' : 'span');
-            element.className = `breadcrumb-item${item.active ? ' active' : ''}`;
-            
-            if (item.icon) {
-                const icon = document.createElement('span');
-                icon.className = 'breadcrumb-icon';
-                icon.textContent = item.icon;
-                element.appendChild(icon);
-            }
-            
-            const text = document.createElement('span');
-            text.className = 'breadcrumb-text';
-            text.textContent = item.text;
-            element.appendChild(text);
-            
-            if (item.url && !item.active) {
-                element.href = item.url;
-            }
-            
-            container.appendChild(element);
-        });
-    }
-};
+    console.table(debugInfo);
+    return debugInfo;
+}
 
-// === INITIALISATION FINALE ===
-document.addEventListener('DOMContentLoaded', function() {
-    // Marquer le header comme initialisé
-    document.documentElement.setAttribute('data-header-loaded', 'true');
-    
-    // Log de démarrage
-    console.log('🎯 Header Guldagil v0.5 - Chargé avec succès');
-    
-    // Ajouter classe no-breadcrumb si pas de fil d'ariane
-    if (!document.querySelector('.breadcrumb-nav')) {
-        document.body.classList.add('no-breadcrumb');
-    }
-    
-    // Performance monitoring
-    if (window.performance && window.performance.now) {
-        const loadTime = window.performance.now();
-        console.log(`⚡ Header initialisé en ${Math.round(loadTime)}ms`);
-    }
-});
-
-// === EXPORT POUR MODULES ===
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { HeaderAPI: window.HeaderAPI, showHelp, navigateToModule };
+// Exposition globale en mode debug
+if (window.DEBUG) {
+    window.debugHeader = debugHeader;
+    console.log('🔍 Mode debug header activé - utilisez debugHeader() pour infos détaillées');
 }
