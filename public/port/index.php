@@ -360,24 +360,11 @@ include_once ROOT_PATH . '/templates/header.php';
                 <div id="calcStatus" class="calc-status">⏳ En attente de vos paramètres...</div>
             </div>
             <div id="resultsContent" class="calc-results-content">
-                <div class="calc-welcome">
-                    <div class="calc-welcome-icon">🚛</div>
-                    <h3>Calculateur Intelligent</h3>
-                    <p>Navigation étape par étape pour une comparaison précise des tarifs</p>
-                    <div class="calc-welcome-steps">
-                        <strong>Étapes :</strong><br>
-                        1️⃣ Saisissez le département<br>
-                        2️⃣ Indiquez le poids et le type d'envoi<br>
-                        3️⃣ Configurez les options de livraison<br>
-                        4️⃣ Choisissez ADR : Oui/Non<br>
-                        4️⃣ Lancez le calcul pour comparer les tarifs
-                    </div>
-                </div>
+                <!-- Le tableau de résultats sera injecté ici par JS -->
             </div>
         </section>
     </main>
 </div>
-
 <div class="debug-panel" id="debugPanel">
     <div class="debug-header" onclick="this.parentElement.classList.toggle('expanded')">
         <span>🔧 Debug</span>
@@ -387,7 +374,6 @@ include_once ROOT_PATH . '/templates/header.php';
         <div class="debug-entry">Prêt pour le debug...</div>
     </div>
 </div>
-
 <?php
 include_once ROOT_PATH . '/templates/footer.php';
 ?>

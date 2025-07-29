@@ -103,50 +103,44 @@ if (file_exists($header_path)) {
                         <span class="search-text">Rechercher</span>
                     </button>
                 </div>
-                
                 <!-- Dropdown suggestions -->
                 <div id="search-suggestions" class="suggestions-dropdown"></div>
             </form>
         </div>
-    </section>
 
-    <!-- Résultats de recherche -->
-    <section id="search-results" class="results-section" style="display: none;">
-        <div class="results-header">
-            <h2 id="results-title">Résultats de recherche</h2>
-            <div class="results-actions">
-                <button class="btn-secondary" onclick="exportResults()">📊 Exporter</button>
-                <button class="btn-secondary" onclick="clearResults()">🗑️ Effacer</button>
+        <!-- Tableau de résultats juste sous la barre de recherche -->
+        <div id="search-results" class="results-section" style="margin-top:1.5rem;">
+            <div class="results-header">
+                <h2 id="results-title">Résultats de recherche</h2>
+                <div class="results-actions">
+                    <button class="btn-secondary" onclick="exportResults()">📊 Exporter</button>
+                    <button class="btn-secondary" onclick="clearResults()">🗑️ Effacer</button>
+                </div>
             </div>
-        </div>
-        
-        <!-- Tableau desktop -->
-        <div class="results-table-container desktop-only">
-            <table id="results-table" class="results-table">
-                <thead>
-                    <tr>
-                        <th>Code produit</th>
-                        <th>Nom produit</th>
-                        <th>UN</th>
-                        <th>Classe</th>
-                        <th>Groupe</th>
-                        <th>Env.</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="results-content"></tbody>
-            </table>
-        </div>
-        
-        <!-- Vue mobile avec tuiles -->
-        <div class="results-mobile-container mobile-only" id="search-results-mobile">
-        </div>
-        
-        <!-- Pagination -->
-        <div class="pagination-container" id="pagination-container" style="display: none;">
-            <button id="prev-page" class="pagination-btn">« Précédent</button>
-            <span id="page-info" class="page-info">Page 1 sur 1</span>
-            <button id="next-page" class="pagination-btn">Suivant »</button>
+            <div class="results-table-container">
+                <table id="results-table" class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Code produit</th>
+                            <th>Nom produit</th>
+                            <th>UN</th>
+                            <th>Classe</th>
+                            <th>Groupe</th>
+                            <th>Env.</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-content"></tbody>
+                </table>
+            </div>
+            <!-- Vue mobile avec tuiles (optionnel) -->
+            <div class="results-mobile-container mobile-only" id="search-results-mobile"></div>
+            <!-- Pagination -->
+            <div class="pagination-container" id="pagination-container" style="display: none;">
+                <button id="prev-page" class="pagination-btn">« Précédent</button>
+                <span id="page-info" class="page-info">Page 1 sur 1</span>
+                <button id="next-page" class="pagination-btn">Suivant »</button>
+            </div>
         </div>
     </section>
 
@@ -209,14 +203,20 @@ const itemsPerPage = 20;
 function performSearch(query) {
     const searchInput = document.getElementById('product-search');
     const searchQuery = query || searchInput.value.trim();
-    
+    const resultsSection = document.getElementById('search-results');
+    const resultsTitle = document.getElementById('results-title');
+    const resultsContent = document.getElementById('results-content');
+    const mobileContent = document.getElementById('search-results-mobile');
+
     if (searchQuery.length < 2) {
-        showMessage('Veuillez saisir au moins 2 caractères', 'warning');
+        resultsTitle.textContent = "Aucun résultat";
+        resultsContent.innerHTML = '';
+        mobileContent.innerHTML = '';
         return;
     }
-    
+
     showLoader();
-    
+
     fetch(`${window.ADR_SEARCH_CONFIG.apiEndpoint}?action=search&q=${encodeURIComponent(searchQuery)}`)
         .then(response => response.json())
         .then(data => {
@@ -224,33 +224,37 @@ function performSearch(query) {
             if (data.success && Array.isArray(data.results)) {
                 displayResults(data.results);
             } else {
-                showMessage('Aucun résultat trouvé', 'info');
-                displayResults([]);
+                resultsTitle.textContent = "Aucun résultat";
+                resultsContent.innerHTML = '';
+                mobileContent.innerHTML = '';
             }
         })
         .catch(error => {
             hideLoader();
-            showMessage('Erreur de recherche', 'error');
+            resultsTitle.textContent = "Erreur de recherche";
+            resultsContent.innerHTML = '';
+            mobileContent.innerHTML = '';
             console.error('Erreur:', error);
         });
 }
 
-// Affichage des résultats
+// Affichage des résultats dans le tableau (toujours visible)
 function displayResults(results) {
     const resultsSection = document.getElementById('search-results');
     const resultsContent = document.getElementById('results-content');
     const mobileContent = document.getElementById('search-results-mobile');
     const resultsTitle = document.getElementById('results-title');
-    
-    if (results.length === 0) {
-        resultsSection.style.display = 'none';
+
+    resultsSection.style.display = 'block';
+
+    if (!results || results.length === 0) {
+        resultsTitle.textContent = "Aucun résultat";
+        resultsContent.innerHTML = '<tr><td colspan="7" style="text-align:center;">Aucun résultat trouvé</td></tr>';
+        mobileContent.innerHTML = '';
         return;
     }
-    
+
     resultsTitle.textContent = `${results.length} résultat(s) trouvé(s)`;
-    resultsSection.style.display = 'block';
-    
-    // Tableau desktop
     resultsContent.innerHTML = results.map(row => `
         <tr class="result-row">
             <td><strong>${row.code_produit || '-'}</strong></td>
@@ -266,8 +270,8 @@ function displayResults(results) {
             </td>
         </tr>
     `).join('');
-    
-    // Vue mobile avec tuiles
+
+    // Vue mobile (optionnel)
     mobileContent.innerHTML = results.map(row => `
         <div class="result-tile">
             <div class="tile-header">
@@ -294,16 +298,16 @@ function setupSuggestions() {
     const searchInput = document.getElementById('product-search');
     const suggestionsContainer = document.getElementById('search-suggestions');
     let suggestionsTimeout;
-    
+
     searchInput.addEventListener('input', function() {
         clearTimeout(suggestionsTimeout);
         const query = this.value.trim();
-        
+
         if (query.length < 2) {
             suggestionsContainer.style.display = 'none';
             return;
         }
-        
+
         suggestionsTimeout = setTimeout(() => {
             fetch(`${window.ADR_SEARCH_CONFIG.apiEndpoint}?action=suggestions&q=${encodeURIComponent(query)}&limit=8`)
                 .then(response => response.json())
@@ -319,7 +323,7 @@ function setupSuggestions() {
                 });
         }, 300);
     });
-    
+
     // Cacher suggestions au clic extérieur
     document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
@@ -331,7 +335,7 @@ function setupSuggestions() {
 function displaySuggestions(suggestions) {
     const container = document.getElementById('search-suggestions');
     container.innerHTML = suggestions.map(item => `
-        <div class="suggestion-item" onclick="selectSuggestion('${item.code_produit}')">
+        <div class="suggestion-item" tabindex="0" onclick="selectSuggestion('${item.code_produit}')">
             <div class="suggestion-code">${item.code_produit}</div>
             <div class="suggestion-name">${item.nom_produit || item.nom_technique || ''}</div>
             ${item.numero_un ? `<div class="suggestion-un">UN${item.numero_un}</div>` : ''}
