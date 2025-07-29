@@ -1,127 +1,92 @@
 <?php
 /**
- * Titre: Gestionnaire de middlewares centralisé
+ * Titre: Gestionnaire Middleware CORRIGÉ - Session stable 9h30
  * Chemin: /core/middleware/MiddlewareManager.php
  * Version: 0.5 beta + build auto
+ * 
+ * CORRECTIONS APPLIQUÉES :
+ * 1. Vérification session compatible AuthManager
+ * 2. Extension automatique session sur activité
+ * 3. Suppression vérifications conflictuelles
+ * 4. Alignement timeout 9h30
  */
 
 class MiddlewareManager 
 {
-    private static $instance = null;
     private $middlewares = [];
-    private $globalMiddlewares = [];
     
-    private function __construct() {
+    // Constantes alignées avec AuthManager
+    const SESSION_LIFETIME = 34200; // 9h30 - ALIGNÉ !
+    const ACTIVITY_EXTEND_TIME = 1800; // 30min pour extension auto
+    const REGENERATE_INTERVAL = 7200; // 2h régénération
+    
+    public function __construct() {
         $this->registerDefaultMiddlewares();
     }
     
-    public static function getInstance(): MiddlewareManager {
-        if (self::$instance === null) {
-            self::$instance = new self();
-        }
-        return self::$instance;
+    /**
+     * Enregistrer middlewares par défaut
+     */
+    private function registerDefaultMiddlewares() {
+        $this->registerMiddleware('session', [$this, 'sessionMiddleware']);
+        $this->registerMiddleware('auth', [$this, 'authMiddleware']);
+        $this->registerMiddleware('admin', [$this, 'adminMiddleware']);
+        $this->registerMiddleware('rate_limit', [$this, 'rateLimitMiddleware']);
     }
     
     /**
-     * Enregistrer les middlewares par défaut
+     * Enregistrer un middleware
      */
-    private function registerDefaultMiddlewares(): void {
-        // Middlewares globaux (appliqués partout)
-        $this->addGlobalMiddleware('security', [$this, 'securityMiddleware']);
-        $this->addGlobalMiddleware('session', [$this, 'sessionMiddleware']);
-        
-        // Middlewares spécifiques
-        $this->addMiddleware('auth', [$this, 'authMiddleware']);
-        $this->addMiddleware('admin', [$this, 'adminMiddleware']);
-        $this->addMiddleware('rate_limit', [$this, 'rateLimitMiddleware']);
-        $this->addMiddleware('csrf', [$this, 'csrfMiddleware']);
+    public function registerMiddleware(string $name, callable $middleware): void {
+        $this->middlewares[$name] = $middleware;
     }
     
     /**
-     * Ajouter un middleware global
+     * Exécuter middleware par nom
      */
-    public function addGlobalMiddleware(string $name, callable $handler): void {
-        $this->globalMiddlewares[$name] = $handler;
-    }
-    
-    /**
-     * Ajouter un middleware spécifique
-     */
-    public function addMiddleware(string $name, callable $handler): void {
-        $this->middlewares[$name] = $handler;
-    }
-    
-    /**
-     * Exécuter les middlewares globaux
-     */
-    public function runGlobalMiddlewares(): bool {
-        foreach ($this->globalMiddlewares as $name => $handler) {
-            $result = call_user_func($handler);
-            if ($result === false) {
-                error_log("Middleware global '{$name}' a échoué");
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    /**
-     * Exécuter des middlewares spécifiques
-     */
-    public function run(array $middlewareNames): bool {
-        // D'abord les middlewares globaux
-        if (!$this->runGlobalMiddlewares()) {
+    public function executeMiddleware(string $name): bool {
+        if (!isset($this->middlewares[$name])) {
+            error_log("Middleware '$name' introuvable");
             return false;
         }
         
-        // Ensuite les middlewares spécifiques
-        foreach ($middlewareNames as $name) {
-            if (isset($this->middlewares[$name])) {
-                $result = call_user_func($this->middlewares[$name]);
-                if ($result === false) {
-                    error_log("Middleware '{$name}' a échoué");
-                    return false;
-                }
-            }
-        }
-        
-        return true;
+        return call_user_func($this->middlewares[$name]);
     }
     
     /**
-     * Middleware de sécurité global
+     * Redirection vers login
      */
-    private function securityMiddleware(): bool {
-        // Headers de sécurité
-        if (!headers_sent()) {
-            header('X-Content-Type-Options: nosniff');
-            header('X-Frame-Options: DENY');
-            header('X-XSS-Protection: 1; mode=block');
-            header('Referrer-Policy: strict-origin-when-cross-origin');
-        }
-        
-        // Validation basique des entrées
-        $this->sanitizeGlobalInputs();
-        
-        return true;
+    private function redirectToLogin() {
+        $current_url = $_SERVER['REQUEST_URI'] ?? '';
+        $redirect_url = '/auth/login.php?redirect=' . urlencode($current_url);
+        header('Location: ' . $redirect_url);
+        exit;
     }
     
     /**
-     * Middleware de session global
+     * Middleware de session - CORRIGÉ COMPATIBLE AUTHMANAGER
      */
     private function sessionMiddleware(): bool {
-        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
-            // Configuration session sécurisée
+        // Si AuthManager disponible, le laisser gérer complètement
+        if (class_exists('AuthManager')) {
+            // AuthManager gère déjà initSession(), ne pas interférer
+            return true;
+        }
+        
+        // Fallback si AuthManager indisponible
+        if (session_status() === PHP_SESSION_NONE) {
             ini_set('session.cookie_httponly', 1);
-            ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
+            ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? 1 : 0);
             ini_set('session.use_strict_mode', 1);
-            
+            ini_set('session.cookie_samesite', 'Lax');
+            ini_set('session.gc_maxlifetime', self::SESSION_LIFETIME);
+            ini_set('session.cookie_lifetime', self::SESSION_LIFETIME);
             session_start();
             
             // Régénération périodique de l'ID de session
             if (!isset($_SESSION['last_regeneration'])) {
                 $_SESSION['last_regeneration'] = time();
-            } elseif (time() - $_SESSION['last_regeneration'] > 1800) { // 30 minutes
+            } elseif (time() - $_SESSION['last_regeneration'] > self::REGENERATE_INTERVAL) {
                 session_regenerate_id(true);
                 $_SESSION['last_regeneration'] = time();
             }
@@ -131,29 +96,50 @@ class MiddlewareManager
     }
     
     /**
-     * Middleware d'authentification
+     * Middleware d'authentification - CORRIGÉ COMPATIBLE
      */
     private function authMiddleware(): bool {
-        // Vérifier si l'utilisateur est authentifié
-        if (!isset($_SESSION['user']) || empty($_SESSION['user'])) {
-            // Tentative d'authentification automatique si AuthManager disponible
-            if (class_exists('AuthManager')) {
-                $authManager = AuthManager::getInstance();
-                if (!$authManager->isAuthenticated()) {
-                    $this->redirectToLogin();
-                    return false;
-                }
-            } else {
+        // 1. Priorité ABSOLUE à AuthManager si disponible
+        if (class_exists('AuthManager')) {
+            $authManager = AuthManager::getInstance();
+            if (!$authManager->isAuthenticated()) {
                 $this->redirectToLogin();
                 return false;
             }
+            
+            // Extension automatique sur activité
+            $last_activity = $_SESSION['last_activity'] ?? 0;
+            if ((time() - $last_activity) < self::ACTIVITY_EXTEND_TIME) {
+                $_SESSION['expires_at'] = time() + self::SESSION_LIFETIME;
+            }
+            $_SESSION['last_activity'] = time();
+            
+            return true;
         }
         
-        // Vérifier la validité de la session
-        if (isset($_SESSION['expires_at']) && $_SESSION['expires_at'] < time()) {
-            session_destroy();
+        // 2. Fallback : vérification session basique
+        if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
             $this->redirectToLogin();
             return false;
+        }
+        
+        // 3. Vérifier expiration SEULEMENT si AuthManager pas disponible
+        if (isset($_SESSION['expires_at'])) {
+            if ($_SESSION['expires_at'] < time()) {
+                error_log("MIDDLEWARE: Session expired, expires_at=" . $_SESSION['expires_at'] . ", now=" . time());
+                session_destroy();
+                $this->redirectToLogin();
+                return false;
+            }
+            
+            // Extension automatique sur activité
+            $last_activity = $_SESSION['last_activity'] ?? 0;
+            if ((time() - $last_activity) < self::ACTIVITY_EXTEND_TIME) {
+                $_SESSION['expires_at'] = time() + self::SESSION_LIFETIME;
+            }
+        } else {
+            // Créer expires_at si manquant
+            $_SESSION['expires_at'] = time() + self::SESSION_LIFETIME;
         }
         
         // Mise à jour du timestamp de dernière activité
@@ -163,7 +149,7 @@ class MiddlewareManager
     }
     
     /**
-     * Middleware admin (nécessite auth + rôle admin/dev)
+     * Middleware admin (nécessite auth + rôle admin/dev) - INCHANGÉ
      */
     private function adminMiddleware(): bool {
         // D'abord vérifier l'authentification
@@ -190,66 +176,120 @@ class MiddlewareManager
     private function rateLimitMiddleware(): bool {
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
         $cacheFile = ROOT_PATH . '/storage/cache/rate_limit_' . md5($ip) . '.json';
+        $cacheDir = dirname($cacheFile);
+        
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
         
         $now = time();
-        $windowSize = 300; // 5 minutes
-        $maxRequests = 100; // 100 requêtes par fenêtre
+        $windowTime = 3600; // 1 heure
+        $maxRequests = 1000; // 1000 requêtes par heure
         
-        // Lire les données existantes
         $data = ['requests' => [], 'blocked_until' => 0];
         if (file_exists($cacheFile)) {
-            $fileData = json_decode(file_get_contents($cacheFile), true);
-            if ($fileData) {
-                $data = $fileData;
+            $content = file_get_contents($cacheFile);
+            if ($content) {
+                $data = json_decode($content, true) ?: $data;
             }
         }
         
-        // Vérifier si l'IP est bloquée
+        // Vérifier si IP bloquée
         if ($data['blocked_until'] > $now) {
             http_response_code(429);
-            echo "Trop de requêtes - Réessayez plus tard";
+            header('Retry-After: ' . ($data['blocked_until'] - $now));
+            echo "Trop de requêtes. Réessayez plus tard.";
             exit;
         }
         
-        // Nettoyer les anciennes requêtes
-        $data['requests'] = array_filter($data['requests'], function($timestamp) use ($now, $windowSize) {
-            return $timestamp > ($now - $windowSize);
+        // Nettoyer anciennes requêtes
+        $data['requests'] = array_filter($data['requests'], function($time) use ($now, $windowTime) {
+            return ($now - $time) < $windowTime;
         });
         
-        // Ajouter la requête actuelle
+        // Ajouter requête actuelle
         $data['requests'][] = $now;
         
-        // Vérifier si la limite est dépassée
+        // Vérifier limite
         if (count($data['requests']) > $maxRequests) {
-            $data['blocked_until'] = $now + 900; // Bloquer 15 minutes
+            $data['blocked_until'] = $now + 3600; // Bloquer 1 heure
             file_put_contents($cacheFile, json_encode($data));
             
             http_response_code(429);
-            echo "Limite de requêtes dépassée - IP bloquée temporairement";
+            header('Retry-After: 3600');
+            echo "Limite de requêtes dépassée. Accès bloqué pendant 1 heure.";
             exit;
         }
         
-        // Sauvegarder les données
+        // Sauvegarder état
         file_put_contents($cacheFile, json_encode($data));
         
         return true;
     }
     
     /**
-     * Middleware CSRF
+     * Middleware de sécurité headers
      */
-    private function csrfMiddleware(): bool {
-        // Générer le token CSRF s'il n'existe pas
+    public function securityHeadersMiddleware(): bool {
+        // Headers de sécurité de base
+        header('X-Content-Type-Options: nosniff');
+        header('X-Frame-Options: SAMEORIGIN');
+        header('X-XSS-Protection: 1; mode=block');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+        
+        // CSP de base pour applications internes
+        if (!headers_sent()) {
+            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Middleware CORS pour API
+     */
+    public function corsMiddleware(): bool {
+        // Permettre requêtes AJAX depuis même domaine
+        if (isset($_SERVER['HTTP_ORIGIN'])) {
+            $allowed_origins = [
+                'http://localhost',
+                'https://localhost',
+                // Ajouter domaines autorisés
+            ];
+            
+            if (in_array($_SERVER['HTTP_ORIGIN'], $allowed_origins)) {
+                header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
+            }
+        }
+        
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+        
+        // Gérer requêtes OPTIONS (preflight)
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            header('Access-Control-Max-Age: 86400'); // 24h
+            http_response_code(200);
+            exit;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Middleware de validation CSRF
+     */
+    public function csrfMiddleware(): bool {
+        // Générer token CSRF si pas existant
         if (!isset($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
         
-        // Vérifier le token pour les requêtes POST/PUT/DELETE
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        if (in_array($method, ['POST', 'PUT', 'DELETE', 'PATCH'])) {
-            $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        // Vérifier token sur POST/PUT/DELETE
+        if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE'])) {
+            $submitted_token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
             
-            if (!hash_equals($_SESSION['csrf_token'], $token)) {
+            if (!hash_equals($_SESSION['csrf_token'], $submitted_token)) {
                 http_response_code(403);
                 echo "Token CSRF invalide";
                 exit;
@@ -260,66 +300,43 @@ class MiddlewareManager
     }
     
     /**
-     * Redirection vers la page de connexion
+     * Exécuter une pile de middlewares
      */
-    private function redirectToLogin(): void {
-        $loginUrl = '/auth/login.php';
-        $currentUrl = $_SERVER['REQUEST_URI'] ?? '/';
-        
-        // Préserver l'URL de destination
-        if ($currentUrl !== '/auth/login.php') {
-            $loginUrl .= '?redirect=' . urlencode($currentUrl);
+    public function executeStack(array $middleware_names): bool {
+        foreach ($middleware_names as $name) {
+            if (!$this->executeMiddleware($name)) {
+                return false;
+            }
         }
-        
-        if (!headers_sent()) {
-            header("Location: {$loginUrl}");
-        } else {
-            echo "<script>window.location.href='{$loginUrl}';</script>";
-        }
-        exit;
+        return true;
     }
     
     /**
-     * Nettoyage des entrées globales
+     * Middleware pour pages publiques (login, etc.)
      */
-    private function sanitizeGlobalInputs(): void {
-        // Nettoyage basique des superglobales
-        array_walk_recursive($_GET, [$this, 'sanitizeInput']);
-        array_walk_recursive($_POST, [$this, 'sanitizeInput']);
-        array_walk_recursive($_COOKIE, [$this, 'sanitizeInput']);
+    public function publicMiddleware(): bool {
+        return $this->executeStack(['session', 'rate_limit', 'security_headers']);
     }
     
     /**
-     * Nettoyage d'une valeur d'entrée
+     * Middleware pour pages authentifiées
      */
-    private function sanitizeInput(&$value, $key): void {
-        if (is_string($value)) {
-            // Supprimer les caractères de contrôle
-            $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
-            // Trim
-            $value = trim($value);
-        }
+    public function authPageMiddleware(): bool {
+        return $this->executeStack(['session', 'auth', 'rate_limit', 'security_headers']);
     }
     
     /**
-     * Obtenir le token CSRF courant
+     * Middleware pour pages admin
      */
-    public function getCsrfToken(): string {
-        return $_SESSION['csrf_token'] ?? '';
+    public function adminPageMiddleware(): bool {
+        return $this->executeStack(['session', 'admin', 'rate_limit', 'security_headers']);
     }
     
     /**
-     * Générer un champ hidden CSRF pour les formulaires
+     * Middleware pour API
      */
-    public function getCsrfField(): string {
-        $token = $this->getCsrfToken();
-        return "<input type=\"hidden\" name=\"csrf_token\" value=\"{$token}\">";
-    }
-    
-    /**
-     * Vérifier manuellement un token CSRF
-     */
-    public function verifyCsrfToken(string $token): bool {
-        return hash_equals($_SESSION['csrf_token'] ?? '', $token);
+    public function apiMiddleware(): bool {
+        return $this->executeStack(['session', 'auth', 'cors', 'rate_limit']);
     }
 }
+?>

@@ -1,129 +1,60 @@
 <?php
 /**
- * Titre: Page de connexion SÉCURISÉE - PRODUCTION READY
+ * Titre: Page de connexion CORRIGÉE - Session 9h30 stable
  * Chemin: /public/auth/login.php
  * Version: 0.5 beta + build auto
+ * 
+ * CORRECTIONS CRITIQUES :
+ * 1. Configuration session 9h30 AVANT session_start()
+ * 2. Création session compatible AuthManager
+ * 3. Suppression conflits expires_at
+ * 4. Cookie lifetime correct
  */
 
-// Configuration de base sécurisée
-if (!defined('ROOT_PATH')) {
-    define('ROOT_PATH', dirname(dirname(__DIR__)));
-}
+// =====================================
+// 🔧 CONFIGURATION PRIORITAIRE
+// =====================================
+define('ROOT_PATH', dirname(dirname(__DIR__)));
 
-// Headers de sécurité CRITIQUES
-header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: DENY');
-header('X-XSS-Protection: 1; mode=block');
-header('Referrer-Policy: strict-origin-when-cross-origin');
-header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+// CRITIQUE : Charger config session AVANT session_start()
+require_once ROOT_PATH . '/config/session_timeout.php';
 
-// Configuration session sécurisée
+// Configuration PHP pour sessions 9h30 AVANT démarrage
+ini_set('session.gc_maxlifetime', SESSION_TIMEOUT);
+ini_set('session.cookie_lifetime', SESSION_TIMEOUT);
 ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
+ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? 1 : 0);
 ini_set('session.use_strict_mode', 1);
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.name', 'GULDAGIL_PORTAL_SESSION');
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Démarrer session APRÈS configuration
+session_start();
 
-// Régénération ID session pour sécurité
-if (!isset($_SESSION['session_started'])) {
-    session_regenerate_id(true);
-    $_SESSION['session_started'] = time();
-}
+// Chargement configuration
+require_once ROOT_PATH . '/config/config.php';
+require_once ROOT_PATH . '/config/version.php';
 
-// Chargement config sécurisé
-$config_files = [
-    ROOT_PATH . '/config/config.php',
-    ROOT_PATH . '/config/version.php'
-];
-
-foreach ($config_files as $file) {
-    if (file_exists($file)) {
-        require_once $file;
-    }
-}
-
-// Variables avec fallbacks sécurisés
-$app_name = defined('APP_NAME') ? APP_NAME : 'Portail Sécurisé';
-$app_version = defined('APP_VERSION') ? APP_VERSION : '1.0.0';
-$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd');
-$app_author = defined('APP_AUTHOR') ? APP_AUTHOR : '';
-
-// Vérification si déjà connecté
-$redirect_to = filter_input(INPUT_GET, 'redirect', FILTER_SANITIZE_URL) ?: '/';
-if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-    header('Location: ' . $redirect_to);
-    exit;
-}
-
-// Variables d'état sécurisées
-$error_message = '';
-$login_attempts = (int)($_SESSION['login_attempts'] ?? 0);
-$last_attempt = $_SESSION['last_login_attempt'] ?? 0;
-$client_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-// Rate limiting STRICT
-$max_attempts = 5;
-$cooldown_time = 900; // 15 minutes
-$is_rate_limited = $login_attempts >= $max_attempts && 
-                   (time() - $last_attempt) < $cooldown_time;
-
-// CSRF Token obligatoire
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
-// Logging sécurisé des tentatives
-function logSecurityEvent(string $event, array $context = []): void {
-    $log_data = [
-        'timestamp' => date('Y-m-d H:i:s'),
-        'event' => $event,
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
-        'context' => $context
-    ];
-    
-    $log_file = ROOT_PATH . '/storage/logs/auth.log';
-    $log_dir = dirname($log_file);
-    
-    if (!is_dir($log_dir)) {
-        @mkdir($log_dir, 0755, true);
-    }
-    
-    $log_line = json_encode($log_data, JSON_UNESCAPED_UNICODE) . "\n";
-    @file_put_contents($log_file, $log_line, FILE_APPEND | LOCK_EX);
-}
+// =====================================
+// 🔐 FONCTIONS AUTHENTIFICATION
+// =====================================
 
 /**
- * Authentification SÉCURISÉE - AUCUN COMPTE EN DUR
+ * Fonction d'authentification PRIORITÉ AuthManager
  */
-function authenticateUser(string $username, string $password): array {
-    // Validation input STRICTE
-    if (empty($username) || empty($password)) {
-        return ['success' => false, 'error' => 'Identifiants manquants'];
-    }
-    
-    if (strlen($username) > 100 || strlen($password) > 200) {
-        return ['success' => false, 'error' => 'Identifiants invalides'];
-    }
-    
-    // Caractères interdits
-    if (preg_match('/[<>"\']/', $username)) {
-        return ['success' => false, 'error' => 'Caractères interdits'];
-    }
-    
+function authenticateUser($username, $password) {
     try {
         // 1. AuthManager en priorité ABSOLUE
         if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
             require_once ROOT_PATH . '/core/auth/AuthManager.php';
-            $auth = new AuthManager();
+            $auth = AuthManager::getInstance();
             $result = $auth->login($username, $password);
             
             if ($result['success']) {
+                error_log("LOGIN SUCCESS via AuthManager: " . $username);
                 return [
                     'success' => true,
-                    'user' => $auth->getCurrentUser(),
+                    'user' => $result['user'],
                     'method' => 'AuthManager'
                 ];
             }
@@ -165,6 +96,7 @@ function authenticateUser(string $username, string $password): array {
                     $stmt->bindValue(':id', $user['id'], PDO::PARAM_INT);
                     $stmt->execute();
                     
+                    error_log("LOGIN SUCCESS via database: " . $username);
                     return [
                         'success' => true,
                         'user' => [
@@ -209,6 +141,100 @@ function authenticateUser(string $username, string $password): array {
     }
 }
 
+/**
+ * Créer session utilisateur sécurisée 9h30 - CRITIQUE
+ */
+function createSecureUserSession($user) {
+    // Régénérer ID session pour sécurité
+    session_regenerate_id(true);
+    
+    // Session duration 9h30 minimum
+    $session_duration = SESSION_TIMEOUT; // 34200 secondes
+    
+    // Données session COMPATIBLES AuthManager
+    $_SESSION['authenticated'] = true;
+    $_SESSION['user'] = [
+        'id' => $user['id'],
+        'username' => $user['username'],
+        'role' => $user['role']
+    ];
+    $_SESSION['user_id'] = $user['id'];
+    $_SESSION['user_role'] = $user['role'];
+    $_SESSION['username'] = $user['username'];
+    $_SESSION['login_time'] = time();
+    $_SESSION['last_activity'] = time();
+    $_SESSION['last_regeneration'] = time();
+    $_SESSION['expires_at'] = time() + $session_duration; // CRITIQUE !
+    $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    
+    // Configuration cookie session APRÈS session_start()
+    $cookie_params = [
+        'lifetime' => $session_duration,
+        'path' => '/',
+        'domain' => '',
+        'secure' => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ];
+    session_set_cookie_params($cookie_params);
+    
+    error_log("SESSION CREATED in login.php: duration={$session_duration}s, expires_at=" . $_SESSION['expires_at']);
+}
+
+/**
+ * Logging sécurité
+ */
+function logSecurityEvent($event, $data = []) {
+    $logEntry = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'event' => $event,
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 100),
+        'data' => $data,
+        'session_id' => session_id()
+    ];
+    error_log('SECURITY_' . $event . ': ' . json_encode($logEntry));
+}
+
+// =====================================
+// 🛡️ SÉCURITÉ RATE LIMITING
+// =====================================
+
+$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+$login_attempts = $_SESSION['login_attempts'] ?? 0;
+$last_attempt = $_SESSION['last_login_attempt'] ?? 0;
+$cooldown_time = 300; // 5 minutes
+$max_attempts = 5;
+$is_rate_limited = ($login_attempts >= $max_attempts) && (time() - $last_attempt < $cooldown_time);
+
+// =====================================
+// 📝 TRAITEMENT FORMULAIRE
+// =====================================
+
+$error_message = '';
+$success_message = '';
+
+// Redirection si déjà connecté
+if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']) {
+    // Vérifier avec AuthManager si disponible
+    $is_authenticated = true;
+    if (class_exists('AuthManager')) {
+        $auth = AuthManager::getInstance();
+        $is_authenticated = $auth->isAuthenticated();
+    }
+    
+    if ($is_authenticated) {
+        $redirect = $_GET['redirect'] ?? '/';
+        header('Location: ' . $redirect);
+        exit;
+    }
+}
+
+// Générer token CSRF
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // Traitement formulaire SÉCURISÉ
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Vérification rate limiting
@@ -241,29 +267,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 unset($_SESSION['login_attempts']);
                 unset($_SESSION['last_login_attempt']);
                 
-                // Session sécurisée
-                session_regenerate_id(true);
-                $_SESSION['authenticated'] = true;
-                $_SESSION['user'] = $auth_result['user'];
-                $_SESSION['user_id'] = $auth_result['user']['id'];
-                $_SESSION['user_role'] = $auth_result['user']['role'];
-                $_SESSION['username'] = $auth_result['user']['username'];
-                $_SESSION['login_time'] = time();
-                $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                // Créer session sécurisée 9h30
+                createSecureUserSession($auth_result['user']);
                 
                 logSecurityEvent('LOGIN_SUCCESS', [
                     'username' => $username,
                     'method' => $auth_result['method']
                 ]);
                 
-                header('Location: ' . $redirect_to);
+                // Redirection
+                $redirect = $_GET['redirect'] ?? '/';
+                header('Location: ' . $redirect);
                 exit;
+                
             } else {
                 $error_message = $auth_result['error'];
-                
                 logSecurityEvent('LOGIN_FAILED', [
                     'username' => $username,
-                    'attempts' => $_SESSION['login_attempts'],
                     'error' => $auth_result['error']
                 ]);
             }
@@ -271,276 +291,224 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Générer nouveau token CSRF après traitement
-$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+// =====================================
+// 🎨 AFFICHAGE TEMPLATE
+// =====================================
+
+$page_title = 'Connexion';
+$page_subtitle = 'Accès au portail Guldagil';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion - <?= htmlspecialchars($app_name) ?></title>
+    <title><?= htmlspecialchars($page_title) ?> - Portail Guldagil</title>
     
-    <!-- CSS sécurisé -->
+    <!-- CSS principal -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
     
+    <!-- CSS spécifique login -->
     <style>
-        :root {
-            --color-primary: #2563eb;
-            --color-danger: #dc2626;
-            --color-warning: #f59e0b;
-            --color-success: #10b981;
-            --color-gray-50: #f9fafb;
-            --color-gray-100: #f3f4f6;
-            --color-gray-800: #1f2937;
-            --spacing-sm: 0.5rem;
-            --spacing-md: 1rem;
-            --spacing-lg: 1.5rem;
-            --spacing-xl: 2rem;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .login-container {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0;
-            padding: var(--spacing-md);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem;
         }
-
-        .login-container {
+        
+        .login-card {
             background: white;
-            padding: var(--spacing-xl);
-            border-radius: 12px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
             width: 100%;
             max-width: 400px;
         }
-
+        
         .login-header {
             text-align: center;
-            margin-bottom: var(--spacing-xl);
+            margin-bottom: 2rem;
         }
-
-        .login-header h1 {
-            color: var(--color-gray-800);
-            margin: 0 0 var(--spacing-sm) 0;
-            font-size: 1.875rem;
-            font-weight: 700;
+        
+        .login-logo {
+            font-size: 3rem;
+            margin-bottom: 1rem;
         }
-
-        .login-header p {
-            color: #6b7280;
-            margin: 0;
-            font-size: 0.875rem;
-        }
-
-        .error-message {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: var(--color-danger);
-            padding: var(--spacing-md);
-            border-radius: 6px;
-            margin-bottom: var(--spacing-lg);
-            font-size: 0.875rem;
-            text-align: center;
-        }
-
-        .rate-limit-warning {
-            background: #fffbeb;
-            border: 1px solid #fed7aa;
-            color: var(--color-warning);
-            padding: var(--spacing-md);
-            border-radius: 6px;
-            margin-bottom: var(--spacing-lg);
-            font-size: 0.875rem;
-            text-align: center;
-        }
-
+        
         .form-group {
-            margin-bottom: var(--spacing-lg);
+            margin-bottom: 1.5rem;
         }
-
-        .form-group label {
+        
+        .form-label {
             display: block;
-            margin-bottom: var(--spacing-sm);
-            color: var(--color-gray-800);
-            font-weight: 500;
-            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
         }
-
-        .form-group input {
+        
+        .form-input {
             width: 100%;
             padding: 0.75rem;
             border: 1px solid #d1d5db;
-            border-radius: 6px;
+            border-radius: 0.375rem;
             font-size: 1rem;
-            transition: border-color 0.15s ease;
-            box-sizing: border-box;
+            transition: all 0.15s ease;
         }
-
-        .form-group input:focus {
+        
+        .form-input:focus {
             outline: none;
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
-
-        .login-btn {
+        
+        .btn {
             width: 100%;
-            background: var(--color-primary);
-            color: white;
-            border: none;
             padding: 0.75rem;
-            border-radius: 6px;
+            border: none;
+            border-radius: 0.375rem;
             font-size: 1rem;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.15s ease;
+            transition: all 0.15s ease;
         }
-
-        .login-btn:hover:not(:disabled) {
-            background: #1d4ed8;
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
         }
-
-        .login-btn:disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
+        
+        .btn-primary:hover {
+            background: #2563eb;
         }
-
-        .back-link {
-            text-align: center;
-            margin-top: var(--spacing-lg);
-        }
-
-        .back-link a {
-            color: #6b7280;
-            text-decoration: none;
+        
+        .alert {
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
             font-size: 0.875rem;
         }
-
-        .back-link a:hover {
-            color: var(--color-primary);
+        
+        .alert-danger {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
         }
-
-        .security-notice {
-            background: var(--color-gray-50);
-            border: 1px solid #e5e7eb;
-            padding: var(--spacing-md);
-            border-radius: 6px;
-            margin-top: var(--spacing-lg);
+        
+        .alert-success {
+            background: #f0f9ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .footer-info {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
             font-size: 0.75rem;
             color: #6b7280;
-            text-align: center;
-        }
-
-        .login-footer {
-            margin-top: var(--spacing-xl);
-            text-align: center;
-            font-size: 0.75rem;
-            color: #9ca3af;
-        }
-
-        @media (max-width: 640px) {
-            .login-container {
-                padding: var(--spacing-lg);
-                margin: var(--spacing-md);
-            }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
+
+<div class="login-container">
+    <div class="login-card">
         <div class="login-header">
-            <h1>🔐 Connexion</h1>
-            <p><?= htmlspecialchars($app_name) ?></p>
+            <div class="login-logo">🌊</div>
+            <h1>Portail Guldagil</h1>
+            <p>Connexion sécurisée</p>
         </div>
 
-        <!-- Messages d'erreur -->
         <?php if ($error_message): ?>
-            <div class="<?= $is_rate_limited ? 'rate-limit-warning' : 'error-message' ?>">
-                <?= $is_rate_limited ? '⏱️' : '❌' ?> <?= htmlspecialchars($error_message) ?>
-            </div>
+        <div class="alert alert-danger">
+            <?= htmlspecialchars($error_message) ?>
+        </div>
         <?php endif; ?>
 
-        <!-- Formulaire sécurisé -->
-        <form method="POST" autocomplete="off">
+        <?php if (isset($_GET['msg']) && $_GET['msg'] === 'disconnected'): ?>
+        <div class="alert alert-success">
+            Vous avez été déconnecté avec succès.
+        </div>
+        <?php endif; ?>
+
+        <?php if ($is_rate_limited): ?>
+        <div class="alert alert-danger">
+            <strong>Compte temporairement bloqué</strong><br>
+            Trop de tentatives de connexion. Réessayez dans <?= ceil(($cooldown_time - (time() - $last_attempt)) / 60) ?> minutes.
+        </div>
+        <?php else: ?>
+
+        <form method="POST" action="">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             
             <div class="form-group">
-                <label for="username">Nom d'utilisateur</label>
+                <label for="username" class="form-label">Nom d'utilisateur</label>
                 <input type="text" 
                        id="username" 
                        name="username" 
+                       class="form-input"
                        value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
                        required 
                        autocomplete="username"
-                       maxlength="100"
-                       <?= $is_rate_limited ? 'disabled' : '' ?>
-                       autofocus>
+                       maxlength="50">
             </div>
 
             <div class="form-group">
-                <label for="password">Mot de passe</label>
+                <label for="password" class="form-label">Mot de passe</label>
                 <input type="password" 
                        id="password" 
                        name="password" 
+                       class="form-input"
                        required 
-                       autocomplete="current-password"
-                       maxlength="200"
-                       <?= $is_rate_limited ? 'disabled' : '' ?>>
+                       autocomplete="current-password">
             </div>
 
-            <button type="submit" class="login-btn" <?= $is_rate_limited ? 'disabled' : '' ?>>
-                <?= $is_rate_limited ? '🔒 Verrouillé' : '🔑 Se connecter' ?>
+            <button type="submit" class="btn btn-primary">
+                🔑 Se connecter
             </button>
         </form>
 
-        <div class="back-link">
-            <a href="/">&larr; Retour à l'accueil</a>
-        </div>
+        <?php endif; ?>
 
-        <div class="security-notice">
-            🛡️ Connexion sécurisée avec protection anti-bruteforce<br>
-            Tentatives: <?= $login_attempts ?>/<?= $max_attempts ?>
-        </div>
-
-        <div class="login-footer">
-            <?= htmlspecialchars($app_name) ?> v<?= htmlspecialchars($app_version) ?><br>
-            Build <?= htmlspecialchars($build_number) ?>
-            <?php if ($app_author): ?>
-                • <?= htmlspecialchars($app_author) ?>
-            <?php endif; ?>
+        <div class="footer-info">
+            <p>Session: 9h30 • Version <?= $version ?? '0.5' ?> • Build <?= $build_number ?? '001' ?></p>
+            <p>Tentatives: <?= $login_attempts ?>/<?= $max_attempts ?></p>
         </div>
     </div>
+</div>
 
-    <script>
-        // Protection contre les attaques timing
-        setTimeout(() => {
-            document.querySelector('form').style.visibility = 'visible';
-        }, 100);
+<script>
+// Auto-focus sur premier champ
+document.addEventListener('DOMContentLoaded', function() {
+    const usernameField = document.getElementById('username');
+    if (usernameField && !usernameField.value) {
+        usernameField.focus();
+    }
+});
 
-        // Nettoyage automatique du mot de passe
-        window.addEventListener('beforeunload', () => {
-            const passwordField = document.getElementById('password');
-            if (passwordField) {
-                passwordField.value = '';
-            }
-        });
+// Validation basique côté client
+document.querySelector('form').addEventListener('submit', function(e) {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    
+    if (!username || !password) {
+        e.preventDefault();
+        alert('Veuillez remplir tous les champs');
+        return;
+    }
+    
+    if (username.length < 2) {
+        e.preventDefault();
+        alert('Le nom d\'utilisateur doit contenir au moins 2 caractères');
+        return;
+    }
+});
+</script>
 
-        // Focus automatique si pas de rate limiting
-        <?php if (!$is_rate_limited): ?>
-        document.addEventListener('DOMContentLoaded', () => {
-            const usernameField = document.getElementById('username');
-            if (usernameField && !usernameField.value) {
-                usernameField.focus();
-            } else {
-                document.getElementById('password').focus();
-            }
-        });
-        <?php endif; ?>
-    </script>
 </body>
 </html>

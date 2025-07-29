@@ -1,8 +1,14 @@
 <?php
 /**
- * Titre: Gestionnaire d'authentification - Session 9h + Remember Me
+ * Titre: Gestionnaire d'authentification CORRIGÉ - Session 9h30
  * Chemin: /core/auth/AuthManager.php
  * Version: 0.5 beta + build auto
+ * 
+ * CORRECTIONS CRITIQUES :
+ * 1. Durée session 9h30 au lieu de 9h
+ * 2. Extension automatique activité
+ * 3. Cookie lifetime aligné avec session
+ * 4. Nettoyage problèmes expires_at
  */
 
 class AuthManager 
@@ -12,9 +18,10 @@ class AuthManager
     
     const MAX_LOGIN_ATTEMPTS = 5;
     const LOCKOUT_TIME = 900; // 15 minutes
-    const SESSION_LIFETIME = 32400; // 9 heures (journée de travail)
+    const SESSION_LIFETIME = 34200; // 9h30 (9.5 * 60 * 60) - CORRIGÉ !
     const REMEMBER_LIFETIME = 2592000; // 30 jours
     const REGENERATE_INTERVAL = 7200; // 2h régénération
+    const ACTIVITY_EXTEND_TIME = 1800; // 30min = extension auto
 
     public function __construct() {
         $this->initSession();
@@ -30,37 +37,109 @@ class AuthManager
     }
 
     /**
-     * Initialisation base de données
+     * Initialisation session sécurisée (9h30) - CORRIGÉ
      */
-    private function getDatabase() {
-        try {
-            if (function_exists('getDB')) {
-                return getDB();
-            }
+    private function initSession() {
+        if (session_status() === PHP_SESSION_NONE) {
+            // Configuration PHP AVANT démarrage session
+            ini_set('session.cookie_httponly', 1);
+            ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? 1 : 0);
+            ini_set('session.use_strict_mode', 1);
+            ini_set('session.cookie_samesite', 'Lax');
+            ini_set('session.name', 'GULDAGIL_PORTAL_SESSION');
             
-            $host = defined('DB_HOST') ? DB_HOST : 'localhost';
-            $name = defined('DB_NAME') ? DB_NAME : '';
-            $user = defined('DB_USER') ? DB_USER : '';
-            $pass = defined('DB_PASS') ? DB_PASS : '';
+            // CRITIQUE : Configurer durée AVANT session_start()
+            ini_set('session.gc_maxlifetime', self::SESSION_LIFETIME);
+            ini_set('session.cookie_lifetime', self::SESSION_LIFETIME);
             
-            if (empty($name)) {
-                throw new Exception("Configuration base de données manquante");
-            }
+            session_start();
             
-            return new PDO("mysql:host={$host};dbname={$name};charset=utf8mb4", $user, $pass, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false
-            ]);
-            
-        } catch (Exception $e) {
-            error_log("Erreur DB AuthManager: " . $e->getMessage());
-            return null;
+            // Log pour vérification
+            error_log("SESSION INIT: Lifetime=" . self::SESSION_LIFETIME . "s (9h30)");
         }
     }
 
     /**
-     * Vérifier token "Se souvenir de moi" au démarrage
+     * Vérification authentification INDÉPENDANTE - CORRIGÉ
+     */
+    public function isAuthenticated() {
+        // 1. Vérifier session PHP
+        if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
+            return false;
+        }
+
+        // 2. Vérifier expiration (9h30 max) - LOGIQUE CORRIGÉE
+        if (isset($_SESSION['expires_at']) && time() > $_SESSION['expires_at']) {
+            error_log("SESSION EXPIRED: expires_at=" . $_SESSION['expires_at'] . ", now=" . time());
+            $this->logout('expired');
+            return false;
+        }
+
+        // 3. Extension automatique si activité récente - NOUVEAU !
+        $last_activity = $_SESSION['last_activity'] ?? 0;
+        if ((time() - $last_activity) < self::ACTIVITY_EXTEND_TIME) {
+            // Étendre session de 9h30 à partir de maintenant
+            $_SESSION['expires_at'] = time() + self::SESSION_LIFETIME;
+            error_log("SESSION EXTENDED: new expires_at=" . $_SESSION['expires_at']);
+        }
+
+        // 4. Régénération sécurisée périodique (2h)
+        if ((time() - ($_SESSION['last_regeneration'] ?? 0)) > self::REGENERATE_INTERVAL) {
+            $old_data = $_SESSION;
+            session_regenerate_id(true);
+            $_SESSION = $old_data;
+            $_SESSION['last_regeneration'] = time();
+            error_log("SESSION REGENERATED: new_id=" . session_id());
+        }
+
+        // 5. Maintenir activité - TOUJOURS
+        $_SESSION['last_activity'] = time();
+        
+        return true;
+    }
+
+    /**
+     * Créer session utilisateur (9h30) - CORRIGÉ
+     */
+    private function createUserSession($user, $remember = false) {
+        session_regenerate_id(true);
+        
+        // Utiliser durée utilisateur OU durée par défaut 9h30
+        $session_duration = $user['session_duration'] ?? self::SESSION_LIFETIME;
+        
+        // Forcer minimum 9h30 si durée utilisateur < 9h30
+        if ($session_duration < self::SESSION_LIFETIME) {
+            $session_duration = self::SESSION_LIFETIME;
+        }
+        
+        $_SESSION['authenticated'] = true;
+        $_SESSION['user'] = [
+            'id' => $user['id'],
+            'username' => $user['username'],
+            'role' => $user['role']
+        ];
+        $_SESSION['login_time'] = time();
+        $_SESSION['last_activity'] = time();
+        $_SESSION['last_regeneration'] = time();
+        $_SESSION['expires_at'] = time() + $session_duration; // CRITIQUE !
+        
+        // Configuration cookie session CRITIQUE
+        $cookie_params = [
+            'lifetime' => $session_duration,
+            'path' => '/',
+            'domain' => '',
+            'secure' => isset($_SERVER['HTTPS']),
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ];
+        session_set_cookie_params($cookie_params);
+        
+        // Log pour debug
+        error_log("SESSION CREATED: duration={$session_duration}s, expires_at=" . $_SESSION['expires_at']);
+    }
+
+    /**
+     * Vérifier token "Se souvenir de moi" au démarrage - CORRIGÉ
      */
     private function checkRememberToken() {
         if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']) {
@@ -80,15 +159,18 @@ class AuthManager
             $user = $stmt->fetch();
 
             if ($user) {
-                // Restaurer session automatiquement
+                // Restaurer session automatiquement avec 9h30
                 $this->createUserSession($user, false);
                 $this->logActivity('AUTO_LOGIN', $user['username'], ['via' => 'remember_token']);
                 
                 // Renouveler token
                 $this->renewRememberToken($user['id'], $token);
+                
+                error_log("AUTO LOGIN SUCCESS: user=" . $user['username']);
             } else {
                 // Token invalide, le supprimer
                 setcookie('guldagil_remember', '', time() - 3600, '/', '', false, true);
+                error_log("REMEMBER TOKEN INVALID: token=" . substr($token, 0, 10) . "...");
             }
         } catch (Exception $e) {
             error_log("Erreur remember token: " . $e->getMessage());
@@ -96,7 +178,7 @@ class AuthManager
     }
 
     /**
-     * Authentification utilisateur avec Remember Me
+     * Authentification utilisateur avec Remember Me - CORRIGÉ
      */
     public function login($username, $password, $remember = false) {
         try {
@@ -122,7 +204,7 @@ class AuthManager
             if ($user && password_verify($password, $user['password'])) {
                 $this->clearFailedAttempts($username);
                 
-                // Créer session
+                // Créer session AVEC 9h30 minimum
                 $this->createUserSession($user, $remember);
                 
                 // Gérer "Se souvenir de moi"
@@ -156,35 +238,6 @@ class AuthManager
     }
 
     /**
-     * Vérification authentification INDÉPENDANTE
-     */
-    public function isAuthenticated() {
-        // 1. Vérifier session PHP
-        if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
-            return false;
-        }
-
-        // 2. Vérifier expiration (9h max)
-        if (isset($_SESSION['expires_at']) && time() > $_SESSION['expires_at']) {
-            $this->logout('expired');
-            return false;
-        }
-
-        // 3. Régénération sécurisée périodique (2h)
-        if ((time() - ($_SESSION['last_regeneration'] ?? 0)) > self::REGENERATE_INTERVAL) {
-            $old_data = $_SESSION;
-            session_regenerate_id(true);
-            $_SESSION = $old_data;
-            $_SESSION['last_regeneration'] = time();
-        }
-
-        // 4. Maintenir activité
-        $_SESSION['last_activity'] = time();
-        
-        return true;
-    }
-
-    /**
      * Obtenir utilisateur connecté
      */
     public function getCurrentUser() {
@@ -192,30 +245,6 @@ class AuthManager
             return null;
         }
         return $_SESSION['user'] ?? null;
-    }
-
-    /**
-     * Créer session utilisateur (9h par défaut)
-     */
-    private function createUserSession($user, $remember = false) {
-        session_regenerate_id(true);
-        
-        $session_duration = $user['session_duration'] ?? self::SESSION_LIFETIME;
-        
-        $_SESSION['authenticated'] = true;
-        $_SESSION['user'] = [
-            'id' => $user['id'],
-            'username' => $user['username'],
-            'role' => $user['role']
-        ];
-        $_SESSION['login_time'] = time();
-        $_SESSION['last_activity'] = time();
-        $_SESSION['last_regeneration'] = time();
-        $_SESSION['expires_at'] = time() + $session_duration;
-        
-        // Session cookie prolongé
-        ini_set('session.gc_maxlifetime', $session_duration);
-        ini_set('session.cookie_lifetime', $session_duration);
     }
 
     /**
@@ -361,22 +390,39 @@ class AuthManager
             'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
             'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 200),
             'details' => $details,
-            'session_id' => session_id()
+            'session_id' => session_id(),
+            'expires_at' => $_SESSION['expires_at'] ?? 'none'
         ];
         error_log('AUTH_' . $action . ': ' . json_encode($logEntry));
     }
 
     /**
-     * Initialisation session sécurisée (9h)
+     * Initialisation base de données
      */
-    private function initSession() {
-        if (session_status() === PHP_SESSION_NONE) {
-            ini_set('session.cookie_httponly', 1);
-            ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
-            ini_set('session.use_strict_mode', 1);
-            ini_set('session.cookie_samesite', 'Lax');
-            ini_set('session.gc_maxlifetime', self::SESSION_LIFETIME);
-            session_start();
+    private function getDatabase() {
+        try {
+            if (function_exists('getDB')) {
+                return getDB();
+            }
+            
+            $host = defined('DB_HOST') ? DB_HOST : 'localhost';
+            $name = defined('DB_NAME') ? DB_NAME : '';
+            $user = defined('DB_USER') ? DB_USER : '';
+            $pass = defined('DB_PASS') ? DB_PASS : '';
+            
+            if (empty($name)) {
+                throw new Exception("Configuration base de données manquante");
+            }
+            
+            return new PDO("mysql:host={$host};dbname={$name};charset=utf8mb4", $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erreur DB AuthManager: " . $e->getMessage());
+            return null;
         }
     }
 
