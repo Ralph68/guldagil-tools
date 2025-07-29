@@ -56,14 +56,11 @@ foreach ($public_pages as $page) {
 $user_authenticated = false;
 $current_user = null;
 
-// === AUTHENTIFICATION OBLIGATOIRE ===
 if (!$is_public_page) {
     require_once ROOT_PATH . '/core/auth/AuthManager.php';
     $auth = AuthManager::getInstance();
     
-    // Vérification session + remember me
     if (!$auth->isAuthenticated()) {
-        // Redirection avec nettoyage session
         session_destroy();
         header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
         exit;
@@ -71,11 +68,6 @@ if (!$is_public_page) {
     
     $current_user = $auth->getCurrentUser();
     $user_authenticated = true;
-    
-    // Variables compatibilité
-    $_SESSION['user'] = $current_user;
-    $_SESSION['authenticated'] = true;
-    $_SESSION['user_role'] = $current_user['role'];
 }
 
 // Variables avec fallbacks sécurisés

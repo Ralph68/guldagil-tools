@@ -643,3 +643,40 @@ form {
     border-color: var(--primary-color-light);
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
+/* === LOGO CORRECTION DÉFINITIVE - AUCUNE DÉFORMATION === */
+.login-logo {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.login-logo img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: contain; /* CRITIQUE : préserve les proportions */
+    object-position: center;
+    background: white;
+    padding: 8px;
+    border: 2px solid rgba(59, 130, 246, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.login-logo img:hover {
+    transform: scale(1.05); /* Uniquement agrandissement proportionnel */
+    border-color: #3b82f6;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+}
+
+.logo-placeholder {
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    font-size: 3rem;
+    color: #3b82f6;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.1);
+    text-align: center;
+}

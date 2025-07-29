@@ -1,6 +1,6 @@
 <?php
 /**
- * Titre: Login FINAL - Logique anti-boucle DÉFINITIVE  
+ * Titre: Login FINAL - AuthManager seulement, zéro fallback
  * Chemin: /public/auth/login.php
  * Version: 0.5 beta + build auto
  */
@@ -31,38 +31,17 @@ $is_post = ($_SERVER['REQUEST_METHOD'] === 'POST');
 
 // === REDIRECTION SI DÉJÀ CONNECTÉ (GET seulement) ===
 if (!$is_post) {
-    $is_authenticated = false;
+    require_once ROOT_PATH . '/core/auth/AuthManager.php';
+    $auth = AuthManager::getInstance();
     
-    // Vérifier AuthManager
-    if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-        try {
-            require_once ROOT_PATH . '/core/auth/AuthManager.php';
-            $auth = AuthManager::getInstance();
-            if ($auth->isAuthenticated()) {
-                $is_authenticated = true;
-            }
-        } catch (Exception $e) {
-            error_log("AuthManager error: " . $e->getMessage());
-        }
-    }
-    
-    // Fallback session
-    if (!$is_authenticated && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-        $is_authenticated = true;
-    }
-    
-    // REDIRECTION SIMPLE si connecté
-    if ($is_authenticated) {
+    if ($auth->isAuthenticated()) {
         $destination = '/';
-        
-        // Nettoyer redirect param
         if (!empty($redirect_param) && 
             $redirect_param !== '/auth/login.php' && 
             strpos($redirect_param, '/auth/login') === false &&
             preg_match('/^\/[a-zA-Z0-9\/_.-]*$/', $redirect_param)) {
             $destination = $redirect_param;
         }
-        
         header('Location: ' . $destination);
         exit;
     }
@@ -89,56 +68,15 @@ if ($is_post && !$is_rate_limited) {
         $_SESSION['last_login_attempt'] = time();
         
         if ($username && $password) {
-            $auth_success = false;
-            
-            // 1. AuthManager
-            if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-                try {
-                    require_once ROOT_PATH . '/core/auth/AuthManager.php';
-                    $auth = AuthManager::getInstance();
-                    $result = $auth->login($username, $password);
-                    if ($result['success']) {
-                        $auth_success = true;
-                    }
-                } catch (Exception $e) {
-                    error_log("AuthManager login error: " . $e->getMessage());
-                }
-            }
-            
-            // 2. DB fallback
-            if (!$auth_success && defined('DB_HOST')) {
-                try {
-                    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
-                    $db = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-                    
-                    $stmt = $db->prepare("SELECT * FROM auth_users WHERE username = ? AND is_active = 1");
-                    $stmt->execute([$username]);
-                    $user = $stmt->fetch();
-                    
-                    if ($user && password_verify($password, $user['password'])) {
-                        // Créer session manuelle
-                        session_regenerate_id(true);
-                        $_SESSION['authenticated'] = true;
-                        $_SESSION['user'] = [
-                            'id' => $user['id'],
-                            'username' => $user['username'],
-                            'role' => $user['role']
-                        ];
-                        $_SESSION['login_time'] = time();
-                        $_SESSION['expires_at'] = time() + SESSION_TIMEOUT;
-                        $auth_success = true;
-                    }
-                } catch (Exception $e) {
-                    error_log("DB auth error: " . $e->getMessage());
-                }
-            }
-            
-            if ($auth_success) {
-                // Reset attempts
-                unset($_SESSION['login_attempts']);
-                unset($_SESSION['last_login_attempt']);
+            require_once ROOT_PATH . '/core/auth/AuthManager.php';
+            $auth = AuthManager::getInstance();
+            $result = $auth->login($username, $password, isset($_POST['remember']));
+
+            if ($result['success']) {
+                // Reset tentatives
+                unset($_SESSION['login_attempts'], $_SESSION['last_login_attempt']);
                 
-                // Redirection POST success
+                // Redirection
                 $destination = '/';
                 if (!empty($redirect_param) && 
                     strpos($redirect_param, '/auth/login') === false &&
@@ -149,7 +87,7 @@ if ($is_post && !$is_rate_limited) {
                 header('Location: ' . $destination);
                 exit;
             } else {
-                $error_message = 'Identifiants incorrects';
+                $error_message = $result['error'];
             }
         } else {
             $error_message = 'Veuillez remplir tous les champs';
@@ -173,6 +111,28 @@ if ($is_post && !$is_rate_limited) {
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/login.css?v=<?= $build_number ?>">
+    
+    <!-- CSS fix logo -->
+    <style>
+    .login-logo img {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: contain;
+        object-position: center;
+        background: white;
+        padding: 8px;
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .login-logo img:hover {
+        transform: scale(1.05);
+        border-color: #3b82f6;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+    }
+    </style>
     
     <meta http-equiv="Cache-Control" content="no-cache">
     <meta http-equiv="Pragma" content="no-cache">
@@ -229,6 +189,14 @@ if ($is_post && !$is_rate_limited) {
                        class="form-input"
                        required 
                        autocomplete="current-password">
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="remember" id="remember">
+                    <span class="checkmark"></span>
+                    Se souvenir de moi (30 jours)
+                </label>
             </div>
 
             <button type="submit" class="btn btn-primary">
