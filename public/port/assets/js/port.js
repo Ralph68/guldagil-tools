@@ -498,6 +498,52 @@ document.addEventListener('DOMContentLoaded', function() {
     loadHistory();
     updateHistoryDisplay();
     addDebug('Tous les événements configurés');
+    
+    // Boutons exclusifs pour ADR
+    const adrGroup = document.getElementById('adrGroup');
+    const adrInput = document.getElementById('adr');
+    if (adrGroup && adrInput) {
+        adrGroup.querySelectorAll('.delivery-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                adrGroup.querySelectorAll('.delivery-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-pressed', 'false');
+                });
+                this.classList.add('active');
+                this.setAttribute('aria-pressed', 'true');
+                adrInput.value = this.dataset.value;
+            });
+        });
+    }
+
+    // Boutons exclusifs pour options de livraison
+    const optionSupGroup = document.getElementById('optionSupGroup');
+    const optionSupInput = document.getElementById('option_sup');
+    if (optionSupGroup && optionSupInput) {
+        optionSupGroup.querySelectorAll('.delivery-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                optionSupGroup.querySelectorAll('.delivery-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-pressed', 'false');
+                });
+                this.classList.add('active');
+                this.setAttribute('aria-pressed', 'true');
+                optionSupInput.value = this.dataset.value;
+            });
+        });
+    }
+
+    // Empêcher la soumission si ADR non choisi
+    const form = document.getElementById('calculatorForm');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (!adrInput.value) {
+                e.preventDefault();
+                alert('Veuillez choisir si votre envoi contient des matières dangereuses (ADR).');
+                return false;
+            }
+        });
+    }
 });
 
 // API Publique pour le calculateur

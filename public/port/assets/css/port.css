@@ -4,94 +4,115 @@
  * Version: 1.0
  */
 
+/* Thème moderne et pro pour le calculateur de port */
+
 :root {
     --port-primary: #2563eb;
+    --port-secondary: #0ea5e9;
     --port-bg: #f8fafc;
-    --port-panel: #ffffff;
-    --port-border: #e2e8f0;
-    --port-text: #64748b;
-    --port-success: #10b981;
-    --port-warning: #f59e0b;
-    --port-danger: #ef4444;
+    --port-panel: #fff;
+    --port-border: #e5e7eb;
+    --port-text: #1e293b;
+    --port-accent: #38bdf8;
+    --port-success: #22c55e;
+    --port-warning: #f59e42;
+    --port-error: #ef4444;
+    --port-radius: 0.5rem;
+    --port-shadow: 0 4px 24px rgba(37,99,235,0.08);
+    --port-spacing: 1.5rem;
+    --port-spacing-sm: 0.75rem;
+    --port-spacing-xs: 0.375rem;
+    --port-transition: 0.2s cubic-bezier(.4,0,.2,1);
 }
 
-/* === STRUCTURE DE BASE === */
-.calc-container {
-    min-height: 100vh;
+body[data-module="port"] {
     background: var(--port-bg);
-    padding: 2rem 1rem;
-    /* Correction: ajout de padding-top pour éviter que le header ne masque le contenu */
-    padding-top: calc(var(--header-height) + var(--nav-height) + var(--breadcrumb-height) + 1rem);
 }
 
-.calc-main {
+.calc-container {
+    max-width: 900px;
+    margin: 2rem auto;
     background: var(--port-panel);
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
+    border-radius: var(--port-radius);
+    box-shadow: var(--port-shadow);
+    padding: var(--port-spacing);
 }
 
-/* === ÉTAPES DU FORMULAIRE === */
+.calc-header {
+    text-align: center;
+    margin-bottom: var(--port-spacing);
+}
+
+.calc-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--port-primary);
+    margin-bottom: 0.5rem;
+}
+
+.calc-desc {
+    color: var(--port-text);
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+
+.calc-form-panel {
+    margin-bottom: var(--port-spacing);
+}
+
 .calc-steps {
     display: flex;
-    justify-content: space-between;
-    border-bottom: 2px solid var(--port-border);
-    margin: 0 2rem;
-    padding-bottom: 1rem;
+    gap: var(--port-spacing-xs);
+    margin-bottom: var(--port-spacing-sm);
+    justify-content: center;
 }
 
 .calc-step-btn {
-    flex: 1;
-    padding: 0.75rem;
-    margin: 0 0.5rem;
-    background: transparent;
-    border: 2px solid transparent;
-    border-radius: 0.5rem;
+    background: var(--port-bg);
+    border: 1px solid var(--port-border);
+    color: var(--port-primary);
+    padding: var(--port-spacing-xs) var(--port-spacing);
+    border-radius: var(--port-radius);
     font-weight: 600;
-    font-size: 1rem;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: background var(--port-transition), color var(--port-transition);
 }
 
-.calc-step-btn.active {
-    border-color: var(--port-primary);
+.calc-step-btn.active,
+.calc-step-btn:focus {
     background: var(--port-primary);
-    color: white;
+    color: #fff;
+    border-color: var(--port-primary);
 }
 
-.calc-step-btn.completed {
-    border-color: var(--port-success);
-    color: var(--port-success);
-}
-
-/* === FORMULAIRE DE CALCUL === */
-.calc-form-panel {
-    padding: 2rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    border-radius: 0.75rem;
-    background: white;
-    margin: 1rem 2rem;
+.calc-form-content {
+    background: var(--port-bg);
+    border-radius: var(--port-radius);
+    padding: var(--port-spacing);
+    box-shadow: 0 2px 8px rgba(37,99,235,0.04);
 }
 
 .calc-form-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--port-spacing-sm);
 }
 
 .calc-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--port-text);
+    margin-bottom: 0.25rem;
+    display: block;
 }
 
 .calc-input,
 .calc-select {
     width: 100%;
     padding: 0.75rem;
-    border: 2px solid var(--port-border);
-    border-radius: 0.5rem;
+    border: 1px solid var(--port-border);
+    border-radius: var(--port-radius);
     font-size: 1rem;
-    transition: border-color 0.3s;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+    transition: border-color var(--port-transition);
 }
 
 .calc-input:focus,
@@ -100,151 +121,103 @@
     outline: none;
 }
 
-.calc-help {
-    font-size: 0.875rem;
+.calc-unit {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
     color: var(--port-text);
+    font-weight: 600;
+}
+
+.calc-help {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.delivery-btn-group {
+    display: flex;
+    gap: var(--port-spacing-xs);
     margin-top: 0.25rem;
 }
 
-/* === OPTIONS DE LIVRAISON EXCLUSIVES === */
-.delivery-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 0.5rem;
-}
-
-.delivery-option {
-    position: relative;
-    flex: 1;
-    min-width: 120px;
-}
-
-.delivery-option input[type="radio"] {
-    position: absolute;
-    opacity: 0;
+.delivery-btn {
+    flex: 1 1 0;
+    background: var(--port-bg);
+    border: 1.5px solid var(--port-border);
+    color: var(--port-primary);
+    border-radius: var(--port-radius);
+    padding: 0.75rem 0.5rem;
+    font-weight: 600;
     cursor: pointer;
+    transition: background var(--port-transition), color var(--port-transition), border-color var(--port-transition);
+    outline: none;
 }
 
-.delivery-option label {
-    display: block;
-    padding: 0.75rem;
-    text-align: center;
-    border: 2px solid var(--port-border);
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.delivery-option input[type="radio"]:checked + label {
+.delivery-btn.active,
+.delivery-btn[aria-pressed="true"] {
+    background: var(--port-primary);
+    color: #fff;
     border-color: var(--port-primary);
-    background-color: var(--port-primary);
-    color: white;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
 }
 
-/* === CASE À COCHER POUR L'ENLÈVEMENT === */
+.delivery-btn:focus {
+    border-color: var(--port-accent);
+}
+
 .checkbox-container {
+    margin: var(--port-spacing-xs) 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin: 1rem 0;
-    padding: 1rem;
-    border: 1px solid var(--port-border);
-    border-radius: 0.5rem;
-    background-color: var(--port-bg);
 }
 
-.checkbox-container input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-}
-
-.checkbox-container label {
-    cursor: pointer;
-    margin: 0;
-    font-weight: 500;
-}
-
-/* === BOUTONS DE NAVIGATION === */
 .form-nav-buttons {
     display: flex;
     justify-content: space-between;
-    margin-top: 2rem;
-    gap: 1rem;
-}
-
-.btn-prev {
-    padding: 0.75rem 1.5rem;
-    border: 2px solid var(--port-border);
-    background: white;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.btn-prev:hover {
-    border-color: var(--port-primary);
-    color: var(--port-primary);
-}
-
-.btn-next, .btn-calculate {
-    padding: 0.75rem 1.5rem;
-    background: var(--port-primary);
-    color: white;
-    border: none;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.btn-next:hover, .btn-calculate:hover {
-    background-color: #1d4ed8; /* Version plus foncée */
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    gap: var(--port-spacing-xs);
+    margin-top: var(--port-spacing-sm);
 }
 
 .btn-calculate {
-    background: linear-gradient(135deg, var(--port-primary), #1d4ed8);
-    padding: 0.75rem 2rem;
+    background: var(--port-success);
+    color: #fff;
+    border: none;
+    border-radius: var(--port-radius);
+    padding: 0.75rem 1.5rem;
     font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background var(--port-transition);
 }
 
-/* === RÉSULTATS === */
+.btn-calculate:hover,
+.btn-calculate:focus {
+    background: #16a34a;
+}
+
 .calc-results-panel {
-    padding: 2rem;
-    margin: 1rem 2rem;
-    border-radius: 0.75rem;
-    background: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-top: var(--port-spacing);
 }
 
 .calc-results-header {
-    padding: 1.5rem 2rem;
-    background: #f1f5f9;
-    border-bottom: 1px solid var(--port-border);
     display: flex;
-    justify-content: space-between;
     align-items: center;
-}
-
-.calc-results-header h2 {
-    margin: 0;
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--port-text);
+    justify-content: space-between;
+    margin-bottom: var(--port-spacing-xs);
 }
 
 .calc-status {
-    font-size: 0.9rem;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    background: rgba(6, 182, 212, 0.1);
-    color: #0c5460;
+    font-size: 1rem;
+    color: var(--port-primary);
+    font-weight: 600;
+}
+
+.calc-results-content {
+    background: var(--port-bg);
+    border-radius: var(--port-radius);
+    padding: var(--port-spacing);
+    box-shadow: 0 2px 8px rgba(37,99,235,0.04);
 }
 
 .calc-welcome {
@@ -253,626 +226,28 @@
 }
 
 .calc-welcome-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.7;
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
 }
 
-.calc-results-grid {
-    display: grid;
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.calc-result-card {
-    border: 2px solid var(--port-border);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    transition: all 0.2s;
-    background: white;
-    position: relative;
-    overflow: hidden;
-}
-
-.calc-result-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: var(--port-primary);
-    transform: scaleY(0);
-    transition: all 0.3s;
-}
-
-.calc-result-card:hover {
-    border-color: var(--port-primary);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-.calc-result-card:hover::before {
-    transform: scaleY(1);
-}
-
-/* === MESSAGES TEMPORAIRES === */
-.calc-temp-message {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 1rem 1.5rem;
+.calc-welcome-steps {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: rgba(37, 99, 235, 0.05);
     border-radius: 0.5rem;
-    font-weight: 500;
-    z-index: 9999;
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
-    max-width: 300px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.calc-temp-message.show {
-    transform: translateX(0);
-}
-
-.calc-temp-message.success {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--port-success);
-    border-left: 4px solid var(--port-success);
-}
-
-.calc-temp-message.warning {
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--port-warning);
-    border-left: 4px solid var(--port-warning);
-}
-
-.calc-temp-message.info {
-    background: rgba(37, 99, 235, 0.1);
-    color: var(--port-primary);
-    border-left: 4px solid var(--port-primary);
-}
-
-/* === DEBUG PANEL === */
-.debug-panel {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 350px;
-    background: white;
-    border: 1px solid var(--port-border);
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    font-size: 12px;
-    max-height: 300px;
-    overflow: hidden;
-}
-
-.debug-header {
-    background: var(--port-primary);
-    color: white;
-    padding: 8px 12px;
-    cursor: pointer;
-    font-weight: 600;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.debug-toggle {
-    transition: transform 0.2s;
-}
-
-.debug-panel.expanded .debug-toggle {
-    transform: rotate(180deg);
-}
-
-.debug-content {
-    padding: 10px;
-    max-height: 250px;
-    overflow-y: auto;
-    display: none;
-}
-
-.debug-panel.expanded .debug-content {
-    display: block;
-}
-
-.debug-entry {
-    margin-bottom: 8px;
-    padding: 4px 8px;
-    background: #f8f9fa;
-    border-radius: 3px;
-    border-left: 3px solid var(--port-primary);
-    font-family: monospace;
-}
-
-.debug-entry pre {
-    margin: 4px 0;
-    font-size: 10px;
-    white-space: pre-wrap;
-    color: #666;
-}
-
-/* === RESPONSIVE === */
-@media (max-width: 1024px) {
-    .calc-main {
-        grid-template-columns: 1fr;
-    }
-    
-    .debug-panel {
-        bottom: 10px;
-        right: 10px;
-        left: 10px;
-        width: auto;
-    }
-    
-    .calc-temp-message {
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
-}
-
-@media (max-width: 768px) {
-    .calc-steps {
-        flex-direction: column;
-    }
-    
-    .calc-step-btn {
-        border-bottom: 1px solid var(--port-border);
-        border-right: none;
-    }
-    
-    .calc-step-btn:last-child {
-        border-bottom: none;
-    }
-    
-    .delivery-options {
-        flex-direction: column;
-    }
-    
-    .calc-results-header {
-        flex-direction: column;
-        gap: 1rem;
-        align-items: flex-start;
-    }
-}
-
-/* === ANIMATIONS === */
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-
-@keyframes slideIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.calc-results-wrapper {
-    animation: slideIn 0.3s ease-out;
-}
-
-.calc-form.loading {
-    opacity: 0.7;
-    pointer-events: none;
-}
-.calc-toggle input[type="checkbox"]:checked + .calc-toggle-slider::before {
-    transform: translateX(24px);
-}
-
-.calc-toggle-label {
-    flex: 1;
-}
-
-.calc-toggle-label strong {
-    display: block;
-    color: var(--port-text-primary);
-    font-weight: 600;
-    margin-bottom: var(--port-space-xs);
-}
-
-.calc-toggle-label small {
-    color: var(--port-text-muted);
-    font-size: 0.875rem;
-}
-
-/* ============================= */
-/*         BOUTONS D'ACTION      */
-/* ============================= */
-.calc-form-actions {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--port-space-md);
-    margin-top: var(--port-space-xl);
-    padding-top: var(--port-space-lg);
-    border-top: 1px solid var(--port-border);
-}
-
-.calc-btn {
-    padding: var(--port-space-md) var(--port-space-lg);
-    border: none;
-    border-radius: var(--port-radius-md);
     font-size: 1rem;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    transition: var(--port-transition-normal);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--port-space-sm);
-    text-decoration: none;
-    box-sizing: border-box;
-    min-height: 48px;
-    justify-content: center;
+    color: #334155;
 }
 
-.calc-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
-}
-
-.calc-btn-primary {
-    background: var(--port-primary);
-    color: var(--port-text-inverse);
-    border: 2px solid var(--port-primary);
-}
-
-.calc-btn-primary:hover:not(:disabled) {
-    background: var(--port-primary-hover);
-    border-color: var(--port-primary-hover);
-    transform: translateY(-1px);
-    box-shadow: var(--port-shadow-md);
-}
-
-.calc-btn-secondary {
-    background: var(--port-background);
-    color: var(--port-text-primary);
-    border: 2px solid var(--port-border);
-}
-
-.calc-btn-secondary:hover:not(:disabled) {
-    background: var(--port-hover-bg);
-    border-color: var(--port-primary);
-    transform: translateY(-1px);
-}
-
-.calc-btn-success {
-    background: var(--port-success);
-    color: var(--port-text-inverse);
-    border: 2px solid var(--port-success);
-}
-
-.calc-btn-success:hover:not(:disabled) {
-    background: #047857;
-    border-color: #047857;
-    transform: translateY(-1px);
-    box-shadow: var(--port-shadow-md);
-}
-
-/* ============================= */
-/*       ZONE DES RÉSULTATS      */
-/* ============================= */
-.calc-results-section {
-    width: 100%;
-}
-
-.calc-results-container {
-    position: sticky;
-    top: var(--port-space-lg);
-}
-
-.calc-results-placeholder {
-    background: var(--port-background);
-    border: 2px dashed var(--port-border);
-    border-radius: var(--port-radius-lg);
-    padding: var(--port-space-2xl);
-    text-align: center;
-    color: var(--port-text-muted);
-}
-
-.calc-placeholder-icon {
-    font-size: 3rem;
-    margin-bottom: var(--port-space-md);
-    opacity: 0.6;
-}
-
-/* Résultats de calcul */
-.calc-results {
-    display: grid;
-    gap: var(--port-space-lg);
-}
-
-.calc-result-card {
-    background: var(--port-background);
-    border: 2px solid var(--port-border);
-    border-radius: var(--port-radius-lg);
-    padding: var(--port-space-lg);
-    transition: var(--port-transition-normal);
-    box-shadow: var(--port-shadow-sm);
-}
-
-.calc-result-card:hover {
-    border-color: var(--port-primary);
-    box-shadow: var(--port-shadow-md);
-    transform: translateY(-2px);
-}
-
-.calc-result-card.best-price {
-    border-color: var(--port-success);
-    background: linear-gradient(135deg, #ecfdf5, var(--port-background));
-}
-
-.calc-result-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--port-space-md);
-}
-
-.calc-carrier-name {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--port-text-primary);
-}
-
-.calc-price {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--port-primary);
-}
-
-.calc-price-label {
-    font-size: 0.875rem;
-    color: var(--port-text-muted);
-    margin-top: var(--port-space-xs);
-}
-
-.calc-result-details {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--port-space-md);
-    margin-top: var(--port-space-md);
-    padding-top: var(--port-space-md);
-    border-top: 1px solid var(--port-border);
-}
-
-.calc-detail-item {
-    display: flex;
-    justify-content: space-between;
-    color: var(--port-text-secondary);
-    font-size: 0.875rem;
-}
-
-.calc-detail-value {
-    font-weight: 600;
-    color: var(--port-text-primary);
-}
-
-/* Badge "Meilleur prix" */
-.best-price-badge {
-    background: var(--port-success);
-    color: var(--port-text-inverse);
-    padding: var(--port-space-xs) var(--port-space-sm);
-    border-radius: var(--port-radius-sm);
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-/* ============================= */
-/*         STATUS ET LOADING     */
-/* ============================= */
-.calc-status {
-    margin-top: var(--port-space-lg);
-    padding: var(--port-space-md);
-    border-radius: var(--port-radius-md);
-    font-weight: 500;
-    text-align: center;
-    display: none;
-}
-
-.calc-status.loading {
-    background: var(--port-primary-light);
-    color: var(--port-primary);
-    border: 1px solid var(--port-primary);
-    display: block;
-}
-
-.calc-status.success {
-    background: #ecfdf5;
-    color: var(--port-success);
-    border: 1px solid var(--port-success);
-    display: block;
-}
-
-.calc-status.error {
-    background: #fef2f2;
-    color: var(--port-error);
-    border: 1px solid var(--port-error);
-    display: block;
-}
-
-/* Spinner de loading */
-.calc-loading-spinner {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--port-border);
-    border-radius: 50%;
-    border-top-color: var(--port-primary);
-    animation: spin 1s ease-in-out infinite;
-}
-
-/* ============================= */
-/*         ANIMATIONS            */
-/* ============================= */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-    }
-}
-
-/* ============================= */
-/*         RESPONSIVE DESIGN     */
-/* ============================= */
-@media (max-width: 1024px) {
-    .calc-main {
-        grid-template-columns: 1fr;
-        gap: var(--port-space-lg);
-    }
-    
-    .calc-results-container {
-        position: static;
-    }
-}
-
-@media (max-width: 768px) {
+@media (max-width: 700px) {
     .calc-container {
-        padding: var(--port-space-md);
+        padding: 1rem;
     }
-    
-    .calc-hero {
-        padding: var(--port-space-xl) var(--port-space-lg);
+    .calc-form-content,
+    .calc-results-content {
+        padding: 1rem;
     }
-    
-    .calc-title {
-        font-size: 1.875rem;
-        flex-direction: column;
-        gap: var(--port-space-sm);
-    }
-    
-    .calc-icon {
-        font-size: 2.5rem;
-    }
-    
-    .calc-features {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .calc-steps {
-        grid-template-columns: 1fr 1fr;
-        gap: var(--port-space-xs);
-    }
-    
-    .calc-step-btn {
-        padding: var(--port-space-sm);
-    }
-    
-    .step-number {
-        font-size: 1rem;
-    }
-    
-    .step-label {
-        font-size: 0.75rem;
-    }
-    
-    .calc-options-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .calc-form-actions {
-        flex-direction: column;
-    }
-    
-    .calc-result-details {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 480px) {
-    .calc-form-card {
-        padding: var(--port-space-lg);
-    }
-    
-    .calc-steps {
-        grid-template-columns: repeat(4, 1fr);
-    }
-    
-    .calc-step-btn {
-        padding: var(--port-space-xs);
-    }
-    
-    .step-label {
-        display: none;
-    }
-    
-    .calc-btn {
-        padding: var(--port-space-md);
-        font-size: 0.875rem;
-    }
-}
-
-/* ============================= */
-/*      AMÉLIORATIONS FOCUS      */
-/* ============================= */
-.calc-step-btn:focus,
-.calc-option-card:focus,
-.calc-toggle:focus {
-    outline: none;
-    box-shadow: var(--port-focus-ring);
-}
-
-/* États pour les champs conditionnels */
-.palette-fields {
-    opacity: 0;
-    max-height: 0;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.palette-fields.show {
-    opacity: 1;
-    max-height: 200px;
-}
-
-/* ============================= */
-/*     DÉSACTIVATION MODE SOMBRE */
-/* ============================= */
-/* IMPORTANT: Pas de mode sombre automatique */
-/* Le thème reste toujours clair pour un contraste optimal */
-
-/* Forcer le thème clair même si le système préfère le sombre */
-@media (prefers-color-scheme: dark) {
-    :root {
-        /* On garde TOUJOURS les couleurs claires */
-        color-scheme: light;
-    }
-    
-    /* Override forcé pour empêcher le mode sombre */
-    .calc-container,
-    .calc-form-card,
-    .calc-input,
-    .calc-select,
-    .calc-option-card,
-    .calc-result-card {
-        background: var(--port-background) !important;
-        color: var(--port-text-primary) !important;
-        border-color: var(--port-border) !important;
+    .calc-header {
+        margin-bottom: 1rem;
     }
 }

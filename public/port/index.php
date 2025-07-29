@@ -19,8 +19,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
 
 // Configuration et chemins
 define('ROOT_PATH', dirname(dirname(__DIR__)));
-require_once ROOT_PATH . '/config/config.php';
-require_once ROOT_PATH . '/config/database.php';
 
 // Variables pour header/footer
 $page_title = 'Calculateur de Frais de Port';
@@ -34,11 +32,6 @@ $breadcrumbs = [
     ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => false],
     ['icon' => '🚛', 'text' => 'Calculateur', 'url' => '/port/', 'active' => true]
 ];
-
-// Correction session doublée
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 // ========================================
 // 🔧 GESTION AJAX CALCULATE
@@ -245,6 +238,12 @@ include_once ROOT_PATH . '/templates/header.php';
 
 <div class="calc-container">
     <main class="calc-main">
+        <!-- TITRE ET DESCRIPTION -->
+        <div class="calc-header">
+            <h1 class="calc-title">🚛 Calculateur de Frais de Port</h1>
+            <p class="calc-desc">Comparez instantanément les tarifs XPO, Heppner et Kuehne+Nagel pour vos expéditions professionnelles.</p>
+        </div>
+
         <!-- FORMULAIRE -->
         <section class="calc-form-panel">
             <div class="calc-steps">
@@ -252,20 +251,18 @@ include_once ROOT_PATH . '/templates/header.php';
                 <button type="button" class="calc-step-btn" data-step="2">📦 Colis</button>
                 <button type="button" class="calc-step-btn" data-step="3">⚙️ Options</button>
             </div>
-            
             <div class="calc-form-content">
                 <form id="calculatorForm" class="calc-form" novalidate>
                     <!-- Étape 1: Destination -->
                     <div class="calc-step-content active" data-step="1">
                         <div class="calc-form-group">
                             <label for="departement" class="calc-label">📍 Département de destination *</label>
-                            <input type="text" id="departement" name="departement" class="calc-input" 
+                            <input type="text" id="departement" name="departement" class="calc-input"
                                    placeholder="Ex: 75, 69, 13, 2A..." maxlength="3" required>
                             <small class="calc-help">Saisissez le numéro du département (01-95, 2A, 2B)</small>
                         </div>
-                        
                         <div class="form-nav-buttons">
-                            <div></div><!-- Espace vide pour l'alignement -->
+                            <div></div>
                             <button type="button" class="btn-next" data-goto="2">Suivant</button>
                         </div>
                     </div>
@@ -275,23 +272,20 @@ include_once ROOT_PATH . '/templates/header.php';
                         <div class="calc-form-group">
                             <label for="poids" class="calc-label">⚖️ Poids total de l'envoi *</label>
                             <div style="position: relative;">
-                                <input type="number" id="poids" name="poids" class="calc-input" 
+                                <input type="number" id="poids" name="poids" class="calc-input"
                                        placeholder="150" min="1" max="32000" step="0.1" required>
-                                <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--port-text); font-weight: 600;">kg</span>
+                                <span class="calc-unit">kg</span>
                             </div>
-                            <small class="calc-help">Type suggéré automatiquement selon le poids. > 3000kg = affrètement</small>
+                            <small class="calc-help">Type suggéré automatiquement selon le poids. &gt; 3000kg = affrètement</small>
                         </div>
-
                         <div class="calc-form-group">
                             <label for="type" class="calc-label">📦 Type d'envoi *</label>
                             <select id="type" name="type" class="calc-select" required>
                                 <option value="">-- Sélection automatique --</option>
                                 <option value="colis">📦 Colis (≤ 150kg)</option>
-                                <option value="palette">🏗️ Palette (> 150kg)</option>
+                                <option value="palette">🏗️ Palette (&gt; 150kg)</option>
                             </select>
                         </div>
-
-                        <!-- Options palettes - VISIBLE UNIQUEMENT SI PALETTE -->
                         <div class="calc-form-group" id="palettesGroup" style="display: none;">
                             <label for="palettes" class="calc-label">🏗️ Nombre de palettes *</label>
                             <select id="palettes" name="palettes" class="calc-select">
@@ -302,7 +296,6 @@ include_once ROOT_PATH . '/templates/header.php';
                             </select>
                             <small class="calc-help">Nombre total de palettes dans l'envoi</small>
                         </div>
-
                         <div class="calc-form-group" id="paletteEurGroup" style="display: none;">
                             <label for="palette_eur" class="calc-label">🔄 Palettes EUR consignées</label>
                             <select id="palette_eur" name="palette_eur" class="calc-select">
@@ -314,7 +307,6 @@ include_once ROOT_PATH . '/templates/header.php';
                             </select>
                             <small class="calc-help">Palettes Europe à récupérer chez le destinataire (consigne)</small>
                         </div>
-                        
                         <div class="form-nav-buttons">
                             <button type="button" class="btn-prev" data-goto="1">Précédent</button>
                             <button type="button" class="btn-next" data-goto="3">Suivant</button>
@@ -326,50 +318,30 @@ include_once ROOT_PATH . '/templates/header.php';
                         <!-- ADR (Matières dangereuses) -->
                         <div class="calc-form-group">
                             <label class="calc-label">⚠️ Matières dangereuses (ADR) *</label>
-                            <div class="delivery-options">
-                                <div class="delivery-option">
-                                    <input type="radio" id="adr-non" name="adr" value="non" checked>
-                                    <label for="adr-non">✅ Non - Transport standard</label>
-                                </div>
-                                <div class="delivery-option">
-                                    <input type="radio" id="adr-oui" name="adr" value="oui">
-                                    <label for="adr-oui">⚠️ Oui - Matières dangereuses</label>
-                                </div>
+                            <div class="delivery-btn-group" id="adrGroup">
+                                <button type="button" class="delivery-btn" data-value="non" id="adr-non" aria-pressed="true">✅ Non</button>
+                                <button type="button" class="delivery-btn" data-value="oui" id="adr-oui" aria-pressed="false">⚠️ Oui</button>
+                                <input type="hidden" name="adr" id="adr" value="non">
                             </div>
                             <small class="calc-help">Les matières dangereuses nécessitent un transport spécialisé ADR (+62€ minimum)</small>
                         </div>
-
                         <!-- Options de livraison exclusives -->
                         <div class="calc-form-group">
                             <label class="calc-label">🚚 Options de livraison</label>
-                            <div class="delivery-options">
-                                <div class="delivery-option">
-                                    <input type="radio" id="option-standard" name="option_sup" value="standard" checked>
-                                    <label for="option-standard">📦 Standard</label>
-                                </div>
-                                <div class="delivery-option">
-                                    <input type="radio" id="option-premium" name="option_sup" value="premium">
-                                    <label for="option-premium">⭐ Premium</label>
-                                </div>
-                                <div class="delivery-option">
-                                    <input type="radio" id="option-rdv" name="option_sup" value="rdv">
-                                    <label for="option-rdv">🕒 Rendez-vous</label>
-                                </div>
-                                <div class="delivery-option">
-                                    <input type="radio" id="option-date" name="option_sup" value="date">
-                                    <label for="option-date">📅 Date fixe</label>
-                                </div>
+                            <div class="delivery-btn-group" id="optionSupGroup">
+                                <button type="button" class="delivery-btn active" data-value="standard" aria-pressed="true">📦 Standard</button>
+                                <button type="button" class="delivery-btn" data-value="premium" aria-pressed="false">⭐ Premium</button>
+                                <button type="button" class="delivery-btn" data-value="rdv" aria-pressed="false">🕒 Rendez-vous</button>
+                                <button type="button" class="delivery-btn" data-value="date" aria-pressed="false">📅 Date fixe</button>
+                                <input type="hidden" name="option_sup" id="option_sup" value="standard">
                             </div>
                             <small class="calc-help">Choisissez l'option de livraison qui correspond à vos besoins</small>
                         </div>
-
                         <!-- Case à cocher pour l'enlèvement -->
                         <div class="checkbox-container">
                             <input type="checkbox" id="enlevement" name="enlevement" value="oui">
                             <label for="enlevement">🚚 Enlèvement à domicile (+frais supplémentaires)</label>
                         </div>
-
-                        <!-- Boutons de navigation -->
                         <div class="form-nav-buttons">
                             <button type="button" class="btn-prev" data-goto="2">Précédent</button>
                             <button type="submit" id="calculateBtn" class="btn-calculate">
@@ -387,17 +359,17 @@ include_once ROOT_PATH . '/templates/header.php';
                 <h2>📊 Résultats de calcul</h2>
                 <div id="calcStatus" class="calc-status">⏳ En attente de vos paramètres...</div>
             </div>
-            
             <div id="resultsContent" class="calc-results-content">
                 <div class="calc-welcome">
                     <div class="calc-welcome-icon">🚛</div>
                     <h3>Calculateur Intelligent</h3>
                     <p>Navigation étape par étape pour une comparaison précise des tarifs</p>
-                    <div style="margin-top: 2rem; padding: 1rem; background: rgba(37, 99, 235, 0.05); border-radius: 0.5rem;">
+                    <div class="calc-welcome-steps">
                         <strong>Étapes :</strong><br>
                         1️⃣ Saisissez le département<br>
                         2️⃣ Indiquez le poids et le type d'envoi<br>
                         3️⃣ Configurez les options de livraison<br>
+                        4️⃣ Choisissez ADR : Oui/Non<br>
                         4️⃣ Lancez le calcul pour comparer les tarifs
                     </div>
                 </div>
@@ -406,7 +378,6 @@ include_once ROOT_PATH . '/templates/header.php';
     </main>
 </div>
 
-<!-- Panel de debug amélioré -->
 <div class="debug-panel" id="debugPanel">
     <div class="debug-header" onclick="this.parentElement.classList.toggle('expanded')">
         <span>🔧 Debug</span>
@@ -418,8 +389,7 @@ include_once ROOT_PATH . '/templates/header.php';
 </div>
 
 <?php
-// ========================================
-// 🎨 CHARGEMENT FOOTER
-// ========================================
 include_once ROOT_PATH . '/templates/footer.php';
 ?>
+<link rel="stylesheet" href="/port/assets/css/port.css?v=<?= $build_number ?>">
+<script src="/port/assets/js/port.js?v=<?= $build_number ?>"></script>
