@@ -1,297 +1,181 @@
 <?php
 /**
- * Titre: Page de connexion CORRIGÉE - Redirection infinie fixée
+ * Titre: Login FINAL - Logique anti-boucle DÉFINITIVE  
  * Chemin: /public/auth/login.php
  * Version: 0.5 beta + build auto
- * 
- * 🔧 CORRECTIONS CRITIQUES :
- * 1. LOGIQUE REDIRECTION RÉÉCRITE complètement
- * 2. Conditions simplifiées pour éviter les boucles
- * 3. Validation robuste des paramètres redirect
- * 4. Headers de cache pour empêcher navigateur de loop
  */
 
-// Configuration de base
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 
-// Configuration session AVANT session_start()
+// Config session 9h30
 if (file_exists(ROOT_PATH . '/config/session_timeout.php')) {
     require_once ROOT_PATH . '/config/session_timeout.php';
 }
-
 if (!defined('SESSION_TIMEOUT')) {
-    define('SESSION_TIMEOUT', 34200); // 9h30
+    define('SESSION_TIMEOUT', 34200);
 }
 
-// Configuration session sécurisée
 ini_set('session.gc_maxlifetime', SESSION_TIMEOUT);
 ini_set('session.cookie_lifetime', SESSION_TIMEOUT);
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? 1 : 0);
-ini_set('session.use_strict_mode', 1);
-ini_set('session.cookie_samesite', 'Lax');
-ini_set('session.name', 'GULDAGIL_PORTAL_SESSION');
-
-// CRITIQUE : Headers anti-cache pour éviter redirections browser
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Cache-Control: post-check=0, pre-check=0', false);
-header('Pragma: no-cache');
-
 session_start();
 
-// Chargement configuration
 require_once ROOT_PATH . '/config/config.php';
 require_once ROOT_PATH . '/config/version.php';
 
-// =====================================
-// 🚨 NOUVELLE LOGIQUE ANTI-BOUCLE
-// =====================================
-
-$current_uri = $_SERVER['REQUEST_URI'] ?? '';
-$is_post_request = ($_SERVER['REQUEST_METHOD'] === 'POST');
-$redirect_param = $_GET['redirect'] ?? '';
-
-// Nettoyer et valider le paramètre redirect
-function validateRedirectUrl($url) {
-    if (empty($url)) return '/';
-    
-    // Empêcher redirections vers login lui-même
-    if (strpos($url, '/auth/login') !== false) return '/';
-    
-    // Valider format URL interne seulement
-    if (!preg_match('/^\/[a-zA-Z0-9\/_.-]*$/', $url)) return '/';
-    
-    return $url;
-}
-
-$safe_redirect = validateRedirectUrl($redirect_param);
-
-// =====================================
-// 🔐 VÉRIFICATION AUTHENTIFICATION SIMPLIFIÉE
-// =====================================
-
-$user_authenticated = false;
-$current_user = null;
-
-// Vérifier AuthManager UNIQUEMENT si disponible
-if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
-    try {
-        require_once ROOT_PATH . '/core/auth/AuthManager.php';
-        $auth = AuthManager::getInstance();
-        
-        if ($auth->isAuthenticated()) {
-            $user_authenticated = true;
-            $current_user = $auth->getCurrentUser();
-        }
-    } catch (Exception $e) {
-        error_log("AuthManager error: " . $e->getMessage());
-        // Continuer avec fallback
-    }
-}
-
-// Fallback session simple si AuthManager indisponible
-if (!$user_authenticated && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-    $user_authenticated = true;
-    $current_user = $_SESSION['user'] ?? ['username' => 'User', 'role' => 'user'];
-}
-
-// =====================================
-// 🔄 REDIRECTION UTILISATEUR CONNECTÉ
-// =====================================
-
-// RÈGLE SIMPLE : Si connecté ET pas POST → rediriger
-if ($user_authenticated && !$is_post_request) {
-    error_log("AUTHENTICATED_REDIRECT: from={$current_uri} to={$safe_redirect}");
-    header('Location: ' . $safe_redirect);
-    exit;
-}
-
-// =====================================
-// 🛡️ SÉCURITÉ ET RATE LIMITING
-// =====================================
-
-function logSecurityEvent($event, $data = []) {
-    $logEntry = [
-        'timestamp' => date('Y-m-d H:i:s'),
-        'event' => $event,
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-        'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 100),
-        'data' => $data,
-        'session_id' => session_id()
-    ];
-    error_log('SECURITY_' . $event . ': ' . json_encode($logEntry));
-}
-
-$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-$login_attempts = $_SESSION['login_attempts'] ?? 0;
-$last_attempt = $_SESSION['last_login_attempt'] ?? 0;
-$cooldown_time = 300; // 5 minutes
-$max_attempts = 5;
-$is_rate_limited = ($login_attempts >= $max_attempts) && (time() - $last_attempt < $cooldown_time);
-
-// Variables pour affichage
+// Variables
 $error_message = '';
-$success_message = '';
+$redirect_param = $_GET['redirect'] ?? '/';
+$is_post = ($_SERVER['REQUEST_METHOD'] === 'POST');
 
-// Générer token CSRF
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
-// =====================================
-// 🔐 FONCTIONS AUTHENTIFICATION
-// =====================================
-
-function authenticateUser($username, $password) {
-    // 1. AuthManager en priorité
+// === REDIRECTION SI DÉJÀ CONNECTÉ (GET seulement) ===
+if (!$is_post) {
+    $is_authenticated = false;
+    
+    // Vérifier AuthManager
     if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
         try {
             require_once ROOT_PATH . '/core/auth/AuthManager.php';
             $auth = AuthManager::getInstance();
-            $result = $auth->login($username, $password);
-            
-            if ($result['success']) {
-                error_log("LOGIN SUCCESS via AuthManager: " . $username);
-                return [
-                    'success' => true,
-                    'user' => $result['user'],
-                    'method' => 'AuthManager'
-                ];
+            if ($auth->isAuthenticated()) {
+                $is_authenticated = true;
             }
         } catch (Exception $e) {
-            error_log("AuthManager login error: " . $e->getMessage());
+            error_log("AuthManager error: " . $e->getMessage());
         }
     }
     
-    // 2. Fallback base de données
-    if (defined('DB_HOST') && defined('DB_NAME') && defined('DB_USER')) {
-        try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
-            $db = new PDO($dsn, DB_USER, DB_PASS, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-            ]);
-            
-            $stmt = $db->prepare("SELECT * FROM auth_users WHERE username = ? AND active = 1 LIMIT 1");
-            $stmt->execute([$username]);
-            $user = $stmt->fetch();
-            
-            if ($user && password_verify($password, $user['password'])) {
-                error_log("LOGIN SUCCESS via DB: " . $username);
-                return [
-                    'success' => true,
-                    'user' => $user,
-                    'method' => 'database'
-                ];
-            }
-        } catch (Exception $e) {
-            error_log("Database auth error: " . $e->getMessage());
-        }
+    // Fallback session
+    if (!$is_authenticated && isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
+        $is_authenticated = true;
     }
     
-    return ['success' => false, 'error' => 'Identifiants incorrects'];
-}
-
-function createSecureUserSession($user) {
-    // Régénérer ID session pour sécurité
-    session_regenerate_id(true);
-    
-    // Créer session compatible AuthManager
-    $_SESSION['authenticated'] = true;
-    $_SESSION['user'] = [
-        'id' => $user['id'] ?? 0,
-        'username' => $user['username'],
-        'email' => $user['email'] ?? '',
-        'role' => $user['role'] ?? 'user',
-        'active' => $user['active'] ?? 1
-    ];
-    $_SESSION['login_time'] = time();
-    $_SESSION['last_activity'] = time();
-    $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'] ?? '';
-    $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? '';
-}
-
-// =====================================
-// 📝 TRAITEMENT FORMULAIRE POST
-// =====================================
-
-if ($is_post_request) {
-    if ($is_rate_limited) {
-        $remaining_time = $cooldown_time - (time() - $last_attempt);
-        $error_message = "Trop de tentatives. Réessayez dans " . ceil($remaining_time / 60) . " minutes.";
+    // REDIRECTION SIMPLE si connecté
+    if ($is_authenticated) {
+        $destination = '/';
         
-        logSecurityEvent('LOGIN_RATE_LIMITED', [
-            'attempts' => $login_attempts,
-            'remaining_cooldown' => $remaining_time
-        ]);
-    } else {
-        // Vérification CSRF
-        $csrf_token = $_POST['csrf_token'] ?? '';
-        if (!hash_equals($_SESSION['csrf_token'], $csrf_token)) {
-            $error_message = 'Token de sécurité invalide';
-            logSecurityEvent('LOGIN_CSRF_INVALID');
-        } else {
-            $username = trim($_POST['username'] ?? '');
-            $password = $_POST['password'] ?? '';
+        // Nettoyer redirect param
+        if (!empty($redirect_param) && 
+            $redirect_param !== '/auth/login.php' && 
+            strpos($redirect_param, '/auth/login') === false &&
+            preg_match('/^\/[a-zA-Z0-9\/_.-]*$/', $redirect_param)) {
+            $destination = $redirect_param;
+        }
+        
+        header('Location: ' . $destination);
+        exit;
+    }
+}
+
+// Rate limiting
+$login_attempts = $_SESSION['login_attempts'] ?? 0;
+$last_attempt = $_SESSION['last_login_attempt'] ?? 0;
+$is_rate_limited = ($login_attempts >= 5) && (time() - $last_attempt < 300);
+
+// CSRF
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// === TRAITEMENT POST ===
+if ($is_post && !$is_rate_limited) {
+    $csrf_token = $_POST['csrf_token'] ?? '';
+    if (hash_equals($_SESSION['csrf_token'], $csrf_token)) {
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+        
+        $_SESSION['login_attempts'] = $login_attempts + 1;
+        $_SESSION['last_login_attempt'] = time();
+        
+        if ($username && $password) {
+            $auth_success = false;
             
-            // Incrémenter tentatives
-            $_SESSION['login_attempts'] = $login_attempts + 1;
-            $_SESSION['last_login_attempt'] = time();
+            // 1. AuthManager
+            if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
+                try {
+                    require_once ROOT_PATH . '/core/auth/AuthManager.php';
+                    $auth = AuthManager::getInstance();
+                    $result = $auth->login($username, $password);
+                    if ($result['success']) {
+                        $auth_success = true;
+                    }
+                } catch (Exception $e) {
+                    error_log("AuthManager login error: " . $e->getMessage());
+                }
+            }
             
-            $auth_result = authenticateUser($username, $password);
+            // 2. DB fallback
+            if (!$auth_success && defined('DB_HOST')) {
+                try {
+                    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+                    $db = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                    
+                    $stmt = $db->prepare("SELECT * FROM auth_users WHERE username = ? AND is_active = 1");
+                    $stmt->execute([$username]);
+                    $user = $stmt->fetch();
+                    
+                    if ($user && password_verify($password, $user['password'])) {
+                        // Créer session manuelle
+                        session_regenerate_id(true);
+                        $_SESSION['authenticated'] = true;
+                        $_SESSION['user'] = [
+                            'id' => $user['id'],
+                            'username' => $user['username'],
+                            'role' => $user['role']
+                        ];
+                        $_SESSION['login_time'] = time();
+                        $_SESSION['expires_at'] = time() + SESSION_TIMEOUT;
+                        $auth_success = true;
+                    }
+                } catch (Exception $e) {
+                    error_log("DB auth error: " . $e->getMessage());
+                }
+            }
             
-            if ($auth_result['success']) {
-                // Succès : nettoyer compteurs
+            if ($auth_success) {
+                // Reset attempts
                 unset($_SESSION['login_attempts']);
                 unset($_SESSION['last_login_attempt']);
                 
-                // Créer session utilisateur
-                createSecureUserSession($auth_result['user']);
+                // Redirection POST success
+                $destination = '/';
+                if (!empty($redirect_param) && 
+                    strpos($redirect_param, '/auth/login') === false &&
+                    preg_match('/^\/[a-zA-Z0-9\/_.-]*$/', $redirect_param)) {
+                    $destination = $redirect_param;
+                }
                 
-                logSecurityEvent('LOGIN_SUCCESS', [
-                    'username' => $username,
-                    'method' => $auth_result['method']
-                ]);
-                
-                // Redirection POST-LOGIN
-                error_log("LOGIN SUCCESS: redirecting to {$safe_redirect}");
-                header('Location: ' . $safe_redirect);
+                header('Location: ' . $destination);
                 exit;
-                
             } else {
-                $error_message = $auth_result['error'];
-                logSecurityEvent('LOGIN_FAILED', [
-                    'username' => $username,
-                    'error' => $auth_result['error']
-                ]);
+                $error_message = 'Identifiants incorrects';
             }
+        } else {
+            $error_message = 'Veuillez remplir tous les champs';
         }
+    } else {
+        $error_message = 'Token de sécurité invalide';
     }
+} elseif ($is_post && $is_rate_limited) {
+    $remaining = ceil((300 - (time() - $last_attempt)) / 60);
+    $error_message = "Trop de tentatives. Réessayez dans {$remaining} minutes.";
 }
 
-// =====================================
-// 🎨 AFFICHAGE TEMPLATE
-// =====================================
-
-$page_title = 'Connexion';
-$page_subtitle = 'Accès au portail Guldagil';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?> - Portail Guldagil</title>
+    <title>Connexion - Portail Guldagil</title>
     
-    <!-- CSS principal -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/login.css?v=<?= $build_number ?>">
     
-    <!-- Empêcher cache navigateur -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Cache-Control" content="no-cache">
     <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
 </head>
 <body>
 
@@ -321,18 +205,12 @@ $page_subtitle = 'Accès au portail Guldagil';
         </div>
         <?php endif; ?>
 
-        <?php if ($is_rate_limited): ?>
-        <div class="alert alert-danger">
-            <strong>Compte temporairement bloqué</strong><br>
-            Trop de tentatives de connexion. Réessayez dans <?= ceil(($cooldown_time - (time() - $last_attempt)) / 60) ?> minutes.
-        </div>
-        <?php else: ?>
-
+        <?php if (!$is_rate_limited): ?>
         <form method="POST" action="/auth/login.php<?= $redirect_param ? '?redirect=' . urlencode($redirect_param) : '' ?>">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             
             <div class="form-group">
-                <label for="username" class="form-label">Nom d'utilisateur</label>
+                <label for="username">Nom d'utilisateur</label>
                 <input type="text" 
                        id="username" 
                        name="username" 
@@ -340,12 +218,11 @@ $page_subtitle = 'Accès au portail Guldagil';
                        value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
                        required 
                        autocomplete="username"
-                       maxlength="50"
                        autofocus>
             </div>
 
             <div class="form-group">
-                <label for="password" class="form-label">Mot de passe</label>
+                <label for="password">Mot de passe</label>
                 <input type="password" 
                        id="password" 
                        name="password" 
@@ -354,46 +231,27 @@ $page_subtitle = 'Accès au portail Guldagil';
                        autocomplete="current-password">
             </div>
 
-            <button type="submit" class="btn btn-primary" id="loginBtn">
+            <button type="submit" class="btn btn-primary">
                 🔑 Se connecter
             </button>
         </form>
-
+        <?php else: ?>
+        <div class="alert alert-danger">
+            <strong>Compte bloqué</strong><br>
+            Trop de tentatives de connexion.
+        </div>
         <?php endif; ?>
 
         <div class="footer-info">
             <p>Session: 9h30 • Version <?= $version ?? '0.5' ?> • Build <?= $build_number ?? '001' ?></p>
-            <p>Tentatives: <?= $login_attempts ?>/<?= $max_attempts ?></p>
-            <?php if (defined('DEBUG') && DEBUG): ?>
-            <p style="font-size: 0.7rem; color: #999;">
-                Debug: URI=<?= htmlspecialchars($current_uri) ?> | 
-                Redirect=<?= htmlspecialchars($safe_redirect) ?> |
-                POST=<?= $is_post_request ? 'Y' : 'N' ?> |
-                Auth=<?= $user_authenticated ? 'Y' : 'N' ?>
-            </p>
-            <?php endif; ?>
         </div>
     </div>
 </div>
 
 <script>
-// Auto-focus
-document.addEventListener('DOMContentLoaded', function() {
-    const usernameField = document.getElementById('username');
-    const passwordField = document.getElementById('password');
-    
-    if (usernameField && !usernameField.value.trim()) {
-        usernameField.focus();
-    } else if (passwordField && !passwordField.value) {
-        passwordField.focus();
-    }
-});
-
-// Validation + loading state
-document.querySelector('form').addEventListener('submit', function(e) {
+document.querySelector('form')?.addEventListener('submit', function(e) {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
-    const submitBtn = document.getElementById('loginBtn');
     
     if (!username || !password) {
         e.preventDefault();
@@ -401,37 +259,11 @@ document.querySelector('form').addEventListener('submit', function(e) {
         return;
     }
     
-    if (username.length < 2) {
-        e.preventDefault();
-        alert('Le nom d\'utilisateur doit contenir au moins 2 caractères');
-        return;
-    }
-    
-    // État chargement
-    submitBtn.disabled = true;
-    submitBtn.classList.add('loading');
-    submitBtn.textContent = 'Connexion...';
-    
-    // Timeout sécurité
-    setTimeout(() => {
-        if (submitBtn.disabled) {
-            submitBtn.disabled = false;
-            submitBtn.classList.remove('loading');
-            submitBtn.innerHTML = '🔑 Se connecter';
-        }
-    }, 10000);
+    // Loading state
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Connexion...';
 });
-
-// Debug si activé
-<?php if (defined('DEBUG') && DEBUG): ?>
-console.log('Login Debug:', {
-    currentURI: <?= json_encode($current_uri) ?>,
-    redirectParam: <?= json_encode($redirect_param) ?>,
-    safeRedirect: <?= json_encode($safe_redirect) ?>,
-    isPost: <?= json_encode($is_post_request) ?>,
-    authenticated: <?= json_encode($user_authenticated) ?>
-});
-<?php endif; ?>
 </script>
 
 </body>
