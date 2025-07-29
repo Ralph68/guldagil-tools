@@ -9,6 +9,7 @@
  * 2. Création session compatible AuthManager
  * 3. Suppression conflits expires_at
  * 4. Cookie lifetime correct
+ * 5. Correction DB_DSN vers configuration actuelle
  */
 
 // =====================================
@@ -60,43 +61,101 @@ function authenticateUser($username, $password) {
             }
         }
         
-        // 2. Base de données directe en fallback
-        if (defined('DB_DSN')) {
-            $db = new PDO(DB_DSN, DB_USER, DB_PASS, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-            ]);
-            
-            $stmt = $db->prepare("
-                SELECT id, username, password_hash, role, is_active, failed_attempts, locked_until
-                FROM auth_users 
-                WHERE username = :username 
-                AND is_active = 1
-                LIMIT 1
-            ");
-            
-            $stmt->bindValue(':username', $username, PDO::PARAM_STR);
-            $stmt->execute();
-            $user = $stmt->fetch();
-            
-            if ($user) {
-                // Vérifier verrouillage compte
-                if ($user['locked_until'] && time() < strtotime($user['locked_until'])) {
-                    return ['success' => false, 'error' => 'Compte temporairement verrouillé'];
-                }
+        // 2. Base de données directe en fallback - CORRIGÉ
+        if (defined('DB_HOST') && defined('DB_NAME') && defined('DB_USER')) {
+            try {
+                // Construire DSN manuellement à partir des constantes existantes
+                $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+                $db = new PDO($dsn, DB_USER, DB_PASS, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                ]);
                 
-                // Vérifier mot de passe
-                if (password_verify($password, $user['password_hash'])) {
-                    // Réinitialiser tentatives échouées
-                    $stmt = $db->prepare("
-                        UPDATE auth_users 
-                        SET failed_attempts = 0, locked_until = NULL, last_login = NOW()
-                        WHERE id = :id
-                    ");
-                    $stmt->bindValue(':id', $user['id'], PDO::PARAM_INT);
-                    $stmt->execute();
+                $stmt = $db->prepare("
+                    SELECT id, username, password_hash, role, is_active, failed_attempts, locked_until
+                    FROM auth_users 
+                    WHERE username = :username 
+                    AND is_active = 1
+                    LIMIT 1
+                ");
+                
+                $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+                $stmt->execute();
+                $user = $stmt->fetch();
+                
+                if ($user) {
+                    // Vérifier verrouillage compte
+                    if ($user['locked_until'] && time() < strtotime($user['locked_until'])) {
+                        return ['success' => false, 'error' => 'Compte temporairement verrouillé'];
+                    }
                     
-                    error_log("LOGIN SUCCESS via database: " . $username);
+                    // Vérifier mot de passe
+                    if (password_verify($password, $user['password_hash'])) {
+                        // Réinitialiser tentatives échouées
+                        $stmt = $db->prepare("
+                            UPDATE auth_users 
+                            SET failed_attempts = 0, locked_until = NULL, last_login = NOW()
+                            WHERE id = :id
+                        ");
+                        $stmt->bindValue(':id', $user['id'], PDO::PARAM_INT);
+                        $stmt->execute();
+                        
+                        error_log("LOGIN SUCCESS via database: " . $username);
+                        return [
+                            'success' => true,
+                            'user' => [
+                                'id' => $user['id'],
+                                'username' => $user['username'],
+                                'role' => $user['role']
+                            ],
+                            'method' => 'database'
+                        ];
+                    } else {
+                        // Incrémenter tentatives échouées
+                        $failed_attempts = $user['failed_attempts'] + 1;
+                        $locked_until = null;
+                        
+                        if ($failed_attempts >= 5) {
+                            $locked_until = date('Y-m-d H:i:s', time() + 1800); // 30 min
+                        }
+                        
+                        $stmt = $db->prepare("
+                            UPDATE auth_users 
+                            SET failed_attempts = :attempts, locked_until = :locked
+                            WHERE id = :id
+                        ");
+                        $stmt->bindValue(':attempts', $failed_attempts, PDO::PARAM_INT);
+                        $stmt->bindValue(':locked', $locked_until, PDO::PARAM_STR);
+                        $stmt->bindValue(':id', $user['id'], PDO::PARAM_INT);
+                        $stmt->execute();
+                        
+                        return ['success' => false, 'error' => 'Identifiants incorrects'];
+                    }
+                }
+            } catch (PDOException $e) {
+                error_log("Erreur PDO login fallback: " . $e->getMessage());
+                return ['success' => false, 'error' => 'Erreur de connexion base de données'];
+            }
+        }
+        
+        // 3. Fonction getDB() si disponible
+        if (function_exists('getDB')) {
+            try {
+                $db = getDB();
+                $stmt = $db->prepare("
+                    SELECT id, username, password_hash, role, is_active, failed_attempts, locked_until
+                    FROM auth_users 
+                    WHERE username = :username 
+                    AND is_active = 1
+                    LIMIT 1
+                ");
+                
+                $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+                $stmt->execute();
+                $user = $stmt->fetch();
+                
+                if ($user && password_verify($password, $user['password_hash'])) {
+                    error_log("LOGIN SUCCESS via getDB(): " . $username);
                     return [
                         'success' => true,
                         'user' => [
@@ -104,33 +163,15 @@ function authenticateUser($username, $password) {
                             'username' => $user['username'],
                             'role' => $user['role']
                         ],
-                        'method' => 'database'
+                        'method' => 'getDB'
                     ];
-                } else {
-                    // Incrémenter tentatives échouées
-                    $failed_attempts = $user['failed_attempts'] + 1;
-                    $locked_until = null;
-                    
-                    if ($failed_attempts >= 5) {
-                        $locked_until = date('Y-m-d H:i:s', time() + 1800); // 30 min
-                    }
-                    
-                    $stmt = $db->prepare("
-                        UPDATE auth_users 
-                        SET failed_attempts = :attempts, locked_until = :locked
-                        WHERE id = :id
-                    ");
-                    $stmt->bindValue(':attempts', $failed_attempts, PDO::PARAM_INT);
-                    $stmt->bindValue(':locked', $locked_until, PDO::PARAM_STR);
-                    $stmt->bindValue(':id', $user['id'], PDO::PARAM_INT);
-                    $stmt->execute();
-                    
-                    return ['success' => false, 'error' => 'Identifiants incorrects'];
                 }
+            } catch (Exception $e) {
+                error_log("Erreur getDB login fallback: " . $e->getMessage());
             }
         }
         
-        // 3. AUCUN SYSTÈME DE FALLBACK AVEC COMPTES PAR DÉFAUT
+        // 4. AUCUN SYSTÈME DE FALLBACK AVEC COMPTES PAR DÉFAUT
         // Sécurité : pas de comptes admin/dev en dur
         
         return ['success' => false, 'error' => 'Identifiants incorrects'];
@@ -319,7 +360,11 @@ $page_subtitle = 'Accès au portail Guldagil';
     <div class="login-card">
         <div class="login-header">
             <div class="login-logo">
+                <?php if (file_exists(ROOT_PATH . '/public/assets/img/logo.png')): ?>
                 <img src="/assets/img/logo.png" alt="Logo Guldagil" width="80" height="80">
+                <?php else: ?>
+                <div style="font-size: 4rem;">🌊</div>
+                <?php endif; ?>
             </div>
             <h1>Portail Guldagil</h1>
             <p>Connexion sécurisée</p>
@@ -379,6 +424,13 @@ $page_subtitle = 'Accès au portail Guldagil';
         <div class="footer-info">
             <p>Session: 9h30 • Version <?= $version ?? '0.5' ?> • Build <?= $build_number ?? '001' ?></p>
             <p>Tentatives: <?= $login_attempts ?>/<?= $max_attempts ?></p>
+            <?php if (defined('DEBUG') && DEBUG): ?>
+            <p style="font-size: 0.7rem; color: #999;">
+                Debug: DB_HOST=<?= defined('DB_HOST') ? 'OK' : 'KO' ?> | 
+                AuthManager=<?= class_exists('AuthManager') ? 'OK' : 'KO' ?> |
+                getDB=<?= function_exists('getDB') ? 'OK' : 'KO' ?>
+            </p>
+            <?php endif; ?>
         </div>
     </div>
 </div>
