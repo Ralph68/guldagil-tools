@@ -1,13 +1,13 @@
 <?php
 /**
- * Titre: Page de connexion CORRIGÉE - Session 9h30 stable
+ * Titre: Page de connexion CORRIGÉE - Session 9h30 + Redirection fixée
  * Chemin: /public/auth/login.php
  * Version: 0.5 beta + build auto
  * 
  * CORRECTIONS CRITIQUES :
  * 1. Configuration session 9h30 AVANT session_start()
- * 2. Création session compatible AuthManager
- * 3. Suppression conflits expires_at
+ * 2. RÉSOLUTION redirection infinie ERR_TOO_MANY_REDIRECTS
+ * 3. Création session compatible AuthManager
  * 4. Cookie lifetime correct
  * 5. Correction DB_DSN vers configuration actuelle
  */
@@ -18,7 +18,14 @@
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 
 // CRITIQUE : Charger config session AVANT session_start()
-require_once ROOT_PATH . '/config/session_timeout.php';
+if (file_exists(ROOT_PATH . '/config/session_timeout.php')) {
+    require_once ROOT_PATH . '/config/session_timeout.php';
+}
+
+// Définir SESSION_TIMEOUT si pas encore défini
+if (!defined('SESSION_TIMEOUT')) {
+    define('SESSION_TIMEOUT', 34200); // 9h30 par défaut
+}
 
 // Configuration PHP pour sessions 9h30 AVANT démarrage
 ini_set('session.gc_maxlifetime', SESSION_TIMEOUT);
@@ -255,22 +262,65 @@ $is_rate_limited = ($login_attempts >= $max_attempts) && (time() - $last_attempt
 $error_message = '';
 $success_message = '';
 
-// Redirection si déjà connecté
-if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']) {
-    // Vérifier avec AuthManager si disponible
+// =====================================
+// 🚨 CORRECTION REDIRECTION INFINIE
+// =====================================
+
+// Variables pour diagnostic
+$current_uri = $_SERVER['REQUEST_URI'] ?? '';
+$is_login_page = (strpos($current_uri, '/auth/login.php') !== false);
+$redirect_param = $_GET['redirect'] ?? '';
+$is_post_request = ($_SERVER['REQUEST_METHOD'] === 'POST');
+
+// Détection des redirections infinies potentielles
+$potential_infinite_redirect = (
+    $is_login_page && 
+    !$is_post_request && 
+    ($redirect_param === $current_uri || $redirect_param === '/auth/login.php')
+);
+
+if ($potential_infinite_redirect) {
+    error_log("REDIRECT LOOP DETECTED: URI=$current_uri, redirect=$redirect_param");
+    $redirect_param = '/'; // Forcer redirection vers accueil
+}
+
+// Redirection si déjà connecté - LOGIQUE CORRIGÉE
+if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] && !$is_post_request) {
+    // Vérifier avec AuthManager si disponible - MAIS sans créer d'instance si pas nécessaire
     $is_authenticated = true;
+    
     if (class_exists('AuthManager')) {
-        $auth = AuthManager::getInstance();
-        $is_authenticated = $auth->isAuthenticated();
+        try {
+            $auth = AuthManager::getInstance();
+            $is_authenticated = $auth->isAuthenticated();
+        } catch (Exception $e) {
+            error_log("Erreur AuthManager verification: " . $e->getMessage());
+            // Garder $is_authenticated = true par défaut
+        }
     }
     
     if ($is_authenticated) {
-        $redirect = $_GET['redirect'] ?? '/';
-        if ($redirect === $_SERVER['REQUEST_URI']) {
-            $redirect = '/'; // Éviter les redirections infinies
+        // Logique de redirection sécurisée
+        $redirect = $redirect_param ?: '/';
+        
+        // Sécurité : éviter redirections infinies
+        if ($redirect === $current_uri || $redirect === '/auth/login.php') {
+            $redirect = '/';
         }
+        
+        // Sécurité : valider URL redirection
+        if (!preg_match('/^\/[a-zA-Z0-9\/_-]*$/', $redirect)) {
+            $redirect = '/';
+        }
+        
+        error_log("REDIRECT AUTHENTICATED USER: from=$current_uri to=$redirect");
         header('Location: ' . $redirect);
         exit;
+    } else {
+        // Session invalide, la nettoyer
+        $_SESSION = array();
+        session_destroy();
+        session_start();
     }
 }
 
@@ -319,8 +369,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'method' => $auth_result['method']
                 ]);
                 
-                // Redirection
-                $redirect = $_GET['redirect'] ?? '/';
+                // Redirection POST-REDIRECT-GET pattern
+                $redirect = $redirect_param ?: '/';
+                
+                // Sécurité : éviter redirections infinies
+                if ($redirect === $current_uri || $redirect === '/auth/login.php') {
+                    $redirect = '/';
+                }
+                
+                error_log("POST LOGIN SUCCESS: redirecting to $redirect");
                 header('Location: ' . $redirect);
                 exit;
                 
@@ -363,7 +420,7 @@ $page_subtitle = 'Accès au portail Guldagil';
                 <?php if (file_exists(ROOT_PATH . '/public/assets/img/logo.png')): ?>
                 <img src="/assets/img/logo.png" alt="Logo Guldagil" width="80" height="80">
                 <?php else: ?>
-                <div style="font-size: 4rem;">🌊</div>
+                <div class="logo-placeholder">🌊</div>
                 <?php endif; ?>
             </div>
             <h1>Portail Guldagil</h1>
@@ -389,7 +446,7 @@ $page_subtitle = 'Accès au portail Guldagil';
         </div>
         <?php else: ?>
 
-        <form method="POST" action="">
+        <form method="POST" action="/auth/login.php<?= $redirect_param ? '?redirect=' . urlencode($redirect_param) : '' ?>">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             
             <div class="form-group">
@@ -401,7 +458,8 @@ $page_subtitle = 'Accès au portail Guldagil';
                        value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
                        required 
                        autocomplete="username"
-                       maxlength="50">
+                       maxlength="50"
+                       autofocus>
             </div>
 
             <div class="form-group">
@@ -414,7 +472,7 @@ $page_subtitle = 'Accès au portail Guldagil';
                        autocomplete="current-password">
             </div>
 
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" id="loginBtn">
                 🔑 Se connecter
             </button>
         </form>
@@ -426,9 +484,10 @@ $page_subtitle = 'Accès au portail Guldagil';
             <p>Tentatives: <?= $login_attempts ?>/<?= $max_attempts ?></p>
             <?php if (defined('DEBUG') && DEBUG): ?>
             <p style="font-size: 0.7rem; color: #999;">
-                Debug: DB_HOST=<?= defined('DB_HOST') ? 'OK' : 'KO' ?> | 
-                AuthManager=<?= class_exists('AuthManager') ? 'OK' : 'KO' ?> |
-                getDB=<?= function_exists('getDB') ? 'OK' : 'KO' ?>
+                Debug: URI=<?= htmlspecialchars($current_uri) ?> | 
+                Redirect=<?= htmlspecialchars($redirect_param) ?> |
+                POST=<?= $is_post_request ? 'Y' : 'N' ?> |
+                Auth=<?= isset($_SESSION['authenticated']) ? 'Y' : 'N' ?>
             </p>
             <?php endif; ?>
         </div>
@@ -436,18 +495,23 @@ $page_subtitle = 'Accès au portail Guldagil';
 </div>
 
 <script>
-// Auto-focus sur premier champ
+// Auto-focus sur premier champ vide
 document.addEventListener('DOMContentLoaded', function() {
     const usernameField = document.getElementById('username');
-    if (usernameField && !usernameField.value) {
+    const passwordField = document.getElementById('password');
+    
+    if (usernameField && !usernameField.value.trim()) {
         usernameField.focus();
+    } else if (passwordField && !passwordField.value) {
+        passwordField.focus();
     }
 });
 
-// Validation basique côté client
+// Validation côté client + loading state
 document.querySelector('form').addEventListener('submit', function(e) {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
+    const submitBtn = document.getElementById('loginBtn');
     
     if (!username || !password) {
         e.preventDefault();
@@ -460,7 +524,32 @@ document.querySelector('form').addEventListener('submit', function(e) {
         alert('Le nom d\'utilisateur doit contenir au moins 2 caractères');
         return;
     }
+    
+    // État de chargement
+    submitBtn.disabled = true;
+    submitBtn.classList.add('loading');
+    submitBtn.textContent = 'Connexion...';
+    
+    // Réactiver si erreur
+    setTimeout(() => {
+        if (submitBtn.disabled) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
+            submitBtn.innerHTML = '🔑 Se connecter';
+        }
+    }, 10000); // 10 secondes timeout
 });
+
+// Debug redirection (si DEBUG activé)
+<?php if (defined('DEBUG') && DEBUG): ?>
+console.log('Login Debug:', {
+    currentURI: <?= json_encode($current_uri) ?>,
+    redirectParam: <?= json_encode($redirect_param) ?>,
+    isPost: <?= json_encode($is_post_request) ?>,
+    authenticated: <?= json_encode(isset($_SESSION['authenticated'])) ?>,
+    potentialLoop: <?= json_encode($potential_infinite_redirect) ?>
+});
+<?php endif; ?>
 </script>
 
 </body>
