@@ -417,45 +417,31 @@ if (!function_exists('autoloadCoreClasses')) {
  * Fonction d'initialisation des gestionnaires core (optionnelle)
  * Peut être appelée pour pré-charger les gestionnaires
  */
-if (!function_exists('initCoreManagers')) {
-    function initCoreManagers() {
-        try {
-            // Initialisation Database (wrapper autour de getDB() existant)
-            if (class_exists('Database') && function_exists('getDB')) {
-                // Test de compatibilité
-                $oldDb = getDB();
-                $newDb = Database::getDB();
-                
-                if ($oldDb && $newDb) {
-                    // Les deux méthodes fonctionnent - OK
-                    error_log("✅ Database manager initialisé - Compatible avec getDB()");
+if (!function_exists('initCoreManagersSafe')) {
+    function initCoreManagersSafe() {
+        // Liste des managers à initialiser avec leurs méthodes
+        $managers = [
+            'Database' => 'getDB',
+            'RouteManager' => 'getInstance', 
+            'TemplateManager' => 'getInstance',
+            'MiddlewareManager' => 'getInstance'
+        ];
+        
+        foreach ($managers as $class => $method) {
+            if (class_exists($class) && method_exists($class, $method)) {
+                try {
+                    $instance = call_user_func([$class, $method]);
+                    if ($instance) {
+                        error_log("✅ {$class} initialisé avec {$method}()");
+                    }
+                } catch (Exception $e) {
+                    error_log("⚠️ Erreur {$class}::{$method}(): " . $e->getMessage());
                 }
             }
-            
-            // Initialisation RouteManager
-            if (class_exists('RouteManager')) {
-                $routeManager = RouteManager::getInstance();
-                $currentModule = $routeManager->getCurrentModule();
-                error_log("✅ RouteManager initialisé - Module détecté: {$currentModule}");
-            }
-            
-            // Initialisation TemplateManager
-            if (class_exists('TemplateManager')) {
-                $templateManager = TemplateManager::getInstance();
-                error_log("✅ TemplateManager initialisé");
-            }
-            
-            // Initialisation MiddlewareManager
-            if (class_exists('MiddlewareManager')) {
-                $middlewareManager = MiddlewareManager::getInstance();
-                error_log("✅ MiddlewareManager initialisé");
-            }
-            
-        } catch (Exception $e) {
-            error_log("⚠️ Erreur initialisation core managers: " . $e->getMessage());
         }
     }
 }
+
 
 // =====================================
 // FONCTIONS DE COMPATIBILITÉ
@@ -491,7 +477,8 @@ if (!function_exists('getDatabaseConnection')) {
 if (!function_exists('getCurrentModuleAuto')) {
     function getCurrentModuleAuto($fallback = 'home') {
         // Méthode moderne
-        if (class_exists('RouteManager')) {
+        if (class_exists('RouteManager') && method_exists('RouteManager', 'getInstance')) {
+    $routeManager = RouteManager::getInstance();
             try {
                 return RouteManager::getInstance()->getCurrentModule();
             } catch (Exception $e) {
@@ -521,15 +508,15 @@ if (!function_exists('getCurrentModuleAuto')) {
 // =====================================
 
 // Initialiser automatiquement en mode debug pour tester
-if (defined('DEBUG') && DEBUG && php_sapi_name() !== 'cli') {
-    // Initialisation silencieuse (pas de sortie)
-    try {
-        initCoreManagers();
-    } catch (Exception $e) {
-        // Log uniquement, pas d'interruption
-        error_log("Initialisation core silencieuse échouée: " . $e->getMessage());
-    }
-}
+//if (defined('DEBUG') && DEBUG && php_sapi_name() !== 'cli') {
+//    if (function_exists('initCoreManagers')) {
+//        try {
+//            initCoreManagers();
+//        } catch (Exception $e) {
+//            error_log("Initialisation core silencieuse échouée: " . $e->getMessage());
+//        }
+//    }
+//}
 
 // =====================================
 // CONSTANTES POUR LES NOUVELLES CAPACITÉS
