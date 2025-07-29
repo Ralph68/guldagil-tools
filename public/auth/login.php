@@ -32,7 +32,7 @@ ini_set('session.name', 'GULDAGIL_PORTAL_SESSION');
 session_start();
 
 // Chargement configuration
-require_once ROOT_PATH . '/config/config.php';
+require_once ROOT_PATH . '/config/config.php'; // Assure que DB_DSN, DB_USER, DB_PASS sont définis ici
 require_once ROOT_PATH . '/config/version.php';
 
 // =====================================
@@ -61,7 +61,7 @@ function authenticateUser($username, $password) {
         }
         
         // 2. Base de données directe en fallback
-        if (defined('DB_DSN')) {
+        if (defined('DB_DSN') && defined('DB_USER') && defined('DB_PASS')) {
             $db = new PDO(DB_DSN, DB_USER, DB_PASS, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
