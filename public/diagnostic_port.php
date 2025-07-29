@@ -12,7 +12,7 @@ error_reporting(E_ALL);
 
 // Fonction d'affichage sécurisé
 function safe_echo($text) {
-    echo htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    echo htmlspecialchars($text ?? '', ENT_QUOTES, 'UTF-8');
 }
 
 // CSS simple pour le diagnostic
@@ -181,8 +181,8 @@ if (file_exists($version_file)) {
         
         if (function_exists('getVersionInfo')) {
             $version_info = getVersionInfo();
-            echo '<span class="info">📦 Version : ' . safe_echo($version_info['version']) . '</span><br>';
-            echo '<span class="info">🔢 Build : ' . safe_echo($version_info['build_number']) . '</span><br>';
+            echo '<span class="info">📦 Version : ' . safe_echo($version_info['version'] ?? 'N/A') . '</span><br>';
+            echo '<span class="info">🔢 Build : ' . safe_echo($version_info['build_number'] ?? 'N/A') . '</span><br>';
         }
         
     } catch (Exception $e) {
