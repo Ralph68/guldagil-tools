@@ -1,172 +1,124 @@
 <?php
 /**
- * Titre: Portail Guldagil - Header principal avec navigation modules et menu utilisateur
+ * Titre: Header principal avec gestion intelligente du breadcrumb et navigation optimisée
  * Chemin: /templates/header.php
  * Version: 0.5 beta + build auto
- * Description: Header complet avec logo sans nom portail (sauf index), navigation modules sticky, menu utilisateur fonctionnel
  */
 
-// Protection contre l'accès direct
-if (!defined('ROOT_PATH')) {
-    http_response_code(403);
-    exit('Accès direct interdit');
-}
+// Variables nécessaires pour le template (définies dans les pages qui incluent ce header)
+$page_title = $page_title ?? 'Portail Guldagil';
+$page_subtitle = $page_subtitle ?? '';
+$current_module = $current_module ?? 'home';
+$module_icon = $module_icon ?? '🏠';
+$module_color = $module_color ?? '#3b82f6';
+$module_status = $module_status ?? 'stable';
+$build_number = $build_number ?? (defined('BUILD_NUMBER') ? substr(BUILD_NUMBER, 0, 8) : 'dev-' . date('ymdHis'));
+$app_name = $app_name ?? (defined('APP_NAME') ? APP_NAME : 'Portail Guldagil');
 
-// Chargement système de rôles centralisé
-require_once ROOT_PATH . '/config/roles.php';
+// Gestion de l'authentification
+$user_authenticated = isset($_SESSION['user_authenticated']) && $_SESSION['user_authenticated'] === true;
+$current_user = $_SESSION['user'] ?? null;
 
-// Chargement config debug si disponible
-if (file_exists(ROOT_PATH . '/config/debug.php')) {
-    require_once ROOT_PATH . '/config/debug.php';
-}
+// Détection automatique de la profondeur de navigation pour le breadcrumb
+$current_path = $_SERVER['REQUEST_URI'] ?? '/';
+$path_segments = array_filter(explode('/', $current_path));
 
-// Initialisation des variables par défaut
-$user_authenticated = false;
-$current_user = null;
+// Détecter si on est sur une page d'index de module ou plus profond
+$is_portal_index = ($current_path === '/' || $current_path === '/index.php');
+$is_module_index = (count($path_segments) <= 1 || (count($path_segments) == 2 && end($path_segments) === 'index.php'));
 
-// === AUTHENTIFICATION OBLIGATOIRE ===
+// Générer le breadcrumb automatiquement si navigation profonde
+$show_breadcrumb = !$is_portal_index && !$is_module_index;
+$auto_breadcrumbs = [];
 
-// Démarrer session si pas déjà fait
-if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.cookie_httponly', 1);
-    ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? 1 : 0);
-    ini_set('session.use_strict_mode', 1);
-    session_start();
-}
-
-// Pages qui n'ont PAS besoin d'authentification
-$public_pages = [
-    '/auth/login.php',
-    '/auth/logout.php', 
-    '/error.php',
-    '/maintenance.php'
-];
-
-// Vérifier si on est sur une page publique
-$current_script = $_SERVER['SCRIPT_NAME'] ?? '';
-$is_public_page = false;
-foreach ($public_pages as $page) {
-    if (strpos($current_script, $page) !== false) {
-        $is_public_page = true;
-        break;
-    }
-}
-
-// Initialisation des variables
-$user_authenticated = false;
-$current_user = null;
-
-if (!$is_public_page) {
-    require_once ROOT_PATH . '/core/auth/AuthManager.php';
-    $auth = AuthManager::getInstance();
+if ($show_breadcrumb) {
+    // Breadcrumb automatique basé sur l'URL
+    $auto_breadcrumbs[] = ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/'];
     
-    if (!$auth->isAuthenticated()) {
-        session_destroy();
-        header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
-        exit;
-    }
-    
-    $current_user = $auth->getCurrentUser();
-    $user_authenticated = true;
-}
-
-// Variables avec fallbacks sécurisés
-$page_title = htmlspecialchars($page_title ?? 'Portail Guldagil');
-$page_subtitle = htmlspecialchars($page_subtitle ?? 'Plateforme collaborative multi-métiers');
-$page_description = htmlspecialchars($page_description ?? 'Portail interne Guldagil pour tous les collaborateurs');
-$current_module = htmlspecialchars($current_module ?? 'home');
-
-// Utilisation des nouvelles variables de config
-$app_version = defined('APP_VERSION') ? APP_VERSION : '0.5-beta';
-$build_number = defined('BUILD_NUMBER') ? BUILD_NUMBER : date('Ymd') . '001';
-$app_name = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
-$app_author = defined('APP_AUTHOR') ? APP_AUTHOR : 'Jean-Thomas RUNSER';
-
-// Configuration modules avec routes et permissions
-$all_modules = [
-    'home' => ['icon' => '🏠', 'color' => '#3182ce', 'status' => 'active', 'name' => 'Accueil', 'routes' => ['', 'home']],
-    'port' => ['icon' => '📦', 'color' => '#059669', 'status' => 'active', 'name' => 'Frais de port', 'routes' => ['port', 'calculateur']],
-    'adr' => ['icon' => '⚠️', 'color' => '#dc2626', 'status' => 'active', 'name' => 'ADR', 'routes' => ['adr']],
-    'epi' => ['icon' => '🦺', 'color' => '#7c3aed', 'status' => 'active', 'name' => 'EPI', 'routes' => ['epi']],
-    'qualite' => ['icon' => '✅', 'color' => '#059669', 'status' => 'active', 'name' => 'Qualité', 'routes' => ['qualite']],
-    'materiel' => ['icon' => '🔧', 'color' => '#ea580c', 'status' => 'active', 'name' => 'Matériels', 'routes' => ['materiel']],
-    'user' => ['icon' => '👤', 'color' => '#7c2d12', 'status' => 'active', 'name' => 'Mon compte', 'routes' => ['user', 'profile']],
-    'admin' => ['icon' => '⚙️', 'color' => '#1f2937', 'status' => 'active', 'name' => 'Administration', 'routes' => ['admin']],
-    'dev' => ['icon' => '💻', 'color' => '#dc2626', 'status' => 'development', 'name' => 'Développement', 'routes' => ['dev', 'debug']]
-];
-
-// Détection automatique du module actuel depuis l'URL
-if ($current_module === 'home') {
-    $request_uri = $_SERVER['REQUEST_URI'] ?? '/';
-    $path_parts = explode('/', trim($request_uri, '/'));
-    $first_segment = $path_parts[0] ?? '';
-    
-    foreach ($all_modules as $module_key => $module_data) {
-        if (in_array($first_segment, $module_data['routes'])) {
-            $current_module = $module_key;
-            break;
+    $cumulative_path = '';
+    foreach ($path_segments as $index => $segment) {
+        $cumulative_path .= '/' . $segment;
+        
+        // Nettoyer le segment pour l'affichage
+        $display_name = ucfirst(str_replace(['_', '-'], ' ', $segment));
+        
+        // Mapper les noms de modules connus
+        $module_names = [
+            'port' => 'Frais de Port',
+            'adr' => 'ADR Transport',
+            'admin' => 'Administration',
+            'user' => 'Utilisateur',
+            'auth' => 'Authentification',
+            'declaration' => 'Déclarations',
+            'create' => 'Créer',
+            'edit' => 'Modifier',
+            'view' => 'Voir'
+        ];
+        
+        $final_name = $module_names[$segment] ?? $display_name;
+        
+        // Icônes par module
+        $module_icons = [
+            'port' => '📦',
+            'adr' => '⚠️',
+            'admin' => '⚙️',
+            'user' => '👤',
+            'auth' => '🔐',
+            'declaration' => '📋',
+            'create' => '➕',
+            'edit' => '✏️',
+            'view' => '👁️'
+        ];
+        
+        $icon = $module_icons[$segment] ?? '📄';
+        
+        if ($index === count($path_segments) - 1) {
+            // Dernier élément = page actuelle
+            $auto_breadcrumbs[] = ['icon' => $icon, 'text' => $final_name, 'active' => true];
+        } else {
+            $auto_breadcrumbs[] = ['icon' => $icon, 'text' => $final_name, 'url' => $cumulative_path];
         }
     }
 }
 
-// Détecter si on est sur la page d'index générale
-$is_portal_index = ($current_module === 'home' && ($_SERVER['REQUEST_URI'] === '/' || $_SERVER['REQUEST_URI'] === '/index.php'));
+// Utiliser les breadcrumbs manuels s'ils sont définis, sinon automatiques
+$breadcrumbs = $breadcrumbs ?? $auto_breadcrumbs;
 
-// Fil d'Ariane par défaut
-$breadcrumbs = $breadcrumbs ?? [
-    ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => true]
+// Configuration des modules disponibles (pour la navigation)
+$available_modules = [
+    'port' => ['name' => 'Frais Port', 'icon' => '📦', 'status' => 'stable', 'color' => '#059669'],
+    'adr' => ['name' => 'ADR Transport', 'icon' => '⚠️', 'status' => 'beta', 'color' => '#dc2626'],
+    'admin' => ['name' => 'Administration', 'icon' => '⚙️', 'status' => 'stable', 'color' => '#7c3aed'],
+    'materiel' => ['name' => 'Matériel', 'icon' => '🔧', 'status' => 'development', 'color' => '#ea580c'],
+    'epi' => ['name' => 'EPI', 'icon' => '🛡️', 'status' => 'development', 'color' => '#0891b2'],
+    'cq' => ['name' => 'Contrôle Qualité', 'icon' => '🔍', 'status' => 'development', 'color' => '#7c2d12']
 ];
-
-// Configuration CSS et JS modulaire
-$module_css = $module_css ?? true;
-$module_js = $module_js ?? true;
-
-// Titre complet de la page
-$full_title = $page_title . ' - ' . $app_name . ' v' . $app_version;
-
-// Icône, couleur et statut du module actuel
-$module_icon = $all_modules[$current_module]['icon'] ?? '🏠';
-$module_color = $all_modules[$current_module]['color'] ?? '#3182ce';
-$module_status = $all_modules[$current_module]['status'] ?? 'active';
-
-// Navigation modules avec système de rôles centralisé
-$navigation_modules = [];
-if ($user_authenticated) {
-    $user_role = $current_user['role'] ?? 'user';
-    $navigation_modules = getNavigationModules($user_role, $all_modules);
-}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="<?= $page_description ?>">
-    <meta name="author" content="<?= $app_author ?>">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="<?= $module_color ?>">
+    <title><?= htmlspecialchars($page_title) ?><?= $page_subtitle ? ' - ' . htmlspecialchars($page_subtitle) : '' ?> | <?= $app_name ?></title>
     
-    <title><?= $full_title ?></title>
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/assets/img/favicon_32x32.png">
-    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon_180x180.png">
-
-    <!-- CSS principal OBLIGATOIRE - chemins critiques à préserver -->
+    <!-- Meta tags SEO et sécurité -->
+    <meta name="description" content="<?= htmlspecialchars($page_subtitle ?: 'Portail Guldagil - Gestion des frais de port et transport') ?>">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    
+    <!-- CSS principals OBLIGATOIRES (ordre important) -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/header.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/footer.css?v=<?= $build_number ?>">
     <link rel="stylesheet" href="/assets/css/components.css?v=<?= $build_number ?>">
-    <!-- CSS corrections header navigation et menu utilisateur -->
-    <link rel="stylesheet" href="/assets/css/header_fixes.css?v=<?= $build_number ?>">
-    <!-- CSS bannière cookie RGPD -->
-    <link rel="stylesheet" href="/assets/css/cookie_banner.css?v=<?= $build_number ?>">
-
-    <!-- CSS modulaire avec fallback intelligent -->
-    <?php if ($module_css && $current_module !== 'home'): ?>
-        <?php 
-        // 1. Priorité : nouveau système dans module/assets/
-        $new_css_path = "{$current_module}/assets/css/{$current_module}.css";
+    
+    <!-- CSS spécifique au module actuel -->
+    <?php if ($current_module !== 'home'): ?>
+        <?php
+        // 1. Nouveau système : CSS dans le dossier du module
+        $new_css_path = "/public/{$current_module}/assets/css/{$current_module}.css";
         $module_css_loaded = false;
         
         if (file_exists(ROOT_PATH . $new_css_path)): ?>
@@ -191,13 +143,57 @@ if ($user_authenticated) {
         <?php endif; ?>
     <?php endif; ?>
 
-    <!-- Variable CSS pour la couleur du module -->
+    <!-- Variables CSS pour la couleur du module et améliorations -->
     <style>
         :root {
             --current-module-color: <?= $module_color ?>;
             --current-module-color-light: <?= $module_color ?>20;
             --current-module-color-dark: <?= $module_color ?>dd;
+            
+            /* Variables CSS par module */
+            --module-port-color: #059669;
+            --module-adr-color: #dc2626;
+            --module-admin-color: #7c3aed;
+            --module-materiel-color: #ea580c;
+            --module-epi-color: #0891b2;
+            --module-cq-color: #7c2d12;
+            
+            /* Améliorations demandées */
+            --header-height: 85px; /* +15px pour plus d'espace */
+            --nav-height: 55px; /* +5px pour mieux équilibrer */
+            --breadcrumb-height: 42px; /* +2px pour aération */
         }
+        
+        /* Contraste amélioré entre header et contenu */
+        .portal-main {
+            background: #fafbfc; /* Fond légèrement plus clair */
+            border-top: 2px solid rgba(59, 130, 246, 0.1); /* Bordure subtile */
+            box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.02); /* Ombre intérieure légère */
+        }
+        
+        /* Amélioration du contraste navigation modules */
+        .modules-nav {
+            background: linear-gradient(to bottom, #ffffff, #f8fafc);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        /* Breadcrumb conditionnel - masqué par défaut si navigation simple */
+        .breadcrumb-nav {
+            display: <?= $show_breadcrumb ? 'block' : 'none' ?>;
+        }
+        
+        /* Ajustement du padding body selon présence breadcrumb */
+        body.authenticated {
+            padding-top: <?= $show_breadcrumb ? 'calc(85px + 55px + 42px)' : 'calc(85px + 55px)' ?>;
+        }
+        
+        /* Classe pour indiquer absence de breadcrumb */
+        <?php if (!$show_breadcrumb): ?>
+        body {
+            --no-breadcrumb: true;
+        }
+        <?php endif; ?>
     </style>
     
     <!-- JavaScript bannière cookie RGPD -->
@@ -206,8 +202,10 @@ if ($user_authenticated) {
     <!-- Analytics -->
     <script src="/assets/js/analytics.js?v=<?= $build_number ?>"></script>
 </head>
-<body data-module="<?= $current_module ?>" data-module-status="<?= $module_status ?>" 
-      class="<?= $user_authenticated ? 'authenticated' : 'auth-page' ?>">
+<body data-module="<?= $current_module ?>" 
+      data-module-status="<?= $module_status ?>" 
+      data-has-breadcrumb="<?= $show_breadcrumb ? 'true' : 'false' ?>"
+      class="<?= $user_authenticated ? 'authenticated' : 'auth-page' ?><?= !$show_breadcrumb ? ' no-breadcrumb' : '' ?>">
 
     <!-- Bannière de debug (masquée en production) -->
     <?php if (defined('DEBUG') && DEBUG === true): ?>
@@ -216,19 +214,20 @@ if ($user_authenticated) {
         <?php if ($current_user): ?>(<?= htmlspecialchars($current_user['role'] ?? 'User') ?>)<?php endif; ?> | 
         <?= date('H:i:s') ?> | 
         IP: <?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'unknown') ?> |
-        Module: <?= $current_module ?> |
+        Module: <?= $current_module ?> | 
+        Breadcrumb: <?= $show_breadcrumb ? 'ON' : 'OFF' ?> |
         Build: <?= $build_number ?>
     </div>
     <?php endif; ?>
 
-    <!-- Header principal -->
+    <!-- Header principal avec hauteur augmentée -->
     <header class="portal-header">
         <div class="header-container">
             <!-- Logo SANS nom du portail (sauf page index) -->
             <a href="/" class="header-brand">
                 <div class="header-logo">
                     <?php if (file_exists(ROOT_PATH . '/assets/img/logo.png')): ?>
-                        <img src="/assets/img/logo.png" alt="Logo Guldagil" width="32" height="32" style="object-fit: contain;">
+                        <img src="/assets/img/logo.png" alt="Logo Guldagil" width="40" height="40" style="object-fit: contain;">
                     <?php else: ?>
                         💧
                     <?php endif; ?>
@@ -239,7 +238,7 @@ if ($user_authenticated) {
                 <?php endif; ?>
             </a>
 
-            <!-- Informations page courante -->
+            <!-- Informations page courante avec plus d'espace -->
             <div class="header-page-info">
                 <h1 class="page-main-title">
                     <span class="module-icon" style="color: <?= $module_color ?>"><?= $module_icon ?></span>
@@ -271,77 +270,47 @@ if ($user_authenticated) {
                     <div class="user-details">
                         <div class="user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></div>
                         <div class="user-role">
-                            <span class="role-badge role-<?= htmlspecialchars($current_user['role'] ?? 'user') ?>">
-                                <?= htmlspecialchars(ucfirst($current_user['role'] ?? 'user')) ?>
+                            <span class="role-badge <?= getRoleBadgeClass($current_user['role'] ?? 'user') ?>">
+                                <?= ucfirst($current_user['role'] ?? 'user') ?>
                             </span>
                         </div>
                     </div>
                     <div class="dropdown-icon">▼</div>
                 </div>
 
-                <!-- Menu dropdown utilisateur -->
                 <div class="user-dropdown-menu" id="userDropdownMenu" role="menu" aria-hidden="true">
                     <div class="dropdown-header">
                         <div class="dropdown-user-name"><?= htmlspecialchars($current_user['username'] ?? 'Utilisateur') ?></div>
                         <div class="dropdown-user-email"><?= htmlspecialchars($current_user['email'] ?? '') ?></div>
                     </div>
-                    
                     <div class="dropdown-divider"></div>
-                    
-                    <a href="/user/profile.php" class="dropdown-item">
+                    <a href="/user/profile.php" class="dropdown-item" role="menuitem">
                         <span class="dropdown-icon">👤</span>
-                        <span class="dropdown-text">Mon profil</span>
+                        <span>Mon Profil</span>
                     </a>
-                    <a href="/user/" class="dropdown-item">
+                    <a href="/user/settings.php" class="dropdown-item" role="menuitem">
                         <span class="dropdown-icon">⚙️</span>
-                        <span class="dropdown-text">Paramètres</span>
+                        <span>Paramètres</span>
                     </a>
-                    
-                    <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'view_admin')): ?>
+                    <?php if (($current_user['role'] ?? 'user') === 'admin'): ?>
                     <div class="dropdown-divider"></div>
-                    <a href="/admin/" class="dropdown-item">
-                        <span class="dropdown-icon">🔧</span>
-                        <span class="dropdown-text">Administration</span>
-                    </a>
-                    
-                    <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'manage_users')): ?>
-                    <a href="/admin/users.php" class="dropdown-item">
-                        <span class="dropdown-icon">👥</span>
-                        <span class="dropdown-text">Utilisateurs</span>
+                    <a href="/admin/" class="dropdown-item" role="menuitem">
+                        <span class="dropdown-icon">🛡️</span>
+                        <span>Administration</span>
                     </a>
                     <?php endif; ?>
-                    
-                    <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'manage_system')): ?>
-                    <a href="/admin/system.php" class="dropdown-item">
-                        <span class="dropdown-icon">🛠️</span>
-                        <span class="dropdown-text">Système</span>
-                    </a>
-                    <?php endif; ?>
-                    
-                    <?php if (hasAdminPermission($current_user['role'] ?? 'user', 'access_dev')): ?>
-                    <a href="/dev/" class="dropdown-item">
-                        <span class="dropdown-icon">💻</span>
-                        <span class="dropdown-text">Développement</span>
-                    </a>
-                    <?php endif; ?>
-                    <?php endif; ?>
-                    
                     <div class="dropdown-divider"></div>
-                    <a href="#" class="dropdown-item" onclick="showHelp()">
-                        <span class="dropdown-icon">❓</span>
-                        <span class="dropdown-text">Aide</span>
-                    </a>
-                    <a href="/auth/logout.php" class="dropdown-item logout">
+                    <a href="/auth/logout.php" class="dropdown-item logout" role="menuitem">
                         <span class="dropdown-icon">🚪</span>
-                        <span class="dropdown-text">Déconnexion</span>
+                        <span>Déconnexion</span>
                     </a>
                 </div>
             </div>
             <?php else: ?>
-            <!-- Navigation pour utilisateur non connecté -->
-            <div class="header-auth-nav">
+            <!-- Boutons authentification pour utilisateurs non connectés -->
+            <div class="header-auth-buttons">
                 <a href="/auth/login.php" class="btn btn-primary">
-                    <span class="btn-icon">🔑</span>
+                    <span>🔐</span>
                     Connexion
                 </a>
             </div>
@@ -349,142 +318,226 @@ if ($user_authenticated) {
         </div>
     </header>
 
-    <!-- Navigation modules (si utilisateur connecté) -->
-    <?php if ($user_authenticated && !empty($navigation_modules)): ?>
-    <nav class="modules-nav">
+    <!-- Navigation modules avec hauteur ajustée et contraste amélioré -->
+    <?php if ($user_authenticated): ?>
+    <nav class="modules-nav" id="modulesNav">
         <div class="modules-nav-container">
             <div class="modules-nav-items">
-                <?php foreach ($navigation_modules as $module_key => $module_data): 
-                    $is_active = $current_module === $module_key;
-                    $css_classes = ['module-nav-item'];
-                    if ($is_active) $css_classes[] = 'active';
-                    
-                    $href = "/{$module_key}/";
-                ?>
-                    <a href="<?= $href ?>" 
-                       class="<?= implode(' ', $css_classes) ?>"
-                       style="--module-color: <?= $module_data['color'] ?? '#3182ce' ?>">
-                        <span class="module-nav-icon"><?= $module_data['icon'] ?? '📁' ?></span>
-                        <span class="module-nav-name"><?= htmlspecialchars($module_data['name']) ?></span>
-                        <?php if ($module_data['status'] === 'beta'): ?>
-                            <span class="status-badge beta">BETA</span>
-                        <?php elseif ($module_data['status'] === 'development'): ?>
-                            <span class="status-badge dev">DEV</span>
-                        <?php endif; ?>
-                    </a>
+                <?php foreach ($available_modules as $module_key => $module_data): ?>
+                <a href="/<?= $module_key ?>/" 
+                   class="module-nav-item <?= $current_module === $module_key ? 'active' : '' ?>"
+                   style="--module-color: <?= $module_data['color'] ?>">
+                    <span class="module-nav-icon"><?= $module_data['icon'] ?></span>
+                    <span class="module-nav-text"><?= $module_data['name'] ?></span>
+                    <?php if ($module_data['status'] === 'beta'): ?>
+                        <span class="badge-beta">Beta</span>
+                    <?php elseif ($module_data['status'] === 'development'): ?>
+                        <span class="badge-dev">Dev</span>
+                    <?php endif; ?>
+                </a>
                 <?php endforeach; ?>
             </div>
-            
-            <!-- Menu mobile toggle -->
-            <button class="mobile-menu-toggle" aria-label="Menu modules" id="mobileMenuToggle">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
         </div>
     </nav>
     <?php endif; ?>
 
-    <!-- Fil d'Ariane -->
-    <nav class="breadcrumb-nav">
+    <!-- Breadcrumb navigation - CONDITIONNEL selon profondeur -->
+    <?php if ($show_breadcrumb && !empty($breadcrumbs)): ?>
+    <nav class="breadcrumb-nav" id="breadcrumbNav" aria-label="Fil d'Ariane">
         <div class="breadcrumb-container">
             <?php foreach ($breadcrumbs as $index => $crumb): ?>
                 <?php if ($index > 0): ?>
                     <span class="breadcrumb-separator">›</span>
                 <?php endif; ?>
-                <?php if (!empty($crumb['url']) && !($crumb['active'] ?? false)): ?>
+                
+                <?php if (!($crumb['active'] ?? false)): ?>
                     <a href="<?= htmlspecialchars($crumb['url']) ?>" class="breadcrumb-item">
-                        <span><?= $crumb['icon'] ?? '' ?></span>
-                        <span><?= htmlspecialchars($crumb['text']) ?></span>
+                        <span class="breadcrumb-icon"><?= $crumb['icon'] ?? '' ?></span>
+                        <span class="breadcrumb-text"><?= htmlspecialchars($crumb['text']) ?></span>
                     </a>
                 <?php else: ?>
                     <span class="breadcrumb-item active">
-                        <span><?= $crumb['icon'] ?? '' ?></span>
-                        <span><?= htmlspecialchars($crumb['text']) ?></span>
+                        <span class="breadcrumb-icon"><?= $crumb['icon'] ?? '' ?></span>
+                        <span class="breadcrumb-text"><?= htmlspecialchars($crumb['text']) ?></span>
                     </span>
                 <?php endif; ?>
             <?php endforeach; ?>
         </div>
     </nav>
+    <?php endif; ?>
 
-    <!-- Contenu principal -->
+    <!-- Contenu principal avec contraste amélioré -->
     <main class="portal-main">
 
-    <!-- JavaScript pour interactions header et menu -->
+    <!-- JavaScript pour interactions header améliorées -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // === GESTION MENU UTILISATEUR ===
+            // === CONSTANTES ET VARIABLES ===
+            const HAS_BREADCRUMB = <?= $show_breadcrumb ? 'true' : 'false' ?>;
+            const DEBUG_MODE = <?= (defined('DEBUG') && DEBUG) ? 'true' : 'false' ?>;
+            
+            // Éléments DOM
             const userMenuTrigger = document.getElementById('userMenuTrigger');
             const userDropdownMenu = document.getElementById('userDropdownMenu');
+            const modulesNav = document.getElementById('modulesNav');
+            const breadcrumbNav = document.getElementById('breadcrumbNav');
+            const portalHeader = document.querySelector('.portal-header');
             
+            // Variables d'état
+            let lastScrollY = window.scrollY;
+            let isScrollingDown = false;
+            let userMenuOpen = false;
+            
+            if (DEBUG_MODE) {
+                console.log('🔧 Header Debug:', {
+                    hasBreadcrumb: HAS_BREADCRUMB,
+                    currentModule: '<?= $current_module ?>',
+                    showBreadcrumb: <?= $show_breadcrumb ? 'true' : 'false' ?>,
+                    pathSegments: <?= count($path_segments) ?>
+                });
+            }
+
+            // === GESTION MENU UTILISATEUR ===
             if (userMenuTrigger && userDropdownMenu) {
-                // Toggle menu au clic
                 userMenuTrigger.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    const isExpanded = userMenuTrigger.getAttribute('aria-expanded') === 'true';
-                    toggleUserMenu(!isExpanded);
+                    userMenuOpen = !userMenuOpen;
+                    toggleUserMenu(userMenuOpen);
                 });
                 
-                // Fermer menu si clic ailleurs
                 document.addEventListener('click', function(e) {
-                    if (!e.target.closest('.header-user-nav')) {
+                    if (!e.target.closest('.header-user-nav') && userMenuOpen) {
+                        userMenuOpen = false;
                         toggleUserMenu(false);
                     }
                 });
                 
-                // Gestion clavier (ESC)
                 document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape') {
+                    if (e.key === 'Escape' && userMenuOpen) {
+                        userMenuOpen = false;
                         toggleUserMenu(false);
                         userMenuTrigger.focus();
                     }
                 });
                 
-                // Fonction toggle menu
                 function toggleUserMenu(show) {
                     userMenuTrigger.setAttribute('aria-expanded', show);
                     userDropdownMenu.setAttribute('aria-hidden', !show);
                     userDropdownMenu.style.display = show ? 'block' : 'none';
+                    
+                    if (show) {
+                        userDropdownMenu.style.opacity = '0';
+                        userDropdownMenu.style.transform = 'translateY(-10px) scale(0.95)';
+                        requestAnimationFrame(() => {
+                            userDropdownMenu.style.opacity = '1';
+                            userDropdownMenu.style.transform = 'translateY(0) scale(1)';
+                        });
+                    }
+                }
+            }
+
+            // === GESTION SCROLL INTELLIGENT AMÉLIORÉ ===
+            let ticking = false;
+            
+            function handleScroll() {
+                const currentScrollY = window.scrollY;
+                const scrollDelta = currentScrollY - lastScrollY;
+                
+                // Seuil minimum pour éviter les micro-mouvements
+                if (Math.abs(scrollDelta) > 5) {
+                    isScrollingDown = scrollDelta > 0;
+                    lastScrollY = currentScrollY;
+                }
+                
+                // Logique de scroll selon présence du breadcrumb
+                if (modulesNav) {
+                    if (HAS_BREADCRUMB) {
+                        // AVEC breadcrumb : masquer menu au scroll, breadcrumb reste collé
+                        if (currentScrollY > 100 && isScrollingDown) {
+                            modulesNav.style.transform = 'translateY(-100%)';
+                            modulesNav.style.opacity = '0';
+                            document.body.classList.add('scrolled');
+                            
+                            // Breadcrumb se colle sous le header
+                            if (breadcrumbNav) {
+                                breadcrumbNav.style.position = 'fixed';
+                                breadcrumbNav.style.top = 'var(--header-height)';
+                                breadcrumbNav.style.background = 'rgba(248, 250, 252, 0.95)';
+                                breadcrumbNav.style.backdropFilter = 'blur(8px)';
+                                breadcrumbNav.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.1)';
+                                breadcrumbNav.style.zIndex = '999';
+                            }
+                        } else if (!isScrollingDown || currentScrollY <= 50) {
+                            modulesNav.style.transform = 'translateY(0)';
+                            modulesNav.style.opacity = '1';
+                            document.body.classList.remove('scrolled');
+                            
+                            // Breadcrumb retour normal
+                            if (breadcrumbNav) {
+                                breadcrumbNav.style.position = 'static';
+                                breadcrumbNav.style.background = '';
+                                breadcrumbNav.style.backdropFilter = '';
+                                breadcrumbNav.style.boxShadow = '';
+                            }
+                        }
+                    } else {
+                        // SANS breadcrumb : garder le menu visible
+                        modulesNav.style.transform = 'translateY(0)';
+                        modulesNav.style.opacity = '1';
+                        document.body.classList.remove('scrolled');
+                        
+                        if (DEBUG_MODE && currentScrollY > 100) {
+                            console.log('🔄 Scroll détecté mais menu conservé (pas de breadcrumb)');
+                        }
+                    }
+                }
+                
+                ticking = false;
+            }
+            
+            function requestScrollUpdate() {
+                if (!ticking) {
+                    requestAnimationFrame(handleScroll);
+                    ticking = true;
                 }
             }
             
-            // === GESTION MENU MOBILE ===
-            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-            const modulesNav = document.querySelector('.modules-nav');
+            window.addEventListener('scroll', requestScrollUpdate, { passive: true });
             
-            if (mobileMenuToggle && modulesNav) {
-                mobileMenuToggle.addEventListener('click', function() {
-                    modulesNav.classList.toggle('mobile-open');
-                    mobileMenuToggle.classList.toggle('open');
-                });
+            // === AMÉLIORATION RESPONSIVE ===
+            function handleResize() {
+                const isMobile = window.innerWidth <= 768;
+                
+                if (modulesNav) {
+                    const navItems = modulesNav.querySelector('.modules-nav-items');
+                    if (navItems) {
+                        navItems.style.justifyContent = isMobile ? 'flex-start' : 'center';
+                    }
+                }
+            }
+            
+            window.addEventListener('resize', handleResize, { passive: true });
+            
+            // === INITIALISATION ===
+            handleResize();
+            
+            if (DEBUG_MODE) {
+                console.log('✅ Header JavaScript initialisé avec succès');
             }
         });
-        
-        // Fonction helper pour aide
-        function showHelp() {
-            alert('Aide contextuelle - Module: <?= $current_module ?>\nVersion: <?= $app_version ?>\nBuild: <?= $build_number ?>');
-        }
     </script>
 
-    <!-- Scripts nécessaires -->
-    <script src="/assets/js/header.js?v=<?= $build_number ?>"></script>
-    
-    <!-- JavaScript spécifique au module -->
-    <?php if ($module_js && $current_module !== 'home'): ?>
-        <?php 
-        // Système de détection JS modulaire avec fallback
-        $module_js_paths = [
-            "{$current_module}/assets/js/{$current_module}.js",
-            "/{$current_module}/assets/js/{$current_module}.js",
-            "/assets/js/modules/{$current_module}.js"
-        ];
-        
-        foreach ($module_js_paths as $js_path):
-            if (file_exists(ROOT_PATH . "/public" . $js_path)): ?>
-                <script src="<?= $js_path ?>?v=<?= $build_number ?>"></script>
-                <?php break; ?>
-            <?php endif;
-        endforeach; ?>
-    <?php endif; ?>
+<?php
+// Fonction helper pour les rôles (si pas déjà définie)
+if (!function_exists('getRoleBadgeClass')) {
+    function getRoleBadgeClass($role) {
+        switch ($role) {
+            case 'admin': return 'role-admin';
+            case 'manager': return 'role-manager';
+            case 'user': default: return 'role-user';
+        }
+    }
+}
+?>
