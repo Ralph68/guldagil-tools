@@ -118,10 +118,10 @@ $available_modules = [
     <?php if ($current_module !== 'home'): ?>
         <?php
         // 1. Nouveau système : CSS dans le dossier du module
-        $new_css_path = "/public/{$current_module}/assets/css/{$current_module}.css";
+        $new_css_path = "/{$current_module}/assets/css/{$current_module}.css";
         $module_css_loaded = false;
         
-        if (file_exists(ROOT_PATH . $new_css_path)): ?>
+        if (file_exists(ROOT_PATH . "/public" . $new_css_path)): ?>
             <link rel="stylesheet" href="<?= $new_css_path ?>?v=<?= $build_number ?>">
             <?php $module_css_loaded = true; ?>
         <?php endif; ?>
@@ -130,7 +130,6 @@ $available_modules = [
             <?php 
             // 2. Fallback : ancien système
             $legacy_paths = [
-                "/{$current_module}/assets/css/{$current_module}.css",
                 "/assets/css/modules/{$current_module}.css"
             ];
             
