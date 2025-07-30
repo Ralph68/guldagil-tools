@@ -204,10 +204,9 @@ $available_modules = [
     <!-- JavaScript spécifique au module actuel -->
     <?php if ($current_module !== 'home'): ?>
         <?php
-        // JavaScript du module - chemins corrects sans doublon
+        // Chercher le JS du module
         $module_js_paths = [
-            "/{$current_module}/assets/js/{$current_module}.js",
-            "/assets/js/modules/{$current_module}.js"
+            "/{$current_module}/assets/js/{$current_module}.js"
         ];
         
         foreach ($module_js_paths as $js_path):
@@ -217,6 +216,9 @@ $available_modules = [
             <?php endif;
         endforeach; ?>
     <?php endif; ?>
+    
+    <!-- JavaScript pour gestion scroll intelligent -->
+    <script src="/assets/js/header_scroll.js?v=<?= $build_number ?>"></script>
 </head>
 <body data-module="<?= $current_module ?>" 
       data-module-status="<?= $module_status ?>" 
