@@ -200,6 +200,23 @@ $available_modules = [
     <script src="/assets/js/cookie_config.js?v=<?= $build_number ?>"></script>
     <!-- Analytics -->
     <script src="/assets/js/analytics.js?v=<?= $build_number ?>"></script>
+    
+    <!-- JavaScript spécifique au module actuel -->
+    <?php if ($current_module !== 'home'): ?>
+        <?php
+        // JavaScript du module - chemins corrects sans doublon
+        $module_js_paths = [
+            "/{$current_module}/assets/js/{$current_module}.js",
+            "/assets/js/modules/{$current_module}.js"
+        ];
+        
+        foreach ($module_js_paths as $js_path):
+            if (file_exists(ROOT_PATH . "/public" . $js_path)): ?>
+                <script src="<?= $js_path ?>?v=<?= $build_number ?>"></script>
+                <?php break; ?>
+            <?php endif;
+        endforeach; ?>
+    <?php endif; ?>
 </head>
 <body data-module="<?= $current_module ?>" 
       data-module-status="<?= $module_status ?>" 
