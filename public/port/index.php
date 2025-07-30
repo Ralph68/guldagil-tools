@@ -1,382 +1,485 @@
 <?php
 /**
- * Titre: Calculateur de frais de port - CORRECTION FLOW AVANCÉ
- * Chemin: /public/port/index.php
+ * Titre: Calculateur de frais de port - VERSION CORRIGÉE BDD
+ * Chemin: /public/port/index.php  
  * Version: 0.5 beta + build auto
- * Origine : index.php250723.bak
  */
 
-// ⚠️ CONFIGURATION STRICTE pour éviter l'HTML dans l'AJAX
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
-    // Mode strict AJAX - Pas d'affichage HTML
-    ini_set('display_errors', 0);
-    error_reporting(0);
-} else {
-    // Mode normal pour la page
-    ini_set('display_errors', 1);
-    error_reporting(E_ALL);
-}
-
-// Configuration et chemins
 define('ROOT_PATH', dirname(dirname(__DIR__)));
+require_once ROOT_PATH . '/config/config.php';
+require_once ROOT_PATH . '/config/version.php';
 
-// Variables pour header/footer
+// Variables pour header
 $page_title = 'Calculateur de Frais de Port';
-$page_subtitle = 'Comparaison multi-transporteurs XPO, Heppner, Kuehne+Nagel';
-$page_description = 'Calculateur de frais de port professionnel - Comparaison instantanée des tarifs de transport';
+$page_subtitle = 'Comparaison multi-transporteurs';
 $current_module = 'port';
 $module_css = true;
-$module_js = true;
 
-$breadcrumbs = [
-    ['icon' => '🏠', 'text' => 'Accueil', 'url' => '/', 'active' => false],
-    ['icon' => '🚛', 'text' => 'Calculateur', 'url' => '/port/', 'active' => true]
+// Traitement POST - Calcul direct via classe Transport existante
+$results = null;
+$calculation_time = 0;
+$form_data = [
+    'departement' => $_POST['departement'] ?? '',
+    'poids' => floatval($_POST['poids'] ?? 0),
+    'type' => $_POST['type'] ?? 'colis',
+    'adr' => ($_POST['adr'] ?? 'non') === 'oui',
+    'option_sup' => $_POST['option_sup'] ?? 'standard',
+    'enlevement' => ($_POST['enlevement'] ?? 'non') === 'oui'
 ];
 
-// ========================================
-// 🔧 GESTION AJAX CALCULATE
-// ========================================
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'calculate') {
-    // Nettoyage buffer pour éviter pollution HTML
-    if (ob_get_level()) {
-        ob_clean();
-    }
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $start_time = microtime(true);
     
-    header('Content-Type: application/json; charset=utf-8');
+    $errors = [];
+    if (strlen($form_data['departement']) < 2) $errors[] = 'Département invalide';
+    if ($form_data['poids'] <= 0) $errors[] = 'Poids invalide';
     
-    try {
-        // Récupération des données POST
-        $input = file_get_contents('php://input');
-        if (empty($input)) {
-            throw new Exception('Aucune donnée reçue');
-        }
-        
-        parse_str($input, $post_data);
-        
-        // Validation et formatage des paramètres
-        $params = [
-            'departement' => str_pad(trim($post_data['departement'] ?? ''), 2, '0', STR_PAD_LEFT),
-            'poids' => floatval($post_data['poids'] ?? 0),
-            'type' => strtolower(trim($post_data['type'] ?? 'colis')),
-            'adr' => (($post_data['adr'] ?? 'non') === 'oui'),
-            'option_sup' => trim($post_data['option_sup'] ?? 'standard'),
-            'enlevement' => (($post_data['enlevement'] ?? 'non') === 'oui'),
-            'palettes' => max(1, intval($post_data['palettes'] ?? 1)),
-            'palette_eur' => intval($post_data['palette_eur'] ?? 0),
-        ];
-        
-        // Validation stricte des paramètres
-        if (empty($params['departement']) || !preg_match('/^[0-9]{2,3}$/', $params['departement'])) {
-            throw new Exception('Département invalide');
-        }
-        if ($params['poids'] <= 0 || $params['poids'] > 32000) {
-            throw new Exception('Poids invalide (1-32000 kg)');
-        }
-        if (!in_array($params['type'], ['colis', 'palette'])) {
-            throw new Exception('Type d\'envoi invalide');
-        }
-        
-        // Vérification affrètement pour poids > 3000kg
-        if ($params['poids'] > 3000) {
-            $response = [
-                'success' => true,
-                'affretement' => true,
-                'carriers' => [
-                    'affretement' => [
-                        'prix_ht' => 0,
-                        'prix_ttc' => 0,
-                        'delai' => 'Sur devis',
-                        'service' => 'Affrètement',
-                        'message' => sprintf(
-                            'Poids de %.1f kg - Affrètement requis. Contactez-nous pour un devis personnalisé.',
-                            $params['poids']
-                        )
-                    ]
-                ],
-                'time_ms' => 0,
-                'debug' => ['affretement_requis' => true, 'poids' => $params['poids']]
-            ];
-            
-            echo json_encode($response, JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-        
-        // Chargement de la classe Transport
-        $transport_file = __DIR__ . '/calculs/transport.php';
-        if (!file_exists($transport_file)) {
-            throw new Exception('Classe Transport non trouvée: ' . $transport_file);
-        }
-        
-        require_once $transport_file;
-        
-        if (!class_exists('Transport')) {
-            throw new Exception('Classe Transport non chargée');
-        }
-        
-        // Vérification connexion DB
-        if (!isset($db) || !($db instanceof PDO)) {
-            throw new Exception('Connexion base de données indisponible');
-        }
-        
-        // Initialisation Transport
-        $transport = new Transport($db);
-        
-        // Calcul des tarifs
-        $start_time = microtime(true);
-        $results = $transport->calculateAll($params);
-        $calc_time = round((microtime(true) - $start_time) * 1000, 2);
-        
-        // Formatage de la réponse
-        $response = [
-            'success' => true,
-            'affretement' => false,
-            'carriers' => [],
-            'time_ms' => $calc_time,
-            'debug' => [
-                'params_received' => $params,
-                'raw_results' => $results,
-                'transport_class' => get_class($transport)
-            ]
-        ];
-        
-        // Traitement des résultats selon le format retourné
-        if (isset($results['results']) && is_array($results['results'])) {
-            foreach ($results['results'] as $carrier => $result) {
-                if ($result !== null) {
-                    if (is_numeric($result)) {
-                        // Format simple : juste un prix HT
-                        $prix_ht = round(floatval($result), 2);
-                        $prix_ttc = round($prix_ht * 1.2, 2); // TVA 20%
-                        
-                        // Délais selon transporteur et option
-                        $delais = [
-                            'xpo' => ['standard' => '24-48h', 'express' => '24h', 'urgent' => 'J+1'],
-                            'heppner' => ['standard' => '24-72h', 'express' => '24-48h', 'urgent' => 'J+1'],
-                            'kn' => ['standard' => '48-72h', 'express' => '24-48h', 'urgent' => 'J+1']
-                        ];
-                        
-                        $delai = $delais[$carrier][$params['option_sup']] ?? '24-48h';
-                        $service = ucfirst($params['option_sup']);
-                        
-                        $response['carriers'][$carrier] = [
-                            'prix_ht' => $prix_ht,
-                            'prix_ttc' => $prix_ttc,
-                            'delai' => $delai,
-                            'service' => $service,
-                            'details' => [
-                                'type' => $params['type'],
-                                'adr' => $params['adr'] ? 'Oui' : 'Non',
-                                'enlevement' => $params['enlevement'] ? 'Oui' : 'Non'
-                            ]
-                        ];
-                    } elseif (is_array($result)) {
-                        // Format complexe : tableau avec détails
-                        $prix_ht = round(floatval($result['prix_ht'] ?? $result['prix'] ?? 0), 2);
-                        $prix_ttc = round(floatval($result['prix_ttc'] ?? $prix_ht * 1.2), 2);
-                        
-                        $response['carriers'][$carrier] = [
-                            'prix_ht' => $prix_ht,
-                            'prix_ttc' => $prix_ttc,
-                            'delai' => $result['delai'] ?? '24-48h',
-                            'service' => $result['service'] ?? ucfirst($params['option_sup']),
-                            'details' => $result['details'] ?? []
-                        ];
-                    }
-                }
+    if (empty($errors)) {
+        try {
+            // Utiliser la classe Transport du module
+            $transport_file = __DIR__ . '/calculs/transport.php';
+            if (!file_exists($transport_file)) {
+                throw new Exception('Moteur de calcul manquant');
             }
+            
+            require_once $transport_file;
+            $transport = new Transport($db);
+            $results = $transport->calculateAll($form_data);
+            $calculation_time = round((microtime(true) - $start_time) * 1000, 2);
+        } catch (Exception $e) {
+            $errors[] = 'Erreur: ' . $e->getMessage();
         }
-        
-        // Validation des résultats
-        $valid_results = array_filter($response['carriers'], function($result) {
-            return isset($result['prix_ttc']) && $result['prix_ttc'] > 0;
-        });
-        
-        if (empty($valid_results)) {
-            $response['carriers']['info'] = [
-                'prix_ht' => 0,
-                'prix_ttc' => 0,
-                'delai' => 'N/A',
-                'service' => 'Information',
-                'message' => 'Aucun transporteur disponible pour ces critères. Vérifiez les paramètres.'
-            ];
-        }
-        
-        // Ajout méta-informations
-        $response['debug']['carriers_found'] = count($valid_results);
-        $response['debug']['total_tested'] = count($results['results'] ?? []);
-        
-        echo json_encode($response, JSON_UNESCAPED_UNICODE);
-        exit;
-        
-    } catch (Exception $e) {
-        // Nettoyage buffer en cas d'erreur
-        if (ob_get_level()) {
-            ob_clean();
-        }
-        
-        $error_response = [
-            'success' => false,
-            'error' => $e->getMessage(),
-            'debug' => [
-                'error_file' => basename($e->getFile()),
-                'error_line' => $e->getLine(),
-                'post_data' => $post_data ?? null,
-                'input_received' => strlen($input ?? '') > 0
-            ]
-        ];
-        
-        echo json_encode($error_response, JSON_UNESCAPED_UNICODE);
-        exit;
     }
 }
 
-// ========================================
-// 🎨 CHARGEMENT HEADER
-// ========================================
 include_once ROOT_PATH . '/templates/header.php';
 ?>
+?>
+
+<style>
+:root {
+    --port-primary: #2563eb;
+    --port-success: #059669;
+    --port-warning: #d97706;
+    --port-danger: #dc2626;
+}
+
+.calc-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.calc-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, var(--port-primary), #1d4ed8);
+    color: white;
+    border-radius: 0.75rem;
+}
+
+.calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.calc-panel {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.calc-panel-header {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.calc-panel-content {
+    padding: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #374151;
+}
+
+.form-input, .form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--port-primary);
+}
+
+.radio-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+}
+
+.radio-option:hover {
+    border-color: var(--port-primary);
+}
+
+.calc-btn {
+    width: 100%;
+    background: var(--port-primary);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.calc-btn:hover {
+    background: #1d4ed8;
+}
+
+.error-list {
+    background: #fef2f2;
+    color: var(--port-danger);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border-left: 4px solid var(--port-danger);
+    margin-bottom: 1.5rem;
+}
+
+.results-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.carrier-card {
+    padding: 1.5rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.carrier-card:first-child {
+    border-color: var(--port-success);
+    background: rgba(5, 150, 105, 0.05);
+}
+
+.carrier-card:first-child::before {
+    content: "🏆 Meilleur prix";
+    position: absolute;
+    top: -10px;
+    right: 1rem;
+    background: var(--port-success);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.carrier-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.carrier-name {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #1f2937;
+}
+
+.carrier-price {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--port-primary);
+}
+
+.carrier-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.calc-meta {
+    background: #f0f9ff;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .calc-grid {
+        grid-template-columns: 1fr;
+    }
+    .radio-group {
+        flex-direction: column;
+    }
+}
+</style>
+
+<!-- Configuration JavaScript pour calcul temps réel -->
+<script>
+// Configuration chargée depuis la BDD
+const CALC_CONFIG = <?= json_encode([
+    'ajax_url' => '/port/api/calculate.php',
+    'departments' => range(1, 95), // Tous les départements français
+    'min_weight' => 0.1,
+    'max_weight' => 3000
+], JSON_UNESCAPED_UNICODE) ?>;
+</script>
 
 <div class="calc-container">
-    <main class="calc-main">
-        <!-- TITRE ET DESCRIPTION -->
-        <div class="calc-header">
-            <h1 class="calc-title">🚛 Calculateur de Frais de Port</h1>
-            <p class="calc-desc">Comparez instantanément les tarifs XPO, Heppner et Kuehne+Nagel pour vos expéditions professionnelles.</p>
-        </div>
-
-        <!-- FORMULAIRE -->
-        <section class="calc-form-panel">
-            <div class="calc-steps">
-                <button type="button" class="calc-step-btn active" data-step="1">📍 Destination</button>
-                <button type="button" class="calc-step-btn" data-step="2">📦 Colis</button>
-                <button type="button" class="calc-step-btn" data-step="3">⚙️ Options</button>
+    <div class="calc-header">
+        <h1>🚛 Calculateur de Frais de Port</h1>
+        <p>Comparaison instantanée des tarifs transporteurs</p>
+    </div>
+    
+    <div class="calc-grid">
+        <!-- Formulaire -->
+        <div class="calc-panel">
+            <div class="calc-panel-header">
+                <h2>📝 Informations d'envoi</h2>
             </div>
-            <div class="calc-form-content">
-                <form id="calculatorForm" class="calc-form" novalidate>
-                    <!-- Étape 1: Destination -->
-                    <div class="calc-step-content active" data-step="1">
-                        <div class="calc-form-group">
-                            <label for="departement" class="calc-label">📍 Département de destination *</label>
-                            <input type="text" id="departement" name="departement" class="calc-input"
-                                   placeholder="Ex: 75, 69, 13, 2A..." maxlength="3" required>
-                            <small class="calc-help">Saisissez le numéro du département (01-95, 2A, 2B)</small>
-                        </div>
-                        <div class="form-nav-buttons">
-                            <div></div>
-                            <button type="button" class="btn-next" data-goto="2">Suivant</button>
+            <div class="calc-panel-content">
+                <?php if (!empty($errors)): ?>
+                    <div class="error-list">
+                        <strong>⚠️ Erreurs :</strong>
+                        <ul style="margin: 0.5rem 0 0 1rem;">
+                            <?php foreach ($errors as $error): ?>
+                                <li><?= htmlspecialchars($error) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+                
+                <form method="POST" id="calc-form">
+                    <div class="form-group">
+                        <label class="form-label" for="departement">Département *</label>
+                        <input type="text" id="departement" name="departement" class="form-input" 
+                               placeholder="Ex: 75, 69, 13..." maxlength="3" required
+                               value="<?= htmlspecialchars($_POST['departement'] ?? '') ?>">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="poids">Poids (kg) *</label>
+                        <input type="number" id="poids" name="poids" class="form-input" 
+                               placeholder="Ex: 25.5" min="0.1" step="0.1" required
+                               value="<?= htmlspecialchars($_POST['poids'] ?? '') ?>">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Type d'envoi</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="type" value="colis" 
+                                       <?= ($_POST['type'] ?? 'colis') === 'colis' ? 'checked' : '' ?>>
+                                <span>📦 Colis</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="type" value="palette"
+                                       <?= ($_POST['type'] ?? '') === 'palette' ? 'checked' : '' ?>>
+                                <span>🏗️ Palette</span>
+                            </label>
                         </div>
                     </div>
-
-                    <!-- Étape 2: Poids et Type -->
-                    <div class="calc-step-content" data-step="2">
-                        <div class="calc-form-group">
-                            <label for="poids" class="calc-label">⚖️ Poids total de l'envoi *</label>
-                            <div style="position: relative;">
-                                <input type="number" id="poids" name="poids" class="calc-input"
-                                       placeholder="150" min="1" max="32000" step="0.1" required>
-                                <span class="calc-unit">kg</span>
-                            </div>
-                            <small class="calc-help">Type suggéré automatiquement selon le poids. &gt; 3000kg = affrètement</small>
-                        </div>
-                        <div class="calc-form-group">
-                            <label for="type" class="calc-label">📦 Type d'envoi *</label>
-                            <select id="type" name="type" class="calc-select" required>
-                                <option value="">-- Sélection automatique --</option>
-                                <option value="colis">📦 Colis (≤ 150kg)</option>
-                                <option value="palette">🏗️ Palette (&gt; 150kg)</option>
-                            </select>
-                        </div>
-                        <div class="calc-form-group" id="palettesGroup" style="display: none;">
-                            <label for="palettes" class="calc-label">🏗️ Nombre de palettes *</label>
-                            <select id="palettes" name="palettes" class="calc-select">
-                                <option value="1">1 palette</option>
-                                <option value="2">2 palettes</option>
-                                <option value="3">3 palettes</option>
-                                <option value="4">4 palettes</option>
-                            </select>
-                            <small class="calc-help">Nombre total de palettes dans l'envoi</small>
-                        </div>
-                        <div class="calc-form-group" id="paletteEurGroup" style="display: none;">
-                            <label for="palette_eur" class="calc-label">🔄 Palettes EUR consignées</label>
-                            <select id="palette_eur" name="palette_eur" class="calc-select">
-                                <option value="0">Aucune (0)</option>
-                                <option value="1">1 palette EUR</option>
-                                <option value="2">2 palettes EUR</option>
-                                <option value="3">3 palettes EUR</option>
-                                <option value="4">4 palettes EUR</option>
-                            </select>
-                            <small class="calc-help">Palettes Europe à récupérer chez le destinataire (consigne)</small>
-                        </div>
-                        <div class="form-nav-buttons">
-                            <button type="button" class="btn-prev" data-goto="1">Précédent</button>
-                            <button type="button" class="btn-next" data-goto="3">Suivant</button>
+                    
+                    <div class="form-group">
+                        <label class="form-label">ADR</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="adr" value="non"
+                                       <?= ($_POST['adr'] ?? 'non') === 'non' ? 'checked' : '' ?>>
+                                <span>✅ Non</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="adr" value="oui"
+                                       <?= ($_POST['adr'] ?? '') === 'oui' ? 'checked' : '' ?>>
+                                <span>⚠️ Oui</span>
+                            </label>
                         </div>
                     </div>
-
-                    <!-- Étape 3: Options et Services -->
-                    <div class="calc-step-content" data-step="3">
-                        <!-- ADR (Matières dangereuses) -->
-                        <div class="calc-form-group">
-                            <label class="calc-label">⚠️ Matières dangereuses (ADR) *</label>
-                            <div class="delivery-btn-group" id="adrGroup">
-                                <button type="button" class="delivery-btn" data-value="non" id="adr-non" aria-pressed="true">✅ Non</button>
-                                <button type="button" class="delivery-btn" data-value="oui" id="adr-oui" aria-pressed="false">⚠️ Oui</button>
-                                <input type="hidden" name="adr" id="adr" value="non">
-                            </div>
-                            <small class="calc-help">Les matières dangereuses nécessitent un transport spécialisé ADR (+62€ minimum)</small>
-                        </div>
-                        <!-- Options de livraison exclusives -->
-                        <div class="calc-form-group">
-                            <label class="calc-label">🚚 Options de livraison</label>
-                            <div class="delivery-btn-group" id="optionSupGroup">
-                                <button type="button" class="delivery-btn active" data-value="standard" aria-pressed="true">📦 Standard</button>
-                                <button type="button" class="delivery-btn" data-value="premium" aria-pressed="false">⭐ Premium</button>
-                                <button type="button" class="delivery-btn" data-value="rdv" aria-pressed="false">🕒 Rendez-vous</button>
-                                <button type="button" class="delivery-btn" data-value="date" aria-pressed="false">📅 Date fixe</button>
-                                <input type="hidden" name="option_sup" id="option_sup" value="standard">
-                            </div>
-                            <small class="calc-help">Choisissez l'option de livraison qui correspond à vos besoins</small>
-                        </div>
-                        <!-- Case à cocher pour l'enlèvement -->
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="enlevement" name="enlevement" value="oui">
-                            <label for="enlevement">🚚 Enlèvement à domicile (+frais supplémentaires)</label>
-                        </div>
-                        <div class="form-nav-buttons">
-                            <button type="button" class="btn-prev" data-goto="2">Précédent</button>
-                            <button type="submit" id="calculateBtn" class="btn-calculate">
-                                🧮 Calculer les tarifs
-                            </button>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Enlèvement</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="enlevement" value="non"
+                                       <?= ($_POST['enlevement'] ?? 'non') === 'non' ? 'checked' : '' ?>>
+                                <span>🏢 Dépôt</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="enlevement" value="oui"
+                                       <?= ($_POST['enlevement'] ?? '') === 'oui' ? 'checked' : '' ?>>
+                                <span>🏠 Domicile</span>
+                            </label>
                         </div>
                     </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="option_sup">Service</label>
+                        <select id="option_sup" name="option_sup" class="form-select">
+                            <option value="standard" <?= ($_POST['option_sup'] ?? 'standard') === 'standard' ? 'selected' : '' ?>>
+                                Standard
+                            </option>
+                            <option value="express" <?= ($_POST['option_sup'] ?? '') === 'express' ? 'selected' : '' ?>>
+                                Express 24h
+                            </option>
+                            <option value="urgent" <?= ($_POST['option_sup'] ?? '') === 'urgent' ? 'selected' : '' ?>>
+                                Urgent
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="calc-btn" id="calc-submit">
+                        🚛 Calculer les frais
+                    </button>
                 </form>
             </div>
-        </section>
-
-        <!-- RÉSULTATS -->
-        <section class="calc-results-panel">
-            <div class="calc-results-header">
-                <h2>📊 Résultats de calcul</h2>
-                <div id="calcStatus" class="calc-status">⏳ En attente de vos paramètres...</div>
+        </div>
+        
+        <!-- Résultats -->
+        <div class="calc-panel">
+            <div class="calc-panel-header">
+                <h2>📊 Résultats</h2>
+                <?php if ($results): ?>
+                    <small>Calculé en <?= $calculation_time ?>ms</small>
+                <?php endif; ?>
             </div>
-            <div id="resultsContent" class="calc-results-content">
-                <!-- Le tableau de résultats sera injecté ici par JS -->
+            <div class="calc-panel-content" id="results-container">
+                <?php if ($results): ?>
+                    
+                    <?php if (isset($results['affretement']) && $results['affretement']): ?>
+                        <div class="calc-meta">
+                            <strong>🚛 Affrètement requis</strong><br>
+                            Contact commercial nécessaire
+                        </div>
+                    <?php endif; ?>
+                    
+                    <div class="results-grid">
+                        <?php 
+                        $carriers = $results['carriers'] ?? [];
+                        $carrier_names = [
+                            'xpo' => 'XPO Logistics',
+                            'heppner' => 'Heppner',
+                            'kn' => 'Kuehne+Nagel'
+                        ];
+                        
+                        // Trier par prix croissant
+                        $sorted_carriers = [];
+                        foreach ($carriers as $carrier) {
+                            if (isset($carrier['price']) && $carrier['price'] > 0) {
+                                $sorted_carriers[] = $carrier;
+                            }
+                        }
+                        usort($sorted_carriers, fn($a, $b) => $a['price'] <=> $b['price']);
+                        
+                        foreach ($sorted_carriers as $carrier):
+                            $prix_ttc = $carrier['price'];
+                            $prix_ht = round($prix_ttc / 1.2, 2);
+                        ?>
+                            <div class="carrier-card">
+                                <div class="carrier-header">
+                                    <div class="carrier-name"><?= htmlspecialchars($carrier['carrier_name']) ?></div>
+                                    <div class="carrier-price"><?= $carrier['price_display'] ?></div>
+                                </div>
+                                <div class="carrier-details">
+                                    <div><strong>HT :</strong> <?= number_format($prix_ht, 2) ?>€</div>
+                                    <div><strong>Délai :</strong> <?= htmlspecialchars($carrier['delay'] ?? '24-48h') ?></div>
+                                    <div><strong>Service :</strong> <?= htmlspecialchars($form_data['option_sup']) ?></div>
+                                    <div><strong>Poids :</strong> <?= $form_data['poids'] ?>kg</div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                <?php else: ?>
+                    <div style="text-align: center; color: #6b7280; margin-top: 2rem;">
+                        <p>🚚 Saisissez vos critères et calculez</p>
+                    </div>
+                <?php endif; ?>
             </div>
-        </section>
-    </main>
+        </div>
+    </div>
 </div>
 
-<div class="debug-panel" id="debugPanel">
-    <div class="debug-header" onclick="this.parentElement.classList.toggle('expanded')">
-        <span>🔧 Debug</span>
-        <span class="debug-toggle">▼</span>
-    </div>
-    <div class="debug-content" id="debugContent">
-        <div class="debug-entry">Prêt pour le debug...</div>
-    </div>
-</div>
-<?php
-include_once ROOT_PATH . '/templates/footer.php';
-?>
-<link rel="stylesheet" href="/port/assets/css/port.css?v=<?= $build_number ?>">
-<script src="/port/assets/js/port.js?v=<?= $build_number ?>"></script>
+<!-- JavaScript pour calcul temps réel -->
+<script src="/port/assets/js/calculator.js"></script>
+
+<script>
+// Auto-focus et validation simple
+document.getElementById('departement').focus();
+
+// Validation poids
+document.getElementById('poids').addEventListener('input', function() {
+    const poids = parseFloat(this.value);
+    if (poids > 3000) {
+        this.style.borderColor = '#d97706';
+        this.title = 'Affrètement probable';
+    } else {
+        this.style.borderColor = '#e5e7eb';
+        this.title = '';
+    }
+});
+
+// Style radio buttons
+document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.querySelectorAll(`input[name="${this.name}"]`).forEach(r => {
+            r.closest('.radio-option').style.borderColor = '#e5e7eb';
+            r.closest('.radio-option').style.background = 'white';
+        });
+        
+        this.closest('.radio-option').style.borderColor = 'var(--port-primary)';
+        this.closest('.radio-option').style.background = 'rgba(37, 99, 235, 0.05)';
+    });
+    
+    if (radio.checked) {
+        radio.closest('.radio-option').style.borderColor = 'var(--port-primary)';
+        radio.closest('.radio-option').style.background = 'rgba(37, 99, 235, 0.05)';
+    }
+});
+
+<?php if ($results): ?>
+setTimeout(() => {
+    document.querySelector('#results-container').scrollIntoView({ 
+        behavior: 'smooth', block: 'nearest' 
+    });
+}, 100);
+<?php endif; ?>
+</script>
+
+<?php include_once ROOT_PATH . '/templates/footer.php'; ?>
