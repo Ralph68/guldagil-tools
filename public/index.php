@@ -23,9 +23,9 @@ foreach ($config_files as $file) {
 }
 
 // Variables de base pour le template
-$page_title = defined('APP_NAME') ? APP_NAME : 'Portail Guldagil';
-$page_subtitle = 'Tableau de bord principal';
-$page_description = 'Portail Guldagil - Solutions pour le traitement de l\'eau et la logistique';
+$page_title = 'Portail Guldagil - Hub Logistique & Qualité Industrielle';
+$page_subtitle = 'Plateforme industrielle intégrée';
+$page_description = 'Solution modulaire complète intégrant transport, ADR, qualité, EPI et outillages';
 $current_module = 'home';
 $module_css = false;
 

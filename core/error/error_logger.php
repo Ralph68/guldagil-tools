@@ -21,6 +21,78 @@ class ErrorLogger
         $this->ensureDirectories();
     }
     
+    /**
+     * Crée les dossiers de logs si nécessaires
+     */
+    private function ensureDirectories() {
+        foreach ($this->log_paths as $log_path) {
+            $dir = dirname($log_path);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+        }
+    }
+    
+    /**
+     * Écrit de manière sécurisée dans un fichier de log
+     */
+    private function writeToFile($file_path, $content) {
+        try {
+            // Vérifier que le dossier existe
+            $dir = dirname($file_path);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            
+            // Écriture atomique avec verrou
+            $result = file_put_contents($file_path, $content, FILE_APPEND | LOCK_EX);
+            
+            if ($result === false) {
+                // Fallback : log dans fichier temporaire si problème
+                $temp_log = sys_get_temp_dir() . '/error_fallback_' . date('Y-m-d') . '.log';
+                file_put_contents($temp_log, "[FALLBACK] " . $content, FILE_APPEND | LOCK_EX);
+            }
+            
+            return $result !== false;
+        } catch (Exception $e) {
+            // En cas d'erreur critique, ne pas lever d'exception pour éviter les boucles
+            error_log("ErrorLogger: Impossible d'écrire dans $file_path - " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Effectue la rotation des logs si nécessaire
+     */
+    private function rotateIfNeeded($file_path) {
+        if (!file_exists($file_path)) {
+            return;
+        }
+        
+        $file_size = filesize($file_path);
+        if ($file_size < $this->max_file_size) {
+            return; // Pas besoin de rotation
+        }
+        
+        try {
+            // Rotation simple : rename vers .old, puis création nouveau fichier
+            $backup_file = $file_path . '.old';
+            
+            // Supprimer ancien backup s'il existe
+            if (file_exists($backup_file)) {
+                unlink($backup_file);
+            }
+            
+            // Déplacer le fichier actuel vers backup
+            rename($file_path, $backup_file);
+            
+            // Le nouveau fichier sera créé automatiquement au prochain log
+            
+        } catch (Exception $e) {
+            error_log("ErrorLogger: Rotation échouée pour $file_path - " . $e->getMessage());
+        }
+    }
+    
     public function log($error_data) {
         $formatted_entry = $this->formatLogEntry($error_data);
         
@@ -63,6 +135,30 @@ class ErrorLogger
         ]) . "\n";
     }
     
+    /**
+     * Récupère les erreurs récentes pour le dashboard
+     * TODO: Implémenter parsing intelligent des logs
+     */
+    public function getRecentErrors($hours = 24) {
+        // TODO: Parser les fichiers de logs et retourner array structuré
+        // Filtrage par timestamp, tri par gravité, etc.
+        return [];
+    }
+    
+    /**
+     * Statistiques générales des erreurs
+     * TODO: Implémenter pour dashboard admin
+     */
+    public function getStats() {
+        // TODO: Compter erreurs par type, module, période
+        // Retourner metrics pour graphiques
+        return [
+            'total_errors' => 0,
+            'critical_errors' => 0,
+            'by_module' => [],
+            'by_type' => []
+        ];
+    }
     // TODO: Méthodes de recherche et filtrage
     // TODO: Intégration avec visualiseur de logs existant
 }

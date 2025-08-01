@@ -99,7 +99,7 @@ $available_modules = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?><?= $page_subtitle ? ' - ' . htmlspecialchars($page_subtitle) : '' ?> | <?= $app_name ?></title>
+    <title><?= htmlspecialchars($page_title ?: 'Hub Logistique & Qualité - Guldagil') ?></title>
     
     <!-- Meta tags SEO et sécurité -->
     <meta name="description" content="<?= htmlspecialchars($page_subtitle ?: 'Portail Guldagil - Gestion des frais de port et transport') ?>">

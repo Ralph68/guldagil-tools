@@ -526,5 +526,9 @@ if (!function_exists('getCurrentModuleAuto')) {
 define('CORE_MANAGERS_AVAILABLE', true);
 define('CORE_AUTOLOAD_REGISTERED', true);
 
+// Variables globales du portail
+define('APP_NAME', 'Portail Guldagil - Hub Logistique & Qualité Industrielle');
+define('APP_DESCRIPTION', 'Plateforme intégrée pour l\'optimisation des processus industriels du secteur traitement de l\'eau');
+
 // Fin du bloc à ajouter à config/config.php
 ?>

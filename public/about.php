@@ -10,15 +10,15 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/version.php';
 
 // Variables pour le header
-$page_title = 'À propos du Portail Guldagil';
-$page_subtitle = 'Solutions professionnelles pour l\'achats et la logistique';
+$page_title = 'À propos du Hub Logistique & Qualité';
+$page_subtitle = 'Solutions professionnelles pour l\'industrie';
 $page_description = 'Découvrez le portail Guldagil : calculateur de frais de port, gestion ADR, contrôle qualité, achats et administration centralisée.';
 $current_module = 'about';
 
 // Informations du portail
 $portal_info = [
-    'name' => 'Portail Guldagil',
-    'full_name' => 'Guldagil - Portail Achats et Logistique',
+    'name' => 'Hub Logistique & Qualité Industrielle',
+    'full_name' => 'Portail Guldagil - Hub Logistique & Qualité Industrielle',
     'version' => APP_VERSION,
     'build' => BUILD_NUMBER,
     'author' => APP_AUTHOR,
