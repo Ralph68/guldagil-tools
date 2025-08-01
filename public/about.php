@@ -9,6 +9,11 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/version.php';
 
+// Définir l'année du copyright
+if (!defined('COPYRIGHT_YEAR')) {
+    define('COPYRIGHT_YEAR', date('Y'));
+}
+
 // Variables pour le header
 $page_title = 'À propos du Hub Logistique & Qualité';
 $page_subtitle = 'Solutions professionnelles pour l\'industrie';

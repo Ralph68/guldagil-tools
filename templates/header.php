@@ -141,6 +141,9 @@ $available_modules = [
             endforeach; ?>
         <?php endif; ?>
     <?php endif; ?>
+    <?php if ($current_module === 'admin'): ?>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css?v=<?= $build_number ?>">
+    <?php endif; ?>
 
     <!-- Variables CSS pour la couleur du module et améliorations -->
     <style>
