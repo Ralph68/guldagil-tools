@@ -332,6 +332,17 @@ function scanDatabase() {
     return $results;
 }
 
+/**
+ * Scan erreurs récentes (24h)
+ */
+function scanRecentErrors() {
+    if (class_exists('ErrorManager')) {
+        $errorManager = ErrorManager::getInstance();
+        return $errorManager->getRecentErrors(24);
+    }
+    return [];
+}
+
 // Exécuter le scan
 $scan_results = [];
 $scan_duration = 0;

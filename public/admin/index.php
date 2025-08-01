@@ -273,6 +273,13 @@ $system_stats = getSystemStats();
 // Actions rapides améliorées
 $quick_actions = [
     [
+    'file' => 'system/errors.php',
+    'icon' => '🚨',
+    'title' => 'Gestion Erreurs',
+    'desc' => 'Monitoring et diagnostic système',
+    'class' => 'system'
+    ],
+    [
         'title' => 'Scanner système',
         'desc' => 'Diagnostic complet du portail',
         'icon' => '🔍',
@@ -359,6 +366,22 @@ if (file_exists($header_path)) {
                 <div class="stat-content">
                     <div class="stat-value"><?= $db_connected ? 'Connectée' : 'Erreur' ?></div>
                     <div class="stat-label">Base de données</div>
+                </div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon">🚨</span>
+                <div class="stat-content">
+                    <div class="stat-value">
+                        <?php
+                        $error_count = 0;
+                        if (class_exists('ErrorManager')) {
+                            $stats = ErrorManager::getInstance()->getErrorStats();
+                            $error_count = $stats['critical'] ?? 0;
+                        }
+                        echo $error_count;
+                        ?>
+                    </div>
+                    <div class="stat-label">Erreurs critiques</div>
                 </div>
             </div>
         </div>

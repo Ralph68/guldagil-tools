@@ -478,3 +478,129 @@ if (window.DEBUG) {
     window.debugHeader = debugHeader;
     console.log('🔍 Mode debug header activé - utilisez debugHeader() pour infos détaillées');
 }
+
+// Widget d'alertes erreurs dans header
+document.addEventListener('DOMContentLoaded', function() {
+    const errorWidget = document.getElementById('errorWidget');
+    if (!errorWidget) return;
+    
+    const trigger = document.getElementById('errorWidgetTrigger');
+    const dropdown = document.getElementById('errorWidgetDropdown');
+    const content = document.getElementById('errorWidgetContent');
+    const countElement = document.getElementById('errorCount');
+    
+    let isOpen = false;
+    let lastUpdate = 0;
+    
+    // Charger les erreurs récentes
+    async function loadRecentErrors() {
+        try {
+            const response = await fetch('/admin/system/api_errors.php?recent=1');
+            const data = await response.json();
+            
+            if (data.success) {
+                updateErrorWidget(data.errors);
+                lastUpdate = Date.now();
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement des alertes:', error);
+        }
+    }
+    
+    // Mettre à jour le widget
+    function updateErrorWidget(errors) {
+        const criticalCount = errors.filter(e => e.level === 'critical').length;
+        
+        // Mise à jour compteur
+        countElement.textContent = criticalCount;
+        
+        // Mise à jour style bouton
+        if (criticalCount === 0) {
+            trigger.classList.add('no-errors');
+            trigger.title = 'Aucune erreur critique';
+        } else {
+            trigger.classList.remove('no-errors');
+            trigger.title = `${criticalCount} erreur(s) critique(s)`;
+        }
+        
+        // Mise à jour contenu
+        if (errors.length === 0) {
+            content.innerHTML = '<div style="padding:20px;text-align:center;color:#28a745;">✅ Aucune erreur récente</div>';
+        } else {
+            content.innerHTML = errors.slice(0, 5).map(error => `
+                <div class="error-item">
+                    <div class="error-item-icon">${getErrorIcon(error.level)}</div>
+                    <div class="error-item-content">
+                        <div class="error-item-message">${escapeHtml(error.message)}</div>
+                        <div class="error-item-meta">
+                            <span>${error.module}</span>
+                            <span>${formatTime(error.timestamp)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+    
+    // Toggle dropdown
+    trigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        
+        if (!isOpen) {
+            // Rafraîchir si données anciennes (> 2min)
+            if (Date.now() - lastUpdate > 120000) {
+                loadRecentErrors();
+            }
+        }
+        
+        isOpen = !isOpen;
+        dropdown.classList.toggle('active', isOpen);
+    });
+    
+    // Fermer en cliquant ailleurs
+    document.addEventListener('click', function() {
+        if (isOpen) {
+            isOpen = false;
+            dropdown.classList.remove('active');
+        }
+    });
+    
+    // Empêcher fermeture en cliquant dans dropdown
+    dropdown.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+    
+    // Utilitaires
+    function getErrorIcon(level) {
+        const icons = {
+            'critical': '🔥',
+            'error': '❌',
+            'warning': '⚠️',
+            'info': 'ℹ️'
+        };
+        return icons[level] || '⚠️';
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function formatTime(timestamp) {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000);
+        
+        if (diff < 60) return 'À l\'instant';
+        if (diff < 3600) return `${Math.floor(diff / 60)}min`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+        return date.toLocaleDateString();
+    }
+    
+    // Chargement initial
+    loadRecentErrors();
+    
+    // Rafraîchissement automatique toutes les 5 minutes
+    setInterval(loadRecentErrors, 300000);
+});

@@ -277,6 +277,24 @@ $available_modules = [
             <!-- Navigation utilisateur -->
             <?php if ($user_authenticated && $current_user): ?>
             <div class="header-user-nav">
+                <?php if (in_array($current_user['role'] ?? 'user', ['admin', 'dev'])): ?>
+                <!-- Widget alertes erreurs pour admins/devs -->
+                <div class="header-error-widget" id="errorWidget">
+                    <button class="error-widget-trigger" id="errorWidgetTrigger" title="Alertes système">
+                        <span class="error-icon">🚨</span>
+                        <span class="error-count" id="errorCount">0</span>
+                    </button>
+                    <div class="error-widget-dropdown" id="errorWidgetDropdown">
+                        <div class="error-widget-header">
+                            <h3>🔥 Erreurs récentes</h3>
+                            <a href="/admin/system/errors.php" class="view-all-link">Voir tout</a>
+                        </div>
+                        <div class="error-widget-content" id="errorWidgetContent">
+                            <div class="loading">Chargement...</div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
                 <div class="user-menu-trigger" id="userMenuTrigger" aria-haspopup="true" aria-expanded="false">
                     <div class="user-avatar">
                         <?php if (!empty($current_user['avatar'])): ?>
