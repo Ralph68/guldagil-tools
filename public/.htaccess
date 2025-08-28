@@ -1,5 +1,5 @@
-# .htaccess pour /public/ (document root)
-# Version: 0.5 beta + build auto
+# .htaccess pour /public/ (document root) - VERSION SÉCURISÉE GULDAGIL
+# Version: 0.6 beta + sécurité renforcée
 # Chemin: /public/.htaccess
 
 RewriteEngine On
@@ -14,110 +14,388 @@ RewriteCond %{QUERY_STRING} ^health=check$
 RewriteRule ^(.*)$ index.php [L]
 
 # =====================================
-# ASSETS STATIQUES - CORRECTION 403
+# SÉCURITÉ RENFORCÉE GULDAGIL
 # =====================================
-<FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$">
-    Require all granted
-    #RewriteEngine Off
+
+# Headers de sécurité obligatoires
+<IfModule mod_headers.c>
+    # Protection XSS et Clickjacking
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # CSP strict pour Guldagil
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
+    
+    # HSTS pour HTTPS (décommenter si SSL actif)
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    
+    # Masquer les informations serveur
+    Header unset Server
+    Header unset X-Powered-By
+    
+    # Cache control sécurisé
+    <FilesMatch "\.(php|html?)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+</IfModule>
+
+# Masquage signature serveur
+ServerTokens Prod
+ServerSignature Off
+
+# Blocage User-Agents malveillants (intégré avec IP géolocalisation existante)
+RewriteCond %{HTTP_USER_AGENT} (bot|crawler|spider|scraper|nikto|sqlmap|nmap|wget|curl|libwww|python-requests|masscan) [NC]
+RewriteRule ^(.*)$ - [F,L]
+
+# Protection contre injections avancées
+RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} (union|select|insert|update|delete|drop|create|alter|exec|eval|system|passthru) [NC,OR]
+RewriteCond %{QUERY_STRING} (\.\.|\/etc\/|\/proc\/|\/var\/|\/bin\/|\/usr\/|127\.0) [NC,OR]
+RewriteCond %{QUERY_STRING} (base64_encode|base64_decode|benchmark|sleep) [NC,OR]
+RewriteCond %{QUERY_STRING} (javascript|vbscript|onclick|onload|onerror|onmouseover) [NC]
+RewriteRule ^(.*)$ - [F,L]
+
+# Protection contre attaques de traversée de répertoires
+RewriteCond %{THE_REQUEST} \s/+(.*)/+[^\s]*
+RewriteRule ^.*$ /%1/ [R=301,L]
+
+# Blocage tentatives d'accès aux fichiers sensibles
+<FilesMatch "^(\.env|\.git|\.htaccess|\.htpasswd|config\.php|composer\.(json|lock)|package\.json|gulpfile\.js|webpack\.config\.js|\.log|\.sql|\.bak)$">
+    Require all denied
 </FilesMatch>
 
-RewriteRule ^assets/ - [L]
-RewriteRule ^.*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$ - [L]
-
-# =====================================
-# SÉCURITÉ
-# =====================================
-# Protection fichiers sensibles
-<Files ".env">
-    Require all denied
-</Files>
+# Protection renforcée fichiers logs
 <Files "*.log">
     Require all denied
 </Files>
 
-# Bloquer accès dossiers parents
-RewriteRule ^\.\./ - [F,L]
-
-# Bloquer dossiers système
-RedirectMatch 404 ^/(config|core|storage|vendor)/
-
-# Protection contre injections (PHP uniquement)
-RewriteCond %{REQUEST_FILENAME} \.(php)$ [NC]
-RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
-RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
-RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2}) [OR]
-RewriteCond %{QUERY_STRING} ^.*(\[|\]|\(|\)|<|>|ê|"|;|\?|\*|=$).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(&#x22;|&#x27;|&#x3C;|&#x3E;|&#x5C;|&#x7B;|&#x7C;).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(%24&x).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(%0|%A|%B|%C|%D|%E|%F|127\.0).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(globals|encode|localhost|loopback).* [NC,OR]
-RewriteCond %{QUERY_STRING} ^.*(request|select|concat|union|declare).* [NC]
-RewriteRule ^(.*)$ /error.php?type=403 [R=403,L]
+# Interdiction d'exécution dans uploads et cache
+<Directory ~ "(storage|uploads|cache)">
+    php_flag engine off
+    AddType text/plain .php .php3 .phtml .pht .pl .py .jsp .asp .sh .cgi
+    <FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi|exe)$">
+        Require all denied
+    </FilesMatch>
+</Directory>
 
 # =====================================
-# PAGES D'ERREUR
+# ASSETS STATIQUES - SÉCURISÉ
 # =====================================
-#ErrorDocument 404 /error.php?type=404
-#ErrorDocument 403 /error.php?type=403
-#ErrorDocument 500 /error.php?type=500
-#ErrorDocument 503 /error.php?type=503
+<FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp)$">
+    Require all granted
+    
+    # Cache agressif pour assets avec versioning
+    <IfModule mod_expires.c>
+        ExpiresActive On
+        ExpiresDefault "access plus 1 year"
+    </IfModule>
+    
+    # Headers pour assets
+    <IfModule mod_headers.c>
+        Header set Cache-Control "public, max-age=31536000, immutable"
+        Header unset Last-Modified
+        Header unset ETag
+    </IfModule>
+</FilesMatch>
+
+# Autoriser assets sans réécriture
+RewriteRule ^assets/ - [L]
+RewriteRule ^.*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp)$ - [L]
 
 # =====================================
-# MODULES
+# LIMITATION TAUX DE REQUÊTES (DDOS)
 # =====================================
+
+# Limitation basique via mod_evasive (si disponible)
+<IfModule mod_evasive24.c>
+    DOSHashTableSize 32768
+    DOSPageCount 5
+    DOSSiteCount 50
+    DOSPageInterval 1
+    DOSSiteInterval 1
+    DOSBlockingPeriod 300
+    DOSLogDir /tmp
+    DOSEmailNotify admin@guldagil.com
+</IfModule>
+
+# Limitation taille requêtes
+LimitRequestBody 10485760
+
+# Timeout connexions
+<IfModule mod_reqtimeout.c>
+    RequestReadTimeout header=20-40,MinRate=500 body=20,MinRate=500
+</IfModule>
+
+# =====================================
+# BLOCAGE GÉOGRAPHIQUE (COMPLÉMENT IP EXISTANT)
+# =====================================
+
+# Blocage pays suspects (complément à la géolocalisation PHP)
+# Note: la géolocalisation française est gérée par core/security/ip_geolocation.php
+RewriteCond %{HTTP_CF_IPCOUNTRY} ^(CN|RU|KP|IR)$ [NC]
+RewriteRule ^(.*)$ - [F,L]
+
+# Blocage plages IP malveillantes communes
+RewriteCond %{REMOTE_ADDR} ^(127\.0\.0\.1|::1)$ [OR]
+RewriteCond %{REMOTE_ADDR} ^10\. [OR]
+RewriteCond %{REMOTE_ADDR} ^192\.168\. [OR]
+RewriteCond %{REMOTE_ADDR} ^172\.(1[6-9]|2[0-9]|3[01])\. [OR]
+RewriteCond %{REMOTE_ADDR} ^169\.254\.
+RewriteRule ^admin/ - [E=private_ip:1]
+
+# =====================================
+# PROTECTION SPÉCIFIQUE MODULES
+# =====================================
+
+# Protection renforcée module admin
+<LocationMatch "^/admin/">
+    # IPs privées autorisées pour admin en développement
+    <RequireAll>
+        <RequireAny>
+            Require local
+            Require ip 192.168.1
+            Require ip 10.0.0
+            # Ajouter vos IPs de développement autorisées ici
+        </RequireAny>
+    </RequireAll>
+</LocationMatch>
+
+# Protection API endpoints
+RewriteCond %{REQUEST_URI} ^/(api|ajax)/ [NC]
+RewriteCond %{REQUEST_METHOD} !^(GET|POST)$ [NC]
+RewriteRule ^(.*)$ - [F,L]
+
+# =====================================
+# PAGES D'ERREUR PERSONNALISÉES
+# =====================================
+
+# Erreurs redirigées vers pages Guldagil
+ErrorDocument 400 /error/400.html
+ErrorDocument 401 /auth/login.php
+ErrorDocument 403 /error/403.html
+ErrorDocument 404 /error/404.html
+ErrorDocument 429 /error/429.html
+ErrorDocument 500 /error/500.html
+ErrorDocument 503 /error/503.html
+
+# =====================================
+# MODULES GULDAGIL - ROUTES SÉCURISÉES
+# =====================================
+
 DirectoryIndex index.php index.html
 
-# URLs propres pour modules
-RewriteRule ^port/?$ port/index.php [L]
-RewriteRule ^port/(.+)$ port/$1 [L]
+# Module Port (Calculateur)
+RewriteRule ^port/?$ port/index.php [L,QSA]
+RewriteRule ^port/([^/]+)/?$ port/index.php?action=$1 [L,QSA]
+RewriteRule ^port/([^/]+)/(.+)$ port/$2?action=$1 [L,QSA]
 
-RewriteRule ^admin/?$ admin/index.php [L]
-RewriteRule ^admin/(.+)$ admin/$1 [L]
+# Module Admin (accès restreint)
+RewriteCond %{REQUEST_URI} ^/admin/ [NC]
+RewriteCond %{HTTP_COOKIE} !user_authenticated=true [NC]
+RewriteRule ^admin/(.*)$ /auth/login.php?redirect=%{REQUEST_URI} [R=302,L]
 
-RewriteRule ^user/?$ user/index.php [L]
-RewriteRule ^user/(.+)$ user/$1 [L]
+RewriteRule ^admin/?$ admin/index.php [L,QSA]
+RewriteRule ^admin/([^/]+)/?$ admin/index.php?page=$1 [L,QSA]
+RewriteRule ^admin/([^/]+)/(.+)$ admin/$2?page=$1 [L,QSA]
 
-RewriteRule ^auth/?$ auth/login.php [L]
-RewriteRule ^auth/(.+)$ auth/$1 [L]
+# Module User 
+RewriteRule ^user/?$ user/index.php [L,QSA]
+RewriteRule ^user/([^/]+)/?$ user/index.php?page=$1 [L,QSA]
+RewriteRule ^user/([^/]+)/(.+)$ user/$2?page=$1 [L,QSA]
 
-# Gestion modules génériques (exclure assets)
+# Module Auth (connexion)
+RewriteRule ^auth/?$ auth/login.php [L,QSA]
+RewriteRule ^auth/login/?$ auth/login.php [L,QSA]
+RewriteRule ^auth/logout/?$ auth/logout.php [L,QSA]
+RewriteRule ^auth/([^/]+)/?$ auth/$1.php [L,QSA]
+
+# Modules développement (ADR, EPI, Qualité)
+RewriteRule ^(adr|epi|qualite|materiel)/?$ $1/index.php [L,QSA]
+RewriteRule ^(adr|epi|qualite|materiel)/(.+)$ $1/$2 [L,QSA]
+
+# =====================================
+# GESTION MODULES GÉNÉRIQUES SÉCURISÉE
+# =====================================
+
+# Exclure assets, API et fichiers spéciaux
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$ [NC]
+RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp)$ [NC]
+RewriteCond %{REQUEST_URI} !^/(api|ajax|assets|uploads|storage)/ [NC]
+RewriteCond %{REQUEST_URI} !^/(error|health|robots\.txt|sitemap\.xml)$ [NC]
+
+# Validation nom de module (sécurité)
+RewriteCond %{REQUEST_URI} ^/([a-zA-Z0-9_-]+)/?$
+RewriteCond %1 ^(port|admin|user|auth|adr|epi|qualite|materiel)$
 RewriteRule ^([a-zA-Z0-9_-]+)/?$ index.php?module=$1 [QSA,L]
 
-# Gestion actions modules
+# Gestion actions modules avec validation
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$ [NC]
+RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp)$ [NC]
+RewriteCond %{REQUEST_URI} !^/(api|ajax|assets|uploads|storage)/ [NC]
+RewriteCond %{REQUEST_URI} ^/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/?$
+RewriteCond %1 ^(port|admin|user|auth|adr|epi|qualite|materiel)$
 RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/?$ index.php?module=$1&action=$2 [QSA,L]
 
 # =====================================
-# OPTIMISATION
+# OPTIMISATION PERFORMANCES
 # =====================================
-# Cache assets
+
+# Compression GZIP renforcée
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+    
+    # Exclure fichiers déjà compressés
+    SetEnvIfNoCase Request_URI \
+        \.(?:gif|jpe?g|png|zip|gz|bz2|sit|rar|pdf)$ no-gzip dont-vary
+    SetEnvIfNoCase Request_URI \
+        \.(?:exe|t?gz|zip|bz2|sit|rar)$ no-gzip dont-vary
+</IfModule>
+
+# Cache avancé avec validation ETags
 <IfModule mod_expires.c>
     ExpiresActive On
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
+    
+    # Assets avec versioning (cache long)
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+    
+    # Images
     ExpiresByType image/png "access plus 1 month"
     ExpiresByType image/jpg "access plus 1 month"
     ExpiresByType image/jpeg "access plus 1 month"
     ExpiresByType image/gif "access plus 1 month"
     ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
     ExpiresByType image/x-icon "access plus 1 year"
+    
+    # Fonts
     ExpiresByType font/woff "access plus 1 year"
     ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    
+    # Documents
+    ExpiresByType application/pdf "access plus 1 month"
+    
+    # HTML et PHP (pas de cache)
+    ExpiresByType text/html "access plus 0 seconds"
+    ExpiresByType application/json "access plus 0 seconds"
 </IfModule>
 
-# Compression
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/css application/javascript
+# =====================================
+# CONFIGURATION PHP SÉCURISÉE
+# =====================================
+
+<IfModule mod_php.c>
+    # Limites sécurisées
+    php_value upload_max_filesize "5M"
+    php_value post_max_size "8M"
+    php_value max_execution_time "30"
+    php_value max_input_time "30"
+    php_value memory_limit "128M"
+    php_value max_input_vars "1000"
+    
+    # Sécurité PHP
+    php_flag expose_php Off
+    php_flag allow_url_fopen Off
+    php_flag allow_url_include Off
+    php_flag register_globals Off
+    php_flag display_errors Off
+    php_flag log_errors On
+    
+    # Sessions sécurisées Guldagil
+    php_flag session.cookie_httponly On
+    php_flag session.cookie_secure On
+    php_flag session.use_strict_mode On
+    php_value session.cookie_samesite "Strict"
+    php_value session.name "GULDAGIL_SESSION"
+    php_value session.cookie_lifetime "3600"
+    php_value session.gc_maxlifetime "3600"
+    
+    # Journalisation erreurs
+    php_value error_log "/path/to/storage/logs/php_errors.log"
 </IfModule>
 
-# Headers CORS
-<IfModule mod_headers.c>
-    <FilesMatch "\.(css|js)$">
-        Header set Access-Control-Allow-Origin "*"
-    </FilesMatch>
+# =====================================
+# MONITORING ET LOGS
+# =====================================
+
+# Log des accès suspects
+<IfModule mod_log_config.c>
+    LogFormat "%h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\" %D" guldagil_format
+    
+    # Séparer les requêtes normales des suspectes
+    SetEnvIf Request_URI "(\?|&)(select|union|script|eval|exec)" suspicious
+    SetEnvIf User-Agent "(bot|crawler|scanner|nikto|sqlmap)" suspicious
+    SetEnvIf Remote_Addr "^(127\.0\.0\.1|::1)$" local_access
+    
+    CustomLog logs/access_normal.log guldagil_format env=!suspicious
+    CustomLog logs/access_suspicious.log guldagil_format env=suspicious
 </IfModule>
+
+# =====================================
+# MAINTENANCE ET URGENCE
+# =====================================
+
+# Mode maintenance (décommenter pour activer)
+# RewriteCond %{REMOTE_ADDR} !^192\.168\.1\.100$
+# RewriteCond %{REQUEST_URI} !/maintenance\.html$
+# RewriteRule ^(.*)$ /maintenance.html [R=503,L]
+
+# Redirect d'urgence vers site principal (décommenter si besoin)
+# RewriteCond %{REQUEST_URI} !^/(error|health)/
+# RewriteRule ^(.*)$ https://guldagil.com/portail-indisponible [R=302,L]
+
+# =====================================
+# SÉCURITÉ FINALE
+# =====================================
+
+# Protection ce fichier .htaccess
+<Files ".htaccess">
+    Require all denied
+</Files>
+
+# Désactivation browsing répertoires
+Options -Indexes
+
+# Protection liens symboliques
+Options -FollowSymLinks +SymLinksIfOwnerMatch
+
+# Désactivation includes server-side
+Options -Includes
+
+# Désactivation exécution CGI
+Options -ExecCGI
+
+# =====================================
+# COMPATIBILITÉ EXISTANT
+# =====================================
+
+# Redirection ancienne structure (si migration)
+# RewriteRule ^calculateur/(.*)$ /port/$1 [R=301,L]
+
+# Fallback pour requêtes non matchées
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/(error|health|robots\.txt|sitemap\.xml|favicon\.ico)$
+RewriteRule ^(.*)$ index.php [QSA,L]
