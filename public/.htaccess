@@ -1,0 +1,28 @@
+# .htaccess simplifié Guldagil
+
+RewriteEngine On
+
+# Redirection vers index.php si le fichier ou dossier n'existe pas
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# Sécurité de base
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Interdire l'accès aux fichiers sensibles
+<FilesMatch "(\.env|\.git|\.htaccess|\.htpasswd|config\.php|composer\.(json|lock)|\.log|\.sql|\.bak)$">
+    Require all denied
+</FilesMatch>
+
+# Désactiver l'affichage du listing de répertoire
+Options -Indexes
+
+# Protection du .htaccess lui-même
+<Files .htaccess>
+    Require all denied
+</Files>

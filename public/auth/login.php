@@ -1,4 +1,10 @@
+
 <?php
+// === MODE DEBUG : Affiche toutes les erreurs PHP pour diagnostic ===
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 /**
  * Titre: Login FINAL - AuthManager seulement, zéro fallback
  * Chemin: /public/auth/login.php

@@ -66,6 +66,12 @@ include_once ROOT_PATH . '/templates/header.php';
 
 // Après inclusion du header, les variables $current_user et $user_authenticated sont disponibles
 
+// Redirection obligatoire si non authentifié
+if (!$user_authenticated) {
+    header('Location: /auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI'] ?? '/'));
+    exit;
+}
+
 // Modules disponibles (ENRICHIR L'EXISTANT avec thème eau)
 $all_modules = [
     'port' => [
