@@ -246,6 +246,11 @@ require_once ROOT_PATH . '/templates/header.php';
                     <span class="stat-label">Modules</span>
                 </div>
             </div>
+
+            <!-- Widget sécurité admin -->
+            <?php if (function_exists('getSecurityWidget')): ?>
+                <?= getSecurityWidget(7) ?>
+            <?php endif; ?>
         </div>
     </div>
     

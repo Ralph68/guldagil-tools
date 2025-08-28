@@ -536,4 +536,20 @@ require_once ROOT_PATH . '/core/security/enhanced_security.php';
 
 // Configuration optionnelle
 define('ENHANCED_SECURITY_ENABLED', true);
+
+// Widget sécurité admin (optionnel)
+if (!function_exists('getSecurityWidget')) {
+    function getSecurityWidget($days = 7) {
+        if (!function_exists('getIpSecurityStats')) return '';
+        $stats = getIpSecurityStats($days);
+        $blocked = $stats['blocked'] ?? 0;
+        $allowed = $stats['allowed'] ?? 0;
+        $total = $stats['total'] ?? 0;
+        $html = '<div class="admin-widget security-widget" style="background:#f8fafc;border:1px solid #e2e8f0;padding:1rem;border-radius:8px;margin-bottom:1rem;">';
+        $html .= '<strong>🛡️ Sécurité IP</strong> : ';
+        $html .= "$blocked IP bloquées / $allowed autorisées (sur $total tentatives en $days jours)";
+        $html .= '</div>';
+        return $html;
+    }
+}
 ?>
