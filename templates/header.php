@@ -1,4 +1,8 @@
+
 <?php
+// Sécurité avancée globale : rend la fonction enhancedSecurityCheck disponible partout
+require_once dirname(__DIR__) . '/core/security/enhanced_security.php';
+
 /**
  * Titre: Header principal avec gestion intelligente du breadcrumb et navigation optimisée
  * Chemin: /templates/header.php
