@@ -19,9 +19,14 @@ $module_status = $module_status ?? 'stable';
 $build_number = $build_number ?? (defined('BUILD_NUMBER') ? substr(BUILD_NUMBER, 0, 8) : 'dev-' . date('ymdHis'));
 $app_name = $app_name ?? (defined('APP_NAME') ? APP_NAME : 'Portail Guldagil');
 
-// Gestion de l'authentification
-$user_authenticated = isset($_SESSION['user_authenticated']) && $_SESSION['user_authenticated'] === true;
-$current_user = $_SESSION['user'] ?? null;
+// Gestion de l'authentification (corrigé pour compatibilité AuthManager)
+if (isset($_SESSION['auth_user_id']) && isset($_SESSION['auth_session_id'])) {
+    $user_authenticated = true;
+    $current_user = $_SESSION['auth_user_data'] ?? $_SESSION['user'] ?? null;
+} else {
+    $user_authenticated = false;
+    $current_user = null;
+}
 
 // Détection automatique de la profondeur de navigation pour le breadcrumb
 $current_path = $_SERVER['REQUEST_URI'] ?? '/';
