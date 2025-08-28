@@ -21,6 +21,10 @@ header('X-XSS-Protection: 1; mode=block');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+// Ajouter après session_start()
+if (ENHANCED_SECURITY_ENABLED) {
+    enhancedSecurityCheck('admin');
+}
 
 // Chargement config avec gestion d'erreurs
 $db_connected = false;

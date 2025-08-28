@@ -531,4 +531,9 @@ define('APP_NAME', 'Portail Guldagil - Hub Logistique & Qualité Industrielle');
 define('APP_DESCRIPTION', 'Plateforme intégrée pour l\'optimisation des processus industriels du secteur traitement de l\'eau');
 
 // Fin du bloc à ajouter à config/config.php
+// Enhanced Security Integration
+require_once ROOT_PATH . '/core/security/enhanced_security.php';
+
+// Configuration optionnelle
+define('ENHANCED_SECURITY_ENABLED', true);
 ?>

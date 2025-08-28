@@ -4,6 +4,7 @@
  * Chemin: /public/auth/login.php
  * Version: 0.5 beta + build auto
  */
+enhancedSecurityCheck('login');
 
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 
