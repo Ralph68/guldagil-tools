@@ -1,10 +1,24 @@
 
 <?php
 
-// Définir ROOT_PATH avant toute inclusion
+
+// Définir ROOT_PATH et démarrer la session AVANT toute inclusion
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(dirname(__DIR__)));
 }
+
+// Config session 9h30 (avant tout)
+if (file_exists(ROOT_PATH . '/config/session_timeout.php')) {
+    require_once ROOT_PATH . '/config/session_timeout.php';
+}
+if (!defined('SESSION_TIMEOUT')) {
+    define('SESSION_TIMEOUT', 34200);
+}
+ini_set('session.gc_maxlifetime', SESSION_TIMEOUT);
+ini_set('session.cookie_lifetime', SESSION_TIMEOUT);
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? 1 : 0);
+session_start();
 
 // === MODE DEBUG : Affiche toutes les erreurs PHP pour diagnostic ===
 ini_set('display_errors', 1);
@@ -19,20 +33,6 @@ error_reporting(E_ALL);
 
 // Inclusion du header global (inclut enhanced_security.php et lance la sécurité)
 include_once ROOT_PATH . '/templates/header.php';
-
-// Config session 9h30
-if (file_exists(ROOT_PATH . '/config/session_timeout.php')) {
-    require_once ROOT_PATH . '/config/session_timeout.php';
-}
-if (!defined('SESSION_TIMEOUT')) {
-    define('SESSION_TIMEOUT', 34200);
-}
-
-ini_set('session.gc_maxlifetime', SESSION_TIMEOUT);
-ini_set('session.cookie_lifetime', SESSION_TIMEOUT);
-ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? 1 : 0);
-session_start();
 
 require_once ROOT_PATH . '/config/config.php';
 require_once ROOT_PATH . '/config/version.php';
