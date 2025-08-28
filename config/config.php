@@ -215,54 +215,64 @@ define('IP_GEOLOCATION_WHITELIST', [
 
 // Chargement de la classe de sécurité
 if (IP_GEOLOCATION_ENABLED) {
-    require_once ROOT_PATH . '/core/security/ip_geolocation.php';
-    
-    // Méthodes avancées optionnelles
-    if (file_exists(ROOT_PATH . '/core/security/stealth_methods.php')) {
-        require_once ROOT_PATH . '/core/security/stealth_methods.php';
-    }
-    
-    // Initialisation automatique de la vérification
-    try {
-        $ip_security = initIpGeolocationSecurity();
-        
-        // Configuration selon les constantes
-        $ip_security->setAllowedCountries(IP_GEOLOCATION_ALLOWED_COUNTRIES);
-        
-        foreach (IP_GEOLOCATION_WHITELIST as $whitelisted_ip) {
-            $ip_security->addWhitelistIp($whitelisted_ip);
-        }
-        
-        // Vérification avec méthode de blocage intelligente
-        if (IP_GEOLOCATION_BLOCK_MODE) {
-            if (!checkIpGeolocation(false)) { // Vérifier sans bloquer automatiquement
-                
-                // AUTO-ADAPTATION : Choix intelligent de la méthode
-                if (class_exists('StealthBlockMethods')) {
-                    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                    $current_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-                    
-                    // Méthode adaptée au contexte
-                    $optimal_method = StealthBlockMethods::getOptimalBlockMethod($current_ip, $user_agent);
-                    StealthBlockMethods::executeBlock($optimal_method, $current_ip);
-                } else {
-                    // Fallback : méthode simple
-                    $ip_security->blockAccess(null, IP_GEOLOCATION_BLOCK_METHOD);
+    // Exempter certaines pages (diagnostic, legal, etc.)
+    if (!function_exists('isPageExemptFromIpCheck')) {
+        function isPageExemptFromIpCheck() {
+            $exempt_pages = [
+                '/legal/security.php',
+                '/public/diagnostic_500.php',
+                // Ajoutez d'autres pages si nécessaire
+            ];
+            $current_page = $_SERVER['REQUEST_URI'] ?? '';
+            foreach ($exempt_pages as $exempt_page) {
+                if (strpos($current_page, $exempt_page) !== false) {
+                    return true;
                 }
             }
-        } else {
-            checkIpGeolocation(false); // Log seulement
+            return false;
         }
-        
-    } catch (Exception $e) {
-        // En cas d'erreur de la sécurité IP, log l'erreur mais continue
-        error_log('Erreur sécurité IP: ' . $e->getMessage());
-        
-        // En production, vous pourriez vouloir bloquer par sécurité
-        if (!DEBUG) {
-            // Bloquer par précaution en production
-            http_response_code(503);
-            die('Service temporairement indisponible');
+    }
+    if (!isPageExemptFromIpCheck()) {
+        require_once ROOT_PATH . '/core/security/ip_geolocation.php';
+        // Méthodes avancées optionnelles
+        if (file_exists(ROOT_PATH . '/core/security/stealth_methods.php')) {
+            require_once ROOT_PATH . '/core/security/stealth_methods.php';
+        }
+        // Initialisation automatique de la vérification
+        try {
+            $ip_security = initIpGeolocationSecurity();
+            // Configuration selon les constantes
+            $ip_security->setAllowedCountries(IP_GEOLOCATION_ALLOWED_COUNTRIES);
+            foreach (IP_GEOLOCATION_WHITELIST as $whitelisted_ip) {
+                $ip_security->addWhitelistIp($whitelisted_ip);
+            }
+            // Vérification avec méthode de blocage intelligente
+            if (IP_GEOLOCATION_BLOCK_MODE) {
+                if (!checkIpGeolocation(false)) { // Vérifier sans bloquer automatiquement
+                    // AUTO-ADAPTATION : Choix intelligent de la méthode
+                    if (class_exists('StealthBlockMethods')) {
+                        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                        $current_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                        // Méthode adaptée au contexte
+                        $optimal_method = StealthBlockMethods::getOptimalBlockMethod($current_ip, $user_agent);
+                        StealthBlockMethods::executeBlock($optimal_method, $current_ip);
+                    } else {
+                        // Fallback : méthode simple
+                        $ip_security->blockAccess(null, IP_GEOLOCATION_BLOCK_METHOD);
+                    }
+                }
+            } else {
+                checkIpGeolocation(false); // Log seulement
+            }
+        } catch (Exception $e) {
+            // En cas d'erreur de la sécurité IP, log l'erreur mais continue
+            error_log('Erreur sécurité IP: ' . $e->getMessage());
+            // En production, vous pourriez vouloir bloquer par sécurité
+            if (!DEBUG) {
+                // Bloquer par précaution en production
+                http_response_code(503);
+                die('Service temporairement indisponible');
+            }
         }
     }
 }
