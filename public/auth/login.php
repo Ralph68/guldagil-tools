@@ -1,11 +1,15 @@
 
 <?php
 
+// Définir ROOT_PATH avant toute inclusion
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', dirname(dirname(__DIR__)));
+}
+
 // === MODE DEBUG : Affiche toutes les erreurs PHP pour diagnostic ===
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-
 
 /**
  * Titre: Login FINAL - AuthManager seulement, zéro fallback
@@ -14,9 +18,7 @@ error_reporting(E_ALL);
  */
 
 // Inclusion du header global (inclut enhanced_security.php et lance la sécurité)
-include_once dirname(__DIR__, 2) . '/templates/header.php';
-
-define('ROOT_PATH', dirname(dirname(__DIR__)));
+include_once ROOT_PATH . '/templates/header.php';
 
 // Config session 9h30
 if (file_exists(ROOT_PATH . '/config/session_timeout.php')) {
