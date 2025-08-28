@@ -415,6 +415,15 @@ a:hover {
 .portal-main {
     flex: 1;
     padding: var(--spacing-2xl) 0;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.home-welcome, .company-info, .modules-section, .security-notice {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 .main-container {

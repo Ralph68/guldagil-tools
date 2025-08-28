@@ -13,7 +13,7 @@
         SCROLL_THRESHOLD: 100,
         SCROLL_DELTA_MIN: 5,
         ANIMATION_DURATION: 300,
-        DEBUG: window.location.search.includes('debug=true') || document.body.dataset.debug === 'true'
+    DEBUG: window.location.search.includes('debug=true') || (document.body && document.body.dataset && document.body.dataset.debug === 'true')
     };
     
     // === VARIABLES D'ÉTAT ===
@@ -39,8 +39,8 @@
         };
         
         // Détecter présence du breadcrumb
-        hasBreadcrumb = elements.body.dataset.hasBreadcrumb === 'true' || 
-                       elements.breadcrumbNav !== null;
+    hasBreadcrumb = (elements.body && elements.body.dataset && elements.body.dataset.hasBreadcrumb === 'true') || 
+               elements.breadcrumbNav !== null;
         
         if (CONFIG.DEBUG) {
             console.log('🔧 Header Scroll Debug - Éléments initialisés:', {
