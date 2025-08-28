@@ -12,7 +12,9 @@ error_reporting(E_ALL);
  * Chemin: /public/auth/login.php
  * Version: 0.5 beta + build auto
  */
-enhancedSecurityCheck('login');
+
+// Inclusion du header global (inclut enhanced_security.php et lance la sécurité)
+include_once dirname(__DIR__, 2) . '/templates/header.php';
 
 define('ROOT_PATH', dirname(dirname(__DIR__)));
 
