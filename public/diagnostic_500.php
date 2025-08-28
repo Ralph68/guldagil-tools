@@ -4,6 +4,10 @@
  * Placez ce fichier dans /public/diagnostic_500.php et ouvrez-le dans le navigateur pour obtenir un rapport détaillé.
  */
 
+// Forcer le log des erreurs PHP dans un fichier dédié pour le diagnostic
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/../storage/logs/php_error.log');
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
