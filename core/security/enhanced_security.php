@@ -457,7 +457,7 @@ class EnhancedSecurityManager {
     /**
      * Obtention IP client (améliorée)
      */
-    private function getClientIP() {
+    public function getClientIP() {
         $headers = [
             'HTTP_CF_CONNECTING_IP',
             'HTTP_X_FORWARDED_FOR',
