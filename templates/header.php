@@ -106,7 +106,6 @@ $available_modules = [
     <meta name="robots" content="noindex, nofollow">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
     
     <!-- CSS principals OBLIGATOIRES (ordre important) -->
     <link rel="stylesheet" href="/assets/css/portal.css?v=<?= $build_number ?>">

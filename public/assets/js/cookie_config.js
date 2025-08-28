@@ -67,6 +67,10 @@ window.GuldagilCookieConfig = {
         materiel: {
             cookies_needed: ['session', 'filters'],
             fallback_message: 'Pour gérer le matériel, veuillez accepter les cookies techniques.'
+        },
+        adr: {
+            cookies_needed: ['session', 'certifications'],
+            fallback_message: 'Pour accéder aux fonctions ADR, veuillez accepter les cookies techniques.'
         }
     },
     

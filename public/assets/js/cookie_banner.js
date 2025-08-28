@@ -115,6 +115,9 @@ class CookieBannerManager {
                     <button class="cookie-btn cookie-btn-minimal" onclick="cookieBanner.acceptMinimal()">
                         ⚙️ Cookies techniques uniquement
                     </button>
+                    <button class="cookie-btn cookie-btn-details" onclick="cookieBanner.showDetails()">
+                        📋 Plus de détails
+                    </button>
                 </div>
             </div>
         `;
@@ -143,144 +146,144 @@ class CookieBannerManager {
         button.style.transform = 'scale(0.8)';
         
         document.body.appendChild(button);
+        
+        // Animation d'apparition discrète
+        setTimeout(() => {
+            button.style.opacity = '0.8';
+            button.style.transform = 'scale(1)';
+        }, 1000);
+        
+        // Survol pour visibilité
+        button.addEventListener('mouseenter', () => {
+            button.style.opacity = '1';
+            button.style.transform = 'scale(1.1)';
+        });
+        
+        button.addEventListener('mouseleave', () => {
+            button.style.opacity = '0.8';
+            button.style.transform = 'scale(1)';
+        });
     }
 
     acceptAll() {
         this.setCookie(this.cookieName, 'accepted', this.consentExpiry);
-        this.removeBanner();
-        this.showNotification('✅ Préférences sauvegardées pour tout le site');
-        this.createManageButton();
+        this.hideBanner();
+        this.showNotification('✅ Tous les cookies acceptés - Merci !');
+        
+        // Event personnalisé pour modules
+        window.dispatchEvent(new CustomEvent('cookiesAccepted', { 
+            detail: { level: 'all' } 
+        }));
     }
 
     acceptMinimal() {
         this.setCookie(this.cookieName, 'minimal', this.consentExpiry);
-        this.removeBanner();
-        this.showNotification('⚙️ Préférences sauvegardées pour tout le site');
-        this.createManageButton();
+        this.hideBanner();
+        this.showNotification('⚙️ Cookies techniques acceptés');
+        
+        // Event personnalisé pour modules
+        window.dispatchEvent(new CustomEvent('cookiesAccepted', { 
+            detail: { level: 'minimal' } 
+        }));
     }
 
-    removeBanner() {
+    hideBanner() {
         const banner = document.getElementById('cookie-banner');
         if (banner) {
-            banner.classList.add('cookie-banner-hidden');
-            setTimeout(() => banner.remove(), 300);
+            banner.classList.remove('cookie-banner-visible');
+            setTimeout(() => {
+                banner.remove();
+            }, 300);
         }
+        
+        // Créer le bouton de gestion après avoir masqué la bannière
+        setTimeout(() => {
+            this.createManageButton();
+        }, 500);
     }
 
     showDetails() {
-        const modal = document.createElement('div');
-        modal.id = 'cookie-details-modal';
-        modal.className = 'cookie-modal';
-        modal.innerHTML = `
-            <div class="cookie-modal-content">
-                <div class="cookie-modal-header">
-                    <h2>🍪 Détail des cookies utilisés</h2>
-                    <button class="cookie-modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
-                </div>
-                <div class="cookie-modal-body">
-                    <div class="cookie-category">
-                        <h3>🔧 Cookies techniques (obligatoires)</h3>
-                        <p>Ces cookies sont indispensables au fonctionnement du portail :</p>
-                        <ul>
-                            <li><code>PHPSESSID</code> - Session utilisateur (temporaire)</li>
-                            <li><code>guldagil_preferences</code> - Préférences d'affichage (1 an)</li>
-                            <li><code>guldagil_cookie_consent</code> - Mémorisation de vos choix (1 an)</li>
-                        </ul>
-                        <p><strong>Durée :</strong> Session ou 1 an maximum</p>
-                        <p><strong>Finalité :</strong> Fonctionnement du portail</p>
-                    </div>
-                    
-                    <div class="cookie-category">
-                        <h3>📊 Cookies de mesure d'audience (optionnels)</h3>
-                        <p>
-                            ❌ <strong>AUCUN cookie de tracking n'est utilisé</strong><br>
-                            ❌ Pas de Google Analytics<br>
-                            ❌ Pas de cookies publicitaires<br>
-                            ✅ Uniquement des statistiques anonymisées côté serveur
-                        </p>
-                    </div>
-
-                    <div class="cookie-legal">
-                        <h3>⚖️ Vos droits</h3>
-                        <p>
-                            Conformément au RGPD 2025, vous pouvez à tout moment modifier vos choix 
-                            via le bouton 🍪 en bas à droite de votre écran.
-                        </p>
-                        <p>
-                            <a href="/legal/privacy.php" target="_blank">📋 Consulter notre politique complète</a>
-                        </p>
-                    </div>
-                </div>
-                <div class="cookie-modal-actions">
-                    <button class="cookie-btn cookie-btn-accept" onclick="cookieBanner.acceptAll(); this.parentElement.parentElement.parentElement.remove();">
-                        ✅ Accepter tous
-                    </button>
-                    <button class="cookie-btn cookie-btn-minimal" onclick="cookieBanner.acceptMinimal(); this.parentElement.parentElement.parentElement.remove();">
-                        ⚙️ Techniques uniquement
-                    </button>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-        
-        // Fermeture en cliquant à l'extérieur
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
+        this.showManageModal();
     }
 
     showManageModal() {
-        const currentConsent = this.getCookie(this.cookieName);
-        
+        // Supprimer modal existant
+        const existingModal = document.getElementById('cookie-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
         const modal = document.createElement('div');
-        modal.id = 'cookie-manage-modal';
+        modal.id = 'cookie-modal';
         modal.className = 'cookie-modal';
         modal.innerHTML = `
             <div class="cookie-modal-content">
                 <div class="cookie-modal-header">
-                    <h2>⚙️ Gestion des cookies</h2>
-                    <button class="cookie-modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
+                    <h2>🍪 Gestion des cookies</h2>
+                    <button class="cookie-modal-close" onclick="this.closest('.cookie-modal').remove()">✕</button>
                 </div>
+                
                 <div class="cookie-modal-body">
                     <div class="current-status">
                         <h3>📊 Statut actuel</h3>
-                        <p class="status-badge ${currentConsent}">
-                            ${currentConsent === 'accepted' ? '✅ Tous les cookies acceptés' : 
-                              currentConsent === 'minimal' ? '⚙️ Cookies techniques uniquement' : 
-                              '❌ Aucun consentement'}
+                        <p class="status-text">
+                            ${this.hasAnyConsent() ? 
+                                (this.getCookie(this.cookieName) === 'accepted' ? '✅ Tous cookies acceptés' : '⚙️ Cookies techniques uniquement') 
+                                : '❌ Aucun consentement'}
                         </p>
-                        <p><small>Dernière mise à jour : ${new Date().toLocaleDateString('fr-FR')}</small></p>
                     </div>
-
-                    <div class="cookie-actions-grid">
+                    
+                    <div class="cookie-categories">
+                        <div class="cookie-category">
+                            <h3>🔧 Cookies techniques (obligatoires)</h3>
+                            <p>Nécessaires au fonctionnement du portail :</p>
+                            <ul>
+                                <li><code>PHPSESSID</code> - Session utilisateur</li>
+                                <li><code>guldagil_cookie_consent</code> - Vos préférences cookies</li>
+                                <li><code>portal_theme</code> - Thème d'affichage</li>
+                            </ul>
+                            <p><strong>Ces cookies ne peuvent pas être désactivés.</strong></p>
+                        </div>
+                        
+                        <div class="cookie-category">
+                            <h3>📊 Cookies fonctionnels (optionnels)</h3>
+                            <p>Améliorent votre expérience :</p>
+                            <ul>
+                                <li><code>user_preferences</code> - Vos paramètres d'interface</li>
+                                <li><code>module_settings</code> - Configuration des modules</li>
+                                <li><code>last_calculations</code> - Historique des calculs</li>
+                            </ul>
+                            <p><em>Aucun tracking externe ni publicité.</em></p>
+                        </div>
+                    </div>
+                    
+                    <div class="cookie-actions-modal">
                         <div class="cookie-action-card">
-                            <h4>✅ Accepter tous</h4>
-                            <p>Cookies techniques + fonctionnalités avancées</p>
-                            <button class="cookie-btn cookie-btn-accept" onclick="cookieBanner.acceptAll(); this.parentElement.parentElement.parentElement.parentElement.remove();">
-                                Activer
+                            <h4>⚙️ Cookies techniques uniquement</h4>
+                            <p>Fonctionnalités de base uniquement</p>
+                            <button class="cookie-btn cookie-btn-minimal" onclick="cookieBanner.acceptMinimal(); this.closest('.cookie-modal').remove();">
+                                Choisir cette option
                             </button>
                         </div>
                         
                         <div class="cookie-action-card">
-                            <h4>⚙️ Techniques uniquement</h4>
-                            <p>Fonctionnement de base du portail</p>
-                            <button class="cookie-btn cookie-btn-minimal" onclick="cookieBanner.acceptMinimal(); this.parentElement.parentElement.parentElement.parentElement.remove();">
-                                Activer
-                            </button>
-                        </div>
-                        
-                        <div class="cookie-action-card">
-                            <h4>🗑️ Supprimer tous</h4>
-                            <p>Réinitialiser vos préférences</p>
-                            <button class="cookie-btn cookie-btn-delete" onclick="cookieBanner.resetConsent(); this.parentElement.parentElement.parentElement.parentElement.remove();">
-                                Supprimer
+                            <h4>✅ Accepter tous les cookies</h4>
+                            <p>Expérience complète et optimisée</p>
+                            <button class="cookie-btn cookie-btn-accept" onclick="cookieBanner.acceptAll(); this.closest('.cookie-modal').remove();">
+                                Choisir cette option
                             </button>
                         </div>
                     </div>
-
+                    
+                    <div class="cookie-danger-zone">
+                        <h4>🗑️ Zone de réinitialisation</h4>
+                        <button class="cookie-btn cookie-btn-danger" onclick="cookieBanner.resetConsent(); this.closest('.cookie-modal').remove();">
+                            Supprimer tous mes cookies
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="cookie-modal-footer">
                     <div class="cookie-info">
                         <p>
                             <a href="/legal/privacy.php" target="_blank">📋 Politique de confidentialité</a> | 
@@ -303,6 +306,11 @@ class CookieBannerManager {
     resetConsent() {
         // Supprimer le cookie de consentement
         document.cookie = `${this.cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        
+        // Supprimer localStorage
+        try {
+            localStorage.removeItem(this.localStorageKey);
+        } catch (e) {}
 
         // Supprimer autres cookies non-techniques
         const cookies = document.cookie.split(';');
@@ -316,8 +324,15 @@ class CookieBannerManager {
 
         this.showNotification('🗑️ Cookies supprimés - Préférences réinitialisées');
 
+        // Event personnalisé
+        window.dispatchEvent(new CustomEvent('cookiesReset'));
+
         // Recréer la bannière après 1 seconde
         setTimeout(() => {
+            // Supprimer le bouton de gestion
+            const manageBtn = document.getElementById('cookie-manage-btn');
+            if (manageBtn) manageBtn.remove();
+            
             this.createBanner();
         }, 1000);
     }
