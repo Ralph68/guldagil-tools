@@ -30,19 +30,11 @@ foreach ($critical_files as $file) {
 
 // 4. INCLUSION SÉCURISÉE (éviter doubles inclusions)
 if (!defined('DB_HOST')) {
-    try {
-        require_once ROOT_PATH . '/config/config.php';
-    } catch (Exception $e) {
-        die("❌ Erreur configuration : " . $e->getMessage());
-    }
+    require_once ROOT_PATH . '/config/config.php';
 }
 
 if (!defined('APP_VERSION')) {
-    try {
-        require_once ROOT_PATH . '/config/version.php';
-    } catch (Exception $e) {
-        die("❌ Erreur version : " . $e->getMessage());
-    }
+    require_once ROOT_PATH . '/config/version.php';
 }
 
 // 5. GESTION SESSION SÉCURISÉE
@@ -58,10 +50,12 @@ $current_user = null;
 if (file_exists(ROOT_PATH . '/core/auth/AuthManager.php')) {
     try {
         require_once ROOT_PATH . '/core/auth/AuthManager.php';
-        $auth = new AuthManager();
-        if ($auth->isAuthenticated()) {
-            $current_user = $auth->getCurrentUser();
-            $user_authenticated = $current_user['role'] === 'admin';
+        if (class_exists('AuthManager')) {
+            $auth = AuthManager::getInstance();
+            if ($auth->isAuthenticated()) {
+                $current_user = $auth->getCurrentUser();
+                $user_authenticated = $current_user['role'] === 'admin';
+            }
         }
     } catch (Exception $e) {
         // Fallback silencieux
