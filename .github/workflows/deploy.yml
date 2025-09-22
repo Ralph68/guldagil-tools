@@ -1,100 +1,73 @@
-name: Deploy Laravel to o2switch (prod)
+name: Deploy to o2switch (prod)
 
 on:
   push:
-    branches: [ "main" ]     # déploie dès qu'on pousse sur main
-  workflow_dispatch:          # bouton "Run workflow" manuel
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
-  deploy-prod:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up PHP 8.3
+      - name: Use PHP 8.3
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, intl, zip, curl, dom, gd, bcmath, exif, fileinfo, openssl, pdo, pdo_mysql
           coverage: none
+          tools: composer:v2
 
-      - name: Composer cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.composer/cache/files
-          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            composer-${{ runner.os }}-
-
-      - name: Install Composer deps (prod)
-        working-directory: ./laravel_app
-        run: composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
-
-      # On génère un .env à partir de tes secrets GitHub
-      - name: Build .env file
-        working-directory: ./laravel_app
-        shell: bash
-        run: |
-          cat > .env << 'EOF'
-          APP_NAME="Guldagil Portal"
-          APP_ENV=production
-          APP_DEBUG=false
-          APP_URL=${{ secrets.APP_URL_PROD || 'https://gul.runser.ovh' }}
-
-          LOG_CHANNEL=stack
-          LOG_LEVEL=warning
-
-          DB_CONNECTION=mysql
-          DB_HOST=${{ secrets.DB_HOST }}
-          DB_PORT=3306
-          DB_DATABASE=${{ secrets.DB_NAME }}
-          DB_USERNAME=${{ secrets.DB_USER }}
-          DB_PASSWORD=${{ secrets.DB_PASS }}
-
-          SESSION_DRIVER=file
-          CACHE_STORE=file
-          QUEUE_CONNECTION=database
-
-          # Mail (remplis les secrets correspondants si besoin)
-          MAIL_MAILER=smtp
-          MAIL_HOST=${{ secrets.MAIL_HOST || '' }}
-          MAIL_PORT=${{ secrets.MAIL_PORT || '587' }}
-          MAIL_USERNAME=${{ secrets.MAIL_USERNAME || '' }}
-          MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD || '' }}
-          MAIL_ENCRYPTION=tls
-          MAIL_FROM_ADDRESS=${{ secrets.MAIL_FROM_ADDRESS || 'noreply@gul.runser.ovh' }}
-          MAIL_FROM_NAME="Guldagil Portal"
-          EOF
-
-      # Génère la clé et prépare les caches côté CI
-      - name: Prepare app (key, caches)
+      - name: Install dependencies (no dev)
         working-directory: ./laravel_app
         run: |
-          php artisan key:generate --force
+          composer install --no-dev --prefer-dist --no-progress --no-interaction
+          php artisan vendor:publish --tag=laravel-assets --force || true
+
+      - name: Build config cache (prod-like)
+        working-directory: ./laravel_app
+        env:
+          APP_ENV: production
+          APP_DEBUG: false
+        run: |
+          # on n'embarque PAS la vraie .env (elle reste sur le serveur)
+          cp .env.example .env || true
           php artisan config:cache
           php artisan route:cache
-          php artisan view:cache || true
-          php artisan storage:link || true
+          php artisan view:cache
 
-      # Déploiement FTP complet vers o2switch
-      - name: Upload to o2switch via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: Prune test & dev files
+        working-directory: ./laravel_app
+        run: |
+          rm -rf tests .github .vscode
+
+      - name: Deploy via SFTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server:   ${{ secrets.FTP_SERVER_PROD }}
+          server: ${{ secrets.FTP_SERVER_PROD }}
           username: ${{ secrets.FTP_USERNAME_PROD }}
           password: ${{ secrets.FTP_PASSWORD_PROD }}
+          protocol: sftp
+          # on envoie le contenu de ton dossier local laravel_app/
           local-dir: ./laravel_app/
-          server-dir: ${{ secrets.SERVER_DIR_PROD }}   # ex: /home/USER/public_html/laravel_app/
-          protocol: ftps
+          # vers le dossier LARAVEL sur o2switch
+          server-dir: ${{ secrets.SERVER_DIR_PROD }}
+          # ne jamais pousser .env ni .git*
           exclude: |
             **/.git*
             **/node_modules/**
             **/tests/**
-            **/README.md
-            **/phpunit.xml
+            **/.github/**
+            **/.env
             **/storage/logs/**
             **/storage/framework/cache/**
-            **/storage/framework/testing/**
+            **/storage/framework/sessions/**
+            **/storage/framework/views/**
+          dangerous-clean-slate: false
+
+      - name: Post-deploy note
+        run: |
+          echo "::notice title=Post-deploy::Sur o2switch, exécute :"
+          echo "cd ~/public_html/laravel_app && php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache"
