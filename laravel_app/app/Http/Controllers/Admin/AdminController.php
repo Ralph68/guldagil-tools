@@ -3,30 +3,34 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
-    // Dashboard admin
+    /**
+     * Tableau de bord admin
+     */
     public function index()
     {
-        // Stats rapides (placeholder)
-        $usersCount = User::count();
-        $adminsCount = User::where('is_admin', true)->count();
-
-        return view('modules.admin.index', compact('usersCount','adminsCount'));
+        // TODO: injecter KPIs, cartes, etc.
+        return view('modules.admin.index');
     }
 
-    // Liste utilisateurs (placeholder simple)
+    /**
+     * Gestion des utilisateurs
+     */
     public function users()
     {
-        $users = User::select('id','name','email','is_admin','created_at')->orderBy('id','desc')->paginate(20);
-        return view('modules.admin.users', compact('users'));
+        // TODO: récupérer la liste des users, pagination, etc.
+        return view('modules.admin.users');
     }
 
-    // Réglages (placeholder)
+    /**
+     * Paramètres
+     */
     public function settings()
     {
+        // TODO: charger paramètres appli (env + DB)
         return view('modules.admin.settings');
     }
 }
