@@ -3,6 +3,10 @@ name: Deploy to o2switch (prod)
 on:
   push:
     branches: ["main"]
+    # ne lance le déploiement que si les fichiers utiles ont changé
+    paths:
+      - 'laravel_app/**'
+      - '.github/workflows/deploy-prod.yml'
   workflow_dispatch:
 
 jobs:
@@ -10,34 +14,67 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Récupération du code
+      # 0) Vérifie si des fichiers du répertoire laravel_app ont changé depuis le dernier commit
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-      # 2) PHP 8.3 + Composer 2
+      - name: Detect changes under laravel_app
+        id: changes
+        run: |
+          if git diff --quiet HEAD^ HEAD -- laravel_app; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop early if nothing changed in laravel_app
+        if: steps.changes.outputs.changed == 'false'
+        run: |
+          echo "No changes in laravel_app/** — skipping build & deploy."
+          exit 0
+
+      # 1) PHP 8.3 + Composer 2
       - name: Use PHP 8.3
+        if: steps.changes.outputs.changed == 'true'
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           coverage: none
           tools: composer:v2
 
-      # 3) Install prod dans laravel_app (on génère vendor/ côté CI)
+      # 2) Cache Composer (accélère, et évite des diffs inutiles si rien n'a changé dans composer.lock)
+      - name: Cache composer files
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/_composer_cache
+          key: composer-${{ runner.os }}-${{ hashFiles('laravel_app/composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-
+
+      - name: Configure composer cache dir
+        if: steps.changes.outputs.changed == 'true'
+        run: composer config -g cache-dir ~/_composer_cache
+
+      # 3) Install prod dans laravel_app (vendor/ côté CI)
       - name: Install dependencies (no dev)
+        if: steps.changes.outputs.changed == 'true'
         working-directory: ./laravel_app
         run: |
           composer install --no-dev --prefer-dist --no-progress --no-interaction
-          # publie les assets vendor si nécessaire (ignorer si tag absent)
           php artisan vendor:publish --tag=laravel-assets --force || true
 
       # 4) Build caches "prod-like" (sans publier ta vraie .env)
       - name: Build config cache (prod-like)
+        if: steps.changes.outputs.changed == 'true'
         working-directory: ./laravel_app
         env:
           APP_ENV: production
           APP_DEBUG: false
         run: |
-          # on NE push PAS .env - ici on simule juste pour pouvoir cache
           cp .env.example .env || true
           php artisan config:cache
           php artisan route:cache
@@ -46,26 +83,24 @@ jobs:
 
       # 5) Nettoyage (réduit l’upload)
       - name: Prune test & dev files
+        if: steps.changes.outputs.changed == 'true'
         working-directory: ./laravel_app
         run: |
           rm -rf tests .github .vscode node_modules
 
-      # 6) Déploiement via FTPS (recommandé o2switch)
-      - name: Deploy via FTPS
+      # 6) Déploiement via FTPS en mode incrémental (seuls les fichiers modifiés sont envoyés)
+      - name: Deploy via FTPS (incremental)
+        if: steps.changes.outputs.changed == 'true'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_SERVER_PROD }}       # ex: ftp.votredomaine.tld
-          username: ${{ secrets.FTP_USERNAME_PROD }}   # ex: user@votredomaine.tld
+          server: ${{ secrets.FTP_SERVER_PROD }}
+          username: ${{ secrets.FTP_USERNAME_PROD }}
           password: ${{ secrets.FTP_PASSWORD_PROD }}
           protocol: ftps
           port: 21
           timeout: 60000
-          # Chemin distant EXACT à partir de la racine FTP
-          # ex: /home/USER/public_html/laravel_app/
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
-          # On pousse tout le dossier "laravel_app" (vendor/ inclus)
           local-dir: ./laravel_app/
-          # Exclusions : pas de .env, pas de caches runtime ni logs
           exclude: |
             **/.git*
             **/.github/**
@@ -81,11 +116,12 @@ jobs:
             **/Thumbs.db
           dangerous-clean-slate: false
           log-level: standard
-          # Fichier d'état pour sync incrémentale (ne pas supprimer côté serveur)
+          # clé du diff incrémental stockée côté serveur, NE PAS supprimer sur l'hébergement
           state-name: .ftp-deploy-sync-state-prod.json
 
       # 7) Rappel post-deploy
       - name: Post-deploy note
+        if: steps.changes.outputs.changed == 'true'
         run: |
           echo "::notice title=Post-deploy::Sur o2switch, lancer :"
           echo "cd ~/public_html/laravel_app && php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache"
