@@ -1,0 +1,155 @@
+[22-Sep-2025 21:18:01 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:18:01 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:19:01 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:19:01 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:20:01 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:20:01 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:20:01 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:20:01 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:21:01 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:21:01 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:22:02 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:22:02 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:23:02 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:23:02 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:24:03 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:24:03 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:25:02 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:25:02 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:25:02 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:25:02 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:33 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:54 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:26:54 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:27:00 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:27:00 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:27:03 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:27:03 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:27:13 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:27:13 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:27:18 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:27:18 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:33:32 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:33:32 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:34:34 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:34:34 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:34:54 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:34:54 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:39:09 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:39:09 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:42:04 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:42:04 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:42:05 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:42:05 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:42:05 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:42:05 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:42:11 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:42:11 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:45:52 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:45:52 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:45:53 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:45:53 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:45:53 UTC] PHP Warning:  require(/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php): Failed to open stream: No such file or directory in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
+[22-Sep-2025 21:45:53 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sc1ruje0226/public_html/laravel_app/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sc1ruje0226/public_html/laravel_app/artisan:9
+Stack trace:
+#0 {main}
+  thrown in /home/sc1ruje0226/public_html/laravel_app/artisan on line 9
