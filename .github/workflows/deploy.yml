@@ -2,7 +2,7 @@ name: Deploy to o2switch (prod)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -10,9 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1) Récupération du code
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2) PHP 8.3 + Composer 2
       - name: Use PHP 8.3
         uses: shivammathur/setup-php@v2
         with:
@@ -20,54 +22,71 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      # 3) Install prod dans laravel_app (on génère vendor/ côté CI)
       - name: Install dependencies (no dev)
         working-directory: ./laravel_app
         run: |
           composer install --no-dev --prefer-dist --no-progress --no-interaction
+          # publie les assets vendor si nécessaire (ignorer si tag absent)
           php artisan vendor:publish --tag=laravel-assets --force || true
 
+      # 4) Build caches "prod-like" (sans publier ta vraie .env)
       - name: Build config cache (prod-like)
         working-directory: ./laravel_app
         env:
           APP_ENV: production
           APP_DEBUG: false
         run: |
-          # on n'embarque PAS la vraie .env (elle reste sur le serveur)
+          # on NE push PAS .env - ici on simule juste pour pouvoir cache
           cp .env.example .env || true
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
+          rm -f .env
 
+      # 5) Nettoyage (réduit l’upload)
       - name: Prune test & dev files
         working-directory: ./laravel_app
         run: |
-          rm -rf tests .github .vscode
+          rm -rf tests .github .vscode node_modules
 
-      - name: Deploy via SFTP
+      # 6) Déploiement via FTPS (recommandé o2switch)
+      - name: Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_SERVER_PROD }}
-          username: ${{ secrets.FTP_USERNAME_PROD }}
+          server: ${{ secrets.FTP_SERVER_PROD }}       # ex: ftp.votredomaine.tld
+          username: ${{ secrets.FTP_USERNAME_PROD }}   # ex: user@votredomaine.tld
           password: ${{ secrets.FTP_PASSWORD_PROD }}
-          protocol: sftp
-          # on envoie le contenu de ton dossier local laravel_app/
-          local-dir: ./laravel_app/
-          # vers le dossier LARAVEL sur o2switch
+          protocol: ftps
+          port: 21
+          timeout: 60000
+          # Chemin distant EXACT à partir de la racine FTP
+          # ex: /home/USER/public_html/laravel_app/
           server-dir: ${{ secrets.SERVER_DIR_PROD }}
-          # ne jamais pousser .env ni .git*
+          # On pousse tout le dossier "laravel_app" (vendor/ inclus)
+          local-dir: ./laravel_app/
+          # Exclusions : pas de .env, pas de caches runtime ni logs
           exclude: |
             **/.git*
+            **/.github/**
+            **/.vscode/**
             **/node_modules/**
             **/tests/**
-            **/.github/**
             **/.env
             **/storage/logs/**
             **/storage/framework/cache/**
             **/storage/framework/sessions/**
             **/storage/framework/views/**
+            **/.DS_Store
+            **/Thumbs.db
           dangerous-clean-slate: false
+          log-level: standard
+          # Fichier d'état pour sync incrémentale (ne pas supprimer côté serveur)
+          state-name: .ftp-deploy-sync-state-prod.json
 
+      # 7) Rappel post-deploy
       - name: Post-deploy note
         run: |
-          echo "::notice title=Post-deploy::Sur o2switch, exécute :"
+          echo "::notice title=Post-deploy::Sur o2switch, lancer :"
           echo "cd ~/public_html/laravel_app && php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache"
+          echo "Vérifie aussi les droits : chmod -R 775 storage bootstrap/cache (et propriétaire/groupe du compte)"
