@@ -43,3 +43,14 @@ Route::post('/logout', function () {
     Auth::logout();
     return redirect()->route('home');
 })->name('logout');
+
+use App\Http\Controllers\Admin\AdminController;
+
+Route::prefix('admin')
+    ->middleware(['auth','admin']) // nécessite login + is_admin
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/', [AdminController::class, 'index'])->name('index');
+        Route::get('/users', [AdminController::class, 'users'])->name('users');
+        Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+    });

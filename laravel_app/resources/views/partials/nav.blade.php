@@ -15,9 +15,11 @@
       <li><a href="{{ route('api.index') }}" class="hover:underline">API</a></li>
       <li><a href="{{ route('legal.index') }}" class="hover:underline">Légal</a></li>
       @auth
-        <li><a href="{{ route('admin.index') }}" class="hover:underline">Admin</a></li>
-        <li><a href="{{ route('user.index') }}" class="hover:underline">Mon compte</a></li>
-      @endauth
+        @can('admin')
+    <li><a href="{{ route('admin.index') }}" class="hover:underline">Admin</a></li>
+  @endcan
+  <li><a href="{{ route('user.index') }}" class="hover:underline">Mon compte</a></li>
+        @endauth
     </ul>
 
     <div class="ml-auto">
